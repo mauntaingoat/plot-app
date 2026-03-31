@@ -1,8 +1,8 @@
 import { useEffect, useRef, useCallback } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { useMapStore } from '@/stores/mapStore'
-import { formatPrice, getBounds } from '@/lib/firestore'
-import { PIN_CONFIG, type Pin, type PinType } from '@/lib/types'
+import { getBounds } from '@/lib/firestore'
+import { type Pin, type PinType } from '@/lib/types'
 
 const MAPBOX_STYLE = 'mapbox://styles/mauntaingoat/cmndhmm7m000h01s5b0pvf9zx'
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || ''
@@ -19,7 +19,39 @@ interface MapCanvasProps {
   onBack?: () => void
 }
 
-const RING_COLORS: Record<PinType, string> = {
+function pinsToGeoJSON(pins: Pin[]) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: pins.map((pin) => {
+      const price = 'price' in pin ? pin.price
+        : 'soldPrice' in pin ? pin.soldPrice
+        : 'listingPrice' in pin ? pin.listingPrice
+        : 0
+      const priceK = price >= 1_000_000 ? `$${(price / 1_000_000).toFixed(1)}M`
+        : price >= 1_000 ? `$${(price / 1_000).toFixed(0)}K`
+        : price > 0 ? `$${price}` : ''
+      return {
+        type: 'Feature' as const,
+        id: pin.id,
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [pin.coordinates.lng, pin.coordinates.lat],
+        },
+        properties: {
+          id: pin.id,
+          type: pin.type,
+          price: priceK,
+          label: pin.type === 'live' ? 'LIVE'
+            : pin.type === 'open_house' ? 'OPEN'
+            : pin.type === 'sold' ? 'SOLD'
+            : priceK || '',
+        },
+      }
+    }),
+  }
+}
+
+const PIN_COLORS: Record<PinType, string> = {
   listing: '#3B82F6',
   sold: '#34C759',
   story: '#FF6B3D',
@@ -28,90 +60,16 @@ const RING_COLORS: Record<PinType, string> = {
   open_house: '#FFAA00',
 }
 
-function createPinElement(pin: Pin, agentPhotoUrl?: string | null): HTMLDivElement {
-  const el = document.createElement('div')
-  el.className = 'plot-pin'
-  const color = RING_COLORS[pin.type]
-  const hasImage = ('heroPhotoUrl' in pin && pin.heroPhotoUrl)
-    || ('thumbnailUrl' in pin && pin.thumbnailUrl)
-    || ('mediaUrl' in pin && pin.mediaUrl && pin.type === 'story')
-  const imageUrl = 'heroPhotoUrl' in pin ? pin.heroPhotoUrl
-    : 'thumbnailUrl' in pin ? pin.thumbnailUrl
-    : 'mediaUrl' in pin ? pin.mediaUrl
-    : null
-
-  const size = pin.type === 'story' || pin.type === 'reel' ? 48 : 42
-  const ringWidth = 3
-  const priceLabel = 'price' in pin ? formatPrice(pin.price)
-    : 'soldPrice' in pin ? formatPrice(pin.soldPrice)
-    : 'listingPrice' in pin ? formatPrice(pin.listingPrice)
-    : null
-
-  const isLive = pin.type === 'live'
-  const isOpenHouse = pin.type === 'open_house'
-  const statusLabel = isLive ? 'LIVE' : isOpenHouse ? 'OPEN' : null
-  const statusColor = isLive ? '#FF3B30' : '#FFAA00'
-  const extraHeight = (priceLabel && !isOpenHouse ? 20 : 0) + (statusLabel ? 18 : 0)
-
-  el.style.cssText = `width:${size}px;height:${size + extraHeight}px;cursor:pointer;position:relative;pointer-events:auto;`
-
-  const innerSize = size - ringWidth * 2
-  const imgHtml = hasImage && imageUrl
-    ? `<img src="${imageUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" loading="lazy" />`
-    : agentPhotoUrl
-      ? `<img src="${agentPhotoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" loading="lazy" />`
-      : `<div style="width:100%;height:100%;border-radius:50%;background:#1C2130;display:flex;align-items:center;justify-content:center;"><span style="color:white;font-size:${innerSize * 0.4}px;font-weight:700;">${PIN_CONFIG[pin.type].label[0]}</span></div>`
-
-  const ringBg = pin.type === 'story'
-    ? 'linear-gradient(135deg, #FF6B3D, #E8522A, #FF3B7A)'
-    : color
-
-  const statusHtml = statusLabel
-    ? `<div style="position:absolute;top:${size + 2}px;left:50%;transform:translateX(-50%);background:${statusColor};color:white;font-size:9px;font-weight:800;padding:1px 6px;border-radius:4px;white-space:nowrap;letter-spacing:0.5px;font-family:'Outfit',sans-serif;">${statusLabel}</div>`
-    : ''
-
-  const priceHtml = priceLabel && !isOpenHouse
-    ? `<div style="position:absolute;top:${size + 2}px;left:50%;transform:translateX(-50%);background:${color};color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;font-family:'JetBrains Mono',monospace;box-shadow:0 2px 8px ${color}40;">${priceLabel}</div>`
-    : ''
-
-  el.innerHTML = `
-    <div style="width:${size}px;height:${size}px;border-radius:50%;padding:${ringWidth}px;background:${ringBg};position:relative;box-shadow:0 2px 8px ${color}30;">
-      <div style="width:${innerSize}px;height:${innerSize}px;border-radius:50%;overflow:hidden;background:#0A0E17;padding:1.5px;">
-        <div style="width:100%;height:100%;border-radius:50%;overflow:hidden;">${imgHtml}</div>
-      </div>
-    </div>
-    ${statusHtml}${priceHtml}
-  `
-  return el
-}
-
-function createClusterElement(count: number, previewUrl?: string): HTMLDivElement {
-  const el = document.createElement('div')
-  el.className = 'plot-cluster'
-  const size = 52
-  el.style.cssText = `width:${size}px;height:${size + 20}px;cursor:pointer;position:relative;pointer-events:auto;`
-
-  const imgHtml = previewUrl
-    ? `<img src="${previewUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" loading="lazy" />`
-    : `<div style="width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,#FF6B3D,#E8522A);display:flex;align-items:center;justify-content:center;"><span style="color:white;font-size:16px;font-weight:800;">${count}</span></div>`
-
-  el.innerHTML = `
-    <div style="width:${size}px;height:${size}px;border-radius:50%;padding:3px;background:linear-gradient(135deg,#FF6B3D,#E8522A);box-shadow:0 2px 14px rgba(255,107,61,0.3);">
-      <div style="width:${size - 6}px;height:${size - 6}px;border-radius:50%;overflow:hidden;background:#0A0E17;padding:1.5px;">
-        <div style="width:100%;height:100%;border-radius:50%;overflow:hidden;">${imgHtml}</div>
-      </div>
-    </div>
-    <div style="position:absolute;top:${size - 4}px;left:50%;transform:translateX(-50%);background:#1C2130;color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;border:1.5px solid rgba(255,107,61,0.25);font-family:'Outfit',sans-serif;">+${count - 1} more</div>
-  `
-  return el
-}
-
 export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, className = '', fitToPins = true, interactive = true, showBackButton, onBack }: MapCanvasProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
-  const markersRef = useRef<mapboxgl.Marker[]>([])
   const fittedRef = useRef(false)
+  const pinsRef = useRef(pins)
+  pinsRef.current = pins
   const { center, zoom } = useMapStore()
+
+  const pinClickRef = useRef(onPinClick)
+  pinClickRef.current = onPinClick
 
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return
@@ -128,27 +86,210 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       touchPitch: false,
     })
 
-    // Remove ALL weather/precipitation/particle layers aggressively
     map.on('style.load', () => {
+      // Remove weather layers
       const style = map.getStyle()
-      if (!style?.layers) return
-      for (const layer of style.layers) {
-        const id = layer.id.toLowerCase()
-        // Cast wide net: any layer with weather-related keywords
-        if (
-          id.includes('rain') || id.includes('snow') || id.includes('precip') ||
-          id.includes('weather') || id.includes('particle') || id.includes('fog') ||
-          id.includes('haze') || id.includes('cloud') || id.includes('storm')
-        ) {
-          try { map.removeLayer(layer.id) } catch {}
+      if (style?.layers) {
+        for (const layer of style.layers) {
+          const id = layer.id.toLowerCase()
+          if (id.includes('rain') || id.includes('snow') || id.includes('precip') ||
+              id.includes('weather') || id.includes('particle') || id.includes('fog') ||
+              id.includes('haze') || id.includes('cloud') || id.includes('storm')) {
+            try { map.removeLayer(layer.id) } catch {}
+          }
         }
       }
-      // Also try removing weather sources
-      const sources = style.sources || {}
-      for (const srcId of Object.keys(sources)) {
-        const sid = srcId.toLowerCase()
-        if (sid.includes('weather') || sid.includes('precip') || sid.includes('rain') || sid.includes('snow')) {
-          try { map.removeSource(srcId) } catch {}
+      if (style?.sources) {
+        for (const srcId of Object.keys(style.sources)) {
+          const sid = srcId.toLowerCase()
+          if (sid.includes('weather') || sid.includes('precip') || sid.includes('rain') || sid.includes('snow')) {
+            try { map.removeSource(srcId) } catch {}
+          }
+        }
+      }
+    })
+
+    map.on('load', () => {
+      // GeoJSON source with built-in clustering
+      map.addSource('pins', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+        cluster: true,
+        clusterMaxZoom: 15,
+        clusterRadius: 45,
+      })
+
+      // Cluster circles
+      map.addLayer({
+        id: 'clusters',
+        type: 'circle',
+        source: 'pins',
+        filter: ['has', 'point_count'],
+        paint: {
+          'circle-color': '#FF6B3D',
+          'circle-radius': ['step', ['get', 'point_count'], 22, 5, 28, 15, 34],
+          'circle-opacity': 0.92,
+          'circle-stroke-width': 3,
+          'circle-stroke-color': 'rgba(255, 107, 61, 0.25)',
+        },
+      })
+
+      // Cluster count label
+      map.addLayer({
+        id: 'cluster-count',
+        type: 'symbol',
+        source: 'pins',
+        filter: ['has', 'point_count'],
+        layout: {
+          'text-field': '{point_count_abbreviated}',
+          'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
+          'text-size': 13,
+        },
+        paint: {
+          'text-color': '#ffffff',
+        },
+      })
+
+      // Individual pin circles (unclustered)
+      map.addLayer({
+        id: 'pin-circles',
+        type: 'circle',
+        source: 'pins',
+        filter: ['!', ['has', 'point_count']],
+        paint: {
+          'circle-color': [
+            'match', ['get', 'type'],
+            'listing', '#3B82F6',
+            'sold', '#34C759',
+            'story', '#FF6B3D',
+            'reel', '#A855F7',
+            'live', '#FF3B30',
+            'open_house', '#FFAA00',
+            '#FF6B3D',
+          ],
+          'circle-radius': [
+            'match', ['get', 'type'],
+            'story', 16,
+            'reel', 14,
+            'live', 14,
+            10,
+          ],
+          'circle-opacity': 0.92,
+          'circle-stroke-width': [
+            'match', ['get', 'type'],
+            'story', 3,
+            'live', 3,
+            2,
+          ],
+          'circle-stroke-color': [
+            'match', ['get', 'type'],
+            'story', '#E8522A',
+            'live', 'rgba(255, 59, 48, 0.35)',
+            'open_house', 'rgba(255, 170, 0, 0.35)',
+            'rgba(255, 255, 255, 0.15)',
+          ],
+        },
+      })
+
+      // Pin type icon letter inside circle
+      map.addLayer({
+        id: 'pin-icons',
+        type: 'symbol',
+        source: 'pins',
+        filter: ['all',
+          ['!', ['has', 'point_count']],
+          ['in', ['get', 'type'], ['literal', ['story', 'reel', 'live']]],
+        ],
+        layout: {
+          'text-field': [
+            'match', ['get', 'type'],
+            'story', 'S',
+            'reel', 'R',
+            'live', 'L',
+            '',
+          ],
+          'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
+          'text-size': 12,
+          'text-allow-overlap': true,
+        },
+        paint: {
+          'text-color': '#ffffff',
+        },
+      })
+
+      // Price/status labels above pins
+      map.addLayer({
+        id: 'pin-labels',
+        type: 'symbol',
+        source: 'pins',
+        filter: ['all',
+          ['!', ['has', 'point_count']],
+          ['!=', ['get', 'label'], ''],
+        ],
+        layout: {
+          'text-field': ['get', 'label'],
+          'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
+          'text-size': 11,
+          'text-offset': [0, -2.2],
+          'text-anchor': 'bottom',
+          'text-allow-overlap': true,
+        },
+        paint: {
+          'text-color': '#ffffff',
+          'text-halo-color': [
+            'match', ['get', 'type'],
+            'listing', '#3B82F6',
+            'sold', '#34C759',
+            'live', '#FF3B30',
+            'open_house', '#FFAA00',
+            '#FF6B3D',
+          ],
+          'text-halo-width': 6,
+          'text-halo-blur': 1,
+        },
+      })
+
+      // Click handlers
+      map.on('click', 'pin-circles', (e) => {
+        if (!e.features?.length) return
+        const pinId = e.features[0].properties?.id
+        if (pinId) {
+          const pin = pinsRef.current.find((p) => p.id === pinId)
+          if (pin) pinClickRef.current?.(pin)
+        }
+      })
+
+      map.on('click', 'clusters', (e) => {
+        const features = map.queryRenderedFeatures(e.point, { layers: ['clusters'] })
+        if (!features.length) return
+        const clusterId = features[0].properties?.cluster_id
+        const source = map.getSource('pins') as mapboxgl.GeoJSONSource
+        source.getClusterExpansionZoom(clusterId, (err, z) => {
+          if (err || !features[0].geometry || features[0].geometry.type !== 'Point') return
+          map.easeTo({
+            center: features[0].geometry.coordinates as [number, number],
+            zoom: z!,
+            duration: 400,
+          })
+        })
+      })
+
+      // Cursors
+      map.on('mouseenter', 'pin-circles', () => { map.getCanvas().style.cursor = 'pointer' })
+      map.on('mouseleave', 'pin-circles', () => { map.getCanvas().style.cursor = '' })
+      map.on('mouseenter', 'clusters', () => { map.getCanvas().style.cursor = 'pointer' })
+      map.on('mouseleave', 'clusters', () => { map.getCanvas().style.cursor = '' })
+
+      // Initial data load
+      updateSource(map, pinsRef.current)
+
+      // Fit to pins
+      if (fitToPins && pinsRef.current.length > 0) {
+        const coords = pinsRef.current.map((p) => p.coordinates)
+        if (coords.length === 1) {
+          map.easeTo({ center: [coords[0].lng, coords[0].lat], zoom: 15, duration: 800 })
+        } else {
+          map.fitBounds(getBounds(coords), { padding: 80, duration: 800 })
         }
       }
     })
@@ -159,128 +300,22 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
     return () => { map.remove(); mapRef.current = null }
   }, []) // eslint-disable-line
 
-  const pinClickRef = useRef(onPinClick)
-  pinClickRef.current = onPinClick
-
-  const lastZoomRef = useRef<number | null>(null)
-  const reclusterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
+  // Update source data when pins change
   useEffect(() => {
     const map = mapRef.current
-    if (!map) return
+    if (!map || !map.isStyleLoaded()) return
+    updateSource(map, pins)
 
-    const CLUSTER_RADIUS_PX = 38
-    const MIN_CLUSTER_SIZE = 3
-
-    const renderMarkers = () => {
-      // Clear old markers
-      markersRef.current.forEach((m) => m.remove())
-      markersRef.current = []
-
-      if (pins.length === 0) return
-
-      // Project pins to screen coordinates for clustering
-      const projected = pins.map((pin) => {
-        const pt = map.project([pin.coordinates.lng, pin.coordinates.lat])
-        return { pin, x: pt.x, y: pt.y }
-      })
-
-      const clusters: { pins: Pin[] }[] = []
-      const used = new Set<string>()
-
-      for (const item of projected) {
-        if (used.has(item.pin.id)) continue
-        const group: typeof projected = [item]
-        used.add(item.pin.id)
-
-        for (const other of projected) {
-          if (used.has(other.pin.id)) continue
-          const gcx = group.reduce((s, g) => s + g.x, 0) / group.length
-          const gcy = group.reduce((s, g) => s + g.y, 0) / group.length
-          const dx = gcx - other.x
-          const dy = gcy - other.y
-          if (Math.sqrt(dx * dx + dy * dy) < CLUSTER_RADIUS_PX) {
-            group.push(other)
-            used.add(other.pin.id)
-          }
-        }
-        clusters.push({ pins: group.map((g) => g.pin) })
-      }
-
-      for (const cluster of clusters) {
-        if (cluster.pins.length < MIN_CLUSTER_SIZE) {
-          // Individual pins — each at its exact lat/lng
-          for (const pin of cluster.pins) {
-            const el = createPinElement(pin, agentPhotoUrl)
-            el.addEventListener('click', (e) => { e.stopPropagation(); pinClickRef.current?.(pin) })
-            const m = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-              .setLngLat([pin.coordinates.lng, pin.coordinates.lat])
-              .addTo(map)
-            markersRef.current.push(m)
-          }
-        } else {
-          // Cluster marker
-          const avgLat = cluster.pins.reduce((s, p) => s + p.coordinates.lat, 0) / cluster.pins.length
-          const avgLng = cluster.pins.reduce((s, p) => s + p.coordinates.lng, 0) / cluster.pins.length
-          const preview = cluster.pins[0]
-          const url = 'heroPhotoUrl' in preview ? preview.heroPhotoUrl : 'thumbnailUrl' in preview ? preview.thumbnailUrl : agentPhotoUrl || undefined
-          const el = createClusterElement(cluster.pins.length, url || undefined)
-          el.addEventListener('click', (e) => {
-            e.stopPropagation()
-            const bounds = getBounds(cluster.pins.map((p) => p.coordinates))
-            map.fitBounds(bounds, { padding: 100, duration: 500, maxZoom: 18 })
-          })
-          const m = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-            .setLngLat([avgLng, avgLat])
-            .addTo(map)
-          markersRef.current.push(m)
-        }
-      }
-
-      lastZoomRef.current = map.getZoom()
-    }
-
-    const fitAndRender = () => {
-      if (fitToPins && pins.length > 0 && !fittedRef.current) {
-        fittedRef.current = true
-        const coords = pins.map((p) => p.coordinates)
-        if (coords.length === 1) {
-          map.easeTo({ center: [coords[0].lng, coords[0].lat], zoom: 15, duration: 800 })
-        } else {
-          map.fitBounds(getBounds(coords), { padding: 80, duration: 800 })
-        }
-        // Render after the fit animation completes
-        setTimeout(renderMarkers, 850)
+    if (fitToPins && pins.length > 0 && !fittedRef.current) {
+      fittedRef.current = true
+      const coords = pins.map((p) => p.coordinates)
+      if (coords.length === 1) {
+        map.easeTo({ center: [coords[0].lng, coords[0].lat], zoom: 15, duration: 800 })
       } else {
-        renderMarkers()
+        map.fitBounds(getBounds(coords), { padding: 80, duration: 800 })
       }
     }
-
-    if (map.isStyleLoaded()) {
-      fitAndRender()
-    } else {
-      map.once('load', fitAndRender)
-    }
-
-    // Debounced re-cluster: only after zoom settles AND changed enough to matter
-    const onIdle = () => {
-      if (reclusterTimerRef.current) clearTimeout(reclusterTimerRef.current)
-      reclusterTimerRef.current = setTimeout(() => {
-        const currentZoom = map.getZoom()
-        const lastZoom = lastZoomRef.current
-        // Only re-cluster if zoom changed by at least 0.5 levels
-        if (lastZoom === null || Math.abs(currentZoom - lastZoom) >= 0.5) {
-          renderMarkers()
-        }
-      }, 300)
-    }
-
-    map.on('idle', onIdle)
-    return () => {
-      map.off('idle', onIdle)
-      if (reclusterTimerRef.current) clearTimeout(reclusterTimerRef.current)
-    }
-  }, [pins, agentPhotoUrl, fitToPins])
+  }, [pins, fitToPins])
 
   const fitTo = useCallback((targetPins: Pin[]) => {
     const map = mapRef.current
@@ -312,4 +347,11 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       )}
     </div>
   )
+}
+
+function updateSource(map: mapboxgl.Map, pins: Pin[]) {
+  const source = map.getSource('pins') as mapboxgl.GeoJSONSource | undefined
+  if (source) {
+    source.setData(pinsToGeoJSON(pins) as GeoJSON.FeatureCollection)
+  }
 }
