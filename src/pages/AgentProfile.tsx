@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { MapCanvas } from '@/components/map/MapCanvas'
 import { MapOverlay } from '@/components/map/MapOverlay'
@@ -16,6 +16,8 @@ import type { UserDoc, Pin, StoryPin, ReelPin, ListingPin, SoldPin, OpenHousePin
 
 export default function AgentProfile() {
   const { username } = useParams<{ username: string }>()
+  const [searchParams] = useSearchParams()
+  const isPreview = searchParams.get('preview') === 'true'
   const navigate = useNavigate()
   const [agent, setAgent] = useState<UserDoc | null>(null)
   const [allPins, setAllPins] = useState<Pin[]>([])
@@ -23,20 +25,17 @@ export default function AgentProfile() {
   const [notFound, setNotFound] = useState(false)
   const [isFollowing, setIsFollowing] = useState(false)
 
-  // Viewer states
   const [storyViewer, setStoryViewer] = useState<{ stories: StoryPin[]; index: number } | null>(null)
   const [reelViewer, setReelViewer] = useState<ReelPin | null>(null)
   const [listingSheet, setListingSheet] = useState<(ListingPin | SoldPin | OpenHousePin) | null>(null)
 
-  const { setViewingAgentId, activeFilter } = useMapStore()
+  const { setViewingAgentId, activeFilters } = useMapStore()
 
-  // Fetch agent + pins
   useEffect(() => {
     if (!username) return
     setLoading(true)
 
     if (!firebaseConfigured) {
-      // Demo mode — use mock data
       const mockAgent = getMockAgent(username)
       if (mockAgent) {
         setAgent(mockAgent)
@@ -49,7 +48,6 @@ export default function AgentProfile() {
       return
     }
 
-    // Firebase mode
     getUserByUsername(username)
       .then((doc) => {
         if (doc) {
@@ -62,13 +60,12 @@ export default function AgentProfile() {
       .finally(() => setLoading(false))
   }, [username, setViewingAgentId])
 
-  // Filtered pins
+  // Multi-select filter
   const filteredPins = useMemo(() => {
-    if (activeFilter === 'all') return allPins
-    return allPins.filter((p) => p.type === activeFilter)
-  }, [allPins, activeFilter])
+    if (activeFilters.size === 0) return allPins
+    return allPins.filter((p) => activeFilters.has(p.type))
+  }, [allPins, activeFilters])
 
-  // Pin type counts
   const pinCounts = useMemo(() => {
     const counts: Record<string, number> = {}
     allPins.forEach((p) => { counts[p.type] = (counts[p.type] || 0) + 1 })
@@ -87,24 +84,10 @@ export default function AgentProfile() {
     }
   }, [allPins])
 
-  const handleFollow = () => setIsFollowing(!isFollowing)
-
-  const handleShare = async () => {
-    try {
-      await navigator.share({ title: `${agent?.displayName} on Plot`, url: window.location.href })
-    } catch {
-      navigator.clipboard.writeText(window.location.href)
-    }
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-midnight flex items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          className="w-8 h-8 border-2 border-tangerine border-t-transparent rounded-full"
-        />
+        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-8 h-8 border-2 border-tangerine border-t-transparent rounded-full" />
       </div>
     )
   }
@@ -117,42 +100,37 @@ export default function AgentProfile() {
         </div>
         <h1 className="text-[24px] font-extrabold text-white mb-2">Plot not found</h1>
         <p className="text-[15px] text-ghost mb-6">@{username} doesn't have a Plot yet.</p>
-        <motion.button
-          whileTap={{ scale: 0.96 }}
-          onClick={() => navigate('/')}
-          className="text-tangerine font-semibold text-[15px]"
-        >
-          Go home
-        </motion.button>
+        <motion.button whileTap={{ scale: 0.96 }} onClick={() => navigate('/')} className="text-tangerine font-semibold text-[15px]">Go home</motion.button>
       </div>
     )
   }
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-midnight relative">
-      {/* Map */}
       <MapCanvas
         pins={filteredPins}
+        agentPhotoUrl={agent.photoURL}
         onPinClick={handlePinClick}
         className="absolute inset-0"
+        showBackButton={isPreview}
+        onBack={() => navigate('/dashboard')}
       />
 
-      {/* Overlay (agent header + filters) */}
       <MapOverlay
         agent={agent}
         pinCounts={pinCounts}
-        onFollow={handleFollow}
-        onShare={handleShare}
+        onFollow={() => setIsFollowing(!isFollowing)}
+        onShare={async () => {
+          try { await navigator.share({ title: `${agent.displayName} on Plot`, url: window.location.href }) }
+          catch { navigator.clipboard.writeText(window.location.href) }
+        }}
         isFollowing={isFollowing}
       />
 
-      {/* Peek drawer */}
       <PeekDrawer
         collapsedContent={
           <div className="flex items-center justify-between">
-            <p className="text-[14px] font-semibold text-white">
-              {filteredPins.length} pin{filteredPins.length !== 1 ? 's' : ''}
-            </p>
+            <p className="text-[14px] font-semibold text-white">{filteredPins.length} pin{filteredPins.length !== 1 ? 's' : ''}</p>
             <p className="text-[12px] text-ghost">Drag up to explore</p>
           </div>
         }
@@ -160,53 +138,18 @@ export default function AgentProfile() {
         <div className="px-4 pb-32">
           <div className="grid grid-cols-2 gap-3 pt-2">
             {filteredPins.map((pin) => (
-              <PinCard
-                key={pin.id}
-                pin={pin}
-                onClick={() => handlePinClick(pin)}
-                dark
-              />
+              <PinCard key={pin.id} pin={pin} onClick={() => handlePinClick(pin)} dark />
             ))}
           </div>
-
           {filteredPins.length === 0 && (
-            <div className="py-16 text-center">
-              <p className="text-[15px] text-ghost">No pins to show</p>
-            </div>
+            <div className="py-16 text-center"><p className="text-[15px] text-ghost">No pins to show</p></div>
           )}
         </div>
       </PeekDrawer>
 
-      {/* Story viewer */}
-      {storyViewer && (
-        <StoryViewer
-          stories={storyViewer.stories}
-          agent={agent}
-          initialIndex={storyViewer.index}
-          onClose={() => setStoryViewer(null)}
-        />
-      )}
-
-      {/* Reel player */}
-      {reelViewer && (
-        <ReelPlayer
-          reel={reelViewer}
-          agent={agent}
-          onClose={() => setReelViewer(null)}
-          onFollow={handleFollow}
-          isFollowing={isFollowing}
-        />
-      )}
-
-      {/* Listing sheet */}
-      {listingSheet && (
-        <ListingSheet
-          pin={listingSheet}
-          agent={agent}
-          isOpen
-          onClose={() => setListingSheet(null)}
-        />
-      )}
+      {storyViewer && <StoryViewer stories={storyViewer.stories} agent={agent} initialIndex={storyViewer.index} onClose={() => setStoryViewer(null)} />}
+      {reelViewer && <ReelPlayer reel={reelViewer} agent={agent} onClose={() => setReelViewer(null)} onFollow={() => setIsFollowing(!isFollowing)} isFollowing={isFollowing} />}
+      {listingSheet && <ListingSheet pin={listingSheet} agent={agent} isOpen onClose={() => setListingSheet(null)} />}
     </div>
   )
 }

@@ -4,33 +4,31 @@ import type { Pin, PinType } from '@/lib/types'
 type DrawerSnap = 'collapsed' | 'half' | 'full'
 
 interface MapState {
-  // Viewport
   center: [number, number]
   zoom: number
   setCenter: (center: [number, number]) => void
   setZoom: (zoom: number) => void
 
-  // Pins
   pins: Pin[]
   setPins: (pins: Pin[]) => void
   selectedPin: Pin | null
   setSelectedPin: (pin: Pin | null) => void
 
-  // Filters
-  activeFilter: PinType | 'all'
-  setActiveFilter: (filter: PinType | 'all') => void
+  // Multi-select filters
+  activeFilters: Set<PinType>
+  toggleFilter: (filter: PinType) => void
+  clearFilters: () => void
+  isAllSelected: () => boolean
 
-  // Drawer
   drawerSnap: DrawerSnap
   setDrawerSnap: (snap: DrawerSnap) => void
 
-  // Agent context (when viewing /:username)
   viewingAgentId: string | null
   setViewingAgentId: (id: string | null) => void
 }
 
-export const useMapStore = create<MapState>((set) => ({
-  center: [-80.1918, 25.7617], // Miami default
+export const useMapStore = create<MapState>((set, get) => ({
+  center: [-80.1918, 25.7617],
   zoom: 12,
   setCenter: (center) => set({ center }),
   setZoom: (zoom) => set({ zoom }),
@@ -40,8 +38,18 @@ export const useMapStore = create<MapState>((set) => ({
   selectedPin: null,
   setSelectedPin: (pin) => set({ selectedPin: pin, drawerSnap: pin ? 'half' : 'collapsed' }),
 
-  activeFilter: 'all',
-  setActiveFilter: (activeFilter) => set({ activeFilter, selectedPin: null }),
+  activeFilters: new Set<PinType>(),
+  toggleFilter: (filter) => set((s) => {
+    const next = new Set(s.activeFilters)
+    if (next.has(filter)) {
+      next.delete(filter)
+    } else {
+      next.add(filter)
+    }
+    return { activeFilters: next, selectedPin: null }
+  }),
+  clearFilters: () => set({ activeFilters: new Set(), selectedPin: null }),
+  isAllSelected: () => get().activeFilters.size === 0,
 
   drawerSnap: 'collapsed',
   setDrawerSnap: (drawerSnap) => set({ drawerSnap }),

@@ -5,24 +5,20 @@ import { MapPin, ArrowRight, Sparkles, Compass } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
+import { AuthSheet } from '@/components/sheets/AuthSheet'
 import { useAuthStore } from '@/stores/authStore'
 import { firebaseConfigured } from '@/config/firebase'
-import { MOCK_AGENTS, MOCK_CURRENT_USER } from '@/lib/mock'
+import { MOCK_AGENTS } from '@/lib/mock'
 import type { UserDoc } from '@/lib/types'
 
 export default function Home() {
   const navigate = useNavigate()
-  const { firebaseUser, userDoc, setUserDoc } = useAuthStore()
-  const [agents, setAgents] = useState<UserDoc[]>([])
+  const { userDoc } = useAuthStore()
+  const [agents] = useState<UserDoc[]>(MOCK_AGENTS)
+  const [showAuth, setShowAuth] = useState(false)
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup')
 
-  // Load featured agents (mock if no Firebase)
-  useEffect(() => {
-    if (!firebaseConfigured) {
-      setAgents(MOCK_AGENTS)
-    }
-  }, [])
-
-  // If logged in agent, redirect to dashboard
+  // If already signed in agent, go to dashboard
   useEffect(() => {
     if (userDoc?.role === 'agent' && userDoc.onboardingComplete) {
       navigate('/dashboard', { replace: true })
@@ -30,27 +26,25 @@ export default function Home() {
   }, [userDoc, navigate])
 
   const handleClaimPlot = () => {
-    // In demo mode, set mock user and go to dashboard
-    if (!firebaseConfigured) {
-      setUserDoc(MOCK_CURRENT_USER)
-      navigate('/dashboard')
-      return
-    }
-    // TODO: open onboarding when Firebase is configured
+    setAuthMode('signup')
+    setShowAuth(true)
+  }
+
+  const handleSignIn = () => {
+    setAuthMode('login')
+    setShowAuth(true)
   }
 
   return (
     <div className="min-h-screen bg-ivory">
       {/* Hero */}
       <section className="relative overflow-hidden">
-        {/* Background gradient mesh */}
         <div className="absolute inset-0">
           <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-tangerine/8 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/4" />
           <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-ember/6 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/4" />
         </div>
 
         <div className="relative px-6 pt-[calc(env(safe-area-inset-top,20px)+20px)] pb-12">
-          {/* Nav */}
           <motion.nav
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -63,21 +57,11 @@ export default function Home() {
               <span className="text-[20px] font-extrabold text-ink tracking-tight">Plot</span>
             </div>
 
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                if (!firebaseConfigured) {
-                  setUserDoc(MOCK_CURRENT_USER)
-                  navigate('/dashboard')
-                }
-              }}
-            >
-              Dashboard
+            <Button variant="ghost" size="sm" onClick={handleSignIn}>
+              Sign in
             </Button>
           </motion.nav>
 
-          {/* Hero content */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -118,12 +102,12 @@ export default function Home() {
             </div>
           </motion.div>
 
-          {/* Floating map preview */}
+          {/* Map preview — tappable to Carolina's profile */}
           <motion.div
             initial={{ opacity: 0, y: 40, rotate: 2 }}
             animate={{ opacity: 1, y: 0, rotate: 2 }}
             transition={{ delay: 0.4, type: 'spring', damping: 20 }}
-            className="mt-8 bg-obsidian rounded-[24px] overflow-hidden shadow-xl border border-border-dark aspect-[4/3] relative"
+            className="mt-8 bg-obsidian rounded-[24px] overflow-hidden shadow-xl border border-border-dark aspect-[4/3] relative cursor-pointer"
             onClick={() => navigate('/carolina')}
           >
             <div className="absolute inset-0 bg-gradient-to-br from-[#0C1E35] via-[#0F2847] to-[#0A1628]">
@@ -152,7 +136,6 @@ export default function Home() {
                   }}
                 />
               ))}
-
               <div className="absolute bottom-4 left-4 right-4 glass-heavy rounded-[16px] p-3 flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-tangerine to-ember" />
                 <div className="flex-1">
@@ -254,10 +237,16 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="px-6 py-8 text-center border-t border-border-light">
         <p className="text-[12px] text-ash">&copy; {new Date().getFullYear()} Plot. All rights reserved.</p>
       </footer>
+
+      {/* Auth sheet */}
+      <AuthSheet
+        isOpen={showAuth}
+        onClose={() => setShowAuth(false)}
+        mode={authMode}
+      />
     </div>
   )
 }

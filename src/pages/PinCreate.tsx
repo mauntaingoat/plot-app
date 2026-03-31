@@ -12,7 +12,7 @@ import { uploadFile, pinMediaPath } from '@/lib/storage'
 import { PIN_CONFIG, type PinType } from '@/lib/types'
 import { PIN_TYPE_ICONS } from '@/components/icons/PinIcons'
 
-const PIN_TYPES: PinType[] = ['listing', 'sold', 'story', 'reel', 'open_house']
+const PIN_TYPES: PinType[] = ['listing', 'sold', 'story', 'reel', 'live', 'open_house']
 
 export default function PinCreate() {
   const navigate = useNavigate()

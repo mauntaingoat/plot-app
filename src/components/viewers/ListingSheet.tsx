@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Heart, Share2, Bed, Bath, Maximize, MapPin, ChevronLeft, ChevronRight, Phone, MessageSquare } from 'lucide-react'
+import { Bookmark, Share2, Bed, Bath, Maximize, MapPin, ChevronLeft, ChevronRight, Phone, MessageSquare } from 'lucide-react'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
@@ -86,7 +86,7 @@ export function ListingSheet({ pin, agent, isOpen, onClose }: ListingSheetProps)
               onClick={() => setSaved(!saved)}
               className="w-9 h-9 rounded-full glass-dark flex items-center justify-center"
             >
-              <Heart size={18} className={saved ? 'text-live-red fill-live-red' : 'text-white'} />
+              <Bookmark size={18} className={saved ? 'text-tangerine fill-tangerine' : 'text-white'} />
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.85 }}

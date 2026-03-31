@@ -105,18 +105,18 @@ export function ReelPlayer({ reel, agent, onClose, onFollow, isFollowing }: Reel
             )}
           </div>
 
-          {/* Like */}
+          {/* Save */}
           <motion.button
             whileTap={{ scale: 0.75 }}
-            onClick={() => setLiked(!liked)}
+            onClick={() => setSaved(!saved)}
             className="flex flex-col items-center gap-0.5"
           >
-            <Heart
+            <Bookmark
               size={28}
-              className={liked ? 'text-live-red fill-live-red' : 'text-white'}
+              className={saved ? 'text-tangerine fill-tangerine' : 'text-white'}
             />
             <span className="text-[11px] text-white font-semibold">
-              {(reel.saves + (liked ? 1 : 0)).toLocaleString()}
+              {(reel.saves + (saved ? 1 : 0)).toLocaleString()}
             </span>
           </motion.button>
 
@@ -129,20 +129,7 @@ export function ReelPlayer({ reel, agent, onClose, onFollow, isFollowing }: Reel
             <span className="text-[11px] text-white font-semibold">0</span>
           </motion.button>
 
-          {/* Bookmark */}
-          <motion.button
-            whileTap={{ scale: 0.75 }}
-            onClick={() => setSaved(!saved)}
-            className="flex flex-col items-center gap-0.5"
-          >
-            <Bookmark
-              size={26}
-              className={saved ? 'text-open-amber fill-open-amber' : 'text-white'}
-            />
-            <span className="text-[11px] text-white font-semibold">
-              {(reel.saves + (saved ? 1 : 0)).toLocaleString()}
-            </span>
-          </motion.button>
+          {/* (Save is now the primary action above) */}
 
           {/* Share */}
           <motion.button

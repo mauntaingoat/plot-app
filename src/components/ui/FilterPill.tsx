@@ -25,7 +25,7 @@ export function FilterPill({ label, active, icon, count, onClick, dark = true }:
             : 'bg-tangerine text-white border-tangerine'
           : dark
             ? 'glass text-mist hover:text-white'
-            : 'bg-cream text-smoke border-border-light hover:bg-pearl'
+            : 'bg-white/90 backdrop-blur-sm text-ink border-border-light hover:bg-pearl shadow-sm'
         }
       `}
     >

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence, type PanInfo } from 'framer-motion'
-import { X, ChevronLeft, ChevronRight, Heart, Share2 } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Bookmark, Share2 } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import type { StoryPin, UserDoc } from '@/lib/types'
 
@@ -173,7 +173,7 @@ export function StoryViewer({ stories, agent, initialIndex = 0, onClose }: Story
               </div>
               <div className="flex flex-col items-center gap-4 ml-4">
                 <motion.button whileTap={{ scale: 0.8 }} className="text-white">
-                  <Heart size={26} />
+                  <Bookmark size={26} />
                 </motion.button>
                 <motion.button whileTap={{ scale: 0.8 }} className="text-white">
                   <Share2 size={22} />
