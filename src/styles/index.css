@@ -203,6 +203,18 @@ input:focus, textarea:focus {
   padding: 2px;
 }
 
+/* ── Map page lock ── */
+.map-page {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.map-page .mapboxgl-canvas-container {
+  touch-action: pan-x pan-y pinch-zoom;
+}
+
 /* ── Pulse animation for live/open pins ── */
 @keyframes pulse-live {
   0%, 100% { transform: scale(1); opacity: 0.8; }

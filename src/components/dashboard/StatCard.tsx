@@ -5,7 +5,8 @@ import { TrendingUp, TrendingDown } from 'lucide-react'
 interface StatCardProps {
   label: string
   value: number
-  change?: number // percentage
+  change?: number
+  changePeriod?: string // e.g. "vs last week"
   icon: ReactNode
   color?: string
   format?: 'number' | 'compact'
@@ -29,7 +30,7 @@ function AnimatedNumber({ value, format }: { value: number; format: string }) {
   return <motion.span>{display}</motion.span>
 }
 
-export function StatCard({ label, value, change, icon, color = '#FF6B3D', format = 'number' }: StatCardProps) {
+export function StatCard({ label, value, change, changePeriod = 'vs last week', icon, color = '#FF6B3D', format = 'number' }: StatCardProps) {
   const isPositive = change !== undefined && change >= 0
 
   return (
@@ -46,9 +47,10 @@ export function StatCard({ label, value, change, icon, color = '#FF6B3D', format
           {icon}
         </div>
         {change !== undefined && (
-          <div className={`flex items-center gap-0.5 text-[12px] font-semibold ${isPositive ? 'text-sold-green' : 'text-live-red'}`}>
-            {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+          <div className={`flex items-center gap-0.5 text-[11px] font-semibold ${isPositive ? 'text-sold-green' : 'text-live-red'}`}>
+            {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
             {Math.abs(change)}%
+            <span className="text-[9px] text-ash font-normal ml-0.5">{changePeriod}</span>
           </div>
         )}
       </div>

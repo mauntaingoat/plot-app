@@ -28,12 +28,16 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
 
   const specs = 'beds' in pin ? `${pin.beds} bd · ${pin.baths} ba · ${pin.sqft.toLocaleString()} sqft` : null
 
+  // In manage mode, only toggle + 3dot are interactive. In feed mode, whole card is tappable.
+  const isManage = variant === 'manage'
+
   return (
     <motion.div
-      whileTap={{ scale: 0.97 }}
-      onClick={onClick}
+      whileTap={!isManage ? { scale: 0.97 } : undefined}
+      onClick={!isManage ? onClick : undefined}
       className={`
-        rounded-[18px] overflow-hidden cursor-pointer
+        rounded-[18px] overflow-hidden
+        ${!isManage ? 'cursor-pointer' : ''}
         ${dark ? 'bg-slate border border-border-dark' : 'bg-warm-white border border-border-light shadow-sm'}
       `}
     >

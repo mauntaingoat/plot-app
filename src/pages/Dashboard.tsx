@@ -173,10 +173,10 @@ export default function Dashboard() {
           {activeTab === 'insights' && (
             <div className="px-5 py-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
-                <StatCard label="Views" value={stats.views} change={12} icon={<Eye size={18} />} format="compact" />
-                <StatCard label="Taps" value={stats.taps} change={8} icon={<MousePointerClick size={18} />} color="#3B82F6" format="compact" />
-                <StatCard label="Saves" value={stats.saves} change={-3} icon={<Bookmark size={18} />} color="#A855F7" format="compact" />
-                <StatCard label="Followers" value={currentUser.followerCount} change={15} icon={<Users size={18} />} color="#34C759" />
+                <StatCard label="Views" value={stats.views} change={12} changePeriod="vs last week" icon={<Eye size={18} />} format="compact" />
+                <StatCard label="Taps" value={stats.taps} change={8} changePeriod="vs last week" icon={<MousePointerClick size={18} />} color="#3B82F6" format="compact" />
+                <StatCard label="Saves" value={stats.saves} change={-3} changePeriod="vs last week" icon={<Bookmark size={18} />} color="#A855F7" format="compact" />
+                <StatCard label="Followers" value={currentUser.followerCount} change={15} changePeriod="vs last week" icon={<Users size={18} />} color="#34C759" />
               </div>
               <InsightsChart data={chartData} />
               {pins.length > 0 && (

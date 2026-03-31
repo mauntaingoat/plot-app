@@ -5,13 +5,13 @@ import { formatPrice, getBounds } from '@/lib/firestore'
 import { PIN_CONFIG, type Pin, type PinType } from '@/lib/types'
 
 const MAPBOX_STYLE = 'mapbox://styles/mauntaingoat/cmndhmm7m000h01s5b0pvf9zx'
-
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || ''
 
 interface MapCanvasProps {
   pins: Pin[]
   agentPhotoUrl?: string | null
   onPinClick?: (pin: Pin) => void
+  onMapMoved?: () => void
   className?: string
   fitToPins?: boolean
   interactive?: boolean
@@ -19,7 +19,6 @@ interface MapCanvasProps {
   onBack?: () => void
 }
 
-// Ring colors per pin type
 const RING_COLORS: Record<PinType, string> = {
   listing: '#3B82F6',
   sold: '#34C759',
@@ -32,13 +31,10 @@ const RING_COLORS: Record<PinType, string> = {
 function createPinElement(pin: Pin, agentPhotoUrl?: string | null): HTMLDivElement {
   const el = document.createElement('div')
   el.className = 'plot-pin'
-
   const color = RING_COLORS[pin.type]
-  const isLive = pin.type === 'live'
-  const isOpenHouse = pin.type === 'open_house'
-  const hasImage = 'heroPhotoUrl' in pin && pin.heroPhotoUrl
-    || 'thumbnailUrl' in pin && pin.thumbnailUrl
-    || 'mediaUrl' in pin && pin.mediaUrl && pin.type === 'story'
+  const hasImage = ('heroPhotoUrl' in pin && pin.heroPhotoUrl)
+    || ('thumbnailUrl' in pin && pin.thumbnailUrl)
+    || ('mediaUrl' in pin && pin.mediaUrl && pin.type === 'story')
   const imageUrl = 'heroPhotoUrl' in pin ? pin.heroPhotoUrl
     : 'thumbnailUrl' in pin ? pin.thumbnailUrl
     : 'mediaUrl' in pin ? pin.mediaUrl
@@ -46,155 +42,143 @@ function createPinElement(pin: Pin, agentPhotoUrl?: string | null): HTMLDivEleme
 
   const size = pin.type === 'story' || pin.type === 'reel' ? 48 : 42
   const ringWidth = 3
-
-  // Price label for listings/sold
   const priceLabel = 'price' in pin ? formatPrice(pin.price)
     : 'soldPrice' in pin ? formatPrice(pin.soldPrice)
     : 'listingPrice' in pin ? formatPrice(pin.listingPrice)
     : null
 
-  el.style.cssText = `width:${size}px;height:${size + (priceLabel ? 20 : 0) + ((isLive || isOpenHouse) ? 18 : 0)}px;cursor:pointer;position:relative;`
+  const isLive = pin.type === 'live'
+  const isOpenHouse = pin.type === 'open_house'
+  const statusLabel = isLive ? 'LIVE' : isOpenHouse ? 'OPEN' : null
+  const statusColor = isLive ? '#FF3B30' : '#FFAA00'
+  const extraHeight = (priceLabel && !isOpenHouse ? 20 : 0) + (statusLabel ? 18 : 0)
 
-  // Pulse ring for live/open house
-  const pulseHtml = (isLive || isOpenHouse) ? `
-    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:${size}px;height:${size}px;border-radius:50%;background:${color};opacity:0.3;animation:pulse-live 2s ease-in-out infinite;"></div>
-  ` : ''
+  el.style.cssText = `width:${size}px;height:${size + extraHeight}px;cursor:pointer;position:relative;pointer-events:auto;`
 
-  // Main circle
   const innerSize = size - ringWidth * 2
   const imgHtml = hasImage && imageUrl
-    ? `<img src="${imageUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
+    ? `<img src="${imageUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" loading="lazy" />`
     : agentPhotoUrl
-      ? `<img src="${agentPhotoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
-      : `<div style="width:100%;height:100%;border-radius:50%;background:#1C2130;display:flex;align-items:center;justify-content:center;">
-          <span style="color:white;font-size:${innerSize * 0.4}px;font-weight:700;">${PIN_CONFIG[pin.type].label[0]}</span>
-        </div>`
+      ? `<img src="${agentPhotoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" loading="lazy" />`
+      : `<div style="width:100%;height:100%;border-radius:50%;background:#1C2130;display:flex;align-items:center;justify-content:center;"><span style="color:white;font-size:${innerSize * 0.4}px;font-weight:700;">${PIN_CONFIG[pin.type].label[0]}</span></div>`
 
-  // Status label for live/open house
-  const statusHtml = isLive
-    ? `<div style="position:absolute;top:${size + 2}px;left:50%;transform:translateX(-50%);background:#FF3B30;color:white;font-size:9px;font-weight:800;padding:1px 6px;border-radius:4px;white-space:nowrap;letter-spacing:0.5px;">LIVE</div>`
-    : isOpenHouse
-      ? `<div style="position:absolute;top:${size + 2}px;left:50%;transform:translateX(-50%);background:#FFAA00;color:white;font-size:9px;font-weight:800;padding:1px 6px;border-radius:4px;white-space:nowrap;letter-spacing:0.5px;">OPEN</div>`
-      : ''
+  const ringBg = pin.type === 'story'
+    ? 'linear-gradient(135deg, #FF6B3D, #E8522A, #FF3B7A)'
+    : color
 
-  // Price pill for listings/sold
+  const statusHtml = statusLabel
+    ? `<div style="position:absolute;top:${size + 2}px;left:50%;transform:translateX(-50%);background:${statusColor};color:white;font-size:9px;font-weight:800;padding:1px 6px;border-radius:4px;white-space:nowrap;letter-spacing:0.5px;font-family:'Outfit',sans-serif;">${statusLabel}</div>`
+    : ''
+
   const priceHtml = priceLabel && !isOpenHouse
-    ? `<div style="position:absolute;top:${size + 2}px;left:50%;transform:translateX(-50%);background:${color};color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;font-family:'JetBrains Mono',monospace;box-shadow:0 2px 8px ${color}60;">${priceLabel}</div>`
+    ? `<div style="position:absolute;top:${size + 2}px;left:50%;transform:translateX(-50%);background:${color};color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;font-family:'JetBrains Mono',monospace;box-shadow:0 2px 8px ${color}40;">${priceLabel}</div>`
     : ''
 
   el.innerHTML = `
-    ${pulseHtml}
-    <div style="width:${size}px;height:${size}px;border-radius:50%;padding:${ringWidth}px;background:${pin.type === 'story' ? 'linear-gradient(135deg, #FF6B3D, #E8522A, #FF3B7A)' : color};position:relative;box-shadow:0 2px 10px ${color}40;">
+    <div style="width:${size}px;height:${size}px;border-radius:50%;padding:${ringWidth}px;background:${ringBg};position:relative;box-shadow:0 2px 8px ${color}30;">
       <div style="width:${innerSize}px;height:${innerSize}px;border-radius:50%;overflow:hidden;background:#0A0E17;padding:1.5px;">
-        <div style="width:100%;height:100%;border-radius:50%;overflow:hidden;">
-          ${imgHtml}
-        </div>
+        <div style="width:100%;height:100%;border-radius:50%;overflow:hidden;">${imgHtml}</div>
       </div>
     </div>
-    ${statusHtml}
-    ${priceHtml}
+    ${statusHtml}${priceHtml}
   `
-
   return el
 }
 
 function createClusterElement(count: number, previewUrl?: string): HTMLDivElement {
   const el = document.createElement('div')
   el.className = 'plot-cluster'
-
   const size = 52
-  el.style.cssText = `width:${size}px;height:${size + 20}px;cursor:pointer;position:relative;`
+  el.style.cssText = `width:${size}px;height:${size + 20}px;cursor:pointer;position:relative;pointer-events:auto;`
 
   const imgHtml = previewUrl
-    ? `<img src="${previewUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
-    : `<div style="width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,#FF6B3D,#E8522A);display:flex;align-items:center;justify-content:center;">
-        <span style="color:white;font-size:16px;font-weight:800;">${count}</span>
-      </div>`
+    ? `<img src="${previewUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" loading="lazy" />`
+    : `<div style="width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,#FF6B3D,#E8522A);display:flex;align-items:center;justify-content:center;"><span style="color:white;font-size:16px;font-weight:800;">${count}</span></div>`
 
   el.innerHTML = `
-    <div style="width:${size}px;height:${size}px;border-radius:50%;padding:3px;background:linear-gradient(135deg,#FF6B3D,#E8522A);box-shadow:0 2px 14px rgba(255,107,61,0.4);">
+    <div style="width:${size}px;height:${size}px;border-radius:50%;padding:3px;background:linear-gradient(135deg,#FF6B3D,#E8522A);box-shadow:0 2px 14px rgba(255,107,61,0.3);">
       <div style="width:${size - 6}px;height:${size - 6}px;border-radius:50%;overflow:hidden;background:#0A0E17;padding:1.5px;">
-        <div style="width:100%;height:100%;border-radius:50%;overflow:hidden;">
-          ${imgHtml}
-        </div>
+        <div style="width:100%;height:100%;border-radius:50%;overflow:hidden;">${imgHtml}</div>
       </div>
     </div>
-    <div style="position:absolute;top:${size - 6}px;left:50%;transform:translateX(-50%);background:#1C2130;color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;border:1.5px solid rgba(255,107,61,0.3);">+${count - 1} more</div>
+    <div style="position:absolute;top:${size - 4}px;left:50%;transform:translateX(-50%);background:#1C2130;color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;border:1.5px solid rgba(255,107,61,0.25);font-family:'Outfit',sans-serif;">+${count - 1} more</div>
   `
-
   return el
 }
 
-export function MapCanvas({ pins, agentPhotoUrl, onPinClick, className = '', fitToPins = true, interactive = true, showBackButton, onBack }: MapCanvasProps) {
+export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, className = '', fitToPins = true, interactive = true, showBackButton, onBack }: MapCanvasProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const markersRef = useRef<mapboxgl.Marker[]>([])
-  const { center, zoom, setCenter, setZoom } = useMapStore()
+  const fittedRef = useRef(false)
+  const { center, zoom } = useMapStore()
 
-  // Initialize map
+  // Init map
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return
 
     const map = new mapboxgl.Map({
       container: mapContainer.current,
       style: MAPBOX_STYLE,
-      center: center,
-      zoom: zoom,
+      center,
+      zoom,
       attributionControl: false,
-      logoPosition: 'bottom-left',
       interactive,
       pitchWithRotate: false,
+      dragRotate: false,
+      touchPitch: false,
     })
 
-    map.on('moveend', () => {
-      const c = map.getCenter()
-      setCenter([c.lng, c.lat])
-      setZoom(map.getZoom())
+    // Disable weather/precipitation layers once style loads
+    map.on('style.load', () => {
+      const style = map.getStyle()
+      if (style?.layers) {
+        for (const layer of style.layers) {
+          const id = layer.id.toLowerCase()
+          if (id.includes('rain') || id.includes('snow') || id.includes('precip') || id.includes('weather') || id.includes('particle')) {
+            map.setLayoutProperty(layer.id, 'visibility', 'none')
+          }
+        }
+      }
     })
+
+    map.on('moveend', () => onMapMoved?.())
 
     mapRef.current = map
-
-    return () => {
-      map.remove()
-      mapRef.current = null
-    }
+    return () => { map.remove(); mapRef.current = null }
   }, []) // eslint-disable-line
 
-  // Update markers when pins change
+  // Stable pin click handler
+  const pinClickRef = useRef(onPinClick)
+  pinClickRef.current = onPinClick
+
+  // Update markers
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
 
-    // Wait for style to load
-    const update = () => {
-      // Clear old markers
+    const renderMarkers = () => {
+      // Clear old
       markersRef.current.forEach((m) => m.remove())
       markersRef.current = []
 
-      // Simple client-side clustering
       const zoomLevel = map.getZoom()
       const shouldCluster = zoomLevel < 13 && pins.length > 3
+      const threshold = 0.008 * Math.pow(2, Math.max(0, 14 - zoomLevel))
 
       if (shouldCluster) {
-        // Group pins by proximity
         const clusters: { pins: Pin[]; center: { lat: number; lng: number } }[] = []
         const used = new Set<string>()
-        const threshold = 0.01 * Math.pow(2, 14 - zoomLevel) // adaptive threshold
 
         for (const pin of pins) {
           if (used.has(pin.id)) continue
           const cluster: Pin[] = [pin]
           used.add(pin.id)
-
           for (const other of pins) {
             if (used.has(other.id)) continue
             const dist = Math.abs(pin.coordinates.lat - other.coordinates.lat) + Math.abs(pin.coordinates.lng - other.coordinates.lng)
-            if (dist < threshold) {
-              cluster.push(other)
-              used.add(other.id)
-            }
+            if (dist < threshold) { cluster.push(other); used.add(other.id) }
           }
-
           const avgLat = cluster.reduce((s, p) => s + p.coordinates.lat, 0) / cluster.length
           const avgLng = cluster.reduce((s, p) => s + p.coordinates.lng, 0) / cluster.length
           clusters.push({ pins: cluster, center: { lat: avgLat, lng: avgLng } })
@@ -202,81 +186,88 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, className = '', fit
 
         for (const cluster of clusters) {
           if (cluster.pins.length === 1) {
-            // Single pin
             const pin = cluster.pins[0]
             const el = createPinElement(pin, agentPhotoUrl)
-            el.addEventListener('click', (e) => { e.stopPropagation(); onPinClick?.(pin) })
-            const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-              .setLngLat([pin.coordinates.lng, pin.coordinates.lat])
-              .addTo(map)
-            markersRef.current.push(marker)
+            el.addEventListener('click', (e) => { e.stopPropagation(); pinClickRef.current?.(pin) })
+            const m = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+              .setLngLat([pin.coordinates.lng, pin.coordinates.lat]).addTo(map)
+            markersRef.current.push(m)
           } else {
-            // Cluster
-            const previewPin = cluster.pins[0]
-            const previewUrl = 'heroPhotoUrl' in previewPin ? previewPin.heroPhotoUrl
-              : 'thumbnailUrl' in previewPin ? previewPin.thumbnailUrl
-              : agentPhotoUrl || undefined
-            const el = createClusterElement(cluster.pins.length, previewUrl || undefined)
+            const preview = cluster.pins[0]
+            const url = 'heroPhotoUrl' in preview ? preview.heroPhotoUrl : 'thumbnailUrl' in preview ? preview.thumbnailUrl : agentPhotoUrl || undefined
+            const el = createClusterElement(cluster.pins.length, url || undefined)
             el.addEventListener('click', (e) => {
               e.stopPropagation()
-              map.easeTo({ center: [cluster.center.lng, cluster.center.lat], zoom: Math.min(zoomLevel + 2, 18) })
+              map.easeTo({ center: [cluster.center.lng, cluster.center.lat], zoom: Math.min(zoomLevel + 2.5, 18), duration: 400 })
             })
-            const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-              .setLngLat([cluster.center.lng, cluster.center.lat])
-              .addTo(map)
-            markersRef.current.push(marker)
+            const m = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+              .setLngLat([cluster.center.lng, cluster.center.lat]).addTo(map)
+            markersRef.current.push(m)
           }
         }
       } else {
-        // No clustering — individual markers
         for (const pin of pins) {
           const el = createPinElement(pin, agentPhotoUrl)
-          el.addEventListener('click', (e) => { e.stopPropagation(); onPinClick?.(pin) })
-          const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-            .setLngLat([pin.coordinates.lng, pin.coordinates.lat])
-            .addTo(map)
-          markersRef.current.push(marker)
+          el.addEventListener('click', (e) => { e.stopPropagation(); pinClickRef.current?.(pin) })
+          const m = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+            .setLngLat([pin.coordinates.lng, pin.coordinates.lat]).addTo(map)
+          markersRef.current.push(m)
         }
       }
+    }
 
-      // Fit to pins
-      if (fitToPins && pins.length > 0) {
+    // Fit to pins on first load or when pins change
+    const fitAndRender = () => {
+      if (fitToPins && pins.length > 0 && !fittedRef.current) {
+        fittedRef.current = true
         const coords = pins.map((p) => p.coordinates)
         if (coords.length === 1) {
           map.easeTo({ center: [coords[0].lng, coords[0].lat], zoom: 15, duration: 800 })
         } else {
-          const bounds = getBounds(coords)
-          map.fitBounds(bounds, { padding: 80, duration: 800 })
+          map.fitBounds(getBounds(coords), { padding: 80, duration: 800 })
         }
       }
+      renderMarkers()
     }
 
     if (map.isStyleLoaded()) {
-      update()
+      fitAndRender()
     } else {
-      map.on('load', update)
+      map.once('load', fitAndRender)
     }
 
-    // Re-cluster on zoom
-    const onZoom = () => {
-      // Debounce re-render
-      clearTimeout((map as any)._plotTimeout)
-      ;(map as any)._plotTimeout = setTimeout(update, 200)
-    }
-    map.on('zoomend', onZoom)
+    // Re-render on zoom (for clustering)
+    const onZoomEnd = () => renderMarkers()
+    map.on('zoomend', onZoomEnd)
+    return () => { map.off('zoomend', onZoomEnd) }
+  }, [pins, agentPhotoUrl, fitToPins])
 
-    return () => {
-      map.off('zoomend', onZoom)
+  // Public method: fit to specific pins
+  const fitTo = useCallback((targetPins: Pin[]) => {
+    const map = mapRef.current
+    if (!map || targetPins.length === 0) return
+    const coords = targetPins.map((p) => p.coordinates)
+    if (coords.length === 1) {
+      map.easeTo({ center: [coords[0].lng, coords[0].lat], zoom: 15, duration: 600 })
+    } else {
+      map.fitBounds(getBounds(coords), { padding: 80, duration: 600 })
     }
-  }, [pins, agentPhotoUrl, fitToPins, onPinClick])
+  }, [])
+
+  // Expose fitTo via ref on the container
+  useEffect(() => {
+    if (mapContainer.current) {
+      (mapContainer.current as any).__plotFitTo = fitTo
+    }
+  }, [fitTo])
 
   return (
-    <div className={`relative w-full h-full ${className}`}>
+    <div className={`relative w-full h-full touch-none ${className}`}>
       <div ref={mapContainer} className="w-full h-full" />
       {showBackButton && onBack && (
         <button
           onClick={onBack}
-          className="absolute top-[calc(env(safe-area-inset-top,12px)+60px)] left-4 z-50 glass-heavy rounded-full px-4 py-2 text-[13px] font-semibold text-white"
+          className="absolute bottom-[calc(env(safe-area-inset-bottom,8px)+100px)] left-4 z-50 glass-heavy rounded-full px-4 py-2.5 text-[13px] font-semibold text-white shadow-lg"
         >
           Exit Preview
         </button>

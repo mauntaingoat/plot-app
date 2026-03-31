@@ -16,7 +16,10 @@ export function InsightsChart({ data, height = 160 }: InsightsChartProps) {
 
   return (
     <div className="bg-warm-white rounded-[18px] border border-border-light p-4">
-      <h3 className="text-[14px] font-bold text-ink mb-4">Activity</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-[14px] font-bold text-ink">Weekly Views</h3>
+        <span className="text-[11px] text-smoke">Last 7 days</span>
+      </div>
       <div className="flex items-end gap-1.5" style={{ height }}>
         {data.map((point, i) => {
           const barHeight = (point.value / maxValue) * 100
