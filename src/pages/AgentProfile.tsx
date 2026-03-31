@@ -183,7 +183,7 @@ export default function AgentProfile() {
           </motion.div>
         ) : (
           <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0">
-            <ContentFeed pins={filteredPins} agent={agent} onPinClick={handlePinClick} isPreview={isPreview} />
+            <ContentFeed pins={filteredPins} agent={agent} isPreview={isPreview} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -200,6 +200,8 @@ export default function AgentProfile() {
         viewMode={viewMode}
         onToggleView={() => setViewMode(viewMode === 'map' ? 'feed' : 'map')}
         isPreview={isPreview}
+        agentMode={agentMode}
+        enabledAgentCount={enabledAgentIds.size}
       />
 
       {/* Modals — all with smooth swipe dismiss */}

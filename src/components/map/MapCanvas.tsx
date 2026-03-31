@@ -84,6 +84,8 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       pitchWithRotate: false,
       dragRotate: false,
       touchPitch: false,
+      minZoom: 3,
+      maxZoom: 18,
     })
 
     map.on('style.load', () => {
