@@ -16,6 +16,7 @@ interface MapOverlayProps {
   isFollowing?: boolean
   viewMode?: 'map' | 'feed'
   onToggleView?: () => void
+  isPreview?: boolean
 }
 
 const FILTER_OPTIONS: { value: PinType; label: string }[] = [
@@ -27,7 +28,7 @@ const FILTER_OPTIONS: { value: PinType; label: string }[] = [
   { value: 'open_house', label: 'Open' },
 ]
 
-export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick, onFilterChange, isFollowing, viewMode = 'map', onToggleView }: MapOverlayProps) {
+export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick, onFilterChange, isFollowing, viewMode = 'map', onToggleView, isPreview }: MapOverlayProps) {
   const { activeFilters, toggleFilter, clearFilters, isAllSelected } = useMapStore()
 
   const totalPins = Object.values(pinCounts).reduce((a, b) => a + b, 0)
@@ -71,16 +72,16 @@ export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick
         {/* Action buttons — dark icons */}
         <div className="flex items-center gap-1.5">
           <motion.button
-            whileTap={{ scale: 0.88 }}
-            onClick={onFollow}
-            className={`bg-white/90 backdrop-blur-md rounded-full w-9 h-9 flex items-center justify-center cursor-pointer shadow-md border border-black/5 ${isFollowing ? 'text-tangerine' : 'text-ink'}`}
+            whileTap={!isPreview ? { scale: 0.88 } : undefined}
+            onClick={!isPreview ? onFollow : undefined}
+            className={`bg-white/90 backdrop-blur-md rounded-full w-9 h-9 flex items-center justify-center cursor-pointer shadow-md border border-black/5 ${isFollowing ? 'text-tangerine' : 'text-ink'} ${isPreview ? 'opacity-40' : ''}`}
           >
             {isFollowing ? <UserCheck size={16} /> : <UserPlus size={16} />}
           </motion.button>
           <motion.button
-            whileTap={{ scale: 0.88 }}
-            onClick={onShare}
-            className="bg-white/90 backdrop-blur-md rounded-full w-9 h-9 flex items-center justify-center text-ink cursor-pointer shadow-md border border-black/5"
+            whileTap={!isPreview ? { scale: 0.88 } : undefined}
+            onClick={!isPreview ? onShare : undefined}
+            className={`bg-white/90 backdrop-blur-md rounded-full w-9 h-9 flex items-center justify-center text-ink cursor-pointer shadow-md border border-black/5 ${isPreview ? 'opacity-40' : ''}`}
           >
             <Share2 size={16} />
           </motion.button>

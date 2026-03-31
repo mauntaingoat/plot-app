@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { lazy, Suspense, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuthListener } from '@/hooks/useAuth'
 import { MapPin } from 'lucide-react'
@@ -30,18 +30,32 @@ function LoadingScreen() {
   )
 }
 
+// Scroll to top on every route change
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+  }, [pathname])
+  return null
+}
+
 function AppRoutes() {
   useAuthListener()
 
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/dashboard/pin/new" element={<PinCreate />} />
-      <Route path="/dashboard/pin/:id/edit" element={<PinCreate />} />
-      <Route path="/:username" element={<AgentProfile />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard/pin/new" element={<PinCreate />} />
+        <Route path="/dashboard/pin/:id/edit" element={<PinCreate />} />
+        <Route path="/:username" element={<AgentProfile />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
   )
 }
 

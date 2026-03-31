@@ -180,7 +180,7 @@ export default function AgentProfile() {
           </motion.div>
         ) : (
           <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 pt-[130px]">
-            <ContentFeed pins={filteredPins} agent={agent} onPinClick={handlePinClick} />
+            <ContentFeed pins={filteredPins} agent={agent} onPinClick={handlePinClick} isPreview={isPreview} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -196,6 +196,7 @@ export default function AgentProfile() {
         isFollowing={isFollowing}
         viewMode={viewMode}
         onToggleView={() => setViewMode(viewMode === 'map' ? 'feed' : 'map')}
+        isPreview={isPreview}
       />
 
       {/* Modals — all with smooth swipe dismiss */}
@@ -216,6 +217,7 @@ export default function AgentProfile() {
         onFollow={handleFollow}
         nearbyAgents={nearbyAgents}
         onAgentTap={(a) => { setShowAgentDetail(false); navigate(`/${a.username}`) }}
+        isPreview={isPreview}
       />
 
       {/* Consumer auth prompt */}

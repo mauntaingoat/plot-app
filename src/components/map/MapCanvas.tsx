@@ -162,55 +162,62 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       markersRef.current.forEach((m) => m.remove())
       markersRef.current = []
 
+      if (pins.length === 0) return
+
+      // Pixel-based clustering: project all pins to screen, group by proximity
+      const CLUSTER_RADIUS_PX = 55 // pins within 55px of each other cluster
+      const projected = pins.map((pin) => {
+        const pt = map.project([pin.coordinates.lng, pin.coordinates.lat])
+        return { pin, x: pt.x, y: pt.y }
+      })
+
+      const clusters: { pins: Pin[]; cx: number; cy: number }[] = []
+      const used = new Set<string>()
+
+      for (const item of projected) {
+        if (used.has(item.pin.id)) continue
+        const group = [item.pin]
+        let cx = item.x, cy = item.y
+        used.add(item.pin.id)
+
+        for (const other of projected) {
+          if (used.has(other.pin.id)) continue
+          const dx = cx / group.length - other.x
+          const dy = cy / group.length - other.y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist < CLUSTER_RADIUS_PX) {
+            group.push(other.pin)
+            cx += other.x
+            cy += other.y
+            used.add(other.pin.id)
+          }
+        }
+        clusters.push({ pins: group, cx: cx / group.length, cy: cy / group.length })
+      }
+
       const zoomLevel = map.getZoom()
-      const shouldCluster = zoomLevel < 13 && pins.length > 3
-      const threshold = 0.008 * Math.pow(2, Math.max(0, 14 - zoomLevel))
 
-      if (shouldCluster) {
-        const clusters: { pins: Pin[]; center: { lat: number; lng: number } }[] = []
-        const used = new Set<string>()
-
-        for (const pin of pins) {
-          if (used.has(pin.id)) continue
-          const cluster: Pin[] = [pin]
-          used.add(pin.id)
-          for (const other of pins) {
-            if (used.has(other.id)) continue
-            const dist = Math.abs(pin.coordinates.lat - other.coordinates.lat) + Math.abs(pin.coordinates.lng - other.coordinates.lng)
-            if (dist < threshold) { cluster.push(other); used.add(other.id) }
-          }
-          const avgLat = cluster.reduce((s, p) => s + p.coordinates.lat, 0) / cluster.length
-          const avgLng = cluster.reduce((s, p) => s + p.coordinates.lng, 0) / cluster.length
-          clusters.push({ pins: cluster, center: { lat: avgLat, lng: avgLng } })
-        }
-
-        for (const cluster of clusters) {
-          if (cluster.pins.length === 1) {
-            const pin = cluster.pins[0]
-            const el = createPinElement(pin, agentPhotoUrl)
-            el.addEventListener('click', (e) => { e.stopPropagation(); pinClickRef.current?.(pin) })
-            const m = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-              .setLngLat([pin.coordinates.lng, pin.coordinates.lat]).addTo(map)
-            markersRef.current.push(m)
-          } else {
-            const preview = cluster.pins[0]
-            const url = 'heroPhotoUrl' in preview ? preview.heroPhotoUrl : 'thumbnailUrl' in preview ? preview.thumbnailUrl : agentPhotoUrl || undefined
-            const el = createClusterElement(cluster.pins.length, url || undefined)
-            el.addEventListener('click', (e) => {
-              e.stopPropagation()
-              map.easeTo({ center: [cluster.center.lng, cluster.center.lat], zoom: Math.min(zoomLevel + 2.5, 18), duration: 400 })
-            })
-            const m = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-              .setLngLat([cluster.center.lng, cluster.center.lat]).addTo(map)
-            markersRef.current.push(m)
-          }
-        }
-      } else {
-        for (const pin of pins) {
+      for (const cluster of clusters) {
+        if (cluster.pins.length === 1) {
+          const pin = cluster.pins[0]
           const el = createPinElement(pin, agentPhotoUrl)
           el.addEventListener('click', (e) => { e.stopPropagation(); pinClickRef.current?.(pin) })
           const m = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
             .setLngLat([pin.coordinates.lng, pin.coordinates.lat]).addTo(map)
+          markersRef.current.push(m)
+        } else {
+          // Cluster marker at average lnglat
+          const avgLat = cluster.pins.reduce((s, p) => s + p.coordinates.lat, 0) / cluster.pins.length
+          const avgLng = cluster.pins.reduce((s, p) => s + p.coordinates.lng, 0) / cluster.pins.length
+          const preview = cluster.pins[0]
+          const url = 'heroPhotoUrl' in preview ? preview.heroPhotoUrl : 'thumbnailUrl' in preview ? preview.thumbnailUrl : agentPhotoUrl || undefined
+          const el = createClusterElement(cluster.pins.length, url || undefined)
+          el.addEventListener('click', (e) => {
+            e.stopPropagation()
+            map.easeTo({ center: [avgLng, avgLat], zoom: Math.min(zoomLevel + 2.5, 18), duration: 400 })
+          })
+          const m = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+            .setLngLat([avgLng, avgLat]).addTo(map)
           markersRef.current.push(m)
         }
       }
@@ -267,7 +274,7 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       {showBackButton && onBack && (
         <button
           onClick={onBack}
-          className="absolute bottom-[calc(env(safe-area-inset-bottom,8px)+100px)] left-4 z-50 glass-heavy rounded-full px-4 py-2.5 text-[13px] font-semibold text-white shadow-lg"
+          className="absolute bottom-[calc(env(safe-area-inset-bottom,8px)+100px)] left-4 z-50 bg-white/90 backdrop-blur-md rounded-full px-4 py-2.5 text-[13px] font-semibold text-ink shadow-lg border border-black/5"
         >
           Exit Preview
         </button>
