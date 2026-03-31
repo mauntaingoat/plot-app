@@ -54,7 +54,7 @@ export default function Home() {
               <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-tangerine to-ember flex items-center justify-center">
                 <MapPin size={16} className="text-white" />
               </div>
-              <span className="text-[20px] font-extrabold text-ink tracking-tight">Plot</span>
+              <span className="text-[20px] font-extrabold text-ink tracking-tight">Reeltor</span>
             </div>
 
             <Button variant="ghost" size="sm" onClick={handleSignIn}>
@@ -91,7 +91,7 @@ export default function Home() {
                 iconRight={<ArrowRight size={18} />}
                 className="flex-1"
               >
-                Claim your Plot
+                Claim your Reeltor
               </Button>
               <Button
                 variant="secondary"
@@ -158,16 +158,16 @@ export default function Home() {
           className="text-center mb-10"
         >
           <h2 className="text-[28px] font-extrabold text-ink tracking-tight mb-2">
-            Three steps to your Plot
+            Three steps to your Reeltor
           </h2>
           <p className="text-[15px] text-smoke">Set up in under 2 minutes.</p>
         </motion.div>
 
         <div className="space-y-4">
           {[
-            { step: '01', title: 'Claim your link', desc: 'Pick a username. Your Plot lives at plot.app/you.' },
+            { step: '01', title: 'Claim your link', desc: 'Pick a username. Your Reeltor lives at reeltor.co/you.' },
             { step: '02', title: 'Drop pins', desc: 'Add listings, stories, reels, and open houses to your map.' },
-            { step: '03', title: 'Share everywhere', desc: 'Put your Plot link in your bio, emails, and cards.' },
+            { step: '03', title: 'Share everywhere', desc: 'Put your Reeltor link in your bio, emails, and cards.' },
           ].map((item, i) => (
             <motion.div
               key={i}
@@ -232,13 +232,13 @@ export default function Home() {
             onClick={handleClaimPlot}
             iconRight={<ArrowRight size={18} />}
           >
-            Claim your Plot — free
+            Claim your Reeltor — free
           </Button>
         </div>
       </section>
 
       <footer className="px-6 py-8 text-center border-t border-border-light">
-        <p className="text-[12px] text-ash">&copy; {new Date().getFullYear()} Plot. All rights reserved.</p>
+        <p className="text-[12px] text-ash">&copy; {new Date().getFullYear()} Reeltor. All rights reserved.</p>
       </footer>
 
       {/* Auth sheet */}

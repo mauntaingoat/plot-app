@@ -84,7 +84,7 @@ export function StepAuth() {
         Create your account
       </h1>
       <p className="text-[15px] text-smoke text-center mb-8">
-        Secure your Plot at <span className="font-bold text-tangerine">plot.app/{username}</span>
+        Secure your Reeltor at <span className="font-bold text-tangerine">reeltor.co/{username}</span>
       </p>
 
       <div className="space-y-3 mb-6">

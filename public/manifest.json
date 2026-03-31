@@ -1,7 +1,7 @@
 {
-  "name": "Plot",
-  "short_name": "Plot",
-  "description": "Your neighborhood, plotted. Map-based profiles for real estate agents.",
+  "name": "Reeltor",
+  "short_name": "Reeltor",
+  "description": "Your neighborhood, mapped. Map-based profiles for real estate agents.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0A0E17",

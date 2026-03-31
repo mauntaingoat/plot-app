@@ -32,7 +32,7 @@ export function StepUsername() {
       </motion.div>
 
       <h1 className="text-[28px] font-extrabold text-ink tracking-tight text-center mb-2">
-        Claim your Plot
+        Claim your Reeltor
       </h1>
       <p className="text-[15px] text-smoke text-center mb-8 max-w-[280px]">
         Choose a unique username. This becomes your link.
@@ -40,9 +40,9 @@ export function StepUsername() {
 
       {/* URL preview */}
       <div className="w-full bg-cream rounded-[16px] px-4 py-3 mb-4">
-        <p className="text-[13px] text-smoke font-medium mb-1">Your Plot link</p>
+        <p className="text-[13px] text-smoke font-medium mb-1">Your Reeltor link</p>
         <p className="text-[18px] font-bold text-ink tracking-tight">
-          plot.app/<span className={username ? 'text-tangerine' : 'text-ash'}>{username || 'username'}</span>
+          reeltor.co/<span className={username ? 'text-tangerine' : 'text-ash'}>{username || 'username'}</span>
         </p>
       </div>
 
@@ -113,7 +113,7 @@ export function StepUsername() {
         onClick={nextStep}
         disabled={!available || checking || username.length < 3}
       >
-        Claim your Plot
+        Claim your Reeltor
       </Button>
 
       <p className="text-[11px] text-ash text-center mt-4">

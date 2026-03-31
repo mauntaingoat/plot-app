@@ -68,8 +68,8 @@ export default function Dashboard() {
   }
 
   const handleSharePlot = async () => {
-    const url = `https://plot.app/${currentUser?.username || ''}`
-    try { await navigator.share({ title: 'My Plot', url }) }
+    const url = `https://reeltor.co/${currentUser?.username || ''}`
+    try { await navigator.share({ title: 'My Reeltor', url }) }
     catch { navigator.clipboard.writeText(url) }
   }
 
@@ -97,7 +97,7 @@ export default function Dashboard() {
             <Avatar src={currentUser.photoURL} name={currentUser.displayName || 'Agent'} size={36} />
             <div>
               <p className="text-[16px] font-bold text-ink tracking-tight">
-                {activeTab === 'plot' ? 'My Plot' : activeTab === 'insights' ? 'Insights' : activeTab === 'audience' ? 'Audience' : 'Settings'}
+                {activeTab === 'plot' ? 'My Reeltor' : activeTab === 'insights' ? 'Insights' : activeTab === 'audience' ? 'Audience' : 'Settings'}
               </p>
               <p className="text-[12px] text-smoke">@{currentUser.username || 'you'}</p>
             </div>
@@ -305,7 +305,7 @@ export default function Dashboard() {
 
               <div className="flex gap-3 pt-4">
                 <Button variant="secondary" size="lg" fullWidth icon={<Share2 size={16} />} onClick={handleSharePlot}>
-                  Share Plot
+                  Share Reeltor
                 </Button>
               </div>
 
@@ -317,7 +317,7 @@ export default function Dashboard() {
                 <span className="text-ash text-[10px]">&middot;</span>
                 <button className="text-[12px] text-ash">Terms</button>
                 <span className="text-ash text-[10px]">&middot;</span>
-                <span className="text-[12px] text-ash">Plot v1.0.0</span>
+                <span className="text-[12px] text-ash">Reeltor v1.0.0</span>
               </div>
             </div>
           )}
@@ -327,7 +327,7 @@ export default function Dashboard() {
       {/* Tab bar */}
       <TabBar
         tabs={[
-          { id: 'plot', label: 'My Plot', icon: <MapPin size={20} /> },
+          { id: 'plot', label: 'My Reeltor', icon: <MapPin size={20} /> },
           { id: 'insights', label: 'Insights', icon: <BarChart3 size={20} /> },
           { id: 'audience', label: 'Audience', icon: <Users size={20} /> },
           { id: 'settings', label: 'More', icon: <Settings size={20} /> },

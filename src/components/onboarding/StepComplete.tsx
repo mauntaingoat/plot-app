@@ -125,7 +125,7 @@ export function StepComplete() {
         transition={{ delay: 0.5 }}
         className="text-[15px] text-smoke mb-8"
       >
-        Your Plot is live and ready to share.
+        Your Reeltor is live and ready to share.
       </motion.p>
 
       {/* Profile card preview */}
@@ -146,7 +146,7 @@ export function StepComplete() {
 
         <div className="mt-4 flex items-center gap-2 bg-pearl rounded-xl px-3 py-2">
           <ExternalLink size={14} className="text-smoke" />
-          <span className="text-[13px] text-smoke">plot.app/{username}</span>
+          <span className="text-[13px] text-smoke">reeltor.co/{username}</span>
         </div>
       </motion.div>
 
@@ -158,7 +158,7 @@ export function StepComplete() {
         loading={saving}
         disabled={saving}
       >
-        {saving ? 'Saving your profile...' : 'Continue building your Plot'}
+        {saving ? 'Saving your profile...' : 'Continue building your Reeltor'}
       </Button>
     </div>
   )
