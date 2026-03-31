@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { MapCanvas } from '@/components/map/MapCanvas'
 import { MapOverlay } from '@/components/map/MapOverlay'
 import { PeekDrawer } from '@/components/map/PeekDrawer'
@@ -8,37 +8,48 @@ import { PinCard } from '@/components/dashboard/PinCard'
 import { StoryViewer } from '@/components/viewers/StoryViewer'
 import { ReelPlayer } from '@/components/viewers/ReelPlayer'
 import { ListingSheet } from '@/components/viewers/ListingSheet'
-import { AuthSheet } from '@/components/sheets/AuthSheet'
-import { CardSkeleton } from '@/components/ui/Skeleton'
-import { useAgentPins } from '@/hooks/usePins'
-import { useFollow } from '@/hooks/useFollow'
 import { useMapStore } from '@/stores/mapStore'
-import { useAuthStore } from '@/stores/authStore'
+import { firebaseConfigured } from '@/config/firebase'
 import { getUserByUsername } from '@/lib/firestore'
+import { getMockAgent, getMockPins } from '@/lib/mock'
 import type { UserDoc, Pin, StoryPin, ReelPin, ListingPin, SoldPin, OpenHousePin } from '@/lib/types'
 
 export default function AgentProfile() {
   const { username } = useParams<{ username: string }>()
   const navigate = useNavigate()
   const [agent, setAgent] = useState<UserDoc | null>(null)
+  const [allPins, setAllPins] = useState<Pin[]>([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [isFollowing, setIsFollowing] = useState(false)
 
   // Viewer states
   const [storyViewer, setStoryViewer] = useState<{ stories: StoryPin[]; index: number } | null>(null)
   const [reelViewer, setReelViewer] = useState<ReelPin | null>(null)
   const [listingSheet, setListingSheet] = useState<(ListingPin | SoldPin | OpenHousePin) | null>(null)
-  const [showAuth, setShowAuth] = useState(false)
 
-  const { setViewingAgentId, selectedPin, setSelectedPin } = useMapStore()
-  const { firebaseUser } = useAuthStore()
-  const { filteredPins, pins } = useAgentPins(agent?.uid || null)
-  const { isFollowing, toggle: toggleFollow, needsAuth } = useFollow(agent?.uid || null)
+  const { setViewingAgentId, activeFilter } = useMapStore()
 
-  // Fetch agent
+  // Fetch agent + pins
   useEffect(() => {
     if (!username) return
     setLoading(true)
+
+    if (!firebaseConfigured) {
+      // Demo mode — use mock data
+      const mockAgent = getMockAgent(username)
+      if (mockAgent) {
+        setAgent(mockAgent)
+        setAllPins(getMockPins(mockAgent.uid))
+        setViewingAgentId(mockAgent.uid)
+      } else {
+        setNotFound(true)
+      }
+      setLoading(false)
+      return
+    }
+
+    // Firebase mode
     getUserByUsername(username)
       .then((doc) => {
         if (doc) {
@@ -51,18 +62,22 @@ export default function AgentProfile() {
       .finally(() => setLoading(false))
   }, [username, setViewingAgentId])
 
+  // Filtered pins
+  const filteredPins = useMemo(() => {
+    if (activeFilter === 'all') return allPins
+    return allPins.filter((p) => p.type === activeFilter)
+  }, [allPins, activeFilter])
+
   // Pin type counts
   const pinCounts = useMemo(() => {
     const counts: Record<string, number> = {}
-    pins.forEach((p) => { counts[p.type] = (counts[p.type] || 0) + 1 })
+    allPins.forEach((p) => { counts[p.type] = (counts[p.type] || 0) + 1 })
     return counts
-  }, [pins])
+  }, [allPins])
 
   const handlePinClick = useCallback((pin: Pin) => {
-    setSelectedPin(pin)
-
     if (pin.type === 'story') {
-      const stories = pins.filter((p): p is StoryPin => p.type === 'story')
+      const stories = allPins.filter((p): p is StoryPin => p.type === 'story')
       const idx = stories.findIndex((s) => s.id === pin.id)
       setStoryViewer({ stories, index: Math.max(idx, 0) })
     } else if (pin.type === 'reel') {
@@ -70,22 +85,13 @@ export default function AgentProfile() {
     } else if (pin.type === 'listing' || pin.type === 'sold' || pin.type === 'open_house') {
       setListingSheet(pin as ListingPin | SoldPin | OpenHousePin)
     }
-  }, [pins, setSelectedPin])
+  }, [allPins])
 
-  const handleFollow = () => {
-    if (needsAuth) {
-      setShowAuth(true)
-      return
-    }
-    toggleFollow()
-  }
+  const handleFollow = () => setIsFollowing(!isFollowing)
 
   const handleShare = async () => {
     try {
-      await navigator.share({
-        title: `${agent?.displayName} on Plot`,
-        url: window.location.href,
-      })
+      await navigator.share({ title: `${agent?.displayName} on Plot`, url: window.location.href })
     } catch {
       navigator.clipboard.writeText(window.location.href)
     }
@@ -107,7 +113,7 @@ export default function AgentProfile() {
     return (
       <div className="min-h-screen bg-midnight flex flex-col items-center justify-center text-center px-6">
         <div className="w-16 h-16 rounded-full bg-charcoal flex items-center justify-center mb-4">
-          <span className="text-[28px]">?</span>
+          <span className="text-[28px] text-ghost">?</span>
         </div>
         <h1 className="text-[24px] font-extrabold text-white mb-2">Plot not found</h1>
         <p className="text-[15px] text-ghost mb-6">@{username} doesn't have a Plot yet.</p>
@@ -152,7 +158,6 @@ export default function AgentProfile() {
         }
       >
         <div className="px-4 pb-32">
-          {/* Grid of pin cards */}
           <div className="grid grid-cols-2 gap-3 pt-2">
             {filteredPins.map((pin) => (
               <PinCard
@@ -202,9 +207,6 @@ export default function AgentProfile() {
           onClose={() => setListingSheet(null)}
         />
       )}
-
-      {/* Auth sheet */}
-      <AuthSheet isOpen={showAuth} onClose={() => setShowAuth(false)} />
     </div>
   )
 }

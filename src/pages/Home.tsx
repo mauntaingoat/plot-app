@@ -1,27 +1,25 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { MapPin, ArrowRight, Sparkles, ChevronRight, Compass, Search } from 'lucide-react'
+import { MapPin, ArrowRight, Sparkles, Compass } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
-import { OnboardingSheet } from '@/components/onboarding/OnboardingSheet'
-import { AuthSheet } from '@/components/sheets/AuthSheet'
-import { useOnboardingStore } from '@/stores/onboardingStore'
 import { useAuthStore } from '@/stores/authStore'
-import { getFeaturedAgents } from '@/lib/firestore'
+import { firebaseConfigured } from '@/config/firebase'
+import { MOCK_AGENTS, MOCK_CURRENT_USER } from '@/lib/mock'
 import type { UserDoc } from '@/lib/types'
-import { staggerChildren } from '@/lib/motion'
 
 export default function Home() {
   const navigate = useNavigate()
-  const { open: openOnboarding } = useOnboardingStore()
-  const { firebaseUser, userDoc } = useAuthStore()
+  const { firebaseUser, userDoc, setUserDoc } = useAuthStore()
   const [agents, setAgents] = useState<UserDoc[]>([])
-  const [showAuth, setShowAuth] = useState(false)
 
+  // Load featured agents (mock if no Firebase)
   useEffect(() => {
-    getFeaturedAgents(10).then(setAgents).catch(() => {})
+    if (!firebaseConfigured) {
+      setAgents(MOCK_AGENTS)
+    }
   }, [])
 
   // If logged in agent, redirect to dashboard
@@ -30,6 +28,16 @@ export default function Home() {
       navigate('/dashboard', { replace: true })
     }
   }, [userDoc, navigate])
+
+  const handleClaimPlot = () => {
+    // In demo mode, set mock user and go to dashboard
+    if (!firebaseConfigured) {
+      setUserDoc(MOCK_CURRENT_USER)
+      navigate('/dashboard')
+      return
+    }
+    // TODO: open onboarding when Firebase is configured
+  }
 
   return (
     <div className="min-h-screen bg-ivory">
@@ -55,19 +63,18 @@ export default function Home() {
               <span className="text-[20px] font-extrabold text-ink tracking-tight">Plot</span>
             </div>
 
-            {firebaseUser ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => navigate(userDoc?.role === 'agent' ? '/dashboard' : '/')}
-              >
-                Dashboard
-              </Button>
-            ) : (
-              <Button variant="ghost" size="sm" onClick={() => setShowAuth(true)}>
-                Sign in
-              </Button>
-            )}
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                if (!firebaseConfigured) {
+                  setUserDoc(MOCK_CURRENT_USER)
+                  navigate('/dashboard')
+                }
+              }}
+            >
+              Dashboard
+            </Button>
           </motion.nav>
 
           {/* Hero content */}
@@ -96,7 +103,7 @@ export default function Home() {
               <Button
                 variant="primary"
                 size="xl"
-                onClick={openOnboarding}
+                onClick={handleClaimPlot}
                 iconRight={<ArrowRight size={18} />}
                 className="flex-1"
               >
@@ -106,7 +113,7 @@ export default function Home() {
                 variant="secondary"
                 size="xl"
                 icon={<Compass size={18} />}
-                onClick={() => {/* scroll to featured */}}
+                onClick={() => navigate('/carolina')}
               />
             </div>
           </motion.div>
@@ -117,10 +124,9 @@ export default function Home() {
             animate={{ opacity: 1, y: 0, rotate: 2 }}
             transition={{ delay: 0.4, type: 'spring', damping: 20 }}
             className="mt-8 bg-obsidian rounded-[24px] overflow-hidden shadow-xl border border-border-dark aspect-[4/3] relative"
+            onClick={() => navigate('/carolina')}
           >
-            {/* Mock map preview with CSS gradient */}
             <div className="absolute inset-0 bg-gradient-to-br from-[#0C1E35] via-[#0F2847] to-[#0A1628]">
-              {/* Mock pin dots */}
               {[
                 { x: 30, y: 25, color: '#3B82F6', size: 10 },
                 { x: 55, y: 40, color: '#FF6B3D', size: 14 },
@@ -147,7 +153,6 @@ export default function Home() {
                 />
               ))}
 
-              {/* Mock glass overlay */}
               <div className="absolute bottom-4 left-4 right-4 glass-heavy rounded-[16px] p-3 flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-tangerine to-ember" />
                 <div className="flex-1">
@@ -202,31 +207,29 @@ export default function Home() {
       </section>
 
       {/* Featured agents */}
-      {agents.length > 0 && (
-        <section className="py-12">
-          <div className="px-6 mb-5">
-            <h2 className="text-[22px] font-extrabold text-ink tracking-tight">Featured agents</h2>
-          </div>
-          <div className="flex gap-3 overflow-x-auto px-6 pb-4">
-            {agents.map((agent, i) => (
-              <motion.button
-                key={agent.uid}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => navigate(`/${agent.username}`)}
-                className="shrink-0 w-[160px] bg-cream rounded-[18px] p-4 flex flex-col items-center gap-2 text-center cursor-pointer"
-              >
-                <Avatar src={agent.photoURL} name={agent.displayName} size={56} ring="story" />
-                <p className="text-[14px] font-bold text-ink truncate w-full">{agent.displayName}</p>
-                <p className="text-[12px] text-smoke">@{agent.username}</p>
-                <p className="text-[11px] text-ash">{agent.followerCount} followers</p>
-              </motion.button>
-            ))}
-          </div>
-        </section>
-      )}
+      <section className="py-12">
+        <div className="px-6 mb-5">
+          <h2 className="text-[22px] font-extrabold text-ink tracking-tight">Featured agents</h2>
+        </div>
+        <div className="flex gap-3 overflow-x-auto px-6 pb-4">
+          {agents.map((agent, i) => (
+            <motion.button
+              key={agent.uid}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate(`/${agent.username}`)}
+              className="shrink-0 w-[160px] bg-cream rounded-[18px] p-4 flex flex-col items-center gap-2 text-center cursor-pointer"
+            >
+              <Avatar src={agent.photoURL} name={agent.displayName} size={56} ring="story" />
+              <p className="text-[14px] font-bold text-ink truncate w-full">{agent.displayName}</p>
+              <p className="text-[12px] text-smoke">@{agent.username}</p>
+              <p className="text-[11px] text-ash">{agent.followerCount} followers</p>
+            </motion.button>
+          ))}
+        </div>
+      </section>
 
       {/* Bottom CTA */}
       <section className="px-6 py-16 text-center">
@@ -243,7 +246,7 @@ export default function Home() {
           <Button
             variant="primary"
             size="xl"
-            onClick={openOnboarding}
+            onClick={handleClaimPlot}
             iconRight={<ArrowRight size={18} />}
           >
             Claim your Plot — free
@@ -255,10 +258,6 @@ export default function Home() {
       <footer className="px-6 py-8 text-center border-t border-border-light">
         <p className="text-[12px] text-ash">&copy; {new Date().getFullYear()} Plot. All rights reserved.</p>
       </footer>
-
-      {/* Sheets */}
-      <OnboardingSheet />
-      <AuthSheet isOpen={showAuth} onClose={() => setShowAuth(false)} onOpenOnboarding={() => { setShowAuth(false); openOnboarding() }} />
     </div>
   )
 }
