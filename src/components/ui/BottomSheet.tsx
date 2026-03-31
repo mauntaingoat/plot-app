@@ -1,5 +1,5 @@
-import { motion, AnimatePresence, useMotionValue, animate, useDragControls, type PanInfo } from 'framer-motion'
-import { type ReactNode, useCallback, useRef, useState } from 'react'
+import { motion, useMotionValue, animate, useDragControls, type PanInfo } from 'framer-motion'
+import { type ReactNode, useCallback, useRef, useState, useEffect } from 'react'
 
 interface BottomSheetProps {
   isOpen: boolean
@@ -10,39 +10,29 @@ interface BottomSheetProps {
   className?: string
 }
 
-const enterEase = [0.32, 0.72, 0, 1] as const
+const enterEase = [0.32, 0.72, 0, 1]
 
-export function BottomSheet({ isOpen, onClose, children, title, fullHeight, className = '' }: BottomSheetProps) {
-  const dragControls = useDragControls()
+function useSheetDismiss(onClose: () => void) {
   const y = useMotionValue(0)
-  const [visible, setVisible] = useState(false)
+  const dragControls = useDragControls()
   const closingRef = useRef(false)
-
-  // Sync visible state with isOpen (but let dismiss animation control hide)
-  if (isOpen && !visible && !closingRef.current) {
-    setVisible(true)
-  }
+  const [rendered, setRendered] = useState(false)
 
   const dismiss = useCallback(() => {
     if (closingRef.current) return
     closingRef.current = true
     animate(y, window.innerHeight, {
       type: 'tween',
-      duration: 0.25,
+      duration: 0.28,
       ease: [0.32, 0.72, 0, 1],
       onComplete: () => {
-        setVisible(false)
+        setRendered(false)
         closingRef.current = false
         y.set(0)
         onClose()
       },
     })
   }, [onClose, y])
-
-  // Handle external close (isOpen becomes false without drag)
-  if (!isOpen && visible && !closingRef.current) {
-    dismiss()
-  }
 
   const handleDragEnd = useCallback((_: any, info: PanInfo) => {
     if (info.offset.y > 60 || info.velocity.y > 300) {
@@ -52,7 +42,24 @@ export function BottomSheet({ isOpen, onClose, children, title, fullHeight, clas
     }
   }, [dismiss, y])
 
-  if (!visible) return null
+  const show = useCallback(() => {
+    closingRef.current = false
+    y.set(0)
+    setRendered(true)
+  }, [y])
+
+  return { y, dragControls, dismiss, handleDragEnd, rendered, show, closingRef }
+}
+
+export function BottomSheet({ isOpen, onClose, children, title, fullHeight, className = '' }: BottomSheetProps) {
+  const { y, dragControls, dismiss, handleDragEnd, rendered, show, closingRef } = useSheetDismiss(onClose)
+
+  useEffect(() => {
+    if (isOpen && !rendered && !closingRef.current) show()
+    else if (!isOpen && rendered && !closingRef.current) dismiss()
+  }, [isOpen, rendered, show, dismiss, closingRef])
+
+  if (!rendered) return null
 
   return (
     <>
@@ -103,44 +110,14 @@ export function BottomSheet({ isOpen, onClose, children, title, fullHeight, clas
 }
 
 export function DarkBottomSheet({ isOpen, onClose, children, title, fullHeight, className = '' }: BottomSheetProps) {
-  const dragControls = useDragControls()
-  const y = useMotionValue(0)
-  const [visible, setVisible] = useState(false)
-  const closingRef = useRef(false)
+  const { y, dragControls, dismiss, handleDragEnd, rendered, show, closingRef } = useSheetDismiss(onClose)
 
-  if (isOpen && !visible && !closingRef.current) {
-    setVisible(true)
-  }
+  useEffect(() => {
+    if (isOpen && !rendered && !closingRef.current) show()
+    else if (!isOpen && rendered && !closingRef.current) dismiss()
+  }, [isOpen, rendered, show, dismiss, closingRef])
 
-  const dismiss = useCallback(() => {
-    if (closingRef.current) return
-    closingRef.current = true
-    animate(y, window.innerHeight, {
-      type: 'tween',
-      duration: 0.25,
-      ease: [0.32, 0.72, 0, 1],
-      onComplete: () => {
-        setVisible(false)
-        closingRef.current = false
-        y.set(0)
-        onClose()
-      },
-    })
-  }, [onClose, y])
-
-  if (!isOpen && visible && !closingRef.current) {
-    dismiss()
-  }
-
-  const handleDragEnd = useCallback((_: any, info: PanInfo) => {
-    if (info.offset.y > 60 || info.velocity.y > 300) {
-      dismiss()
-    } else {
-      animate(y, 0, { type: 'tween', duration: 0.2, ease: 'easeOut' })
-    }
-  }, [dismiss, y])
-
-  if (!visible) return null
+  if (!rendered) return null
 
   return (
     <>
