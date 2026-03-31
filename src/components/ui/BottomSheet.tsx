@@ -1,4 +1,4 @@
-import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from 'framer-motion'
+import { motion, AnimatePresence, useDragControls, type PanInfo } from 'framer-motion'
 import { type ReactNode, useCallback } from 'react'
 
 interface BottomSheetProps {
@@ -10,19 +10,16 @@ interface BottomSheetProps {
   className?: string
 }
 
-// Smooth ease — no spring bounce/overshoot
 const sheetTransition = { type: 'tween' as const, duration: 0.32, ease: [0.32, 0.72, 0, 1] }
 
 export function BottomSheet({ isOpen, onClose, children, title, fullHeight, className = '' }: BottomSheetProps) {
-  const y = useMotionValue(0)
+  const dragControls = useDragControls()
 
   const handleDragEnd = useCallback((_: any, info: PanInfo) => {
     if (info.offset.y > 60 || info.velocity.y > 300) {
       onClose()
-    } else {
-      animate(y, 0, { type: 'tween', duration: 0.2, ease: 'easeOut' })
     }
-  }, [onClose, y])
+  }, [onClose])
 
   return (
     <AnimatePresence>
@@ -41,7 +38,12 @@ export function BottomSheet({ isOpen, onClose, children, title, fullHeight, clas
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={sheetTransition}
-            style={{ y }}
+            drag="y"
+            dragControls={dragControls}
+            dragListener={false}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.4 }}
+            onDragEnd={handleDragEnd}
             className={`
               fixed bottom-0 left-0 right-0 z-[100]
               bg-ivory rounded-t-[24px]
@@ -50,16 +52,14 @@ export function BottomSheet({ isOpen, onClose, children, title, fullHeight, clas
               ${className}
             `}
           >
-            <motion.div
+            {/* Drag handle — initiates drag on the entire sheet */}
+            <div
               className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing shrink-0"
-              drag="y"
-              dragConstraints={{ top: 0, bottom: 0 }}
-              dragElastic={0.3}
-              onDragEnd={handleDragEnd}
+              onPointerDown={(e) => dragControls.start(e)}
               style={{ touchAction: 'none' }}
             >
               <div className="w-9 h-[5px] rounded-full bg-pearl" />
-            </motion.div>
+            </div>
             {title && (
               <div className="px-6 pb-3 shrink-0">
                 <h2 className="text-[18px] font-bold text-ink tracking-tight">{title}</h2>
@@ -76,15 +76,13 @@ export function BottomSheet({ isOpen, onClose, children, title, fullHeight, clas
 }
 
 export function DarkBottomSheet({ isOpen, onClose, children, title, fullHeight, className = '' }: BottomSheetProps) {
-  const y = useMotionValue(0)
+  const dragControls = useDragControls()
 
   const handleDragEnd = useCallback((_: any, info: PanInfo) => {
     if (info.offset.y > 60 || info.velocity.y > 300) {
       onClose()
-    } else {
-      animate(y, 0, { type: 'tween', duration: 0.2, ease: 'easeOut' })
     }
-  }, [onClose, y])
+  }, [onClose])
 
   return (
     <AnimatePresence>
@@ -103,7 +101,12 @@ export function DarkBottomSheet({ isOpen, onClose, children, title, fullHeight, 
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={sheetTransition}
-            style={{ y }}
+            drag="y"
+            dragControls={dragControls}
+            dragListener={false}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.4 }}
+            onDragEnd={handleDragEnd}
             className={`
               fixed bottom-0 left-0 right-0 z-[100]
               bg-obsidian rounded-t-[24px] border-t border-border-dark
@@ -112,16 +115,13 @@ export function DarkBottomSheet({ isOpen, onClose, children, title, fullHeight, 
               ${className}
             `}
           >
-            <motion.div
+            <div
               className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing shrink-0"
-              drag="y"
-              dragConstraints={{ top: 0, bottom: 0 }}
-              dragElastic={0.3}
-              onDragEnd={handleDragEnd}
+              onPointerDown={(e) => dragControls.start(e)}
               style={{ touchAction: 'none' }}
             >
               <div className="w-9 h-[5px] rounded-full bg-charcoal" />
-            </motion.div>
+            </div>
             {title && (
               <div className="px-6 pb-3 shrink-0">
                 <h2 className="text-[18px] font-bold text-white tracking-tight">{title}</h2>

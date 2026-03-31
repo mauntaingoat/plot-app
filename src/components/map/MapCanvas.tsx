@@ -162,20 +162,24 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
   const pinClickRef = useRef(onPinClick)
   pinClickRef.current = onPinClick
 
+  const lastZoomRef = useRef<number | null>(null)
+  const reclusterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
 
+    const CLUSTER_RADIUS_PX = 38
+    const MIN_CLUSTER_SIZE = 3
+
     const renderMarkers = () => {
+      // Clear old markers
       markersRef.current.forEach((m) => m.remove())
       markersRef.current = []
 
       if (pins.length === 0) return
 
-      // Pixel-based clustering with tighter radius
-      const CLUSTER_RADIUS_PX = 38
-      const MIN_CLUSTER_SIZE = 3 // Never cluster just 2 pins — always show them individually
-
+      // Project pins to screen coordinates for clustering
       const projected = pins.map((pin) => {
         const pt = map.project([pin.coordinates.lng, pin.coordinates.lat])
         return { pin, x: pt.x, y: pt.y }
@@ -191,35 +195,31 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
 
         for (const other of projected) {
           if (used.has(other.pin.id)) continue
-          // Distance from this pin to the group centroid
           const gcx = group.reduce((s, g) => s + g.x, 0) / group.length
           const gcy = group.reduce((s, g) => s + g.y, 0) / group.length
           const dx = gcx - other.x
           const dy = gcy - other.y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < CLUSTER_RADIUS_PX) {
+          if (Math.sqrt(dx * dx + dy * dy) < CLUSTER_RADIUS_PX) {
             group.push(other)
             used.add(other.pin.id)
           }
         }
-
         clusters.push({ pins: group.map((g) => g.pin) })
       }
 
-      const zoomLevel = map.getZoom()
-
       for (const cluster of clusters) {
-        // Never show a cluster for just 2 pins — render them individually
         if (cluster.pins.length < MIN_CLUSTER_SIZE) {
+          // Individual pins — each at its exact lat/lng
           for (const pin of cluster.pins) {
             const el = createPinElement(pin, agentPhotoUrl)
             el.addEventListener('click', (e) => { e.stopPropagation(); pinClickRef.current?.(pin) })
             const m = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-              .setLngLat([pin.coordinates.lng, pin.coordinates.lat]).addTo(map)
+              .setLngLat([pin.coordinates.lng, pin.coordinates.lat])
+              .addTo(map)
             markersRef.current.push(m)
           }
         } else {
-          // Cluster: show cluster marker, zoom to fit children on click
+          // Cluster marker
           const avgLat = cluster.pins.reduce((s, p) => s + p.coordinates.lat, 0) / cluster.pins.length
           const avgLng = cluster.pins.reduce((s, p) => s + p.coordinates.lng, 0) / cluster.pins.length
           const preview = cluster.pins[0]
@@ -227,15 +227,17 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
           const el = createClusterElement(cluster.pins.length, url || undefined)
           el.addEventListener('click', (e) => {
             e.stopPropagation()
-            // Fit to the cluster's children bounds so they all stay in viewport
             const bounds = getBounds(cluster.pins.map((p) => p.coordinates))
             map.fitBounds(bounds, { padding: 100, duration: 500, maxZoom: 18 })
           })
           const m = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-            .setLngLat([avgLng, avgLat]).addTo(map)
+            .setLngLat([avgLng, avgLat])
+            .addTo(map)
           markersRef.current.push(m)
         }
       }
+
+      lastZoomRef.current = map.getZoom()
     }
 
     const fitAndRender = () => {
@@ -247,8 +249,11 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
         } else {
           map.fitBounds(getBounds(coords), { padding: 80, duration: 800 })
         }
+        // Render after the fit animation completes
+        setTimeout(renderMarkers, 850)
+      } else {
+        renderMarkers()
       }
-      renderMarkers()
     }
 
     if (map.isStyleLoaded()) {
@@ -257,9 +262,24 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       map.once('load', fitAndRender)
     }
 
-    const onZoomEnd = () => renderMarkers()
-    map.on('zoomend', onZoomEnd)
-    return () => { map.off('zoomend', onZoomEnd) }
+    // Debounced re-cluster: only after zoom settles AND changed enough to matter
+    const onIdle = () => {
+      if (reclusterTimerRef.current) clearTimeout(reclusterTimerRef.current)
+      reclusterTimerRef.current = setTimeout(() => {
+        const currentZoom = map.getZoom()
+        const lastZoom = lastZoomRef.current
+        // Only re-cluster if zoom changed by at least 0.5 levels
+        if (lastZoom === null || Math.abs(currentZoom - lastZoom) >= 0.5) {
+          renderMarkers()
+        }
+      }, 300)
+    }
+
+    map.on('idle', onIdle)
+    return () => {
+      map.off('idle', onIdle)
+      if (reclusterTimerRef.current) clearTimeout(reclusterTimerRef.current)
+    }
   }, [pins, agentPhotoUrl, fitToPins])
 
   const fitTo = useCallback((targetPins: Pin[]) => {
@@ -285,7 +305,7 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       {showBackButton && onBack && (
         <button
           onClick={onBack}
-          className="absolute bottom-[calc(env(safe-area-inset-bottom,8px)+120px)] left-4 z-50 bg-white/90 backdrop-blur-md rounded-full px-4 py-2.5 text-[13px] font-semibold text-ink shadow-lg border border-black/5"
+          className="absolute bottom-[calc(env(safe-area-inset-bottom,8px)+20px)] left-4 z-50 bg-white/90 backdrop-blur-md rounded-full px-4 py-2.5 text-[13px] font-semibold text-ink shadow-lg border border-black/5"
         >
           Exit Preview
         </button>
