@@ -113,7 +113,6 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
   const fittedRef = useRef(false)
   const { center, zoom } = useMapStore()
 
-  // Init map
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return
 
@@ -129,15 +128,27 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       touchPitch: false,
     })
 
-    // Disable weather/precipitation layers once style loads
+    // Remove ALL weather/precipitation/particle layers aggressively
     map.on('style.load', () => {
       const style = map.getStyle()
-      if (style?.layers) {
-        for (const layer of style.layers) {
-          const id = layer.id.toLowerCase()
-          if (id.includes('rain') || id.includes('snow') || id.includes('precip') || id.includes('weather') || id.includes('particle')) {
-            map.setLayoutProperty(layer.id, 'visibility', 'none')
-          }
+      if (!style?.layers) return
+      for (const layer of style.layers) {
+        const id = layer.id.toLowerCase()
+        // Cast wide net: any layer with weather-related keywords
+        if (
+          id.includes('rain') || id.includes('snow') || id.includes('precip') ||
+          id.includes('weather') || id.includes('particle') || id.includes('fog') ||
+          id.includes('haze') || id.includes('cloud') || id.includes('storm')
+        ) {
+          try { map.removeLayer(layer.id) } catch {}
+        }
+      }
+      // Also try removing weather sources
+      const sources = style.sources || {}
+      for (const srcId of Object.keys(sources)) {
+        const sid = srcId.toLowerCase()
+        if (sid.includes('weather') || sid.includes('precip') || sid.includes('rain') || sid.includes('snow')) {
+          try { map.removeSource(srcId) } catch {}
         }
       }
     })
@@ -148,65 +159,67 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
     return () => { map.remove(); mapRef.current = null }
   }, []) // eslint-disable-line
 
-  // Stable pin click handler
   const pinClickRef = useRef(onPinClick)
   pinClickRef.current = onPinClick
 
-  // Update markers
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
 
     const renderMarkers = () => {
-      // Clear old
       markersRef.current.forEach((m) => m.remove())
       markersRef.current = []
 
       if (pins.length === 0) return
 
-      // Pixel-based clustering: project all pins to screen, group by proximity
-      const CLUSTER_RADIUS_PX = 55 // pins within 55px of each other cluster
+      // Pixel-based clustering with tighter radius
+      const CLUSTER_RADIUS_PX = 38
+      const MIN_CLUSTER_SIZE = 3 // Never cluster just 2 pins — always show them individually
+
       const projected = pins.map((pin) => {
         const pt = map.project([pin.coordinates.lng, pin.coordinates.lat])
         return { pin, x: pt.x, y: pt.y }
       })
 
-      const clusters: { pins: Pin[]; cx: number; cy: number }[] = []
+      const clusters: { pins: Pin[] }[] = []
       const used = new Set<string>()
 
       for (const item of projected) {
         if (used.has(item.pin.id)) continue
-        const group = [item.pin]
-        let cx = item.x, cy = item.y
+        const group: typeof projected = [item]
         used.add(item.pin.id)
 
         for (const other of projected) {
           if (used.has(other.pin.id)) continue
-          const dx = cx / group.length - other.x
-          const dy = cy / group.length - other.y
+          // Distance from this pin to the group centroid
+          const gcx = group.reduce((s, g) => s + g.x, 0) / group.length
+          const gcy = group.reduce((s, g) => s + g.y, 0) / group.length
+          const dx = gcx - other.x
+          const dy = gcy - other.y
           const dist = Math.sqrt(dx * dx + dy * dy)
           if (dist < CLUSTER_RADIUS_PX) {
-            group.push(other.pin)
-            cx += other.x
-            cy += other.y
+            group.push(other)
             used.add(other.pin.id)
           }
         }
-        clusters.push({ pins: group, cx: cx / group.length, cy: cy / group.length })
+
+        clusters.push({ pins: group.map((g) => g.pin) })
       }
 
       const zoomLevel = map.getZoom()
 
       for (const cluster of clusters) {
-        if (cluster.pins.length === 1) {
-          const pin = cluster.pins[0]
-          const el = createPinElement(pin, agentPhotoUrl)
-          el.addEventListener('click', (e) => { e.stopPropagation(); pinClickRef.current?.(pin) })
-          const m = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-            .setLngLat([pin.coordinates.lng, pin.coordinates.lat]).addTo(map)
-          markersRef.current.push(m)
+        // Never show a cluster for just 2 pins — render them individually
+        if (cluster.pins.length < MIN_CLUSTER_SIZE) {
+          for (const pin of cluster.pins) {
+            const el = createPinElement(pin, agentPhotoUrl)
+            el.addEventListener('click', (e) => { e.stopPropagation(); pinClickRef.current?.(pin) })
+            const m = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+              .setLngLat([pin.coordinates.lng, pin.coordinates.lat]).addTo(map)
+            markersRef.current.push(m)
+          }
         } else {
-          // Cluster marker at average lnglat
+          // Cluster: show cluster marker, zoom to fit children on click
           const avgLat = cluster.pins.reduce((s, p) => s + p.coordinates.lat, 0) / cluster.pins.length
           const avgLng = cluster.pins.reduce((s, p) => s + p.coordinates.lng, 0) / cluster.pins.length
           const preview = cluster.pins[0]
@@ -214,7 +227,9 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
           const el = createClusterElement(cluster.pins.length, url || undefined)
           el.addEventListener('click', (e) => {
             e.stopPropagation()
-            map.easeTo({ center: [avgLng, avgLat], zoom: Math.min(zoomLevel + 2.5, 18), duration: 400 })
+            // Fit to the cluster's children bounds so they all stay in viewport
+            const bounds = getBounds(cluster.pins.map((p) => p.coordinates))
+            map.fitBounds(bounds, { padding: 100, duration: 500, maxZoom: 18 })
           })
           const m = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
             .setLngLat([avgLng, avgLat]).addTo(map)
@@ -223,7 +238,6 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       }
     }
 
-    // Fit to pins on first load or when pins change
     const fitAndRender = () => {
       if (fitToPins && pins.length > 0 && !fittedRef.current) {
         fittedRef.current = true
@@ -243,13 +257,11 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       map.once('load', fitAndRender)
     }
 
-    // Re-render on zoom (for clustering)
     const onZoomEnd = () => renderMarkers()
     map.on('zoomend', onZoomEnd)
     return () => { map.off('zoomend', onZoomEnd) }
   }, [pins, agentPhotoUrl, fitToPins])
 
-  // Public method: fit to specific pins
   const fitTo = useCallback((targetPins: Pin[]) => {
     const map = mapRef.current
     if (!map || targetPins.length === 0) return
@@ -261,7 +273,6 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
     }
   }, [])
 
-  // Expose fitTo via ref on the container
   useEffect(() => {
     if (mapContainer.current) {
       (mapContainer.current as any).__plotFitTo = fitTo
@@ -274,7 +285,7 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       {showBackButton && onBack && (
         <button
           onClick={onBack}
-          className="absolute bottom-[calc(env(safe-area-inset-bottom,8px)+100px)] left-4 z-50 bg-white/90 backdrop-blur-md rounded-full px-4 py-2.5 text-[13px] font-semibold text-ink shadow-lg border border-black/5"
+          className="absolute bottom-[calc(env(safe-area-inset-bottom,8px)+120px)] left-4 z-50 bg-white/90 backdrop-blur-md rounded-full px-4 py-2.5 text-[13px] font-semibold text-ink shadow-lg border border-black/5"
         >
           Exit Preview
         </button>

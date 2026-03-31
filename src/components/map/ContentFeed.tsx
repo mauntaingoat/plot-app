@@ -16,7 +16,6 @@ interface ContentFeedProps {
 export function ContentFeed({ pins, agent, onPinClick, isPreview }: ContentFeedProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // All pins shown as full-screen cards (content-first: stories, reels, live, then listings)
   const sortedPins = [
     ...pins.filter((p) => p.type === 'story'),
     ...pins.filter((p) => p.type === 'reel'),
@@ -28,7 +27,7 @@ export function ContentFeed({ pins, agent, onPinClick, isPreview }: ContentFeedP
 
   if (sortedPins.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-midnight">
+      <div className="absolute inset-0 flex items-center justify-center bg-midnight">
         <div className="text-center">
           <p className="text-[16px] font-semibold text-white mb-1">No content yet</p>
           <p className="text-[14px] text-ghost">Nothing to show with these filters.</p>
@@ -40,8 +39,11 @@ export function ContentFeed({ pins, agent, onPinClick, isPreview }: ContentFeedP
   return (
     <div
       ref={scrollRef}
-      className="flex-1 bg-midnight overflow-y-auto snap-y snap-mandatory"
-      style={{ WebkitOverflowScrolling: 'touch', scrollSnapType: 'y mandatory' }}
+      className="absolute inset-0 bg-midnight overflow-y-auto"
+      style={{
+        WebkitOverflowScrolling: 'touch',
+        scrollSnapType: 'y mandatory',
+      }}
     >
       {sortedPins.map((pin) => (
         <FeedCard
@@ -75,20 +77,19 @@ function FeedCard({ pin, agent, onTap, isPreview }: { pin: Pin; agent: UserDoc; 
 
   return (
     <div
-      className="w-full snap-start snap-always relative"
-      style={{ height: 'calc(100vh - 130px)' }}
+      className="w-full relative"
+      style={{ height: '100dvh', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}
     >
-      {/* Background image */}
+      {/* Full-screen background */}
       <div className="absolute inset-0 bg-charcoal" onClick={onTap}>
         {imageUrl && (
           <img src={imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
         )}
-        {/* Gradient overlays */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/40" />
       </div>
 
       {/* Top badge */}
-      <div className="absolute top-4 left-4 z-10">
+      <div className="absolute top-[calc(env(safe-area-inset-top,12px)+70px)] left-4 z-10">
         <Badge
           variant={pin.type === 'live' ? 'live' : pin.type === 'sold' ? 'sold' : pin.type === 'open_house' ? 'open' : pin.type === 'story' ? 'story' : pin.type === 'reel' ? 'reel' : 'listing'}
           pulse={pin.type === 'live'}
@@ -99,65 +100,49 @@ function FeedCard({ pin, agent, onTap, isPreview }: { pin: Pin; agent: UserDoc; 
         </Badge>
       </div>
 
-      {/* Price (if listing/sold/open) */}
+      {/* Price */}
       {price && (
-        <div className="absolute top-4 right-4 z-10">
-          <span className="font-mono font-bold text-[20px] text-white drop-shadow-lg">{price}</span>
+        <div className="absolute top-[calc(env(safe-area-inset-top,12px)+70px)] right-4 z-10">
+          <span className="font-mono font-bold text-[22px] text-white drop-shadow-lg">{price}</span>
         </div>
       )}
 
-      {/* Right sidebar — engagement */}
-      <div className="absolute right-3 bottom-[25%] z-10 flex flex-col items-center gap-5">
-        <div className="relative">
-          <Avatar src={agent.photoURL} name={agent.displayName} size={40} ring="story" />
-        </div>
+      {/* Right sidebar */}
+      <div className="absolute right-3 bottom-[20%] z-10 flex flex-col items-center gap-5">
+        <Avatar src={agent.photoURL} name={agent.displayName} size={40} ring="story" />
         <motion.button
           whileTap={!isPreview ? { scale: 0.75 } : undefined}
-          className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-50' : ''}`}
+          className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : ''}`}
         >
           <Bookmark size={26} className="text-white" />
           <span className="text-[10px] text-white font-semibold">{pin.saves}</span>
         </motion.button>
         <motion.button
           whileTap={!isPreview ? { scale: 0.75 } : undefined}
-          className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-50' : ''}`}
+          className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : ''}`}
         >
           <MessageCircle size={24} className="text-white" />
           <span className="text-[10px] text-white font-semibold">0</span>
         </motion.button>
         <motion.button
           whileTap={!isPreview ? { scale: 0.75 } : undefined}
-          className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-50' : ''}`}
+          className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : ''}`}
         >
           <Share2 size={22} className="text-white" />
         </motion.button>
       </div>
 
       {/* Bottom info */}
-      <div className="absolute bottom-0 left-0 right-16 z-10 pb-6 px-4">
-        <div className="flex items-center gap-2 mb-2">
-          <p className="text-[15px] font-bold text-white">{agent.displayName}</p>
-        </div>
-
-        {/* Address */}
+      <div className="absolute bottom-0 left-0 right-16 z-10 pb-[calc(env(safe-area-inset-bottom,8px)+16px)] px-4">
+        <p className="text-[15px] font-bold text-white mb-1">{agent.displayName}</p>
         <div className="flex items-center gap-1 mb-1.5">
           <MapPin size={12} className="text-white/60" />
           <span className="text-[12px] text-white/60">{pin.address}</span>
         </div>
-
-        {/* Specs for listings */}
         {'beds' in pin && (
-          <p className="text-[13px] text-white/80 mb-1.5">
-            {pin.beds} bd · {pin.baths} ba · {pin.sqft.toLocaleString()} sqft
-          </p>
+          <p className="text-[13px] text-white/80 mb-1.5">{pin.beds} bd · {pin.baths} ba · {pin.sqft.toLocaleString()} sqft</p>
         )}
-
-        {/* Caption */}
-        {caption && (
-          <p className="text-[13px] text-white/90 leading-relaxed line-clamp-3">{caption}</p>
-        )}
-
-        {/* Views */}
+        {caption && <p className="text-[13px] text-white/90 leading-relaxed line-clamp-3">{caption}</p>}
         <div className="flex items-center gap-1 mt-2">
           <Eye size={12} className="text-white/40" />
           <span className="text-[11px] text-white/40 font-medium">{pin.views.toLocaleString()} views</span>

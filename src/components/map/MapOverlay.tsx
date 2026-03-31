@@ -32,13 +32,16 @@ export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick
   const { activeFilters, toggleFilter, clearFilters, isAllSelected } = useMapStore()
 
   const totalPins = Object.values(pinCounts).reduce((a, b) => a + b, 0)
+  const isFeed = viewMode === 'feed'
+
+  // In feed mode: translucent white pills. In map mode: solid white pills.
+  const pillBg = isFeed ? 'bg-black/30 backdrop-blur-md border-white/10' : 'bg-white/90 backdrop-blur-md border-black/5'
+  const pillText = isFeed ? 'text-white' : 'text-ink'
+  const pillSecText = isFeed ? 'text-white/60' : 'text-smoke'
 
   const handleFilterClick = (value: PinType | 'all') => {
-    if (value === 'all') {
-      clearFilters()
-    } else {
-      toggleFilter(value)
-    }
+    if (value === 'all') clearFilters()
+    else toggleFilter(value)
     onFilterChange?.()
   }
 
@@ -46,53 +49,51 @@ export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick
     <div className="absolute top-0 left-0 right-0 z-[40] pointer-events-none">
       <div style={{ height: 'env(safe-area-inset-top, 12px)' }} />
 
-      {/* Agent header — dark text for light map */}
+      {/* Agent header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3, type: 'spring', damping: 25, stiffness: 300 }}
+        transition={{ delay: 0.3, duration: 0.3, ease: 'easeOut' }}
         className="flex items-center justify-between px-4 pt-3 pb-2 pointer-events-auto"
       >
-        {/* Clickable agent pill */}
         <motion.button
           whileTap={{ scale: 0.96 }}
           onClick={onProfileClick}
-          className="bg-white/90 backdrop-blur-md rounded-full flex items-center gap-2.5 pl-1.5 pr-3 py-1.5 shadow-md border border-black/5 cursor-pointer"
+          className={`${pillBg} rounded-full flex items-center gap-2.5 pl-1.5 pr-3 py-1.5 shadow-md border cursor-pointer`}
         >
           <Avatar src={agent.photoURL} name={agent.displayName} size={36} ring="story" />
           <div className="min-w-0">
-            <p className="text-[14px] font-bold text-ink truncate">{agent.displayName}</p>
-            <p className="text-[11px] text-smoke font-medium">
+            <p className={`text-[14px] font-bold truncate ${pillText}`}>{agent.displayName}</p>
+            <p className={`text-[11px] font-medium ${pillSecText}`}>
               {totalPins} pins · {agent.followerCount.toLocaleString()} followers
             </p>
           </div>
-          <ChevronDown size={14} className="text-smoke ml-0.5" />
+          <ChevronDown size={14} className={pillSecText + ' ml-0.5'} />
         </motion.button>
 
-        {/* Action buttons — dark icons */}
         <div className="flex items-center gap-1.5">
           <motion.button
             whileTap={!isPreview ? { scale: 0.88 } : undefined}
             onClick={!isPreview ? onFollow : undefined}
-            className={`bg-white/90 backdrop-blur-md rounded-full w-9 h-9 flex items-center justify-center cursor-pointer shadow-md border border-black/5 ${isFollowing ? 'text-tangerine' : 'text-ink'} ${isPreview ? 'opacity-40' : ''}`}
+            className={`${pillBg} rounded-full w-9 h-9 flex items-center justify-center cursor-pointer shadow-md border ${isFollowing ? 'text-tangerine' : pillText} ${isPreview ? 'opacity-40' : ''}`}
           >
             {isFollowing ? <UserCheck size={16} /> : <UserPlus size={16} />}
           </motion.button>
           <motion.button
             whileTap={!isPreview ? { scale: 0.88 } : undefined}
             onClick={!isPreview ? onShare : undefined}
-            className={`bg-white/90 backdrop-blur-md rounded-full w-9 h-9 flex items-center justify-center text-ink cursor-pointer shadow-md border border-black/5 ${isPreview ? 'opacity-40' : ''}`}
+            className={`${pillBg} rounded-full w-9 h-9 flex items-center justify-center ${pillText} cursor-pointer shadow-md border ${isPreview ? 'opacity-40' : ''}`}
           >
             <Share2 size={16} />
           </motion.button>
         </div>
       </motion.div>
 
-      {/* Filter pills + view toggle */}
+      {/* Filter pills + view toggle with spacing */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.45, type: 'spring', damping: 25, stiffness: 300 }}
+        transition={{ delay: 0.45, duration: 0.3, ease: 'easeOut' }}
         className="pointer-events-auto flex items-center"
       >
         <FilterBar className="flex-1">
@@ -101,7 +102,7 @@ export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick
             active={isAllSelected()}
             onClick={() => handleFilterClick('all')}
             count={totalPins}
-            dark={false}
+            dark={isFeed}
           />
           {FILTER_OPTIONS.map((opt) => {
             const Icon = PIN_TYPE_ICONS[opt.value]
@@ -115,18 +116,18 @@ export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick
                 onClick={() => handleFilterClick(opt.value)}
                 icon={<Icon size={14} />}
                 count={count}
-                dark={false}
+                dark={isFeed}
               />
             )
           })}
         </FilterBar>
 
-        {/* Map ↔ Feed toggle */}
+        {/* Toggle with extra spacing */}
         {onToggleView && (
           <motion.button
             whileTap={{ scale: 0.88 }}
             onClick={onToggleView}
-            className="mr-4 bg-white/90 backdrop-blur-md rounded-full w-9 h-9 flex items-center justify-center text-ink cursor-pointer shadow-md border border-black/5 shrink-0"
+            className={`mr-4 ml-3 ${pillBg} rounded-full w-9 h-9 flex items-center justify-center ${pillText} cursor-pointer shadow-md border shrink-0`}
           >
             {viewMode === 'map' ? <Layers size={16} /> : <Map size={16} />}
           </motion.button>

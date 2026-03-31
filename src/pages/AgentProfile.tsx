@@ -179,7 +179,7 @@ export default function AgentProfile() {
             </PeekDrawer>
           </motion.div>
         ) : (
-          <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 pt-[130px]">
+          <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0">
             <ContentFeed pins={filteredPins} agent={agent} onPinClick={handlePinClick} isPreview={isPreview} />
           </motion.div>
         )}

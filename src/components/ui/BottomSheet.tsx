@@ -1,5 +1,5 @@
 import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from 'framer-motion'
-import { type ReactNode, useCallback, useRef } from 'react'
+import { type ReactNode, useCallback } from 'react'
 
 interface BottomSheetProps {
   isOpen: boolean
@@ -10,17 +10,17 @@ interface BottomSheetProps {
   className?: string
 }
 
-const springConfig = { type: 'spring' as const, damping: 28, stiffness: 300 }
+// Smooth ease — no spring bounce/overshoot
+const sheetTransition = { type: 'tween' as const, duration: 0.32, ease: [0.32, 0.72, 0, 1] }
 
 export function BottomSheet({ isOpen, onClose, children, title, fullHeight, className = '' }: BottomSheetProps) {
   const y = useMotionValue(0)
-  const contentRef = useRef<HTMLDivElement>(null)
 
   const handleDragEnd = useCallback((_: any, info: PanInfo) => {
-    if (info.offset.y > 80 || info.velocity.y > 400) {
+    if (info.offset.y > 60 || info.velocity.y > 300) {
       onClose()
     } else {
-      animate(y, 0, springConfig)
+      animate(y, 0, { type: 'tween', duration: 0.2, ease: 'easeOut' })
     }
   }, [onClose, y])
 
@@ -32,16 +32,15 @@ export function BottomSheet({ isOpen, onClose, children, title, fullHeight, clas
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.25 }}
             className="fixed inset-0 z-[90] bg-black/50"
             onClick={onClose}
           />
-
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
-            transition={springConfig}
+            transition={sheetTransition}
             style={{ y }}
             className={`
               fixed bottom-0 left-0 right-0 z-[100]
@@ -51,30 +50,22 @@ export function BottomSheet({ isOpen, onClose, children, title, fullHeight, clas
               ${className}
             `}
           >
-            {/* Drag handle — ONLY this area triggers dismiss */}
             <motion.div
               className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing shrink-0"
               drag="y"
               dragConstraints={{ top: 0, bottom: 0 }}
-              dragElastic={0.4}
+              dragElastic={0.3}
               onDragEnd={handleDragEnd}
               style={{ touchAction: 'none' }}
             >
               <div className="w-9 h-[5px] rounded-full bg-pearl" />
             </motion.div>
-
             {title && (
               <div className="px-6 pb-3 shrink-0">
                 <h2 className="text-[18px] font-bold text-ink tracking-tight">{title}</h2>
               </div>
             )}
-
-            {/* Scrollable content — normal touch scroll, no drag dismiss */}
-            <div
-              ref={contentRef}
-              className="flex-1 overflow-y-auto overscroll-contain"
-              style={{ WebkitOverflowScrolling: 'touch' }}
-            >
+            <div className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
               {children}
             </div>
           </motion.div>
@@ -88,10 +79,10 @@ export function DarkBottomSheet({ isOpen, onClose, children, title, fullHeight, 
   const y = useMotionValue(0)
 
   const handleDragEnd = useCallback((_: any, info: PanInfo) => {
-    if (info.offset.y > 80 || info.velocity.y > 400) {
+    if (info.offset.y > 60 || info.velocity.y > 300) {
       onClose()
     } else {
-      animate(y, 0, springConfig)
+      animate(y, 0, { type: 'tween', duration: 0.2, ease: 'easeOut' })
     }
   }, [onClose, y])
 
@@ -103,15 +94,15 @@ export function DarkBottomSheet({ isOpen, onClose, children, title, fullHeight, 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
             className="fixed inset-0 z-[90] bg-black/60"
             onClick={onClose}
           />
-
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
-            transition={springConfig}
+            transition={sheetTransition}
             style={{ y }}
             className={`
               fixed bottom-0 left-0 right-0 z-[100]
@@ -121,28 +112,22 @@ export function DarkBottomSheet({ isOpen, onClose, children, title, fullHeight, 
               ${className}
             `}
           >
-            {/* Drag handle only */}
             <motion.div
               className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing shrink-0"
               drag="y"
               dragConstraints={{ top: 0, bottom: 0 }}
-              dragElastic={0.4}
+              dragElastic={0.3}
               onDragEnd={handleDragEnd}
               style={{ touchAction: 'none' }}
             >
               <div className="w-9 h-[5px] rounded-full bg-charcoal" />
             </motion.div>
-
             {title && (
               <div className="px-6 pb-3 shrink-0">
                 <h2 className="text-[18px] font-bold text-white tracking-tight">{title}</h2>
               </div>
             )}
-
-            <div
-              className="flex-1 overflow-y-auto overscroll-contain"
-              style={{ WebkitOverflowScrolling: 'touch' }}
-            >
+            <div className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
               {children}
             </div>
           </motion.div>
