@@ -2,7 +2,6 @@ import { useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Play, Radio, Eye, MapPin, Bookmark, Share2, MessageCircle } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
-import { Badge } from '@/components/ui/Badge'
 import { PIN_CONFIG, type Pin, type UserDoc } from '@/lib/types'
 import { formatPrice } from '@/lib/firestore'
 
@@ -40,19 +39,10 @@ export function ContentFeed({ pins, agent, onPinClick, isPreview }: ContentFeedP
     <div
       ref={scrollRef}
       className="absolute inset-0 bg-midnight overflow-y-auto"
-      style={{
-        WebkitOverflowScrolling: 'touch',
-        scrollSnapType: 'y mandatory',
-      }}
+      style={{ WebkitOverflowScrolling: 'touch', scrollSnapType: 'y mandatory' }}
     >
       {sortedPins.map((pin) => (
-        <FeedCard
-          key={pin.id}
-          pin={pin}
-          agent={agent}
-          onTap={() => onPinClick(pin)}
-          isPreview={isPreview}
-        />
+        <FeedCard key={pin.id} pin={pin} agent={agent} onTap={() => onPinClick(pin)} isPreview={isPreview} />
       ))}
     </div>
   )
@@ -60,6 +50,7 @@ export function ContentFeed({ pins, agent, onPinClick, isPreview }: ContentFeedP
 
 function FeedCard({ pin, agent, onTap, isPreview }: { pin: Pin; agent: UserDoc; onTap: () => void; isPreview?: boolean }) {
   const config = PIN_CONFIG[pin.type]
+
   const imageUrl = 'heroPhotoUrl' in pin ? pin.heroPhotoUrl
     : 'thumbnailUrl' in pin ? pin.thumbnailUrl
     : 'mediaUrl' in pin ? pin.mediaUrl
@@ -75,6 +66,14 @@ function FeedCard({ pin, agent, onTap, isPreview }: { pin: Pin; agent: UserDoc; 
     : 'title' in pin ? pin.title
     : null
 
+  const hasSpecs = 'beds' in pin
+  const specsText = hasSpecs ? `${pin.beds} bd · ${pin.baths} ba · ${pin.sqft.toLocaleString()} sqft` : null
+
+  // Build the type + specs line
+  const typeLine = specsText
+    ? `${config.label} · ${specsText}`
+    : config.label
+
   return (
     <div
       className="w-full relative"
@@ -88,27 +87,8 @@ function FeedCard({ pin, agent, onTap, isPreview }: { pin: Pin; agent: UserDoc; 
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/40" />
       </div>
 
-      {/* Top badge */}
-      <div className="absolute top-[calc(env(safe-area-inset-top,12px)+70px)] left-4 z-10">
-        <Badge
-          variant={pin.type === 'live' ? 'live' : pin.type === 'sold' ? 'sold' : pin.type === 'open_house' ? 'open' : pin.type === 'story' ? 'story' : pin.type === 'reel' ? 'reel' : 'listing'}
-          pulse={pin.type === 'live'}
-        >
-          {pin.type === 'live' && <Radio size={10} />}
-          {pin.type === 'reel' && <Play size={10} />}
-          {config.label}
-        </Badge>
-      </div>
-
-      {/* Price */}
-      {price && (
-        <div className="absolute top-[calc(env(safe-area-inset-top,12px)+70px)] right-4 z-10">
-          <span className="font-mono font-bold text-[22px] text-white drop-shadow-lg">{price}</span>
-        </div>
-      )}
-
       {/* Right sidebar */}
-      <div className="absolute right-3 bottom-[20%] z-10 flex flex-col items-center gap-5">
+      <div className="absolute right-3 bottom-[22%] z-10 flex flex-col items-center gap-5">
         <Avatar src={agent.photoURL} name={agent.displayName} size={40} ring="story" />
         <motion.button
           whileTap={!isPreview ? { scale: 0.75 } : undefined}
@@ -132,17 +112,31 @@ function FeedCard({ pin, agent, onTap, isPreview }: { pin: Pin; agent: UserDoc; 
         </motion.button>
       </div>
 
-      {/* Bottom info */}
+      {/* Bottom caption area */}
       <div className="absolute bottom-0 left-0 right-16 z-10 pb-[calc(env(safe-area-inset-bottom,8px)+16px)] px-4">
-        <p className="text-[15px] font-bold text-white mb-1">{agent.displayName}</p>
-        <div className="flex items-center gap-1 mb-1.5">
-          <MapPin size={12} className="text-white/60" />
+        {/* Agent name */}
+        <p className="text-[15px] font-bold text-white mb-1.5">{agent.displayName}</p>
+
+        {/* Address */}
+        <div className="flex items-center gap-1 mb-0.5">
+          <MapPin size={12} className="text-white/60 shrink-0" />
           <span className="text-[12px] text-white/60">{pin.address}</span>
         </div>
-        {'beds' in pin && (
-          <p className="text-[13px] text-white/80 mb-1.5">{pin.beds} bd · {pin.baths} ba · {pin.sqft.toLocaleString()} sqft</p>
+
+        {/* Price — same style as address, right below it */}
+        {price && (
+          <p className="text-[13px] text-white/80 font-semibold mb-1.5">{price}</p>
         )}
-        {caption && <p className="text-[13px] text-white/90 leading-relaxed line-clamp-3">{caption}</p>}
+
+        {/* Type + specs on same line */}
+        <p className="text-[12px] text-white/50 mb-1.5">{typeLine}</p>
+
+        {/* Caption */}
+        {caption && (
+          <p className="text-[13px] text-white/90 leading-relaxed line-clamp-3">{caption}</p>
+        )}
+
+        {/* Views */}
         <div className="flex items-center gap-1 mt-2">
           <Eye size={12} className="text-white/40" />
           <span className="text-[11px] text-white/40 font-medium">{pin.views.toLocaleString()} views</span>

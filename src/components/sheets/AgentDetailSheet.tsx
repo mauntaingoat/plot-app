@@ -1,11 +1,13 @@
 import { motion } from 'framer-motion'
-import { ExternalLink, MapPin, Award, UserPlus, UserCheck, Globe } from 'lucide-react'
+import { ExternalLink, MapPin, Award, UserPlus, UserCheck, Globe, Users } from 'lucide-react'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { PLATFORM_LOGOS, PLATFORM_LIST } from '@/components/icons/PlatformLogos'
 import type { UserDoc } from '@/lib/types'
+
+export type AgentMode = 'single' | 'following' | 'explore'
 
 interface AgentDetailSheetProps {
   isOpen: boolean
@@ -19,12 +21,14 @@ interface AgentDetailSheetProps {
   onExploreAll?: () => void
   onAgentTap?: (agent: UserDoc) => void
   isPreview?: boolean
+  agentMode?: AgentMode
+  onSetMode?: (mode: AgentMode) => void
 }
 
 export function AgentDetailSheet({
   isOpen, onClose, agent, isFollowing, onFollow,
   nearbyAgents = [], enabledAgentIds, onToggleAgent, onExploreAll, onAgentTap,
-  isPreview,
+  isPreview, agentMode = 'single', onSetMode,
 }: AgentDetailSheetProps) {
   return (
     <DarkBottomSheet isOpen={isOpen} onClose={onClose}>
@@ -46,10 +50,9 @@ export function AgentDetailSheet({
           </div>
         </div>
 
-        {/* Bio */}
         {agent.bio && <p className="text-[14px] text-mist leading-relaxed">{agent.bio}</p>}
 
-        {/* Follow — disabled in preview */}
+        {/* Follow */}
         <Button
           variant={isFollowing ? 'glass' : 'primary'}
           size="lg"
@@ -93,56 +96,101 @@ export function AgentDetailSheet({
           </div>
         )}
 
-        {/* Nearby agents + multi-toggle — consumer only (not in preview) */}
+        {/* View Mode + Nearby Agents — consumer only */}
         {!isPreview && nearbyAgents.length > 0 && (
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[13px] font-semibold text-ghost uppercase tracking-wider">Agents nearby</h3>
-              {onExploreAll && (
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={onExploreAll}
-                  className="flex items-center gap-1.5 text-[12px] font-semibold text-tangerine"
-                >
-                  <Globe size={12} /> Explore all
-                </motion.button>
-              )}
-            </div>
-            <div className="space-y-2">
-              {nearbyAgents.map((a) => {
-                const isEnabled = enabledAgentIds?.has(a.uid) ?? false
-                return (
-                  <div key={a.uid} className="flex items-center gap-3 bg-slate rounded-[14px] p-3">
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => onAgentTap?.(a)}
-                      className="flex items-center gap-3 flex-1 min-w-0 text-left"
-                    >
-                      <Avatar src={a.photoURL} name={a.displayName} size={40} ring="story" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[14px] font-semibold text-white truncate">{a.displayName}</p>
-                        <p className="text-[12px] text-ghost">@{a.username} · {a.followerCount} followers</p>
-                      </div>
-                    </motion.button>
+            <h3 className="text-[13px] font-semibold text-ghost uppercase tracking-wider mb-3">View Mode</h3>
 
-                    {/* Toggle */}
-                    {onToggleAgent && (
-                      <motion.button
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => onToggleAgent(a.uid)}
-                        className={`relative w-11 h-6 rounded-full transition-colors duration-200 cursor-pointer shrink-0 ${isEnabled ? 'bg-tangerine' : 'bg-charcoal'}`}
-                      >
-                        <motion.div
-                          animate={{ x: isEnabled ? 20 : 2 }}
-                          transition={{ type: 'spring', damping: 20, stiffness: 400 }}
-                          className="absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm"
-                        />
-                      </motion.button>
-                    )}
-                  </div>
-                )
-              })}
+            {/* Mode selector */}
+            <div className="flex gap-2 mb-4">
+              {([
+                { mode: 'single' as const, label: 'This Agent', icon: MapPin },
+                { mode: 'following' as const, label: 'Following', icon: Users },
+                { mode: 'explore' as const, label: 'Explore All', icon: Globe },
+              ]).map(({ mode, label, icon: Icon }) => (
+                <motion.button
+                  key={mode}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => onSetMode?.(mode)}
+                  className={`flex-1 flex flex-col items-center gap-1.5 py-3 rounded-[12px] cursor-pointer transition-all ${
+                    agentMode === mode
+                      ? 'bg-tangerine text-white'
+                      : 'bg-slate text-ghost hover:text-mist'
+                  }`}
+                >
+                  <Icon size={16} />
+                  <span className="text-[11px] font-semibold">{label}</span>
+                </motion.button>
+              ))}
             </div>
+
+            {/* Agent list with toggles (for following mode) */}
+            {agentMode === 'following' && (
+              <div className="space-y-2">
+                <p className="text-[12px] text-ghost mb-2">Toggle agents to show their pins on map. Feed shows content from all toggled agents.</p>
+                {nearbyAgents.map((a) => {
+                  const isEnabled = enabledAgentIds?.has(a.uid) ?? false
+                  return (
+                    <div key={a.uid} className="flex items-center gap-3 bg-slate rounded-[14px] p-3">
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => onAgentTap?.(a)}
+                        className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                      >
+                        <Avatar src={a.photoURL} name={a.displayName} size={36} ring="story" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-semibold text-white truncate">{a.displayName}</p>
+                          <p className="text-[11px] text-ghost">@{a.username}</p>
+                        </div>
+                      </motion.button>
+                      {onToggleAgent && (
+                        <motion.button
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => onToggleAgent(a.uid)}
+                          className={`relative w-11 h-6 rounded-full transition-colors duration-200 cursor-pointer shrink-0 ${isEnabled ? 'bg-tangerine' : 'bg-charcoal'}`}
+                        >
+                          <motion.div
+                            animate={{ x: isEnabled ? 20 : 2 }}
+                            transition={{ type: 'spring', damping: 20, stiffness: 400 }}
+                            className="absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm"
+                          />
+                        </motion.button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Explore all description */}
+            {agentMode === 'explore' && (
+              <div className="bg-slate rounded-[14px] p-4">
+                <p className="text-[13px] text-mist">
+                  Showing pins from all agents in this area. Content feed includes all agents in the region.
+                </p>
+              </div>
+            )}
+
+            {/* Single mode: just show nearby agents to navigate */}
+            {agentMode === 'single' && (
+              <div className="space-y-2">
+                {nearbyAgents.map((a) => (
+                  <motion.button
+                    key={a.uid}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => onAgentTap?.(a)}
+                    className="w-full flex items-center gap-3 bg-slate rounded-[14px] p-3 text-left cursor-pointer"
+                  >
+                    <Avatar src={a.photoURL} name={a.displayName} size={36} ring="story" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-semibold text-white truncate">{a.displayName}</p>
+                      <p className="text-[11px] text-ghost">@{a.username} · {a.followerCount} followers</p>
+                    </div>
+                    <MapPin size={14} className="text-ghost" />
+                  </motion.button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

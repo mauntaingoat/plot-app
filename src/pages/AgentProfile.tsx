@@ -9,7 +9,7 @@ import { PinCard } from '@/components/dashboard/PinCard'
 import { StoryViewer } from '@/components/viewers/StoryViewer'
 import { ReelPlayer } from '@/components/viewers/ReelPlayer'
 import { ListingSheet } from '@/components/viewers/ListingSheet'
-import { AgentDetailSheet } from '@/components/sheets/AgentDetailSheet'
+import { AgentDetailSheet, type AgentMode } from '@/components/sheets/AgentDetailSheet'
 import { AuthSheet } from '@/components/sheets/AuthSheet'
 import { useMapStore } from '@/stores/mapStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -38,6 +38,8 @@ export default function AgentProfile() {
   const [listingSheet, setListingSheet] = useState<(ListingPin | SoldPin | OpenHousePin) | null>(null)
   const [showAgentDetail, setShowAgentDetail] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
+  const [agentMode, setAgentMode] = useState<AgentMode>('single')
+  const [enabledAgentIds, setEnabledAgentIds] = useState<Set<string>>(new Set())
 
   const { setViewingAgentId, activeFilters } = useMapStore()
   const { userDoc: currentUser } = useAuthStore()
@@ -86,13 +88,14 @@ export default function AgentProfile() {
   const handleFilterChange = useCallback(() => {
     const container = mapContainerRef.current?.querySelector('.mapboxgl-canvas')?.parentElement?.parentElement
     if (container && (container as any).__plotFitTo) {
-      // Small delay to let filter state update
+      // Read fresh filter state after Zustand updates
       setTimeout(() => {
-        const current = activeFilters.size === 0 ? allPins : allPins.filter((p) => activeFilters.has(p.type))
+        const freshFilters = useMapStore.getState().activeFilters
+        const current = freshFilters.size === 0 ? allPins : allPins.filter((p) => freshFilters.has(p.type))
         ;(container as any).__plotFitTo(current)
-      }, 50)
+      }, 100)
     }
-  }, [activeFilters, allPins])
+  }, [allPins])
 
   const handlePinClick = useCallback((pin: Pin) => {
     if (pin.type === 'story') {
@@ -216,8 +219,19 @@ export default function AgentProfile() {
         isFollowing={isFollowing}
         onFollow={handleFollow}
         nearbyAgents={nearbyAgents}
+        enabledAgentIds={enabledAgentIds}
+        onToggleAgent={(id) => {
+          setEnabledAgentIds((prev) => {
+            const next = new Set(prev)
+            if (next.has(id)) next.delete(id)
+            else next.add(id)
+            return next
+          })
+        }}
         onAgentTap={(a) => { setShowAgentDetail(false); navigate(`/${a.username}`) }}
         isPreview={isPreview}
+        agentMode={agentMode}
+        onSetMode={setAgentMode}
       />
 
       {/* Consumer auth prompt */}
