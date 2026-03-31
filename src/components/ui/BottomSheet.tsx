@@ -1,5 +1,5 @@
-import { motion, AnimatePresence, useDragControls, type PanInfo } from 'framer-motion'
-import { type ReactNode, useCallback } from 'react'
+import { motion, AnimatePresence, useMotionValue, animate, useDragControls, type PanInfo } from 'framer-motion'
+import { type ReactNode, useCallback, useRef } from 'react'
 
 interface BottomSheetProps {
   isOpen: boolean
@@ -10,16 +10,37 @@ interface BottomSheetProps {
   className?: string
 }
 
-const sheetTransition = { type: 'tween' as const, duration: 0.32, ease: [0.32, 0.72, 0, 1] }
+const enterTransition = { type: 'tween' as const, duration: 0.32, ease: [0.32, 0.72, 0, 1] }
+const exitTransition = { type: 'tween' as const, duration: 0.28, ease: [0.32, 0.72, 0, 1] }
 
 export function BottomSheet({ isOpen, onClose, children, title, fullHeight, className = '' }: BottomSheetProps) {
   const dragControls = useDragControls()
+  const y = useMotionValue(0)
+  const closingRef = useRef(false)
+
+  const dismiss = useCallback(() => {
+    if (closingRef.current) return
+    closingRef.current = true
+    // Animate from current drag position to off-screen, then unmount
+    animate(y, window.innerHeight, {
+      type: 'tween',
+      duration: 0.25,
+      ease: [0.32, 0.72, 0, 1],
+      onComplete: () => {
+        onClose()
+        closingRef.current = false
+        y.set(0)
+      },
+    })
+  }, [onClose, y])
 
   const handleDragEnd = useCallback((_: any, info: PanInfo) => {
     if (info.offset.y > 60 || info.velocity.y > 300) {
-      onClose()
+      dismiss()
+    } else {
+      animate(y, 0, { type: 'tween', duration: 0.2, ease: 'easeOut' })
     }
-  }, [onClose])
+  }, [dismiss, y])
 
   return (
     <AnimatePresence>
@@ -31,13 +52,14 @@ export function BottomSheet({ isOpen, onClose, children, title, fullHeight, clas
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
             className="fixed inset-0 z-[90] bg-black/50"
-            onClick={onClose}
+            onClick={dismiss}
           />
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
-            transition={sheetTransition}
+            transition={enterTransition}
+            style={{ y }}
             drag="y"
             dragControls={dragControls}
             dragListener={false}
@@ -52,7 +74,6 @@ export function BottomSheet({ isOpen, onClose, children, title, fullHeight, clas
               ${className}
             `}
           >
-            {/* Drag handle — initiates drag on the entire sheet */}
             <div
               className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing shrink-0"
               onPointerDown={(e) => dragControls.start(e)}
@@ -77,12 +98,31 @@ export function BottomSheet({ isOpen, onClose, children, title, fullHeight, clas
 
 export function DarkBottomSheet({ isOpen, onClose, children, title, fullHeight, className = '' }: BottomSheetProps) {
   const dragControls = useDragControls()
+  const y = useMotionValue(0)
+  const closingRef = useRef(false)
+
+  const dismiss = useCallback(() => {
+    if (closingRef.current) return
+    closingRef.current = true
+    animate(y, window.innerHeight, {
+      type: 'tween',
+      duration: 0.25,
+      ease: [0.32, 0.72, 0, 1],
+      onComplete: () => {
+        onClose()
+        closingRef.current = false
+        y.set(0)
+      },
+    })
+  }, [onClose, y])
 
   const handleDragEnd = useCallback((_: any, info: PanInfo) => {
     if (info.offset.y > 60 || info.velocity.y > 300) {
-      onClose()
+      dismiss()
+    } else {
+      animate(y, 0, { type: 'tween', duration: 0.2, ease: 'easeOut' })
     }
-  }, [onClose])
+  }, [dismiss, y])
 
   return (
     <AnimatePresence>
@@ -94,13 +134,14 @@ export function DarkBottomSheet({ isOpen, onClose, children, title, fullHeight, 
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
             className="fixed inset-0 z-[90] bg-black/60"
-            onClick={onClose}
+            onClick={dismiss}
           />
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
-            transition={sheetTransition}
+            transition={enterTransition}
+            style={{ y }}
             drag="y"
             dragControls={dragControls}
             dragListener={false}
