@@ -1,0 +1,305 @@
+@import "tailwindcss";
+
+/* ============================================================
+   PLOT DESIGN SYSTEM — "Liquid Warmth"
+   ============================================================ */
+
+@theme {
+  /* ── Primary ── */
+  --color-tangerine: #FF6B3D;
+  --color-tangerine-soft: rgba(255, 107, 61, 0.12);
+  --color-tangerine-glow: rgba(255, 107, 61, 0.25);
+  --color-ember: #E8522A;
+  --color-ember-deep: #C73E18;
+
+  /* ── Dark surfaces (map, viewers) ── */
+  --color-midnight: #0A0E17;
+  --color-obsidian: #12161F;
+  --color-slate: #1C2130;
+  --color-charcoal: #252A3A;
+
+  /* ── Light surfaces (dashboard, onboarding) ── */
+  --color-ivory: #FAFAF8;
+  --color-cream: #F5F3EF;
+  --color-pearl: #EDEAE4;
+  --color-warm-white: #FFFFFF;
+
+  /* ── Text ── */
+  --color-ink: #1A1A1A;
+  --color-graphite: #3D3D3D;
+  --color-smoke: #6B7280;
+  --color-ash: #9CA3AF;
+  --color-mist: rgba(255, 255, 255, 0.55);
+  --color-ghost: rgba(255, 255, 255, 0.30);
+
+  /* ── Pin type colors ── */
+  --color-listing-blue: #3B82F6;
+  --color-sold-green: #34C759;
+  --color-live-red: #FF3B30;
+  --color-open-amber: #FFAA00;
+  --color-story-ring: linear-gradient(135deg, #FF6B3D, #E8522A, #FF3B7A);
+  --color-reel-purple: #A855F7;
+
+  /* ── Glass ── */
+  --color-glass-light: rgba(255, 255, 255, 0.08);
+  --color-glass-medium: rgba(255, 255, 255, 0.12);
+  --color-glass-heavy: rgba(255, 255, 255, 0.18);
+  --color-glass-dark: rgba(0, 0, 0, 0.35);
+  --color-glass-dark-heavy: rgba(0, 0, 0, 0.60);
+
+  /* ── Borders ── */
+  --color-border-dark: rgba(255, 255, 255, 0.08);
+  --color-border-light: rgba(0, 0, 0, 0.06);
+
+  /* ── Shadows ── */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 16px 50px rgba(0, 0, 0, 0.18);
+  --shadow-glow-tangerine: 0 4px 30px rgba(255, 107, 61, 0.35);
+  --shadow-glow-live: 0 0px 20px rgba(255, 59, 48, 0.50);
+  --shadow-card-dark: 0 2px 16px rgba(0, 0, 0, 0.40);
+
+  /* ── Radii ── */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+  --radius-sheet: 24px;
+
+  /* ── Spacing scale ── */
+  --space-safe-top: env(safe-area-inset-top, 0px);
+  --space-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --space-tab-bar: 80px;
+
+  /* ── Font families ── */
+  --font-display: 'Outfit', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* ── Animations ── */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-snap: cubic-bezier(0.12, 0.8, 0.32, 1);
+}
+
+/* ── Base Reset ── */
+*, *::before, *::after {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+html {
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior: none;
+  background: var(--color-midnight);
+  color: var(--color-ink);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overscroll-behavior: none;
+}
+
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Scrollbar hiding for mobile-feel ── */
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  scrollbar-width: none;
+}
+
+/* ── Selection ── */
+::selection {
+  background: var(--color-tangerine-soft);
+  color: var(--color-ink);
+}
+
+/* ── Focus ring ── */
+:focus-visible {
+  outline: 2px solid var(--color-tangerine);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Input reset ── */
+input, textarea, select, button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+input:focus, textarea:focus {
+  outline: none;
+}
+
+/* ── Glass utility classes ── */
+.glass {
+  background: var(--color-glass-light);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid var(--color-border-dark);
+}
+
+.glass-medium {
+  background: var(--color-glass-medium);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid var(--color-border-dark);
+}
+
+.glass-heavy {
+  background: var(--color-glass-heavy);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.glass-dark {
+  background: var(--color-glass-dark);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid var(--color-border-dark);
+}
+
+.glass-light {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid var(--color-border-light);
+}
+
+/* ── Gradient text ── */
+.text-gradient {
+  background: linear-gradient(135deg, var(--color-tangerine) 0%, var(--color-ember) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Story ring gradient ── */
+.story-ring {
+  background: linear-gradient(135deg, #FF6B3D, #E8522A, #FF3B7A);
+  padding: 2.5px;
+  border-radius: 50%;
+}
+
+.story-ring-inner {
+  background: var(--color-midnight);
+  border-radius: 50%;
+  padding: 2px;
+}
+
+/* ── Pulse animation for live/open pins ── */
+@keyframes pulse-live {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.6); opacity: 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.5); }
+  50% { box-shadow: 0 0 0 12px rgba(255, 59, 48, 0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-pulse-live {
+  animation: pulse-live 2s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--color-glass-light) 25%, var(--color-glass-medium) 50%, var(--color-glass-light) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ── Map overrides ── */
+.mapboxgl-canvas {
+  outline: none;
+}
+
+.mapboxgl-ctrl-attrib,
+.mapboxgl-ctrl-logo {
+  display: none !important;
+}
+
+/* ── Price pill on map ── */
+.price-pill {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  box-shadow: var(--shadow-card-dark);
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 0.15s var(--ease-spring);
+}
+
+.price-pill:active {
+  transform: scale(0.92);
+}
+
+.price-pill-listing {
+  background: var(--color-listing-blue);
+  color: white;
+}
+
+.price-pill-sold {
+  background: var(--color-sold-green);
+  color: white;
+}
+
+/* ── Tab bar safe area ── */
+.pb-tab-safe {
+  padding-bottom: calc(var(--space-tab-bar) + var(--space-safe-bottom));
+}
+
+.mb-tab-safe {
+  margin-bottom: calc(var(--space-tab-bar) + var(--space-safe-bottom));
+}
+
+/* ── Typography helpers ── */
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+.tracking-tight {
+  letter-spacing: -0.02em;
+}
+
+.tracking-wide {
+  letter-spacing: 0.06em;
+}
+
+/* ── Mapbox popup override ── */
+.mapboxgl-popup-content {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.mapboxgl-popup-tip {
+  display: none !important;
+}

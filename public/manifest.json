@@ -1,0 +1,20 @@
+{
+  "name": "Plot",
+  "short_name": "Plot",
+  "description": "Your neighborhood, plotted. Map-based profiles for real estate agents.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0E17",
+  "theme_color": "#FF6B3D",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "lifestyle"],
+  "lang": "en"
+}
