@@ -113,16 +113,19 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
     })
 
     map.on('load', () => {
-      // GeoJSON source with built-in clustering
+      // GeoJSON source — tight clusterRadius so pins only merge when overlapping
+      // Individual pin rendered radius is ~10px, so 24px cluster radius means
+      // two pins must be within ~24px of each other to cluster (roughly touching)
       map.addSource('pins', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] },
         cluster: true,
-        clusterMaxZoom: 15,
-        clusterRadius: 45,
+        clusterMaxZoom: 16,
+        clusterRadius: 24,
       })
 
-      // Cluster circles
+      // ── Cluster circles ──
+      // Radius scales gently: 12px for 2-3, up to ~18px for 50+
       map.addLayer({
         id: 'clusters',
         type: 'circle',
@@ -130,10 +133,17 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
         filter: ['has', 'point_count'],
         paint: {
           'circle-color': '#FF6B3D',
-          'circle-radius': ['step', ['get', 'point_count'], 22, 5, 28, 15, 34],
+          'circle-radius': [
+            'interpolate', ['linear'], ['get', 'point_count'],
+            2, 12,
+            5, 14,
+            10, 15,
+            25, 17,
+            50, 18,
+          ],
           'circle-opacity': 0.92,
-          'circle-stroke-width': 3,
-          'circle-stroke-color': 'rgba(255, 107, 61, 0.25)',
+          'circle-stroke-width': 2,
+          'circle-stroke-color': 'rgba(255, 107, 61, 0.2)',
         },
       })
 
@@ -146,14 +156,20 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
         layout: {
           'text-field': '{point_count_abbreviated}',
           'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
-          'text-size': 13,
+          'text-size': [
+            'interpolate', ['linear'], ['get', 'point_count'],
+            2, 10,
+            10, 12,
+            50, 13,
+          ],
+          'text-allow-overlap': true,
         },
         paint: {
           'text-color': '#ffffff',
         },
       })
 
-      // Individual pin circles (unclustered)
+      // ── Individual pin circles — ALL same size ──
       map.addLayer({
         id: 'pin-circles',
         type: 'circle',
@@ -170,49 +186,32 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
             'open_house', '#FFAA00',
             '#FF6B3D',
           ],
-          'circle-radius': [
-            'match', ['get', 'type'],
-            'story', 16,
-            'reel', 14,
-            'live', 14,
-            10,
-          ],
+          'circle-radius': 10,
           'circle-opacity': 0.92,
-          'circle-stroke-width': [
-            'match', ['get', 'type'],
-            'story', 3,
-            'live', 3,
-            2,
-          ],
-          'circle-stroke-color': [
-            'match', ['get', 'type'],
-            'story', '#E8522A',
-            'live', 'rgba(255, 59, 48, 0.35)',
-            'open_house', 'rgba(255, 170, 0, 0.35)',
-            'rgba(255, 255, 255, 0.15)',
-          ],
+          'circle-stroke-width': 2,
+          'circle-stroke-color': 'rgba(255, 255, 255, 0.15)',
         },
       })
 
-      // Pin type icon letter inside circle
+      // Pin type icon letter inside circle — all types now
       map.addLayer({
         id: 'pin-icons',
         type: 'symbol',
         source: 'pins',
-        filter: ['all',
-          ['!', ['has', 'point_count']],
-          ['in', ['get', 'type'], ['literal', ['story', 'reel', 'live']]],
-        ],
+        filter: ['!', ['has', 'point_count']],
         layout: {
           'text-field': [
             'match', ['get', 'type'],
-            'story', 'S',
+            'listing', '$',
+            'sold', 'S',
+            'story', 'St',
             'reel', 'R',
             'live', 'L',
+            'open_house', 'O',
             '',
           ],
           'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
-          'text-size': 12,
+          'text-size': 10,
           'text-allow-overlap': true,
         },
         paint: {
@@ -232,8 +231,8 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
         layout: {
           'text-field': ['get', 'label'],
           'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
-          'text-size': 11,
-          'text-offset': [0, -2.2],
+          'text-size': 10,
+          'text-offset': [0, -1.8],
           'text-anchor': 'bottom',
           'text-allow-overlap': true,
         },
@@ -247,7 +246,7 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
             'open_house', '#FFAA00',
             '#FF6B3D',
           ],
-          'text-halo-width': 6,
+          'text-halo-width': 5,
           'text-halo-blur': 1,
         },
       })
