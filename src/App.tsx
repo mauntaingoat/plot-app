@@ -19,7 +19,7 @@ function LoadingScreen() {
         transition={{ type: 'spring', damping: 15 }}
         className="mb-4"
       >
-        <img src="/favicon.svg" alt="Reeltor" className="w-14 h-14" />
+        <img src="/reeltor-logo-4b.png" alt="Reeltor" className="w-14 h-14" />
       </motion.div>
       <motion.div
         animate={{ rotate: 360 }}

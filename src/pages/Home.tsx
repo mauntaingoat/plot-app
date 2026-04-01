@@ -51,7 +51,7 @@ export default function Home() {
             className="flex items-center justify-between mb-16"
           >
             <div className="flex items-center gap-2">
-              <img src="/favicon.svg" alt="Reeltor" className="w-8 h-8" />
+              <img src="/reeltor-logo-4b.png" alt="Reeltor" className="w-8 h-8" />
               <span className="text-[20px] font-extrabold text-ink tracking-tight">Reeltor</span>
             </div>
 
@@ -73,8 +73,8 @@ export default function Home() {
             </div>
 
             <h1 className="text-[42px] font-extrabold text-ink tracking-tight leading-[1.05] mb-4">
-              Your neighborhood,{' '}
-              <span className="text-gradient">plotted.</span>
+              Your listings,{' '}
+              <span className="text-gradient">on reel.</span>
             </h1>
 
             <p className="text-[17px] text-smoke leading-relaxed mb-8">
@@ -215,7 +215,7 @@ export default function Home() {
       {/* Bottom CTA */}
       <section className="px-6 py-16 text-center">
         <div className="bg-gradient-to-br from-midnight to-obsidian rounded-[24px] p-8 text-center">
-          <img src="/favicon.svg" alt="Reeltor" className="w-14 h-14 mx-auto mb-5" />
+          <img src="/reeltor-logo-4b.png" alt="Reeltor" className="w-14 h-14 mx-auto mb-5" />
           <h2 className="text-[24px] font-extrabold text-white tracking-tight mb-2">
             Ready to get plotted?
           </h2>
