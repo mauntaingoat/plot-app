@@ -29,14 +29,39 @@ interface MapCanvasProps {
 }
 
 function pinsToGeoJSON(pins: Pin[]) {
+  // Detect same-address pins and offset them so they sit side by side
+  const coordKey = (p: Pin) => `${p.coordinates.lat.toFixed(6)},${p.coordinates.lng.toFixed(6)}`
+  const groups = new Map<string, Pin[]>()
+  for (const pin of pins) {
+    const key = coordKey(pin)
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(pin)
+  }
+
+  // Small lng offset (~30m at equator, enough to separate visually at high zoom)
+  const OFFSET = 0.0003
+
   return {
     type: 'FeatureCollection' as const,
     features: pins.map((pin) => {
+      const key = coordKey(pin)
+      const group = groups.get(key)!
+      let lng = pin.coordinates.lng
+      let lat = pin.coordinates.lat
+
+      if (group.length > 1) {
+        const idx = group.indexOf(pin)
+        const total = group.length
+        // Spread pins horizontally: center them around the original point
+        const spreadOffset = (idx - (total - 1) / 2) * OFFSET
+        lng += spreadOffset
+      }
+
       const price = 'price' in pin ? pin.price : 'soldPrice' in pin ? pin.soldPrice : 'listingPrice' in pin ? pin.listingPrice : 0
       const priceK = price >= 1_000_000 ? `$${(price / 1_000_000).toFixed(1)}M` : price >= 1_000 ? `$${(price / 1_000).toFixed(0)}K` : price > 0 ? `$${price}` : ''
       return {
         type: 'Feature' as const, id: pin.id,
-        geometry: { type: 'Point' as const, coordinates: [pin.coordinates.lng, pin.coordinates.lat] },
+        geometry: { type: 'Point' as const, coordinates: [lng, lat] },
         properties: {
           id: pin.id, type: pin.type,
           label: pin.type === 'live' ? 'LIVE' : pin.type === 'open_house' ? 'OPEN' : pin.type === 'sold' ? 'SOLD' : priceK || '',
@@ -82,8 +107,8 @@ function createBadgeImage(text: string): ImageData {
   // Pill background (tangerine)
   const r = h / 2
   ctx.beginPath(); ctx.roundRect(0, 0, w, h, r); ctx.fillStyle = TANGERINE; ctx.fill()
-  // Text (black)
-  ctx.fillStyle = '#000000'; ctx.font = `bold ${10 * scale}px Outfit, sans-serif`
+  // Text (white)
+  ctx.fillStyle = '#ffffff'; ctx.font = `bold ${10 * scale}px Outfit, sans-serif`
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
   ctx.fillText(text, w / 2, h / 2)
   return ctx.getImageData(0, 0, w, h)
