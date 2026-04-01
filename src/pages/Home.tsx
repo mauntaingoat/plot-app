@@ -9,115 +9,13 @@ import { SEOHead } from '@/components/marketing/SEOHead'
 import { AuthSheet } from '@/components/sheets/AuthSheet'
 import { useAuthStore } from '@/stores/authStore'
 import { MOCK_AGENTS } from '@/lib/mock'
-import {
-  InstagramLogo,
-  TikTokLogo,
-  YouTubeLogo,
-  ZillowLogo,
-  RealtorLogo,
-  MLSLogo,
-  FacebookLogo,
-  LinkedInLogo,
-} from '@/components/icons/PlatformLogos'
-
-/* ── animated underline keyframes (inline style tag) ── */
-const underlineCSS = `
-@keyframes drawUnderline {
-  0% { stroke-dashoffset: 300; }
-  100% { stroke-dashoffset: 0; }
-}
-@keyframes underlineWobble {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(2px); }
-}
-`
 
 const FEATURES_PREVIEW = [
-  { icon: MapPin, title: 'Map Pins', desc: 'Every listing, open house, and story pinned to a real address on your interactive map.' },
-  { icon: Play, title: 'Reels & Stories', desc: 'Full-screen video content that auto-plays as consumers scroll your map.' },
-  { icon: BarChart3, title: 'Agent Analytics', desc: 'Views, taps, saves, followers — know what content is working.' },
-  { icon: Users, title: 'Audience Growth', desc: 'Followers, connected platforms, one link to share everywhere.' },
+  { icon: MapPin, title: 'Map Pins', desc: 'Every listing, open house, and story — pinned to a real address.' },
+  { icon: Play, title: 'Reels & Stories', desc: 'Full-screen video content that auto-plays as homebuyers scroll your map.' },
+  { icon: BarChart3, title: 'Agent Analytics', desc: 'Views, taps, saves, followers — know what\'s working.' },
+  { icon: Users, title: 'Audience Growth', desc: 'Followers, connected platforms, one link to rule them all.' },
 ]
-
-const HOW_IT_WORKS = [
-  {
-    step: '01',
-    title: 'Claim your link',
-    desc: 'Pick a username. Your Reeltor lives at reeltor.co/you. Share it in your bio, email signature, business cards — everywhere.',
-    screenshot: '/screenshots/dashboard.png',
-  },
-  {
-    step: '02',
-    title: 'Drop pins',
-    desc: 'Add listings, stories, reels, open houses, and live streams. Each one pinned to a real address on your map.',
-    screenshot: '/screenshots/map-pins.png',
-  },
-  {
-    step: '03',
-    title: 'Grow your audience',
-    desc: 'Consumers follow you, save listings, and discover your neighborhood expertise. Track it all from your dashboard.',
-    screenshot: '/screenshots/content-feed.png',
-  },
-]
-
-const PLATFORMS = [
-  { Logo: InstagramLogo, name: 'Instagram' },
-  { Logo: TikTokLogo, name: 'TikTok' },
-  { Logo: YouTubeLogo, name: 'YouTube' },
-  { Logo: ZillowLogo, name: 'Zillow' },
-  { Logo: RealtorLogo, name: 'Realtor.com' },
-  { Logo: MLSLogo, name: 'MLS' },
-  { Logo: FacebookLogo, name: 'Facebook' },
-  { Logo: LinkedInLogo, name: 'LinkedIn' },
-]
-
-/* ── Burst confetti bits around "One link." ── */
-function BurstBits() {
-  const bits = Array.from({ length: 8 }, (_, i) => ({
-    id: i,
-    rotate: i * 45,
-    x: Math.cos((i * 45 * Math.PI) / 180) * 38,
-    y: Math.sin((i * 45 * Math.PI) / 180) * 38,
-  }))
-
-  return (
-    <span className="relative inline-block">
-      <span className="relative z-10">One link.</span>
-      {bits.map((b) => (
-        <motion.span
-          key={b.id}
-          className="absolute w-2 h-2 md:w-2.5 md:h-2.5 rounded-[3px] bg-tangerine"
-          style={{ left: '50%', top: '50%', marginLeft: -5, marginTop: -5 }}
-          initial={{ opacity: 0, scale: 0, x: 0, y: 0, rotate: 0 }}
-          whileInView={{
-            opacity: [0, 1, 1, 0],
-            scale: [0, 1.2, 1, 0.6],
-            x: [0, b.x],
-            y: [0, b.y],
-            rotate: [0, b.rotate + 180],
-          }}
-          transition={{ duration: 1, delay: 0.2, ease: 'easeOut' }}
-          viewport={{ once: true }}
-        />
-      ))}
-    </span>
-  )
-}
-
-/* ── Phone frame wrapper ── */
-function PhoneFrame({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={`relative mx-auto ${className}`} style={{ maxWidth: 300 }}>
-      <div className="rounded-[36px] overflow-hidden border-[6px] border-[#1a1a1a] bg-[#1a1a1a] shadow-2xl">
-        {/* Notch */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120px] h-[22px] bg-[#1a1a1a] rounded-b-[14px] z-10" />
-        <div className="rounded-[30px] overflow-hidden aspect-[9/19.5] bg-ivory relative">
-          {children}
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export default function Home() {
   const navigate = useNavigate()
@@ -125,36 +23,29 @@ export default function Home() {
   const { userDoc } = useAuthStore()
   const [showAuth, setShowAuth] = useState(false)
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup')
-  const agents = MOCK_AGENTS.slice(0, 3)
+  const agents = MOCK_AGENTS
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
 
   function handleClaimClick() {
-    if (isMobile) {
-      setAuthMode('signup')
-      setShowAuth(true)
-    } else {
-      navigate('/sign-up')
-    }
+    if (isMobile) { setAuthMode('signup'); setShowAuth(true) }
+    else { navigate('/sign-up') }
   }
 
-  // Handle ?auth=login or ?auth=signup from nav
+  function handleSignInClick() {
+    if (isMobile) { setAuthMode('login'); setShowAuth(true) }
+    else { navigate('/sign-in') }
+  }
+
+  // Handle ?auth=login or ?auth=signup from mobile nav
   useEffect(() => {
     const auth = searchParams.get('auth')
     if (auth === 'login') {
-      setAuthMode('login')
-      if (window.innerWidth < 768) {
-        setShowAuth(true)
-      } else {
-        navigate('/sign-in', { replace: true })
-      }
+      if (isMobile) { setAuthMode('login'); setShowAuth(true) }
+      else navigate('/sign-in', { replace: true })
     } else if (auth === 'signup') {
-      setAuthMode('signup')
-      if (window.innerWidth < 768) {
-        setShowAuth(true)
-      } else {
-        navigate('/sign-up', { replace: true })
-      }
+      if (isMobile) { setAuthMode('signup'); setShowAuth(true) }
+      else navigate('/sign-up', { replace: true })
     }
   }, [searchParams, navigate])
 
@@ -165,53 +56,32 @@ export default function Home() {
   return (
     <MarketingLayout>
       <SEOHead path="/" />
-      <style>{underlineCSS}</style>
 
       {/* ════════ HERO ════════ */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-[600px] h-[600px] md:w-[900px] md:h-[900px] bg-tangerine/5 rounded-full blur-[120px]" />
+          <div className="absolute -top-32 -right-32 w-[500px] h-[500px] md:w-[800px] md:h-[800px] bg-tangerine/6 rounded-full blur-[100px]" />
+          <div className="absolute bottom-0 -left-32 w-[400px] h-[400px] bg-ember/4 rounded-full blur-[80px]" />
         </div>
 
-        <div className="relative max-w-[1200px] mx-auto px-5 md:px-8 pt-16 md:pt-32 pb-20 md:pb-36">
-          <div className="grid md:grid-cols-2 gap-12 md:gap-20 items-center">
+        <div className="relative max-w-[1200px] mx-auto px-5 md:px-8 pt-12 md:pt-24 pb-16 md:pb-28">
+          <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
             {/* Left: copy */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, ease: 'easeOut' }}
+              transition={{ duration: 0.6, ease: 'easeOut' }}
             >
-              <h1 className="text-[38px] md:text-[58px] lg:text-[68px] font-extrabold text-ink tracking-tight leading-[1.04] mb-6">
+              <h1 className="text-[36px] md:text-[56px] lg:text-[64px] font-extrabold text-ink tracking-tight leading-[1.05] mb-5">
                 Where listings{' '}
-                <span className="relative inline-block text-gradient">
-                  come alive.
-                  {/* Animated wavy underline */}
-                  <svg
-                    className="absolute -bottom-1 left-0 w-full"
-                    height="10"
-                    viewBox="0 0 200 10"
-                    preserveAspectRatio="none"
-                    fill="none"
-                    style={{ animation: 'underlineWobble 3s ease-in-out infinite' }}
-                  >
-                    <path
-                      d="M0 5 Q25 0 50 5 T100 5 T150 5 T200 5"
-                      stroke="#FF6B3D"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      fill="none"
-                      strokeDasharray="300"
-                      style={{ animation: 'drawUnderline 1s ease-out 0.5s forwards', strokeDashoffset: 300 }}
-                    />
-                  </svg>
-                </span>
+                <span className="text-gradient">come alive.</span>
               </h1>
 
-              <p className="text-[17px] md:text-[20px] text-smoke leading-relaxed mb-10 max-w-[500px]">
-                One link. A live map of your listings, stories, reels, and open houses. The modern agent's profile.
+              <p className="text-[16px] md:text-[19px] text-smoke leading-relaxed mb-8 max-w-[480px]">
+                One link. A live map of your listings, stories, reels, and open houses. The modern agent's profile, built for content.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-3 mb-4">
+              <div className="flex flex-col sm:flex-row gap-3 mb-6">
                 <Button
                   variant="primary"
                   size="xl"
@@ -230,26 +100,17 @@ export default function Home() {
                 </Button>
               </div>
 
-              <p className="text-[13px] text-ash">Free forever. No credit card.</p>
+              <p className="text-[13px] text-ash">Free forever. No credit card required.</p>
             </motion.div>
 
-            {/* Right: phone frame screenshot */}
+            {/* Right: hero visual */}
             <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}
+              initial={{ opacity: 0, y: 40, rotate: 1 }}
+              animate={{ opacity: 1, y: 0, rotate: 1 }}
+              transition={{ duration: 0.7, delay: 0.2, ease: 'easeOut' }}
+              className="relative"
             >
-              <PhoneFrame>
-                <img
-                  src="/screenshots/map-view.png"
-                  alt="Reeltor map view"
-                  className="absolute inset-0 w-full h-full object-cover"
-                  onError={(e) => {
-                    // Graceful fallback: hide broken image
-                    (e.target as HTMLImageElement).style.display = 'none'
-                  }}
-                />
-                {/* Fallback gradient when image isn't available */}
+              <div className="bg-obsidian rounded-[24px] overflow-hidden shadow-2xl border border-border-dark aspect-[9/16] max-h-[520px] md:max-h-[600px] relative mx-auto max-w-[320px] md:max-w-[340px]">
                 <div className="absolute inset-0 bg-gradient-to-br from-[#0C1E35] via-[#0F2847] to-[#0A1628]">
                   {[
                     { x: 20, y: 15, color: '#3B82F6', size: 12 },
@@ -259,6 +120,7 @@ export default function Home() {
                     { x: 60, y: 55, color: '#FFAA00', size: 12 },
                     { x: 40, y: 70, color: '#A855F7', size: 14 },
                     { x: 80, y: 42, color: '#3B82F6', size: 12 },
+                    { x: 35, y: 35, color: '#34C759', size: 10 },
                   ].map((pin, i) => (
                     <motion.div
                       key={i}
@@ -266,63 +128,99 @@ export default function Home() {
                       animate={{ scale: 1 }}
                       transition={{ delay: 0.8 + i * 0.08, type: 'spring', damping: 12 }}
                       className="absolute rounded-full"
-                      style={{
-                        left: `${pin.x}%`,
-                        top: `${pin.y}%`,
-                        width: pin.size,
-                        height: pin.size,
-                        background: pin.color,
-                        boxShadow: `0 0 14px ${pin.color}50`,
-                      }}
+                      style={{ left: `${pin.x}%`, top: `${pin.y}%`, width: pin.size, height: pin.size, background: pin.color, boxShadow: `0 0 14px ${pin.color}50` }}
                     />
                   ))}
+
+                  <div className="absolute top-4 left-4 right-4">
+                    <div className="bg-white/10 backdrop-blur-sm rounded-full flex items-center gap-2 pl-1.5 pr-3 py-1.5">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-tangerine to-ember" />
+                      <div className="flex-1">
+                        <div className="h-2.5 w-20 bg-white/20 rounded-full" />
+                        <div className="h-2 w-14 bg-white/10 rounded-full mt-1" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent pt-16 pb-4 px-4">
+                    <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-3">
+                      <div className="flex gap-2">
+                        <div className="w-16 h-16 rounded-xl bg-white/10" />
+                        <div className="flex-1">
+                          <div className="h-3 w-24 bg-white/20 rounded-full" />
+                          <div className="h-2 w-16 bg-white/10 rounded-full mt-2" />
+                          <div className="h-2 w-20 bg-white/10 rounded-full mt-1" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </PhoneFrame>
+              </div>
+
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.2 }}
+                className="absolute -left-4 md:-left-12 top-1/4 bg-white rounded-2xl shadow-xl p-3 border border-border-light">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-sold-green/15 flex items-center justify-center">
+                    <span className="text-sold-green text-[14px] font-bold">$</span>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-ink">SOLD $1.2M</p>
+                    <p className="text-[9px] text-smoke">Coral Gables</p>
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.4 }}
+                className="absolute -right-4 md:-right-8 top-2/3 bg-white rounded-2xl shadow-xl p-3 border border-border-light">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-live-red/15 flex items-center justify-center">
+                    <Play size={12} className="text-live-red" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-ink">LIVE NOW</p>
+                    <p className="text-[9px] text-smoke">23 watching</p>
+                  </div>
+                </div>
+              </motion.div>
             </motion.div>
           </div>
         </div>
       </section>
 
-      {/* ════════ FEATURES ════════ */}
-      <section className="max-w-[1200px] mx-auto px-5 md:px-8 py-24 md:py-36">
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-[30px] md:text-[44px] font-extrabold text-ink tracking-tight mb-4">
-            Everything an agent needs.{' '}
-            <BurstBits />
+      {/* ════════ FEATURES PREVIEW ════════ */}
+      <section className="max-w-[1200px] mx-auto px-5 md:px-8 py-20 md:py-28">
+        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-14">
+          <h2 className="text-[28px] md:text-[40px] font-extrabold text-ink tracking-tight mb-3">
+            Everything an agent needs. One link.
           </h2>
-          <p className="text-[16px] md:text-[18px] text-smoke max-w-[520px] mx-auto">
+          <p className="text-[15px] md:text-[17px] text-smoke max-w-[520px] mx-auto">
             Pin listings to real addresses. Post stories and reels. Go live from open houses. All on your map.
           </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {FEATURES_PREVIEW.map((feature, i) => {
             const Icon = feature.icon
             return (
               <motion.div
                 key={i}
-                initial={{ opacity: 0, y: 24 }}
+                initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
+                transition={{ delay: i * 0.08 }}
                 viewport={{ once: true }}
-                className="bg-cream rounded-[20px] p-7 group hover:bg-tangerine-soft transition-colors duration-300"
+                className="bg-cream rounded-[20px] p-6 md:p-7 group hover:bg-tangerine-soft transition-colors duration-300"
               >
-                <div className="w-12 h-12 rounded-[14px] bg-tangerine/10 flex items-center justify-center mb-5 group-hover:bg-tangerine/20 transition-colors">
+                <div className="w-12 h-12 rounded-[14px] bg-tangerine/10 flex items-center justify-center mb-4 group-hover:bg-tangerine/20 transition-colors">
                   <Icon size={22} className="text-tangerine" />
                 </div>
-                <h3 className="text-[17px] font-bold text-ink mb-2">{feature.title}</h3>
-                <p className="text-[14px] text-smoke leading-relaxed">{feature.desc}</p>
+                <h3 className="text-[16px] md:text-[17px] font-bold text-ink mb-1.5">{feature.title}</h3>
+                <p className="text-[13px] md:text-[14px] text-smoke leading-relaxed">{feature.desc}</p>
               </motion.div>
             )
           })}
         </div>
 
-        <div className="text-center mt-12">
+        <div className="text-center mt-10">
           <Button variant="secondary" size="lg" onClick={() => navigate('/for-agents')} iconRight={<ArrowRight size={16} />}>
             See all features
           </Button>
@@ -331,159 +229,78 @@ export default function Home() {
 
       {/* ════════ HOW IT WORKS ════════ */}
       <section className="bg-cream/50 border-y border-border-light">
-        <div className="max-w-[1200px] mx-auto px-5 md:px-8 py-24 md:py-36">
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-[30px] md:text-[44px] font-extrabold text-ink tracking-tight mb-3">
-              Three steps to your Reeltor
-            </h2>
-            <p className="text-[16px] md:text-[18px] text-smoke">Set up in under 2 minutes.</p>
+        <div className="max-w-[1200px] mx-auto px-5 md:px-8 py-20 md:py-28">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-14">
+            <h2 className="text-[28px] md:text-[40px] font-extrabold text-ink tracking-tight mb-3">Three steps to your Reeltor</h2>
+            <p className="text-[15px] md:text-[17px] text-smoke">Set up in under 2 minutes.</p>
           </motion.div>
 
-          <div className="flex flex-col gap-20 md:gap-28">
-            {HOW_IT_WORKS.map((item, i) => {
-              const isReversed = i % 2 === 1
-              return (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6 }}
-                  viewport={{ once: true }}
-                  className={`grid md:grid-cols-2 gap-10 md:gap-16 items-center ${isReversed ? 'md:direction-rtl' : ''}`}
-                >
-                  {/* Text */}
-                  <div className={`${isReversed ? 'md:order-2' : 'md:order-1'}`}>
-                    <span className="text-[56px] md:text-[72px] font-extrabold text-tangerine/12 leading-none font-mono block mb-2">
-                      {item.step}
-                    </span>
-                    <h3 className="text-[22px] md:text-[28px] font-bold text-ink mb-3">{item.title}</h3>
-                    <p className="text-[15px] md:text-[17px] text-smoke leading-relaxed max-w-[420px]">{item.desc}</p>
-                  </div>
-
-                  {/* Phone frame */}
-                  <div className={`${isReversed ? 'md:order-1' : 'md:order-2'}`}>
-                    <PhoneFrame className="max-w-[260px]">
-                      <img
-                        src={item.screenshot}
-                        alt={item.title}
-                        className="absolute inset-0 w-full h-full object-cover"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                      />
-                      {/* Fallback placeholder */}
-                      <div className="absolute inset-0 bg-gradient-to-br from-cream to-pearl flex items-center justify-center">
-                        <div className="text-center px-6">
-                          <div className="w-12 h-12 rounded-full bg-tangerine/10 flex items-center justify-center mx-auto mb-3">
-                            <MapPin size={20} className="text-tangerine" />
-                          </div>
-                          <p className="text-[12px] text-ash font-medium">{item.title}</p>
-                        </div>
-                      </div>
-                    </PhoneFrame>
-                  </div>
-                </motion.div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ════════ PLATFORM LOGOS ════════ */}
-      <section className="max-w-[1200px] mx-auto px-5 md:px-8 py-20 md:py-28">
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="text-center"
-        >
-          <p className="text-[14px] md:text-[16px] text-ash font-medium uppercase tracking-wider mb-8">
-            Works with the platforms you already use
-          </p>
-          <div className="flex flex-wrap justify-center gap-6 md:gap-10">
-            {PLATFORMS.map(({ Logo, name }, i) => (
-              <motion.div
-                key={name}
-                initial={{ opacity: 0, scale: 0.8 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.05 }}
-                viewport={{ once: true }}
-                className="flex flex-col items-center gap-2 opacity-70 hover:opacity-100 transition-opacity"
-              >
-                <Logo size={36} />
-                <span className="text-[11px] text-ash font-medium hidden md:block">{name}</span>
+          <div className="grid md:grid-cols-3 gap-6 md:gap-8">
+            {[
+              { step: '01', title: 'Claim your link', desc: 'Pick a username. Your Reeltor lives at reeltor.co/you. Share it everywhere — bio, email, business cards.' },
+              { step: '02', title: 'Drop pins', desc: 'Add listings, stories, reels, open houses, and live streams. Each one pinned to a real address on your map.' },
+              { step: '03', title: 'Grow your audience', desc: 'Homebuyers follow you, save listings, and discover your neighborhood expertise. Track it all in your dashboard.' },
+            ].map((item, i) => (
+              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} viewport={{ once: true }}
+                className="bg-white rounded-[20px] p-6 md:p-8 shadow-sm border border-border-light">
+                <span className="text-[48px] md:text-[56px] font-extrabold text-tangerine/15 leading-none font-mono block mb-3">{item.step}</span>
+                <h3 className="text-[18px] md:text-[20px] font-bold text-ink mb-2">{item.title}</h3>
+                <p className="text-[14px] md:text-[15px] text-smoke leading-relaxed">{item.desc}</p>
               </motion.div>
             ))}
           </div>
-        </motion.div>
+        </div>
       </section>
 
       {/* ════════ FEATURED AGENTS ════════ */}
       <section className="max-w-[1200px] mx-auto px-5 md:px-8 py-20 md:py-28">
-        <div className="flex items-end justify-between mb-10">
+        <div className="flex items-end justify-between mb-8">
           <div>
-            <h2 className="text-[28px] md:text-[40px] font-extrabold text-ink tracking-tight mb-2">Featured agents</h2>
-            <p className="text-[15px] md:text-[17px] text-smoke">See how agents use Reeltor.</p>
+            <h2 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Featured agents</h2>
+            <p className="text-[15px] text-smoke">See how top agents use Reeltor.</p>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => navigate('/explore')} className="hidden md:flex">
-            View all
-          </Button>
+          <Button variant="secondary" size="sm" onClick={() => navigate('/explore')} className="hidden md:flex">View all</Button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 md:gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
           {agents.map((agent, i) => (
-            <motion.button
-              key={agent.uid}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08 }}
-              viewport={{ once: true }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => navigate(`/${agent.username}`)}
-              className="bg-cream rounded-[20px] p-6 md:p-7 flex flex-col items-center gap-3 text-center cursor-pointer hover:shadow-md transition-shadow"
-            >
+            <motion.button key={agent.uid} initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }} viewport={{ once: true }}
+              whileTap={{ scale: 0.97 }} onClick={() => navigate(`/${agent.username}`)}
+              className="bg-cream rounded-[20px] p-5 md:p-6 flex flex-col items-center gap-3 text-center cursor-pointer hover:shadow-md transition-shadow">
               <Avatar src={agent.photoURL} name={agent.displayName} size={64} ring="story" />
               <div>
-                <p className="text-[16px] font-bold text-ink">{agent.displayName}</p>
-                <p className="text-[13px] text-tangerine font-medium">@{agent.username}</p>
+                <p className="text-[15px] md:text-[16px] font-bold text-ink">{agent.displayName}</p>
+                <p className="text-[12px] text-tangerine font-medium">@{agent.username}</p>
               </div>
-              {agent.bio && <p className="text-[13px] text-smoke line-clamp-2">{agent.bio}</p>}
-              {agent.brokerage && <p className="text-[11px] text-ash">{agent.brokerage}</p>}
+              <p className="text-[12px] text-smoke line-clamp-2">{agent.bio}</p>
+              <p className="text-[11px] text-ash">{agent.followerCount.toLocaleString()} followers</p>
             </motion.button>
           ))}
         </div>
       </section>
 
       {/* ════════ BOTTOM CTA ════════ */}
-      <section className="max-w-[1200px] mx-auto px-5 md:px-8 pb-24 md:pb-36">
-        <div className="bg-gradient-to-br from-midnight to-obsidian rounded-[28px] p-10 md:p-20 text-center relative overflow-hidden">
+      <section className="max-w-[1200px] mx-auto px-5 md:px-8 pb-20 md:pb-28">
+        <div className="bg-gradient-to-br from-midnight to-obsidian rounded-[28px] p-8 md:p-16 text-center relative overflow-hidden">
           <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-0 right-0 w-[350px] h-[350px] bg-tangerine/8 rounded-full blur-[100px]" />
-            <div className="absolute bottom-0 left-0 w-[250px] h-[250px] bg-tangerine/5 rounded-full blur-[80px]" />
+            <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-tangerine/8 rounded-full blur-[80px]" />
           </div>
           <div className="relative">
-            <h2 className="text-[28px] md:text-[48px] font-extrabold text-white tracking-tight mb-4">
-              Ready to go live?
-            </h2>
-            <p className="text-[16px] md:text-[18px] text-mist mb-10 max-w-[460px] mx-auto">
-              Turn your Instagram bio into a live, interactive map. Free to start.
+            <img src="/reeltor-logo-4b.png" alt="" className="w-14 h-14 md:w-16 md:h-16 mx-auto mb-6" />
+            <h2 className="text-[24px] md:text-[40px] font-extrabold text-white tracking-tight mb-3">Ready to go live?</h2>
+            <p className="text-[15px] md:text-[17px] text-mist mb-8 max-w-[440px] mx-auto">
+              Join agents who are turning their Instagram bio into a live, interactive map.
             </p>
-            <Button
-              variant="primary"
-              size="xl"
-              onClick={handleClaimClick}
-              iconRight={<ArrowRight size={18} />}
-            >
-              Claim your Reeltor — free
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button variant="primary" size="xl" onClick={handleClaimClick} iconRight={<ArrowRight size={18} />}>
+                Claim your Reeltor — free
+              </Button>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Auth modal (mobile) */}
+      {/* Auth (mobile only) */}
       <AuthSheet isOpen={showAuth} onClose={() => setShowAuth(false)} mode={authMode} />
     </MarketingLayout>
   )
