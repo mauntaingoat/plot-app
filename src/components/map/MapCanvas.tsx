@@ -46,8 +46,6 @@ function pinsToGeoJSON(pins: Pin[]) {
   }
 }
 
-// ── Canvas rendering ──
-
 function createPinImage(img: HTMLImageElement | null, ringColor: string, fallbackLetter: string, size: number = PIN_SIZE + RING_PAD): ImageData {
   const canvas = document.createElement('canvas')
   const s = size * 2
@@ -55,16 +53,14 @@ function createPinImage(img: HTMLImageElement | null, ringColor: string, fallbac
   const ctx = canvas.getContext('2d')!
   const cx = s / 2, cy = s / 2, outerR = s / 2
   const ringW = (RING_PAD / 2) * 2, innerR = outerR - ringW
-
   ctx.beginPath(); ctx.arc(cx, cy, outerR, 0, Math.PI * 2); ctx.fillStyle = ringColor; ctx.fill()
   ctx.beginPath(); ctx.arc(cx, cy, innerR, 0, Math.PI * 2); ctx.fillStyle = '#0A0E17'; ctx.fill()
-
   if (img && img.complete && img.naturalWidth > 0) {
     ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, innerR - 2, 0, Math.PI * 2); ctx.clip()
     const imgSize = (innerR - 2) * 2
     ctx.drawImage(img, cx - innerR + 2, cy - innerR + 2, imgSize, imgSize)
     ctx.restore()
-  } else {
+  } else if (fallbackLetter) {
     ctx.fillStyle = '#ffffff'; ctx.font = `bold ${innerR * 0.7}px Outfit, sans-serif`
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(fallbackLetter, cx, cy)
   }
@@ -84,92 +80,30 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
   const fittedRef = useRef(false)
   const pinsRef = useRef(pins); pinsRef.current = pins
   const loadedImagesRef = useRef<Set<string>>(new Set())
-  const clusterImagesLoadingRef = useRef<Set<number>>(new Set())
   const { center, zoom } = useMapStore()
   const pinClickRef = useRef(onPinClick); pinClickRef.current = onPinClick
 
-  // Load individual pin images
   const loadPinImages = useCallback(async (map: mapboxgl.Map, pinList: Pin[]) => {
     const agentImg = agentPhotoUrl ? await loadImage(agentPhotoUrl).catch(() => null) : null
-
     for (const pin of pinList) {
       const imgId = `pin-img-${pin.id}`
       if (loadedImagesRef.current.has(imgId)) continue
-
       const imageUrl = 'heroPhotoUrl' in pin ? pin.heroPhotoUrl : 'thumbnailUrl' in pin ? pin.thumbnailUrl : 'mediaUrl' in pin ? pin.mediaUrl : ''
       const color = pin.type === 'story' ? '#FF6B3D' : RING_COLORS[pin.type]
       const letter = PIN_CONFIG[pin.type].label[0]
-
       let img: HTMLImageElement | null = null
       if (imageUrl) img = await loadImage(imageUrl).catch(() => null)
       if (!img && agentImg) img = agentImg
-
       const imageData = createPinImage(img, color, letter)
       if (!map.hasImage(imgId)) {
         map.addImage(imgId, imageData, { pixelRatio: 2 })
         loadedImagesRef.current.add(imgId)
       }
     }
-
-    // Fallback cluster image (used until real cluster images load)
-    if (!loadedImagesRef.current.has('cluster-fallback')) {
-      const fb = createPinImage(null, '#FF6B3D', '')
-      if (!map.hasImage('cluster-fallback')) {
-        map.addImage('cluster-fallback', fb, { pixelRatio: 2 })
-        loadedImagesRef.current.add('cluster-fallback')
-      }
-    }
-  }, [agentPhotoUrl])
-
-  // Dynamically generate cluster images from their first child's thumbnail
-  const loadClusterImages = useCallback((map: mapboxgl.Map) => {
-    const source = map.getSource('pins') as mapboxgl.GeoJSONSource | undefined
-    if (!source) return
-
-    const features = map.queryRenderedFeatures({ layers: ['cluster-icons'] })
-    for (const f of features) {
-      if (!f.properties?.cluster) continue
-      const clusterId = f.properties.cluster_id as number
-      const imgId = `cluster-img-${clusterId}`
-
-      if (loadedImagesRef.current.has(imgId) || clusterImagesLoadingRef.current.has(clusterId)) continue
-      clusterImagesLoadingRef.current.add(clusterId)
-
-      source.getClusterLeaves(clusterId, 1, 0, async (err, leaves) => {
-        clusterImagesLoadingRef.current.delete(clusterId)
-        if (err || !leaves?.length) return
-
-        const leafProps = leaves[0].properties
-        const pinId = leafProps?.id
-        const pin = pinsRef.current.find((p) => p.id === pinId)
-
-        const imageUrl = pin
-          ? ('heroPhotoUrl' in pin ? pin.heroPhotoUrl : 'thumbnailUrl' in pin ? pin.thumbnailUrl : 'mediaUrl' in pin ? pin.mediaUrl : '')
-          : ''
-
-        let img: HTMLImageElement | null = null
-        if (imageUrl) img = await loadImage(imageUrl).catch(() => null)
-        if (!img && agentPhotoUrl) img = await loadImage(agentPhotoUrl).catch(() => null)
-
-        const imageData = createPinImage(img, '#FF6B3D', '')
-
-        if (!map.hasImage(imgId)) {
-          map.addImage(imgId, imageData, { pixelRatio: 2 })
-          loadedImagesRef.current.add(imgId)
-          // Trigger re-render to pick up the new image
-          const src = map.getSource('pins') as mapboxgl.GeoJSONSource | undefined
-          if (src) {
-            const data = pinsToGeoJSON(pinsRef.current) as GeoJSON.FeatureCollection
-            src.setData(data)
-          }
-        }
-      })
-    }
   }, [agentPhotoUrl])
 
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return
-
     const map = new mapboxgl.Map({
       container: mapContainer.current, style: MAPBOX_STYLE, center, zoom,
       attributionControl: false, interactive, pitchWithRotate: false,
@@ -181,9 +115,8 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       if (style?.layers) {
         for (const layer of style.layers) {
           const id = layer.id.toLowerCase()
-          if (id.includes('rain') || id.includes('snow') || id.includes('precip') || id.includes('weather') || id.includes('particle') || id.includes('fog') || id.includes('haze') || id.includes('cloud') || id.includes('storm')) {
+          if (id.includes('rain') || id.includes('snow') || id.includes('precip') || id.includes('weather') || id.includes('particle') || id.includes('fog') || id.includes('haze') || id.includes('cloud') || id.includes('storm'))
             try { map.removeLayer(layer.id) } catch {}
-          }
         }
       }
     })
@@ -191,51 +124,50 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
     map.on('load', async () => {
       await loadPinImages(map, pinsRef.current)
 
+      // Use clusterProperties to carry the first pin's ID into the cluster
+      // "firstPinId" will hold the ID of one of the pins in the cluster
       map.addSource('pins', {
         type: 'geojson',
         data: pinsToGeoJSON(pinsRef.current) as GeoJSON.FeatureCollection,
         cluster: true, clusterMaxZoom: 16, clusterRadius: 30,
         clusterProperties: {
-          // Aggregate first pin's image URL into cluster
-          firstImage: [['coalesce', ['accumulated'], ['get', 'firstImage']], ['get', 'imageUrl']],
+          firstPinId: [
+            // Reducer: keep the accumulated value (first one wins)
+            ['coalesce', ['accumulated'], ['get', 'firstPinId']],
+            // Mapper: each feature contributes its id
+            ['get', 'id'],
+          ],
         },
       })
 
-      // ── Cluster icons — use first child's thumbnail ──
+      // ── Cluster icon — reuses the first pin's already-loaded image ──
       map.addLayer({
         id: 'cluster-icons',
         type: 'symbol',
         source: 'pins',
         filter: ['has', 'point_count'],
         layout: {
-          'icon-image': [
-            'coalesce',
-            ['image', ['concat', 'cluster-img-', ['get', 'cluster_id']]],
-            ['image', 'cluster-fallback'],
-          ],
+          // Use the first pin's image (already loaded as pin-img-{id})
+          'icon-image': ['concat', 'pin-img-', ['get', 'firstPinId']],
           'icon-size': [
             'interpolate', ['linear'], ['get', 'point_count'],
-            2, 0.85, 10, 0.95, 50, 1.0,
+            2, 0.9, 10, 1.0, 50, 1.1,
           ],
           'icon-allow-overlap': true,
         },
       })
 
-      // ── Cluster "+X more" label below ──
+      // ── "+X more" label below cluster ──
       map.addLayer({
         id: 'cluster-label',
         type: 'symbol',
         source: 'pins',
         filter: ['has', 'point_count'],
         layout: {
-          'text-field': [
-            'concat', '+',
-            ['to-string', ['-', ['get', 'point_count'], 1]],
-            ' more',
-          ],
+          'text-field': ['concat', '+', ['to-string', ['-', ['get', 'point_count'], 1]], ' more'],
           'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
           'text-size': 9,
-          'text-offset': [0, 2.0],
+          'text-offset': [0, 2.2],
           'text-anchor': 'top',
           'text-allow-overlap': true,
         },
@@ -283,13 +215,12 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
         },
       })
 
-      // ── Click handlers ──
+      // ── Clicks ──
       map.on('click', 'pin-icons', (e) => {
         if (!e.features?.length) return
         const pinId = e.features[0].properties?.id
         if (pinId) { const pin = pinsRef.current.find((p) => p.id === pinId); if (pin) pinClickRef.current?.(pin) }
       })
-
       map.on('click', 'cluster-icons', (e) => {
         const features = map.queryRenderedFeatures(e.point, { layers: ['cluster-icons'] })
         if (!features.length) return
@@ -306,27 +237,17 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       map.on('mouseenter', 'cluster-icons', () => { map.getCanvas().style.cursor = 'pointer' })
       map.on('mouseleave', 'cluster-icons', () => { map.getCanvas().style.cursor = '' })
 
-      // Fit to pins
       if (fitToPins && pinsRef.current.length > 0 && !fittedRef.current) {
         fittedRef.current = true
         const coords = pinsRef.current.map((p) => p.coordinates)
-        if (coords.length === 1) {
-          map.easeTo({ center: [coords[0].lng, coords[0].lat], zoom: 15, duration: 800 })
-        } else {
-          map.fitBounds(getBounds(coords), { padding: 80, duration: 800 })
-        }
+        if (coords.length === 1) map.easeTo({ center: [coords[0].lng, coords[0].lat], zoom: 15, duration: 800 })
+        else map.fitBounds(getBounds(coords), { padding: 80, duration: 800 })
       }
-
-      // Load cluster images once rendered
-      setTimeout(() => loadClusterImages(map), 1200)
     })
 
-    // On idle, try loading cluster images for visible clusters
-    map.on('idle', () => loadClusterImages(map))
     map.on('moveend', () => onMapMoved?.())
-
     mapRef.current = map
-    return () => { loadedImagesRef.current.clear(); clusterImagesLoadingRef.current.clear(); map.remove(); mapRef.current = null }
+    return () => { loadedImagesRef.current.clear(); map.remove(); mapRef.current = null }
   }, []) // eslint-disable-line
 
   useEffect(() => {
