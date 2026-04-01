@@ -51,9 +51,7 @@ export default function Home() {
             className="flex items-center justify-between mb-16"
           >
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-tangerine to-ember flex items-center justify-center">
-                <MapPin size={16} className="text-white" />
-              </div>
+              <img src="/favicon.svg" alt="Reeltor" className="w-8 h-8" />
               <span className="text-[20px] font-extrabold text-ink tracking-tight">Reeltor</span>
             </div>
 
@@ -217,9 +215,7 @@ export default function Home() {
       {/* Bottom CTA */}
       <section className="px-6 py-16 text-center">
         <div className="bg-gradient-to-br from-midnight to-obsidian rounded-[24px] p-8 text-center">
-          <div className="w-14 h-14 rounded-[16px] bg-gradient-to-br from-tangerine to-ember flex items-center justify-center mx-auto mb-5">
-            <MapPin size={24} className="text-white" />
-          </div>
+          <img src="/favicon.svg" alt="Reeltor" className="w-14 h-14 mx-auto mb-5" />
           <h2 className="text-[24px] font-extrabold text-white tracking-tight mb-2">
             Ready to get plotted?
           </h2>

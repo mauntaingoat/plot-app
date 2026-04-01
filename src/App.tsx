@@ -17,9 +17,9 @@ function LoadingScreen() {
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: 'spring', damping: 15 }}
-        className="w-14 h-14 rounded-[16px] bg-gradient-to-br from-tangerine to-ember flex items-center justify-center mb-4"
+        className="mb-4"
       >
-        <MapPin size={26} className="text-white" />
+        <img src="/favicon.svg" alt="Reeltor" className="w-14 h-14" />
       </motion.div>
       <motion.div
         animate={{ rotate: 360 }}
