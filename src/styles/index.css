@@ -305,6 +305,49 @@ input:focus, textarea:focus {
   letter-spacing: 0.06em;
 }
 
+/* ── Legal prose ── */
+.prose-reeltor h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin-bottom: 8px;
+}
+
+.prose-reeltor h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-graphite);
+  margin-bottom: 4px;
+  margin-top: 12px;
+}
+
+.prose-reeltor p {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--color-smoke);
+}
+
+.prose-reeltor ul {
+  list-style: disc;
+  padding-left: 20px;
+  margin-top: 8px;
+}
+
+.prose-reeltor li {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--color-smoke);
+  margin-bottom: 4px;
+}
+
+.prose-reeltor a {
+  color: var(--color-tangerine);
+}
+
+.prose-reeltor a:hover {
+  text-decoration: underline;
+}
+
 /* ── Mapbox popup override ── */
 .mapboxgl-popup-content {
   background: transparent !important;
