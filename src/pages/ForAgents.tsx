@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { MapPin, Play, Radio, Home, BadgeCheck, BarChart3, Users, Link2, ArrowRight, Check, Smartphone, Instagram, Globe } from 'lucide-react'
+import { MapPin, Play, Radio, Home, BadgeCheck, BarChart3, Users, Link2, ArrowRight, Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { SEOHead } from '@/components/marketing/SEOHead'
