@@ -55,7 +55,7 @@ const FAQS = [
   { q: 'Can I try Pro before committing?', a: 'Yes — start on Free and upgrade to Pro anytime. Your data carries over. No setup required.' },
   { q: 'What counts as an "active pin"?', a: 'Any pin that\'s visible on your public map. You can toggle pins off to free up slots on the Free plan. Expired stories and ended live streams don\'t count.' },
   { q: 'Can I cancel Pro anytime?', a: 'Yes. Cancel anytime from your dashboard. You\'ll keep Pro features until the end of your billing period, then drop to Free.' },
-  { q: 'Do consumers need an account?', a: 'No. Anyone can view your Reeltor profile and explore your map without signing up. They only need an account to follow, save, or contact you.' },
+  { q: 'Do homebuyers need an account?', a: 'No. Anyone can view your Reeltor profile and explore your map without signing up. They only need an account to follow, save, or contact you.' },
   { q: 'What social platforms can I connect?', a: 'Instagram, TikTok, YouTube, Facebook, LinkedIn, Zillow, Realtor.com, MLS, and your personal website. Free plan: 2 platforms. Pro: unlimited.' },
   { q: 'Is there a team plan?', a: 'Coming soon. If you\'re a brokerage or team, email hello@reeltor.co and we\'ll set you up.' },
 ]
@@ -70,7 +70,7 @@ export default function Pricing() {
     if (userDoc) {
       navigate('/dashboard')
     } else {
-      setShowAuth(true)
+      navigate('/sign-up')
     }
   }
 
@@ -99,14 +99,14 @@ export default function Pricing() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
-              className={`rounded-[24px] p-6 md:p-8 ${
+              className={`rounded-[24px] p-6 md:p-8 flex flex-col relative ${
                 plan.featured
                   ? 'bg-gradient-to-br from-midnight to-obsidian text-white ring-2 ring-tangerine/30'
                   : 'bg-cream border border-border-light'
               }`}
             >
               {plan.featured && (
-                <span className="inline-block px-3 py-1 rounded-full bg-tangerine text-white text-[11px] font-bold uppercase tracking-wider mb-4">
+                <span className="absolute -top-3 right-6 px-3 py-1 rounded-full bg-tangerine text-white text-[11px] font-bold uppercase tracking-wider">
                   Most Popular
                 </span>
               )}

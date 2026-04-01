@@ -10,6 +10,8 @@ const Explore = lazy(() => import('@/pages/Explore'))
 const About = lazy(() => import('@/pages/About'))
 const Terms = lazy(() => import('@/pages/Terms'))
 const Privacy = lazy(() => import('@/pages/Privacy'))
+const SignUp = lazy(() => import('@/pages/SignUp'))
+const SignIn = lazy(() => import('@/pages/SignIn'))
 const AgentProfile = lazy(() => import('@/pages/AgentProfile'))
 const Dashboard = lazy(() => import('@/pages/Dashboard'))
 const PinCreate = lazy(() => import('@/pages/PinCreate'))
@@ -60,6 +62,10 @@ function AppRoutes() {
         <Route path="/about" element={<About />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
+
+        {/* Auth pages */}
+        <Route path="/sign-up" element={<SignUp />} />
+        <Route path="/sign-in" element={<SignIn />} />
 
         {/* App pages */}
         <Route path="/dashboard" element={<Dashboard />} />
