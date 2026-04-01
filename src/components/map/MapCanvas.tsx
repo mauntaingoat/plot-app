@@ -92,11 +92,10 @@ function createPinImage(img: HTMLImageElement | null, ringColor: string, fallbac
   return ctx.getImageData(0, 0, s, s)
 }
 
-// Create a pill-shaped badge image for "+X more"
-function createBadgeImage(text: string): ImageData {
+// Create a pill-shaped badge image with custom bg color
+function createPillImage(text: string, bgColor: string, textColor: string = '#ffffff'): ImageData {
   const canvas = document.createElement('canvas')
   const scale = 2
-  // Measure text
   const tmpCtx = canvas.getContext('2d')!
   tmpCtx.font = `bold ${10 * scale}px Outfit, sans-serif`
   const textW = tmpCtx.measureText(text).width
@@ -104,11 +103,9 @@ function createBadgeImage(text: string): ImageData {
   const w = textW + padX * 2, h = 14 * scale + padY * 2
   canvas.width = w; canvas.height = h
   const ctx = canvas.getContext('2d')!
-  // Pill background (tangerine)
   const r = h / 2
-  ctx.beginPath(); ctx.roundRect(0, 0, w, h, r); ctx.fillStyle = TANGERINE; ctx.fill()
-  // Text (white)
-  ctx.fillStyle = '#ffffff'; ctx.font = `bold ${10 * scale}px Outfit, sans-serif`
+  ctx.beginPath(); ctx.roundRect(0, 0, w, h, r); ctx.fillStyle = bgColor; ctx.fill()
+  ctx.fillStyle = textColor; ctx.font = `bold ${10 * scale}px Outfit, sans-serif`
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
   ctx.fillText(text, w / 2, h / 2)
   return ctx.getImageData(0, 0, w, h)
@@ -153,13 +150,24 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
         const orangeData = createPinImage(img, TANGERINE, letter)
         if (!map.hasImage(orangeId)) { map.addImage(orangeId, orangeData, { pixelRatio: 2 }); loadedImagesRef.current.add(orangeId) }
       }
+
+      // Per-pin label pill (price/status in type-colored pill)
+      const label = pin.type === 'live' ? 'LIVE' : pin.type === 'open_house' ? 'OPEN' : pin.type === 'sold' ? 'SOLD'
+        : ('price' in pin ? formatPrice(pin.price) : 'soldPrice' in pin ? formatPrice(pin.soldPrice) : 'listingPrice' in pin ? formatPrice(pin.listingPrice) : '')
+      if (label) {
+        const labelId = `label-${pin.id}`
+        if (!loadedImagesRef.current.has(labelId)) {
+          const labelData = createPillImage(label, color)
+          if (!map.hasImage(labelId)) { map.addImage(labelId, labelData, { pixelRatio: 2 }); loadedImagesRef.current.add(labelId) }
+        }
+      }
     }
 
-    // Pre-render badge images for common counts
+    // Pre-render cluster badge pills
     for (let i = 1; i <= 20; i++) {
       const badgeId = `badge-${i}`
       if (!loadedImagesRef.current.has(badgeId)) {
-        const badgeData = createBadgeImage(`+${i} more`)
+        const badgeData = createPillImage(`+${i} more`, TANGERINE)
         if (!map.hasImage(badgeId)) { map.addImage(badgeId, badgeData, { pixelRatio: 2 }); loadedImagesRef.current.add(badgeId) }
       }
     }
@@ -253,25 +261,16 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
         },
       })
 
-      // ── Price/status labels ──
+      // ── Price/status label pills (pre-rendered images) ──
       map.addLayer({
         id: 'pin-labels',
         type: 'symbol',
         source: 'pins',
         filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'label'], '']],
         layout: {
-          'text-field': ['get', 'label'],
-          'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
-          'text-size': 10, 'text-offset': [0, 2.0], 'text-anchor': 'top',
-          'text-allow-overlap': true,
-        },
-        paint: {
-          'text-color': '#ffffff',
-          'text-halo-color': [
-            'match', ['get', 'type'],
-            'listing', '#3B82F6', 'sold', '#34C759', 'live', '#FF3B30', 'open_house', '#FFAA00', '#FF6B3D',
-          ],
-          'text-halo-width': 5, 'text-halo-blur': 1,
+          'icon-image': ['concat', 'label-', ['get', 'id']],
+          'icon-offset': [0, 28],
+          'icon-allow-overlap': true,
         },
       })
 
