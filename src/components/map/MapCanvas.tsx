@@ -121,7 +121,7 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
         data: { type: 'FeatureCollection', features: [] },
         cluster: true,
         clusterMaxZoom: 16,
-        clusterRadius: 24,
+        clusterRadius: 20, // = pin diameter (radius 10 * 2) — clusters only when circles overlap
       })
 
       // ── Cluster circles ──
