@@ -9,6 +9,7 @@ mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || ''
 
 const PIN_SIZE = 40
 const RING_PAD = 6
+const TANGERINE = '#FF6B3D'
 
 const RING_COLORS: Record<PinType, string> = {
   listing: '#3B82F6', sold: '#34C759', story: '#FF6B3D',
@@ -33,12 +34,11 @@ function pinsToGeoJSON(pins: Pin[]) {
     features: pins.map((pin) => {
       const price = 'price' in pin ? pin.price : 'soldPrice' in pin ? pin.soldPrice : 'listingPrice' in pin ? pin.listingPrice : 0
       const priceK = price >= 1_000_000 ? `$${(price / 1_000_000).toFixed(1)}M` : price >= 1_000 ? `$${(price / 1_000).toFixed(0)}K` : price > 0 ? `$${price}` : ''
-      const imageUrl = 'heroPhotoUrl' in pin ? pin.heroPhotoUrl : 'thumbnailUrl' in pin ? pin.thumbnailUrl : 'mediaUrl' in pin ? pin.mediaUrl : ''
       return {
         type: 'Feature' as const, id: pin.id,
         geometry: { type: 'Point' as const, coordinates: [pin.coordinates.lng, pin.coordinates.lat] },
         properties: {
-          id: pin.id, type: pin.type, imageUrl: imageUrl || '',
+          id: pin.id, type: pin.type,
           label: pin.type === 'live' ? 'LIVE' : pin.type === 'open_house' ? 'OPEN' : pin.type === 'sold' ? 'SOLD' : priceK || '',
         },
       }
@@ -67,6 +67,28 @@ function createPinImage(img: HTMLImageElement | null, ringColor: string, fallbac
   return ctx.getImageData(0, 0, s, s)
 }
 
+// Create a pill-shaped badge image for "+X more"
+function createBadgeImage(text: string): ImageData {
+  const canvas = document.createElement('canvas')
+  const scale = 2
+  // Measure text
+  const tmpCtx = canvas.getContext('2d')!
+  tmpCtx.font = `bold ${10 * scale}px Outfit, sans-serif`
+  const textW = tmpCtx.measureText(text).width
+  const padX = 8 * scale, padY = 4 * scale
+  const w = textW + padX * 2, h = 14 * scale + padY * 2
+  canvas.width = w; canvas.height = h
+  const ctx = canvas.getContext('2d')!
+  // Pill background (tangerine)
+  const r = h / 2
+  ctx.beginPath(); ctx.roundRect(0, 0, w, h, r); ctx.fillStyle = TANGERINE; ctx.fill()
+  // Text (black)
+  ctx.fillStyle = '#000000'; ctx.font = `bold ${10 * scale}px Outfit, sans-serif`
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  ctx.fillText(text, w / 2, h / 2)
+  return ctx.getImageData(0, 0, w, h)
+}
+
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image(); img.crossOrigin = 'anonymous'
@@ -86,18 +108,34 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
   const loadPinImages = useCallback(async (map: mapboxgl.Map, pinList: Pin[]) => {
     const agentImg = agentPhotoUrl ? await loadImage(agentPhotoUrl).catch(() => null) : null
     for (const pin of pinList) {
-      const imgId = `pin-img-${pin.id}`
-      if (loadedImagesRef.current.has(imgId)) continue
       const imageUrl = 'heroPhotoUrl' in pin ? pin.heroPhotoUrl : 'thumbnailUrl' in pin ? pin.thumbnailUrl : 'mediaUrl' in pin ? pin.mediaUrl : ''
       const color = pin.type === 'story' ? '#FF6B3D' : RING_COLORS[pin.type]
       const letter = PIN_CONFIG[pin.type].label[0]
       let img: HTMLImageElement | null = null
       if (imageUrl) img = await loadImage(imageUrl).catch(() => null)
       if (!img && agentImg) img = agentImg
-      const imageData = createPinImage(img, color, letter)
-      if (!map.hasImage(imgId)) {
-        map.addImage(imgId, imageData, { pixelRatio: 2 })
-        loadedImagesRef.current.add(imgId)
+
+      // Type-colored ring version (for individual pins)
+      const imgId = `pin-img-${pin.id}`
+      if (!loadedImagesRef.current.has(imgId)) {
+        const imageData = createPinImage(img, color, letter)
+        if (!map.hasImage(imgId)) { map.addImage(imgId, imageData, { pixelRatio: 2 }); loadedImagesRef.current.add(imgId) }
+      }
+
+      // Orange ring version (for mixed-type clusters)
+      const orangeId = `pin-img-orange-${pin.id}`
+      if (!loadedImagesRef.current.has(orangeId)) {
+        const orangeData = createPinImage(img, TANGERINE, letter)
+        if (!map.hasImage(orangeId)) { map.addImage(orangeId, orangeData, { pixelRatio: 2 }); loadedImagesRef.current.add(orangeId) }
+      }
+    }
+
+    // Pre-render badge images for common counts
+    for (let i = 1; i <= 20; i++) {
+      const badgeId = `badge-${i}`
+      if (!loadedImagesRef.current.has(badgeId)) {
+        const badgeData = createBadgeImage(`+${i} more`)
+        if (!map.hasImage(badgeId)) { map.addImage(badgeId, badgeData, { pixelRatio: 2 }); loadedImagesRef.current.add(badgeId) }
       }
     }
   }, [agentPhotoUrl])
@@ -124,31 +162,34 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
     map.on('load', async () => {
       await loadPinImages(map, pinsRef.current)
 
-      // Use clusterProperties to carry the first pin's ID into the cluster
-      // "firstPinId" will hold the ID of one of the pins in the cluster
       map.addSource('pins', {
         type: 'geojson',
         data: pinsToGeoJSON(pinsRef.current) as GeoJSON.FeatureCollection,
         cluster: true, clusterMaxZoom: 16, clusterRadius: 30,
         clusterProperties: {
-          firstPinId: [
-            // Reducer: keep the accumulated value (first one wins)
-            ['coalesce', ['accumulated'], ['get', 'firstPinId']],
-            // Mapper: each feature contributes its id
-            ['get', 'id'],
-          ],
+          // First pin's ID
+          firstPinId: [['coalesce', ['accumulated'], ['get', 'firstPinId']], ['get', 'id']],
+          // Track if cluster has mixed types: concatenate types, check later
+          typeSet: [['concat', ['accumulated'], ',', ['get', 'typeSet']], ['get', 'type']],
         },
       })
 
-      // ── Cluster icon — reuses the first pin's already-loaded image ──
+      // ── Cluster icon — orange ring if mixed, type-color if uniform ──
       map.addLayer({
         id: 'cluster-icons',
         type: 'symbol',
         source: 'pins',
         filter: ['has', 'point_count'],
         layout: {
-          // Use the first pin's image (already loaded as pin-img-{id})
-          'icon-image': ['concat', 'pin-img-', ['get', 'firstPinId']],
+          'icon-image': [
+            'case',
+            // Check if typeSet contains a comma (meaning multiple different types)
+            ['!=', ['index-of', ',', ['get', 'typeSet']], -1],
+            // Mixed types → orange ring version
+            ['concat', 'pin-img-orange-', ['get', 'firstPinId']],
+            // Single type → use the normal type-colored version
+            ['concat', 'pin-img-', ['get', 'firstPinId']],
+          ],
           'icon-size': [
             'interpolate', ['linear'], ['get', 'point_count'],
             2, 0.9, 10, 1.0, 50, 1.1,
@@ -157,25 +198,19 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
         },
       })
 
-      // ── "+X more" label below cluster ──
+      // ── "+X more" badge below cluster (pre-rendered pill image) ──
       map.addLayer({
-        id: 'cluster-label',
+        id: 'cluster-badge',
         type: 'symbol',
         source: 'pins',
         filter: ['has', 'point_count'],
         layout: {
-          'text-field': ['concat', '+', ['to-string', ['-', ['get', 'point_count'], 1]], ' more'],
-          'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
-          'text-size': 9,
-          'text-offset': [0, 2.2],
-          'text-anchor': 'top',
-          'text-allow-overlap': true,
-        },
-        paint: {
-          'text-color': '#ffffff',
-          'text-halo-color': '#1C2130',
-          'text-halo-width': 4,
-          'text-halo-blur': 1,
+          'icon-image': [
+            'concat', 'badge-',
+            ['to-string', ['min', ['-', ['get', 'point_count'], 1], 20]],
+          ],
+          'icon-offset': [0, 28],
+          'icon-allow-overlap': true,
         },
       })
 
@@ -231,7 +266,6 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
           map.easeTo({ center: features[0].geometry.coordinates as [number, number], zoom: z!, duration: 400 })
         })
       })
-
       map.on('mouseenter', 'pin-icons', () => { map.getCanvas().style.cursor = 'pointer' })
       map.on('mouseleave', 'pin-icons', () => { map.getCanvas().style.cursor = '' })
       map.on('mouseenter', 'cluster-icons', () => { map.getCanvas().style.cursor = 'pointer' })
