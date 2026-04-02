@@ -149,6 +149,11 @@ export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick
               <FilterPill key={opt.value} label={opt.label} active={activeFilters.has(opt.value)} onClick={() => handleFilterClick(opt.value)} count={count} dark={isFeed} />
             )
           })}
+          {/* Property attribute filters */}
+          <FilterPill label="Price" dark={isFeed} onClick={() => {}} />
+          <FilterPill label="Beds" dark={isFeed} onClick={() => {}} />
+          <FilterPill label="Baths" dark={isFeed} onClick={() => {}} />
+          <FilterPill label="Type" dark={isFeed} onClick={() => {}} />
         </FilterBar>
 
         {onToggleView && (

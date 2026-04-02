@@ -6,6 +6,7 @@ import { MapOverlay } from '@/components/map/MapOverlay'
 import { PeekDrawer } from '@/components/map/PeekDrawer'
 import { ContentFeed } from '@/components/map/ContentFeed'
 import { PinCard } from '@/components/dashboard/PinCard'
+import { ListingModal } from '@/components/viewers/ListingModal'
 import { AgentDetailSheet, type AgentMode } from '@/components/sheets/AgentDetailSheet'
 import { AuthSheet } from '@/components/sheets/AuthSheet'
 import { useMapStore } from '@/stores/mapStore'
@@ -179,7 +180,7 @@ export default function AgentProfile() {
           </motion.div>
         ) : (
           <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0">
-            <ContentFeed pins={filteredPins} agent={agent} isPreview={isPreview} />
+            <ContentFeed pins={filteredPins} agent={agent} onPinTap={(p) => setSelectedPin(p)} isPreview={isPreview} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -200,35 +201,10 @@ export default function AgentProfile() {
         enabledAgentCount={enabledAgentIds.size}
       />
 
-      {/* Modals — all with smooth swipe dismiss */}
-      <AnimatePresence>
-        {/* Placeholder — listing modal will be built next */}
-        {selectedPin && (
-          <div className="fixed inset-0 z-[100] flex items-end" onClick={() => setSelectedPin(null)}>
-            <div className="absolute inset-0 bg-black/50" />
-            <div className="relative w-full bg-obsidian rounded-t-[24px] max-h-[85vh] overflow-y-auto p-5" onClick={(e) => e.stopPropagation()}>
-              <div className="flex justify-center mb-3"><div className="w-9 h-[5px] rounded-full bg-charcoal" /></div>
-              <h2 className="text-[18px] font-bold text-white mb-2">{selectedPin.address}</h2>
-              {'price' in selectedPin && <p className="text-[24px] font-extrabold text-white font-mono">${selectedPin.price.toLocaleString()}</p>}
-              {'soldPrice' in selectedPin && <p className="text-[24px] font-extrabold text-sold-green font-mono">SOLD ${selectedPin.soldPrice.toLocaleString()}</p>}
-              {'name' in selectedPin && <p className="text-[16px] font-semibold text-tangerine">{selectedPin.name}</p>}
-              {'beds' in selectedPin && <p className="text-[14px] text-mist mt-2">{selectedPin.beds} bd · {selectedPin.baths} ba · {selectedPin.sqft.toLocaleString()} sqft</p>}
-              {selectedPin.content.length > 0 && (
-                <div className="mt-4">
-                  <p className="text-[13px] text-ghost uppercase tracking-wider mb-2">{selectedPin.content.length} content items</p>
-                  {selectedPin.content.map((c) => (
-                    <div key={c.id} className="bg-slate rounded-xl p-3 mb-2">
-                      <p className="text-[12px] text-tangerine font-semibold uppercase">{c.type}</p>
-                      <p className="text-[13px] text-mist mt-1">{c.caption}</p>
-                      <p className="text-[11px] text-ghost mt-1">{c.views.toLocaleString()} views</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* Listing modal — two tabs (Content / Listing) */}
+      {selectedPin && (
+        <ListingModal pin={selectedPin} agent={agent} onClose={() => setSelectedPin(null)} isPreview={isPreview} />
+      )}
 
       {/* Agent detail */}
       <AgentDetailSheet
