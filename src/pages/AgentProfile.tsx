@@ -47,29 +47,33 @@ export default function AgentProfile() {
   useEffect(() => {
     if (!username) return
     setLoading(true)
-    // Try Firestore first, fall back to mock data
-    const tryFirestore = firebaseConfigured
-      ? getUserByUsername(username).catch(() => null)
-      : Promise.resolve(null)
-
-    tryFirestore.then((doc) => {
-      if (doc) {
-        setAgent(doc)
-        setViewingAgentId(doc.uid)
-        // TODO: load real pins from Firestore
-      } else {
-        // Fall back to mock agents
-        const mockAgent = getMockAgent(username)
-        if (mockAgent) {
-          setAgent(mockAgent)
-          setAllPins(getMockPins(mockAgent.uid))
-          setViewingAgentId(mockAgent.uid)
-        } else {
-          setNotFound(true)
-        }
-      }
+    // Always check mock agents first (instant), then try Firestore to override
+    const mockAgent = getMockAgent(username)
+    if (mockAgent) {
+      setAgent(mockAgent)
+      setAllPins(getMockPins(mockAgent.uid))
+      setViewingAgentId(mockAgent.uid)
       setLoading(false)
-    })
+      return
+    }
+
+    // Not a mock agent — try Firestore
+    if (firebaseConfigured) {
+      const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000))
+      Promise.race([getUserByUsername(username).catch(() => null), timeout])
+        .then((doc) => {
+          if (doc) {
+            setAgent(doc)
+            setViewingAgentId(doc.uid)
+          } else {
+            setNotFound(true)
+          }
+          setLoading(false)
+        })
+    } else {
+      setNotFound(true)
+      setLoading(false)
+    }
   }, [username, setViewingAgentId])
 
   // Multi-select filter
