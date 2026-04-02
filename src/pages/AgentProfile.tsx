@@ -47,24 +47,29 @@ export default function AgentProfile() {
   useEffect(() => {
     if (!username) return
     setLoading(true)
-    if (!firebaseConfigured) {
-      const mockAgent = getMockAgent(username)
-      if (mockAgent) {
-        setAgent(mockAgent)
-        setAllPins(getMockPins(mockAgent.uid))
-        setViewingAgentId(mockAgent.uid)
+    // Try Firestore first, fall back to mock data
+    const tryFirestore = firebaseConfigured
+      ? getUserByUsername(username).catch(() => null)
+      : Promise.resolve(null)
+
+    tryFirestore.then((doc) => {
+      if (doc) {
+        setAgent(doc)
+        setViewingAgentId(doc.uid)
+        // TODO: load real pins from Firestore
       } else {
-        setNotFound(true)
+        // Fall back to mock agents
+        const mockAgent = getMockAgent(username)
+        if (mockAgent) {
+          setAgent(mockAgent)
+          setAllPins(getMockPins(mockAgent.uid))
+          setViewingAgentId(mockAgent.uid)
+        } else {
+          setNotFound(true)
+        }
       }
       setLoading(false)
-      return
-    }
-    getUserByUsername(username)
-      .then((doc) => {
-        if (doc) { setAgent(doc); setViewingAgentId(doc.uid) }
-        else { setNotFound(true) }
-      })
-      .finally(() => setLoading(false))
+    })
   }, [username, setViewingAgentId])
 
   // Multi-select filter
