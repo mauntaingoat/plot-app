@@ -25,9 +25,9 @@ export function Navbar() {
   useEffect(() => {
     const handleScroll = () => {
       const currentY = window.scrollY
-      if (currentY < 10) setVisible(true)
-      else if (currentY > lastScrollY.current + 5) setVisible(false)
-      else if (currentY < lastScrollY.current - 5) setVisible(true)
+      if (currentY < 20) setVisible(true)
+      else if (currentY > lastScrollY.current + 8) setVisible(false)
+      else if (currentY < lastScrollY.current - 8) setVisible(true)
       lastScrollY.current = currentY
     }
     window.addEventListener('scroll', handleScroll, { passive: true })

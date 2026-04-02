@@ -86,7 +86,9 @@ export default function SignUp() {
           : e.code === 'auth/weak-password' ? 'Password needs 6+ characters'
           : e.code === 'auth/invalid-email' ? 'Invalid email address'
           : e.code === 'auth/network-request-failed' ? 'Network error. Check your connection.'
-          : `Error: ${e.message || 'Something went wrong'}`
+          : e.code === 'auth/configuration-not-found' || e.code === 'auth/config-not-found'
+            ? 'Firebase Auth not configured. Enable Email/Password in Firebase Console → Authentication → Sign-in method.'
+          : `Error: ${e.code || e.message || 'Something went wrong'}`
         setError(msg)
       } finally { setLoading(false) }
     })()

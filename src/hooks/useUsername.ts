@@ -17,25 +17,26 @@ export function useUsername() {
     }
 
     setChecking(true)
-    timeoutRef.current = setTimeout(async () => {
+    timeoutRef.current = setTimeout(() => {
       if (!firebaseConfigured || !db) {
         setAvailable(true)
         setChecking(false)
         return
       }
 
-      // Race the Firestore read against a 3s timeout
-      try {
-        const result = await Promise.race([
-          getDoc(doc(db, 'usernames', cleaned)).then((snap) => !snap.exists()),
-          new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 3000)), // timeout = assume available
-        ])
-        setAvailable(result)
-      } catch {
-        setAvailable(true) // On error, assume available
-      } finally {
-        setChecking(false)
-      }
+      // Hard timeout — if Firestore doesn't respond in 2s, assume available
+      let resolved = false
+      const hardTimeout = setTimeout(() => {
+        if (!resolved) { resolved = true; setAvailable(true); setChecking(false) }
+      }, 2000)
+
+      getDoc(doc(db, 'usernames', cleaned))
+        .then((snap) => {
+          if (!resolved) { resolved = true; clearTimeout(hardTimeout); setAvailable(!snap.exists()); setChecking(false) }
+        })
+        .catch(() => {
+          if (!resolved) { resolved = true; clearTimeout(hardTimeout); setAvailable(true); setChecking(false) }
+        })
     }, 300)
   }, [])
 

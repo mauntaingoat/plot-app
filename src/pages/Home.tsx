@@ -67,7 +67,7 @@ export default function Home() {
               <p className="text-[13px] text-ash">Free forever. No credit card required.</p>
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.15 }} className="relative">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.2 }} className="relative">
               <div className="bg-obsidian rounded-[24px] overflow-hidden shadow-2xl border border-border-dark aspect-[9/16] max-h-[520px] md:max-h-[600px] relative mx-auto max-w-[320px] md:max-w-[340px]">
                 <div className="absolute inset-0 bg-gradient-to-br from-[#0C1E35] via-[#0F2847] to-[#0A1628]">
                   {[
@@ -77,7 +77,7 @@ export default function Home() {
                     { x: 80, y: 42, color: '#3B82F6', size: 12 }, { x: 35, y: 35, color: '#34C759', size: 10 },
                   ].map((pin, i) => (
                     <motion.div key={i} initial={{ scale: 0 }} animate={{ scale: 1 }}
-                      transition={{ delay: 0.6 + i * 0.06, type: 'spring', damping: 12 }}
+                      transition={{ delay: 0.5 + i * 0.05, duration: 0.3 }}
                       className="absolute rounded-full"
                       style={{ left: `${pin.x}%`, top: `${pin.y}%`, width: pin.size, height: pin.size, background: pin.color, boxShadow: `0 0 14px ${pin.color}50` }} />
                   ))}
@@ -94,14 +94,14 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1 }}
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8, duration: 0.4 }}
                 className="absolute -left-4 md:-left-12 top-1/4 bg-white rounded-2xl shadow-xl p-3 border border-border-light">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-sold-green/15 flex items-center justify-center"><span className="text-sold-green text-[14px] font-bold">$</span></div>
                   <div><p className="text-[11px] font-bold text-ink">SOLD $1.2M</p><p className="text-[9px] text-smoke">Coral Gables</p></div>
                 </div>
               </motion.div>
-              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.2 }}
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1, duration: 0.4 }}
                 className="absolute -right-4 md:-right-8 top-2/3 bg-white rounded-2xl shadow-xl p-3 border border-border-light">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-live-red/15 flex items-center justify-center"><Play size={12} className="text-live-red" /></div>
