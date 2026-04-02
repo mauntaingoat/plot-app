@@ -1,11 +1,9 @@
 import type { Timestamp } from 'firebase/firestore'
 
+// ── User types ──
+
 export type UserRole = 'consumer' | 'agent'
 export type AgentType = 'agent' | 'brokerage' | 'developer'
-
-export type PinType = 'listing' | 'story' | 'reel' | 'live' | 'sold' | 'open_house'
-
-export type ListingStatus = 'active' | 'pending' | 'contingent'
 
 export interface Platform {
   id: string
@@ -33,10 +31,41 @@ export interface UserDoc {
   setupPercent: number
 }
 
+// ── Pin types — only 2 listing types + neighborhood ──
+
+export type PinType = 'for_sale' | 'sold' | 'neighborhood'
+export type ListingStatus = 'active' | 'pending' | 'contingent' | 'closed'
+export type ContentType = 'reel' | 'story' | 'live' | 'video_note'
+export type HomeType = 'single_family' | 'condo' | 'townhouse' | 'multi_family' | 'land' | 'commercial' | 'other'
+
 export interface Coordinates {
   lat: number
   lng: number
 }
+
+// ── Content item (lives inside a pin) ──
+
+export interface ContentItem {
+  id: string
+  type: ContentType
+  mediaUrl: string
+  thumbnailUrl?: string
+  caption: string
+  duration?: number // seconds, for reels/videos
+  createdAt: Timestamp
+  views: number
+  saves: number
+}
+
+// ── Open house schedule ──
+
+export interface OpenHouse {
+  date: string // ISO date
+  startTime: string // "2:00 PM"
+  endTime: string // "5:00 PM"
+}
+
+// ── Pin (listing or neighborhood) ──
 
 export interface PinBase {
   id: string
@@ -52,62 +81,60 @@ export interface PinBase {
   views: number
   taps: number
   saves: number
+  content: ContentItem[] // all content lives inside the pin
 }
 
-export interface ListingPin extends PinBase {
-  type: 'listing'
+// For Sale listing
+export interface ForSalePin extends PinBase {
+  type: 'for_sale'
   price: number
   beds: number
   baths: number
   sqft: number
+  pricePerSqft: number
+  homeType: HomeType
+  yearBuilt?: number
+  lotSize?: string
   heroPhotoUrl: string
   photos: string[]
   description: string
   status: ListingStatus
+  daysOnMarket: number
+  mlsNumber?: string
+  openHouse?: OpenHouse | null
+  isLive?: boolean // agent is currently live streaming this listing
 }
 
+// Sold listing
 export interface SoldPin extends PinBase {
   type: 'sold'
   soldPrice: number
-  soldDate: Timestamp
   originalPrice: number
+  soldDate: Timestamp
+  beds: number
+  baths: number
+  sqft: number
+  pricePerSqft: number
+  homeType: HomeType
+  yearBuilt?: number
   heroPhotoUrl: string
   photos: string[]
+  description: string
+  daysOnMarket: number
+  mlsNumber?: string
 }
 
-export interface StoryPin extends PinBase {
-  type: 'story'
-  mediaUrl: string
-  mediaType: 'image' | 'video'
-  caption: string
-  expiresAt: Timestamp
+// Neighborhood content zone
+export interface NeighborhoodPin extends PinBase {
+  type: 'neighborhood'
+  name: string // e.g. "Brickell", "Coral Gables"
+  description: string
+  heroPhotoUrl?: string
 }
 
-export interface ReelPin extends PinBase {
-  type: 'reel'
-  mediaUrl: string
-  thumbnailUrl: string
-  duration: number
-  caption: string
-}
+export type Pin = ForSalePin | SoldPin | NeighborhoodPin
 
-export interface LivePin extends PinBase {
-  type: 'live'
-  streamUrl: string
-  viewerCount: number
-  startedAt: Timestamp
-  title: string
-}
-
-export interface OpenHousePin extends PinBase {
-  type: 'open_house'
-  listingPrice: number
-  startTime: Timestamp
-  endTime: Timestamp
-  heroPhotoUrl: string
-}
-
-export type Pin = ListingPin | SoldPin | StoryPin | ReelPin | LivePin | OpenHousePin
+// ── Social ──
 
 export interface FollowDoc {
   followerUid: string
@@ -118,6 +145,7 @@ export interface FollowDoc {
 export interface SaveDoc {
   userId: string
   pinId: string
+  contentId?: string // optional — save specific content or entire listing
   createdAt: Timestamp
 }
 
@@ -126,47 +154,26 @@ export interface UsernameDoc {
   createdAt: Timestamp
 }
 
-// Pin type visual config
+// ── Pin visual config ──
+
 export const PIN_CONFIG: Record<PinType, {
   label: string
   color: string
   bgColor: string
-  icon: string
 }> = {
-  listing: {
+  for_sale: {
     label: 'For Sale',
     color: '#3B82F6',
     bgColor: 'rgba(59, 130, 246, 0.12)',
-    icon: 'home',
   },
   sold: {
     label: 'Sold',
     color: '#34C759',
     bgColor: 'rgba(52, 199, 89, 0.12)',
-    icon: 'badge-check',
   },
-  story: {
-    label: 'Story',
+  neighborhood: {
+    label: 'Neighborhood',
     color: '#FF6B3D',
     bgColor: 'rgba(255, 107, 61, 0.12)',
-    icon: 'camera',
-  },
-  reel: {
-    label: 'Reel',
-    color: '#A855F7',
-    bgColor: 'rgba(168, 85, 247, 0.12)',
-    icon: 'film',
-  },
-  live: {
-    label: 'Live',
-    color: '#FF3B30',
-    bgColor: 'rgba(255, 59, 48, 0.12)',
-    icon: 'radio',
-  },
-  open_house: {
-    label: 'Open House',
-    color: '#FFAA00',
-    bgColor: 'rgba(255, 170, 0, 0.12)',
-    icon: 'door-open',
   },
 }
