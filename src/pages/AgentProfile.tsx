@@ -139,8 +139,8 @@ export default function AgentProfile() {
     )
   }
 
-  // Any modal open? Block map touches
-  const anyModalOpen = !!storyViewer || !!reelViewer || !!listingSheet || showAgentDetail || showAuth
+  // Any modal open?
+  const anyModalOpen = !!selectedPin || showAgentDetail || showAuth
 
   return (
     <div className="map-page" ref={mapContainerRef}>

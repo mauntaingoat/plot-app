@@ -54,8 +54,8 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
           {/* Badge */}
           <div className="absolute top-3 left-3">
             <Badge
-              variant={pin.type === 'live' ? 'live' : pin.type === 'sold' ? 'sold' : pin.type === 'open_house' ? 'open' : pin.type === 'story' ? 'story' : pin.type === 'reel' ? 'reel' : 'listing'}
-              pulse={pin.type === 'live' || pin.type === 'open_house'}
+              variant={pin.type === 'sold' ? 'sold' : pin.type === 'neighborhood' ? 'story' : 'listing'}
+              pulse={pin.type === 'for_sale' && 'isLive' in pin && !!pin.isLive}
             >
               {config.label}
             </Badge>
