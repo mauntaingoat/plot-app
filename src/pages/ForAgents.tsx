@@ -73,7 +73,7 @@ export default function ForAgents() {
           {FEATURES.map((f, i) => {
             const Icon = f.icon
             return (
-              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} viewport={{ once: true }}
+              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }} viewport={{ once: true }}
                 className="bg-cream rounded-[20px] p-6">
                 <div className="w-10 h-10 rounded-[12px] flex items-center justify-center mb-3" style={{ backgroundColor: `${f.color}12` }}>
                   <Icon size={20} style={{ color: f.color }} />

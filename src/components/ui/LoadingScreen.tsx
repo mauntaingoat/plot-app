@@ -119,19 +119,19 @@ export function LoadingScreen({ agentName, agentPhoto, onComplete, minDuration =
   )
 }
 
-// Simple version for non-agent pages
+// Simple version — uses midnight bg to match agent loading screen (no flash)
 export function SimpleLoadingScreen() {
   return (
-    <div className="min-h-screen bg-ivory flex flex-col items-center justify-center">
+    <div className="min-h-screen bg-midnight flex flex-col items-center justify-center">
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center gap-2 mb-6"
       >
         <img src="/reelst-logo.png" alt="Reelst" className="w-10 h-10" />
-        <span className="text-[24px] font-extrabold text-ink tracking-tight">Reelst</span>
+        <span className="text-[24px] font-extrabold text-white tracking-tight">Reelst</span>
       </motion.div>
-      <div className="w-[160px] h-[3px] bg-pearl rounded-full overflow-hidden">
+      <div className="w-[160px] h-[3px] bg-white/10 rounded-full overflow-hidden">
         <motion.div
           className="h-full bg-gradient-to-r from-tangerine to-ember rounded-full"
           initial={{ width: '0%' }}

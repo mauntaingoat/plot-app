@@ -53,7 +53,7 @@ export function Navbar() {
       <motion.nav
         initial={false}
         animate={{ y: visible ? 0 : -80 }}
-        transition={{ duration: 0.25, ease: 'easeInOut' }}
+        transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
         className="fixed top-0 left-0 right-0 z-[70] bg-ivory/80 backdrop-blur-xl border-b border-border-light"
       >
         <div className="max-w-[1200px] mx-auto px-5 md:px-8 flex items-center justify-between h-14 md:h-16">

@@ -18,20 +18,21 @@ export function useUsername() {
 
     setChecking(true)
     timeoutRef.current = setTimeout(async () => {
-      try {
-        if (!firebaseConfigured || !db) {
-          // No Firebase — assume available (demo mode)
-          setAvailable(true)
-          setChecking(false)
-          return
-        }
-        const snap = await getDoc(doc(db, 'usernames', cleaned))
-        setAvailable(!snap.exists())
-      } catch (e) {
-        console.warn('Username check failed:', e)
-        // If Firestore fails (permissions, network), assume available
-        // Real validation happens on claim
+      if (!firebaseConfigured || !db) {
         setAvailable(true)
+        setChecking(false)
+        return
+      }
+
+      // Race the Firestore read against a 3s timeout
+      try {
+        const result = await Promise.race([
+          getDoc(doc(db, 'usernames', cleaned)).then((snap) => !snap.exists()),
+          new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 3000)), // timeout = assume available
+        ])
+        setAvailable(result)
+      } catch {
+        setAvailable(true) // On error, assume available
       } finally {
         setChecking(false)
       }

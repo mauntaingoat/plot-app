@@ -47,7 +47,7 @@ export default function Home() {
 
         <div className="relative max-w-[1200px] mx-auto px-5 md:px-8 pt-12 md:pt-24 pb-16 md:pb-28">
           <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
-            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.25, 0.1, 0.25, 1] }}>
               <h1 className="text-[36px] md:text-[56px] lg:text-[64px] font-extrabold text-ink tracking-tight leading-[1.05] mb-5">
                 Where listings{' '}
                 <span className="text-gradient">come alive.</span>
@@ -123,7 +123,7 @@ export default function Home() {
           {FEATURES_PREVIEW.map((feature, i) => {
             const Icon = feature.icon
             return (
-              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} viewport={{ once: true }}
+              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }} viewport={{ once: true }}
                 className="bg-cream rounded-[20px] p-6 md:p-7 group hover:bg-tangerine-soft transition-colors duration-300">
                 <div className="w-12 h-12 rounded-[14px] bg-tangerine/10 flex items-center justify-center mb-4 group-hover:bg-tangerine/20 transition-colors"><Icon size={22} className="text-tangerine" /></div>
                 <h3 className="text-[16px] md:text-[17px] font-bold text-ink mb-1.5">{feature.title}</h3>
@@ -150,7 +150,7 @@ export default function Home() {
               { step: '02', title: 'Drop pins', desc: 'Add listings, stories, reels, open houses. Each pinned to a real address.' },
               { step: '03', title: 'Grow your audience', desc: 'Homebuyers follow you, save listings, and discover your expertise.' },
             ].map((item, i) => (
-              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} viewport={{ once: true }}
+              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1, duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }} viewport={{ once: true }}
                 className="bg-white rounded-[20px] p-6 md:p-8 shadow-sm border border-border-light">
                 <span className="text-[48px] md:text-[56px] font-extrabold text-tangerine/15 leading-none font-mono block mb-3">{item.step}</span>
                 <h3 className="text-[18px] md:text-[20px] font-bold text-ink mb-2">{item.title}</h3>
