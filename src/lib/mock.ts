@@ -10,7 +10,7 @@ const daysAgo = (d: number) => Timestamp.fromMillis(Date.now() - d * 86400_000)
 export const MOCK_AGENTS: UserDoc[] = [
   {
     uid: 'agent-carolina',
-    email: 'carolina@reeltor.co',
+    email: 'carolina@reelst.co',
     role: 'agent',
     agentType: 'agent',
     createdAt: daysAgo(90),
@@ -34,7 +34,7 @@ export const MOCK_AGENTS: UserDoc[] = [
   },
   {
     uid: 'agent-david',
-    email: 'david@reeltor.co',
+    email: 'david@reelst.co',
     role: 'agent',
     agentType: 'agent',
     createdAt: daysAgo(60),
@@ -57,7 +57,7 @@ export const MOCK_AGENTS: UserDoc[] = [
   },
   {
     uid: 'agent-lucia',
-    email: 'lucia@reeltor.co',
+    email: 'lucia@reelst.co',
     role: 'agent',
     agentType: 'agent',
     createdAt: daysAgo(45),
@@ -82,7 +82,7 @@ export const MOCK_AGENTS: UserDoc[] = [
 
 export const MOCK_CURRENT_USER: UserDoc = {
   uid: 'agent-mau',
-  email: 'mau@reeltor.co',
+  email: 'mau@reelst.co',
   role: 'agent',
   agentType: 'agent',
   createdAt: daysAgo(1),

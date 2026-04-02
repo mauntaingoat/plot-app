@@ -7,13 +7,13 @@ interface SEOHeadProps {
   path?: string
 }
 
-const BASE_URL = 'https://reeltor.co'
-const DEFAULT_TITLE = 'Reeltor — Where Listings Come Alive'
+const BASE_URL = 'https://reelst.co'
+const DEFAULT_TITLE = 'Reelst — Where Listings Come Alive'
 const DEFAULT_DESC = 'One link. A live map of your listings, stories, reels, and open houses. The modern agent\'s profile, built for content.'
-const DEFAULT_OG = '/reeltor-logo-4b.png'
+const DEFAULT_OG = '/reelst-logo.png'
 
 export function SEOHead({ title, description, ogImage, path = '' }: SEOHeadProps) {
-  const fullTitle = title ? `${title} — Reeltor` : DEFAULT_TITLE
+  const fullTitle = title ? `${title} — Reelst` : DEFAULT_TITLE
   const desc = description || DEFAULT_DESC
   const img = ogImage || DEFAULT_OG
   const url = `${BASE_URL}${path}`

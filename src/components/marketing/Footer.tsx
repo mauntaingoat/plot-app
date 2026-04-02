@@ -8,7 +8,7 @@ const PRODUCT_LINKS = [
 
 const COMPANY_LINKS = [
   { label: 'About', to: '/about' },
-  { label: 'Contact', href: 'mailto:hello@reeltor.co' },
+  { label: 'Contact', href: 'mailto:hello@reelst.co' },
 ]
 
 const LEGAL_LINKS = [
@@ -17,10 +17,10 @@ const LEGAL_LINKS = [
 ]
 
 const SOCIAL_LINKS = [
-  { label: 'Instagram', href: 'https://instagram.com/reeltor' },
-  { label: 'TikTok', href: 'https://tiktok.com/@reeltor' },
-  { label: 'LinkedIn', href: 'https://linkedin.com/company/reeltor' },
-  { label: 'X', href: 'https://x.com/reeltor' },
+  { label: 'Instagram', href: 'https://instagram.com/reelst' },
+  { label: 'TikTok', href: 'https://tiktok.com/@reelst' },
+  { label: 'LinkedIn', href: 'https://linkedin.com/company/reelst' },
+  { label: 'X', href: 'https://x.com/reelst' },
 ]
 
 export function Footer() {
@@ -32,8 +32,8 @@ export function Footer() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-1.5 mb-4">
-              <img src="/reeltor-logo-4b.png" alt="Reeltor" className="w-8 h-8" />
-              <span className="text-[18px] font-extrabold tracking-tight">Reeltor</span>
+              <img src="/reelst-logo.png" alt="Reelst" className="w-8 h-8" />
+              <span className="text-[18px] font-extrabold tracking-tight">Reelst</span>
             </div>
             <p className="text-[13px] text-ghost leading-relaxed max-w-[260px]">
               The modern real estate agent's profile. One link, a live map, all your content.
@@ -96,12 +96,12 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="border-t border-border-dark pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
           <p className="text-[12px] text-ghost">
-            &copy; {new Date().getFullYear()} Avigage LLC DBA Reeltor. All rights reserved.
+            &copy; {new Date().getFullYear()} Avigage LLC DBA Reelst. All rights reserved.
           </p>
           <div className="flex items-center gap-4">
             <Link to="/terms" className="text-[12px] text-ghost hover:text-mist transition-colors">Terms</Link>
             <Link to="/privacy" className="text-[12px] text-ghost hover:text-mist transition-colors">Privacy</Link>
-            <a href="mailto:hello@reeltor.co" className="text-[12px] text-ghost hover:text-mist transition-colors">hello@reeltor.co</a>
+            <a href="mailto:hello@reelst.co" className="text-[12px] text-ghost hover:text-mist transition-colors">hello@reelst.co</a>
           </div>
         </div>
       </div>

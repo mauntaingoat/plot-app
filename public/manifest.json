@@ -1,6 +1,6 @@
 {
-  "name": "Reeltor",
-  "short_name": "Reeltor",
+  "name": "Reelst",
+  "short_name": "Reelst",
   "description": "Your neighborhood, mapped. Map-based profiles for real estate agents.",
   "start_url": "/",
   "display": "standalone",
@@ -15,7 +15,7 @@
       "purpose": "any maskable"
     },
     {
-      "src": "/reeltor-logo-4b.png",
+      "src": "/reelst-logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

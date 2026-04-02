@@ -12,12 +12,12 @@ export default function Terms() {
         <div className="prose-reeltor space-y-8">
           <section>
             <h2>1. Agreement to Terms</h2>
-            <p>By accessing or using Reeltor ("Service"), operated by Avigage LLC DBA Reeltor ("we," "us," "our"), you agree to be bound by these Terms of Use. If you do not agree, do not use the Service.</p>
+            <p>By accessing or using Reelst ("Service"), operated by Avigage LLC DBA Reelst ("we," "us," "our"), you agree to be bound by these Terms of Use. If you do not agree, do not use the Service.</p>
           </section>
 
           <section>
             <h2>2. Description of Service</h2>
-            <p>Reeltor is a map-based profile platform for real estate agents ("Agents") and consumers ("Users"). Agents create public profiles with interactive maps containing listings, stories, reels, live streams, and open house pins tied to real addresses. Users browse, follow, save, and interact with Agent content.</p>
+            <p>Reelst is a map-based profile platform for real estate agents ("Agents") and consumers ("Users"). Agents create public profiles with interactive maps containing listings, stories, reels, live streams, and open house pins tied to real addresses. Users browse, follow, save, and interact with Agent content.</p>
           </section>
 
           <section>
@@ -32,7 +32,7 @@ export default function Terms() {
 
           <section>
             <h2>5. Content Ownership & License</h2>
-            <p>You retain ownership of content you post to Reeltor. By posting content, you grant Reeltor a non-exclusive, worldwide, royalty-free license to use, display, reproduce, and distribute your content in connection with the Service. You represent that you have the right to grant this license for all content you post.</p>
+            <p>You retain ownership of content you post to Reelst. By posting content, you grant Reelst a non-exclusive, worldwide, royalty-free license to use, display, reproduce, and distribute your content in connection with the Service. You represent that you have the right to grant this license for all content you post.</p>
           </section>
 
           <section>
@@ -42,7 +42,7 @@ export default function Terms() {
 
           <section>
             <h2>7. Subscriptions & Billing</h2>
-            <p>Reeltor offers free and paid subscription tiers. Paid subscriptions are billed monthly. You may cancel at any time; cancellation takes effect at the end of the current billing period. We reserve the right to change pricing with 30 days' notice. Refunds are handled on a case-by-case basis.</p>
+            <p>Reelst offers free and paid subscription tiers. Paid subscriptions are billed monthly. You may cancel at any time; cancellation takes effect at the end of the current billing period. We reserve the right to change pricing with 30 days' notice. Refunds are handled on a case-by-case basis.</p>
           </section>
 
           <section>
@@ -57,7 +57,7 @@ export default function Terms() {
 
           <section>
             <h2>10. Limitation of Liability</h2>
-            <p>To the maximum extent permitted by law, Avigage LLC DBA Reeltor shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Service.</p>
+            <p>To the maximum extent permitted by law, Avigage LLC DBA Reelst shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Service.</p>
           </section>
 
           <section>
@@ -67,7 +67,7 @@ export default function Terms() {
 
           <section>
             <h2>12. Contact</h2>
-            <p>Questions about these Terms? Contact us at <a href="mailto:hello@reeltor.co" className="text-tangerine hover:underline">hello@reeltor.co</a>.</p>
+            <p>Questions about these Terms? Contact us at <a href="mailto:hello@reelst.co" className="text-tangerine hover:underline">hello@reelst.co</a>.</p>
           </section>
         </div>
       </div>

@@ -13,7 +13,7 @@ export function StepPlatforms() {
         Where are you active?
       </h1>
       <p className="text-[15px] text-smoke text-center mb-8">
-        Select up to 5 platforms to link to your Reeltor.
+        Select up to 5 platforms to link to your Reelst.
       </p>
 
       <div className="grid grid-cols-3 gap-3 mb-8">

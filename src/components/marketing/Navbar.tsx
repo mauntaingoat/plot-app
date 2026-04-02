@@ -45,8 +45,8 @@ export function Navbar() {
         <div className="max-w-[1200px] mx-auto px-5 md:px-8 flex items-center justify-between h-14 md:h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-1.5 shrink-0">
-            <img src="/reeltor-logo-4b.png" alt="Reeltor" className="w-7 h-7 md:w-8 md:h-8" />
-            <span className="text-[18px] md:text-[20px] font-extrabold text-ink tracking-tight">Reeltor</span>
+            <img src="/reelst-logo.png" alt="Reelst" className="w-7 h-7 md:w-8 md:h-8" />
+            <span className="text-[18px] md:text-[20px] font-extrabold text-ink tracking-tight">Reelst</span>
           </Link>
 
           {/* Desktop links */}

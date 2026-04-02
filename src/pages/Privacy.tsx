@@ -12,7 +12,7 @@ export default function Privacy() {
         <div className="prose-reeltor space-y-8">
           <section>
             <h2>1. Introduction</h2>
-            <p>Avigage LLC DBA Reeltor ("we," "us," "our") respects your privacy. This Privacy Policy explains how we collect, use, disclose, and protect your information when you use our Service.</p>
+            <p>Avigage LLC DBA Reelst ("we," "us," "our") respects your privacy. This Privacy Policy explains how we collect, use, disclose, and protect your information when you use our Service.</p>
           </section>
 
           <section>
@@ -55,7 +55,7 @@ export default function Privacy() {
 
           <section>
             <h2>7. Your Rights</h2>
-            <p>Depending on your jurisdiction, you may have the right to: access your personal data; correct inaccurate data; delete your data; port your data to another service; opt out of marketing communications; and restrict or object to processing. To exercise these rights, email <a href="mailto:hello@reeltor.co" className="text-tangerine hover:underline">hello@reeltor.co</a>.</p>
+            <p>Depending on your jurisdiction, you may have the right to: access your personal data; correct inaccurate data; delete your data; port your data to another service; opt out of marketing communications; and restrict or object to processing. To exercise these rights, email <a href="mailto:hello@reelst.co" className="text-tangerine hover:underline">hello@reelst.co</a>.</p>
           </section>
 
           <section>
@@ -85,8 +85,8 @@ export default function Privacy() {
 
           <section>
             <h2>13. Contact</h2>
-            <p>For privacy-related inquiries, contact us at <a href="mailto:hello@reeltor.co" className="text-tangerine hover:underline">hello@reeltor.co</a>.</p>
-            <p className="mt-2">Avigage LLC DBA Reeltor<br />Miami, FL</p>
+            <p>For privacy-related inquiries, contact us at <a href="mailto:hello@reelst.co" className="text-tangerine hover:underline">hello@reelst.co</a>.</p>
+            <p className="mt-2">Avigage LLC DBA Reelst<br />Miami, FL</p>
           </section>
         </div>
       </div>

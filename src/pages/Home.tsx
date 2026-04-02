@@ -77,6 +77,8 @@ export default function Home() {
                 <span className="text-gradient">come alive.</span>
               </h1>
 
+              <p className="text-[13px] text-smoke/70 font-medium tracking-wide mb-3">ree·list — because the agents here are the realest you'll find.</p>
+
               <p className="text-[16px] md:text-[19px] text-smoke leading-relaxed mb-8 max-w-[480px]">
                 One link. A live map of your listings, stories, reels, and open houses. The modern agent's profile, built for content.
               </p>
@@ -88,7 +90,7 @@ export default function Home() {
                   onClick={handleClaimClick}
                   iconRight={<ArrowRight size={18} />}
                 >
-                  Claim your Reeltor
+                  Claim your Reelst
                 </Button>
                 <Button
                   variant="secondary"
@@ -231,13 +233,13 @@ export default function Home() {
       <section className="bg-cream/50 border-y border-border-light">
         <div className="max-w-[1200px] mx-auto px-5 md:px-8 py-20 md:py-28">
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-14">
-            <h2 className="text-[28px] md:text-[40px] font-extrabold text-ink tracking-tight mb-3">Three steps to your Reeltor</h2>
+            <h2 className="text-[28px] md:text-[40px] font-extrabold text-ink tracking-tight mb-3">Three steps to your Reelst</h2>
             <p className="text-[15px] md:text-[17px] text-smoke">Set up in under 2 minutes.</p>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-6 md:gap-8">
             {[
-              { step: '01', title: 'Claim your link', desc: 'Pick a username. Your Reeltor lives at reeltor.co/you. Share it everywhere — bio, email, business cards.' },
+              { step: '01', title: 'Claim your link', desc: 'Pick a username. Your Reelst lives at reelst.co/you. Share it everywhere — bio, email, business cards.' },
               { step: '02', title: 'Drop pins', desc: 'Add listings, stories, reels, open houses, and live streams. Each one pinned to a real address on your map.' },
               { step: '03', title: 'Grow your audience', desc: 'Homebuyers follow you, save listings, and discover your neighborhood expertise. Track it all in your dashboard.' },
             ].map((item, i) => (
@@ -257,7 +259,7 @@ export default function Home() {
         <div className="flex items-end justify-between mb-8">
           <div>
             <h2 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Featured agents</h2>
-            <p className="text-[15px] text-smoke">See how top agents use Reeltor.</p>
+            <p className="text-[15px] text-smoke">See how top agents use Reelst.</p>
           </div>
           <Button variant="secondary" size="sm" onClick={() => navigate('/explore')} className="hidden md:flex">View all</Button>
         </div>
@@ -286,14 +288,14 @@ export default function Home() {
             <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-tangerine/8 rounded-full blur-[80px]" />
           </div>
           <div className="relative">
-            <img src="/reeltor-logo-4b.png" alt="" className="w-14 h-14 md:w-16 md:h-16 mx-auto mb-6" />
+            <img src="/reelst-logo.png" alt="" className="w-14 h-14 md:w-16 md:h-16 mx-auto mb-6" />
             <h2 className="text-[24px] md:text-[40px] font-extrabold text-white tracking-tight mb-3">Ready to go live?</h2>
             <p className="text-[15px] md:text-[17px] text-mist mb-8 max-w-[440px] mx-auto">
               Join agents who are turning their Instagram bio into a live, interactive map.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button variant="primary" size="xl" onClick={handleClaimClick} iconRight={<ArrowRight size={18} />}>
-                Claim your Reeltor — free
+                Claim your Reelst — free
               </Button>
             </div>
           </div>

@@ -13,7 +13,7 @@ const FEATURES = [
   { icon: BadgeCheck, title: 'Sold Pins', desc: 'Showcase your track record. Every sale stays on your map as social proof.', color: '#34C759' },
   { icon: BarChart3, title: 'Analytics', desc: 'Views, taps, saves, followers — track what\'s working across all your content week over week.', color: '#FF6B3D' },
   { icon: Users, title: 'Audience Tools', desc: 'See your followers, connected platforms, and growing audience in one place.', color: '#3B82F6' },
-  { icon: Link2, title: 'One Link', desc: 'reeltor.co/you — put it in your Instagram bio, email signature, business card, everywhere.', color: '#FF6B3D' },
+  { icon: Link2, title: 'One Link', desc: 'reelst.co/you — put it in your Instagram bio, email signature, business card, everywhere.', color: '#FF6B3D' },
 ]
 
 const COMPARISON = [
@@ -48,11 +48,11 @@ export default function ForAgents() {
               <span className="text-gradient">link in bio.</span>
             </h1>
             <p className="text-[16px] md:text-[19px] text-smoke max-w-[540px] mx-auto mb-8">
-              Reeltor gives you an interactive map profile where every piece of content lives at a real address. Homebuyers don't just see your listings — they explore your neighborhood.
+              Reelst gives you an interactive map profile where every piece of content lives at a real address. Homebuyers don't just see your listings — they explore your neighborhood.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button variant="primary" size="xl" onClick={() => navigate('/sign-up')} iconRight={<ArrowRight size={18} />}>
-                Claim your Reeltor — free
+                Claim your Reelst — free
               </Button>
               <Button variant="secondary" size="xl" onClick={() => navigate('/pricing')}>
                 View pricing
@@ -86,11 +86,11 @@ export default function ForAgents() {
         </div>
       </section>
 
-      {/* Traditional vs Reeltor comparison */}
+      {/* Traditional vs Reelst comparison */}
       <section className="bg-cream/50 border-y border-border-light">
         <div className="max-w-[1200px] mx-auto px-5 md:px-8 py-20 md:py-28">
           <div className="text-center mb-14">
-            <h2 className="text-[28px] md:text-[40px] font-extrabold text-ink tracking-tight mb-3">Traditional vs Reeltor</h2>
+            <h2 className="text-[28px] md:text-[40px] font-extrabold text-ink tracking-tight mb-3">Traditional vs Reelst</h2>
             <p className="text-[15px] md:text-[17px] text-smoke">What your link in bio could actually be.</p>
           </div>
 
@@ -103,7 +103,7 @@ export default function ForAgents() {
               </div>
               <div className="p-4 md:p-5 text-center bg-tangerine-soft">
                 <p className="text-[12px] text-tangerine font-semibold uppercase tracking-wider">After</p>
-                <p className="text-[14px] font-bold text-tangerine">Reeltor</p>
+                <p className="text-[14px] font-bold text-tangerine">Reelst</p>
               </div>
             </div>
 
@@ -136,7 +136,7 @@ export default function ForAgents() {
               Free to start. Pro when you're ready. Claim your link in 30 seconds.
             </p>
             <Button variant="primary" size="xl" onClick={() => navigate('/sign-up')} iconRight={<ArrowRight size={18} />}>
-              Claim your Reeltor
+              Claim your Reelst
             </Button>
           </div>
         </div>

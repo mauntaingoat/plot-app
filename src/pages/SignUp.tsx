@@ -86,8 +86,8 @@ export default function SignUp() {
       {/* Left: form */}
       <div className="flex-1 flex flex-col justify-center px-6 md:px-16 lg:px-24 py-12 max-w-[600px] mx-auto md:mx-0">
         <Link to="/" className="flex items-center gap-1.5 mb-10">
-          <img src="/reeltor-logo-4b.png" alt="Reeltor" className="w-8 h-8" />
-          <span className="text-[20px] font-extrabold text-ink tracking-tight">Reeltor</span>
+          <img src="/reelst-logo.png" alt="Reelst" className="w-8 h-8" />
+          <span className="text-[20px] font-extrabold text-ink tracking-tight">Reelst</span>
         </Link>
 
         <AnimatePresence mode="wait">
@@ -95,8 +95,8 @@ export default function SignUp() {
           {step === 'role' && (
             <motion.div key="role" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-6">
               <div>
-                <h1 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Get started with Reeltor</h1>
-                <p className="text-[15px] text-smoke">How do you want to use Reeltor?</p>
+                <h1 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Get started with Reelst</h1>
+                <p className="text-[15px] text-smoke">How do you want to use Reelst?</p>
               </div>
 
               <div className="space-y-3">
@@ -107,7 +107,7 @@ export default function SignUp() {
                   </div>
                   <div>
                     <p className="text-[16px] font-bold text-ink">I'm an agent</p>
-                    <p className="text-[13px] text-smoke">Claim your Reeltor link, add pins, grow your audience</p>
+                    <p className="text-[13px] text-smoke">Claim your Reelst link, add pins, grow your audience</p>
                   </div>
                 </motion.button>
 
@@ -135,12 +135,12 @@ export default function SignUp() {
                 <AtSign size={26} className="text-white" />
               </div>
               <div>
-                <h1 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Claim your Reeltor</h1>
+                <h1 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Claim your Reelst</h1>
                 <p className="text-[15px] text-smoke">Choose your unique link</p>
               </div>
               <div className="bg-cream rounded-[16px] px-5 py-3">
-                <p className="text-[12px] text-smoke font-medium mb-0.5">Your Reeltor link</p>
-                <p className="text-[18px] font-bold text-ink">reeltor.co/<span className={username ? 'text-tangerine' : 'text-ash'}>{username || '...'}</span></p>
+                <p className="text-[12px] text-smoke font-medium mb-0.5">Your Reelst link</p>
+                <p className="text-[18px] font-bold text-ink">reelst.co/<span className={username ? 'text-tangerine' : 'text-ash'}>{username || '...'}</span></p>
               </div>
               <div className="relative">
                 <input type="text" value={username} onChange={(e) => handleUsernameChange(e.target.value)} placeholder="username" autoFocus
@@ -163,7 +163,7 @@ export default function SignUp() {
               <button onClick={() => setStep(role === 'agent' ? 'username' : 'role')} className="flex items-center gap-1 text-[13px] text-smoke font-medium mb-2"><ArrowLeft size={14} /> Back</button>
               <div>
                 <h1 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Create your account</h1>
-                {role === 'agent' && username && <p className="text-[15px] text-smoke">Securing <span className="text-tangerine font-bold">reeltor.co/{username}</span></p>}
+                {role === 'agent' && username && <p className="text-[15px] text-smoke">Securing <span className="text-tangerine font-bold">reelst.co/{username}</span></p>}
               </div>
 
               <div className="space-y-3">
@@ -214,7 +214,7 @@ export default function SignUp() {
           </div>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.2 }}
             className="absolute -bottom-4 -left-8 bg-white rounded-2xl shadow-xl p-3 border border-white/10">
-            <p className="text-[11px] font-bold text-ink">reeltor.co/{username || 'you'}</p>
+            <p className="text-[11px] font-bold text-ink">reelst.co/{username || 'you'}</p>
           </motion.div>
         </div>
       </div>

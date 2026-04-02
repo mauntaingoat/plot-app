@@ -13,13 +13,13 @@ const PLANS = [
     name: 'Free',
     price: '$0',
     period: 'forever',
-    desc: 'Get started. See what Reeltor can do.',
+    desc: 'Get started. See what Reelst can do.',
     cta: 'Start free',
     featured: false,
     features: [
       { text: 'Up to 5 active pins', included: true },
       { text: 'Stories & Reels', included: true },
-      { text: 'Public profile at reeltor.co/you', included: true },
+      { text: 'Public profile at reelst.co/you', included: true },
       { text: 'Basic view counts', included: true },
       { text: 'Connect 2 social platforms', included: true },
       { text: 'Detailed analytics', included: false },
@@ -39,7 +39,7 @@ const PLANS = [
     features: [
       { text: 'Unlimited active pins', included: true },
       { text: 'Stories, Reels & Live', included: true },
-      { text: 'Public profile at reeltor.co/you', included: true },
+      { text: 'Public profile at reelst.co/you', included: true },
       { text: 'Deep analytics (views, taps, saves, WoW)', included: true },
       { text: 'Connect unlimited platforms', included: true },
       { text: 'Detailed analytics dashboard', included: true },
@@ -55,9 +55,9 @@ const FAQS = [
   { q: 'Can I try Pro before committing?', a: 'Yes — start on Free and upgrade to Pro anytime. Your data carries over. No setup required.' },
   { q: 'What counts as an "active pin"?', a: 'Any pin that\'s visible on your public map. You can toggle pins off to free up slots on the Free plan. Expired stories and ended live streams don\'t count.' },
   { q: 'Can I cancel Pro anytime?', a: 'Yes. Cancel anytime from your dashboard. You\'ll keep Pro features until the end of your billing period, then drop to Free.' },
-  { q: 'Do homebuyers need an account?', a: 'No. Anyone can view your Reeltor profile and explore your map without signing up. They only need an account to follow, save, or contact you.' },
+  { q: 'Do homebuyers need an account?', a: 'No. Anyone can view your Reelst profile and explore your map without signing up. They only need an account to follow, save, or contact you.' },
   { q: 'What social platforms can I connect?', a: 'Instagram, TikTok, YouTube, Facebook, LinkedIn, Zillow, Realtor.com, MLS, and your personal website. Free plan: 2 platforms. Pro: unlimited.' },
-  { q: 'Is there a team plan?', a: 'Coming soon. If you\'re a brokerage or team, email hello@reeltor.co and we\'ll set you up.' },
+  { q: 'Is there a team plan?', a: 'Coming soon. If you\'re a brokerage or team, email hello@reelst.co and we\'ll set you up.' },
 ]
 
 export default function Pricing() {
@@ -76,7 +76,7 @@ export default function Pricing() {
 
   return (
     <MarketingLayout>
-      <SEOHead title="Pricing" description="Reeltor is free to start. Go Pro at $19/mo for unlimited pins, deep analytics, and custom branding." path="/pricing" />
+      <SEOHead title="Pricing" description="Reelst is free to start. Go Pro at $19/mo for unlimited pins, deep analytics, and custom branding." path="/pricing" />
 
       {/* Hero */}
       <section className="max-w-[1200px] mx-auto px-5 md:px-8 pt-16 md:pt-24 pb-8 md:pb-12 text-center">

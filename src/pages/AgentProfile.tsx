@@ -118,7 +118,7 @@ export default function AgentProfile() {
   }
 
   const handleShare = async () => {
-    try { await navigator.share({ title: `${agent?.displayName} on Reeltor`, url: window.location.href }) }
+    try { await navigator.share({ title: `${agent?.displayName} on Reelst`, url: window.location.href }) }
     catch { navigator.clipboard.writeText(window.location.href) }
   }
 
@@ -136,8 +136,8 @@ export default function AgentProfile() {
         <div className="w-16 h-16 rounded-full bg-charcoal flex items-center justify-center mb-4">
           <span className="text-[28px] text-ghost">?</span>
         </div>
-        <h1 className="text-[24px] font-extrabold text-white mb-2">Reeltor not found</h1>
-        <p className="text-[15px] text-ghost mb-6">@{username} doesn't have a Reeltor yet.</p>
+        <h1 className="text-[24px] font-extrabold text-white mb-2">Reelst not found</h1>
+        <p className="text-[15px] text-ghost mb-6">@{username} doesn't have a Reelst yet.</p>
         <motion.button whileTap={{ scale: 0.96 }} onClick={() => navigate('/')} className="text-tangerine font-semibold text-[15px]">Go home</motion.button>
       </div>
     )

@@ -165,8 +165,8 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
           {step === 'choose-role' && (
             <motion.div key="role" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} className="space-y-5">
               <div className="text-center space-y-1">
-                <h2 className="text-[24px] font-extrabold text-ink tracking-tight">Join Reeltor</h2>
-                <p className="text-[14px] text-smoke">How do you want to use Reeltor?</p>
+                <h2 className="text-[24px] font-extrabold text-ink tracking-tight">Join Reelst</h2>
+                <p className="text-[14px] text-smoke">How do you want to use Reelst?</p>
               </div>
 
               <div className="space-y-3">
@@ -180,7 +180,7 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
                   </div>
                   <div>
                     <p className="text-[16px] font-bold text-ink">I'm an agent</p>
-                    <p className="text-[13px] text-smoke">Claim your Reeltor link, add pins, grow your audience</p>
+                    <p className="text-[13px] text-smoke">Claim your Reelst link, add pins, grow your audience</p>
                   </div>
                 </motion.button>
 
@@ -217,15 +217,15 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
                 <div className="w-16 h-16 rounded-[18px] bg-gradient-to-br from-tangerine to-ember flex items-center justify-center mx-auto mb-3">
                   <AtSign size={28} className="text-white" />
                 </div>
-                <h2 className="text-[24px] font-extrabold text-ink tracking-tight">Claim your Reeltor</h2>
+                <h2 className="text-[24px] font-extrabold text-ink tracking-tight">Claim your Reelst</h2>
                 <p className="text-[14px] text-smoke">Choose your unique link</p>
               </div>
 
               {/* URL preview */}
               <div className="bg-cream rounded-[14px] px-4 py-3">
-                <p className="text-[12px] text-smoke font-medium mb-0.5">Your Reeltor link</p>
+                <p className="text-[12px] text-smoke font-medium mb-0.5">Your Reelst link</p>
                 <p className="text-[17px] font-bold text-ink">
-                  reeltor.co/<span className={username ? 'text-tangerine' : 'text-ash'}>{username || '...'}</span>
+                  reelst.co/<span className={username ? 'text-tangerine' : 'text-ash'}>{username || '...'}</span>
                 </p>
               </div>
 
@@ -265,7 +265,7 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
                   {role === 'agent' ? 'Create your account' : 'Create account'}
                 </h2>
                 {role === 'agent' && username && (
-                  <p className="text-[14px] text-smoke">Securing <span className="text-tangerine font-bold">reeltor.co/{username}</span></p>
+                  <p className="text-[14px] text-smoke">Securing <span className="text-tangerine font-bold">reelst.co/{username}</span></p>
                 )}
               </div>
 

@@ -60,14 +60,14 @@ export default function SignIn() {
       {/* Left: form */}
       <div className="flex-1 flex flex-col justify-center px-6 md:px-16 lg:px-24 py-12 max-w-[600px] mx-auto md:mx-0">
         <Link to="/" className="flex items-center gap-1.5 mb-10">
-          <img src="/reeltor-logo-4b.png" alt="Reeltor" className="w-8 h-8" />
-          <span className="text-[20px] font-extrabold text-ink tracking-tight">Reeltor</span>
+          <img src="/reelst-logo.png" alt="Reelst" className="w-8 h-8" />
+          <span className="text-[20px] font-extrabold text-ink tracking-tight">Reelst</span>
         </Link>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
           <div>
             <h1 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Welcome back</h1>
-            <p className="text-[15px] text-smoke">Sign in to your Reeltor account</p>
+            <p className="text-[15px] text-smoke">Sign in to your Reelst account</p>
           </div>
 
           <div className="space-y-3">
@@ -94,7 +94,7 @@ export default function SignIn() {
           <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] bg-tangerine/8 rounded-full blur-[100px]" />
         </div>
         <div className="text-center">
-          <img src="/reeltor-logo-4b.png" alt="" className="w-20 h-20 mx-auto mb-6 opacity-80" />
+          <img src="/reelst-logo.png" alt="" className="w-20 h-20 mx-auto mb-6 opacity-80" />
           <h2 className="text-[24px] font-extrabold text-white/80 tracking-tight mb-2">Your map awaits.</h2>
           <p className="text-[14px] text-ghost max-w-[280px] mx-auto">Sign in to manage your pins, view insights, and grow your audience.</p>
         </div>
