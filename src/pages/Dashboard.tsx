@@ -68,25 +68,28 @@ export default function Dashboard() {
   }
 
   const handleSharePlot = async () => {
-    const url = `https://reelst.co/${currentUser?.username || ''}`
+    const url = `https://reelst.co/${activeUser?.username || ''}`
     try { await navigator.share({ title: 'My Reelst', url }) }
     catch { navigator.clipboard.writeText(url) }
   }
 
   const handleAddPlatform = (platformId: string, username: string) => {
-    if (!currentUser || !username.trim()) return
+    if (!activeUser || !username.trim()) return
     const updated = {
-      ...currentUser,
-      platforms: [...currentUser.platforms, { id: platformId, username: username.trim() }],
+      ...activeUser,
+      platforms: [...activeUser.platforms, { id: platformId, username: username.trim() }],
     }
     setUserDoc(updated)
     setShowAddPlatform(false)
   }
 
-  if (!currentUser) {
+  // If no user at all (not signed in AND no mock), redirect home
+  if (!currentUser && !MOCK_CURRENT_USER) {
     navigate('/')
     return null
   }
+  // Use mock user as fallback for demo
+  const activeUser = currentUser || MOCK_CURRENT_USER
 
   return (
     <div className="min-h-screen bg-ivory pb-tab-safe">
@@ -94,18 +97,18 @@ export default function Dashboard() {
       <div className="sticky top-0 z-30 bg-ivory/95 backdrop-blur-xl border-b border-border-light">
         <div className="px-5 flex items-center justify-between" style={{ paddingTop: 'calc(env(safe-area-inset-top, 12px) + 8px)', paddingBottom: '12px' }}>
           <div className="flex items-center gap-3">
-            <Avatar src={currentUser.photoURL} name={currentUser.displayName || 'Agent'} size={36} />
+            <Avatar src={activeUser.photoURL} name={activeUser.displayName || 'Agent'} size={36} />
             <div>
               <p className="text-[16px] font-bold text-ink tracking-tight">
                 {activeTab === 'plot' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'audience' ? 'Audience' : 'Settings'}
               </p>
-              <p className="text-[12px] text-smoke">@{currentUser.username || 'you'}</p>
+              <p className="text-[12px] text-smoke">@{activeUser.username || 'you'}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {currentUser.setupPercent < 100 && (
+            {activeUser.setupPercent < 100 && (
               <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShowSetup(true)}>
-                <SetupRing percent={currentUser.setupPercent} />
+                <SetupRing percent={activeUser.setupPercent} />
               </motion.button>
             )}
             <Button variant="secondary" size="sm" icon={<ExternalLink size={14} />} onClick={() => navigate('/carolina?preview=true')}>
@@ -131,7 +134,7 @@ export default function Dashboard() {
                   <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Views</p>
                 </div>
                 <div className="bg-cream rounded-[14px] p-3 text-center">
-                  <p className="text-[20px] font-extrabold text-ink font-mono">{currentUser.followerCount}</p>
+                  <p className="text-[20px] font-extrabold text-ink font-mono">{activeUser.followerCount}</p>
                   <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Followers</p>
                 </div>
               </div>
@@ -176,7 +179,7 @@ export default function Dashboard() {
                 <StatCard label="Views" value={stats.views} change={12} changePeriod="vs last week" icon={<Eye size={18} />} format="compact" />
                 <StatCard label="Taps" value={stats.taps} change={8} changePeriod="vs last week" icon={<MousePointerClick size={18} />} color="#3B82F6" format="compact" />
                 <StatCard label="Saves" value={stats.saves} change={-3} changePeriod="vs last week" icon={<Bookmark size={18} />} color="#A855F7" format="compact" />
-                <StatCard label="Followers" value={currentUser.followerCount} change={15} changePeriod="vs last week" icon={<Users size={18} />} color="#34C759" />
+                <StatCard label="Followers" value={activeUser.followerCount} change={15} changePeriod="vs last week" icon={<Users size={18} />} color="#34C759" />
               </div>
               <InsightsChart data={chartData} />
               {pins.length > 0 && (
@@ -204,7 +207,7 @@ export default function Dashboard() {
           {activeTab === 'audience' && (
             <div className="px-5 py-5 space-y-6">
               <div className="bg-cream rounded-[20px] p-6 text-center">
-                <p className="text-[40px] font-extrabold text-ink font-mono">{currentUser.followerCount}</p>
+                <p className="text-[40px] font-extrabold text-ink font-mono">{activeUser.followerCount}</p>
                 <p className="text-[14px] text-smoke font-medium">Total Followers</p>
               </div>
 
@@ -213,14 +216,14 @@ export default function Dashboard() {
                   <h3 className="text-[16px] font-bold text-ink">Connected Platforms</h3>
                   <Button variant="secondary" size="sm" icon={<Plus size={14} />} onClick={() => setShowAddPlatform(true)}>Add</Button>
                 </div>
-                {currentUser.platforms.length === 0 ? (
+                {activeUser.platforms.length === 0 ? (
                   <div className="bg-cream rounded-[16px] p-5 text-center">
                     <p className="text-[14px] text-smoke mb-3">Connect platforms to grow your audience.</p>
                     <Button variant="primary" size="sm" onClick={() => setShowAddPlatform(true)}>Connect Platform</Button>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {currentUser.platforms.map((p) => {
+                    {activeUser.platforms.map((p) => {
                       const Logo = PLATFORM_LOGOS[p.id]
                       return (
                         <div key={p.id} className="flex items-center gap-3 bg-cream rounded-[14px] p-3">
@@ -246,7 +249,7 @@ export default function Dashboard() {
               {[
                 { icon: User, label: 'Edit Profile', desc: 'Name, bio, photo', onClick: () => {} },
                 { icon: Link2, label: 'Social Links', desc: 'Connected platforms', onClick: () => setShowAddPlatform(true) },
-                { icon: Shield, label: 'License Verification', desc: currentUser.licenseNumber || 'Not verified', onClick: () => {} },
+                { icon: Shield, label: 'License Verification', desc: activeUser.licenseNumber || 'Not verified', onClick: () => {} },
               ].map((item, i) => (
                 <motion.button
                   key={i}
@@ -338,7 +341,7 @@ export default function Dashboard() {
       />
 
       {/* Setup checklist */}
-      <SetupChecklist isOpen={showSetup} onClose={() => setShowSetup(false)} user={currentUser} pinCount={pins.length} />
+      <SetupChecklist isOpen={showSetup} onClose={() => setShowSetup(false)} user={activeUser} pinCount={pins.length} />
 
       {/* Pin action sheet (3-dot menu) */}
       <DarkBottomSheet isOpen={!!showPinActions} onClose={() => setShowPinActions(null)} title={showPinActions?.address}>
@@ -373,7 +376,7 @@ export default function Dashboard() {
       </DarkBottomSheet>
 
       {/* Add platform sheet */}
-      <AddPlatformSheet isOpen={showAddPlatform} onClose={() => setShowAddPlatform(false)} onAdd={handleAddPlatform} existingPlatforms={currentUser.platforms} />
+      <AddPlatformSheet isOpen={showAddPlatform} onClose={() => setShowAddPlatform(false)} onAdd={handleAddPlatform} existingPlatforms={activeUser.platforms} />
     </div>
   )
 }
