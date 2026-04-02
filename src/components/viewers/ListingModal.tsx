@@ -152,11 +152,12 @@ function ContentCard({ content, pin, agent, isPreview }: { content: ContentItem;
           <Avatar src={agent.photoURL} name={agent.displayName} size={28} />
           <span className="text-[13px] font-semibold text-white">{agent.displayName}</span>
         </div>
-        <div className="flex items-center gap-1.5 mb-1.5">
+        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
           <MapPin size={11} className="text-white/50 shrink-0" />
           <span className="text-[12px] text-white/50">{neighborhoodName}</span>
           <span className="text-[10px] text-white/30">·</span>
           <span className="text-[11px] text-white/40 uppercase font-semibold">{content.type.replace('_', ' ')}</span>
+          {content.type === 'live' && <><span className="text-[10px] text-white/30">·</span><span className="text-[11px] text-live-red font-bold">LIVE</span></>}
         </div>
         {content.caption && <p className="text-[13px] text-white/90 leading-relaxed line-clamp-3">{content.caption}</p>}
         <div className="flex items-center gap-1 mt-1.5">
