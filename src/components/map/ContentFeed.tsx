@@ -11,9 +11,11 @@ interface ContentFeedProps {
   agent: UserDoc
   onPinTap?: (pin: Pin) => void
   isPreview?: boolean
+  isSignedIn?: boolean
+  onAuthRequired?: () => void
 }
 
-export function ContentFeed({ pins, agent, onPinTap, isPreview }: ContentFeedProps) {
+export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAuthRequired }: ContentFeedProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const allContent = getAllContent(pins)
   const [listingSheet, setListingSheet] = useState<Pin | null>(null)
@@ -37,7 +39,10 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview }: ContentFeedPro
         {allContent.map(({ content, pin }) => (
           <FeedCard key={content.id} content={content} pin={pin} agent={agent}
             isPreview={isPreview} following={following}
-            onFollowToggle={() => setFollowing(!following)}
+            onFollowToggle={() => {
+              if (!isSignedIn && !isPreview && onAuthRequired) { onAuthRequired(); return }
+              setFollowing(!following)
+            }}
             onListingTap={() => pin.type !== 'neighborhood' && setListingSheet(pin)} />
         ))}
       </div>

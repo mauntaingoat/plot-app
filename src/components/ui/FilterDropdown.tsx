@@ -68,8 +68,8 @@ export function FilterDropdown({ label, options, selected, onToggle, onClear, da
         ref={btnRef}
         onClick={() => setOpen(!open)}
         className={`
-          inline-flex items-center gap-0.5 px-2.5 py-1.5 rounded-full shrink-0
-          text-[11px] font-semibold whitespace-nowrap cursor-pointer
+          inline-flex items-center gap-0.5 px-2 py-1 rounded-full shrink-0
+          text-[10px] font-semibold whitespace-nowrap cursor-pointer
           select-none border transition-all duration-200
           ${hasSelection
             ? 'bg-tangerine text-white border-tangerine'

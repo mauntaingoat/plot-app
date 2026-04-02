@@ -1,40 +1,35 @@
 import {
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  addDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  serverTimestamp,
-  type DocumentData,
+  doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc,
+  collection, query, where, getDocs, orderBy, limit,
+  serverTimestamp, increment, onSnapshot,
+  type DocumentData, type Unsubscribe,
 } from 'firebase/firestore'
-import { db } from '@/config/firebase'
-import type { UserDoc, Pin, Coordinates } from '@/lib/types'
+import { db, firebaseConfigured } from '@/config/firebase'
+import type { UserDoc, Pin, ContentItem, Coordinates, PinType } from '@/lib/types'
 
-// ── Users ──
+// ══════════════════════════════════════════
+// USERS
+// ══════════════════════════════════════════
 
 export async function getUserByUsername(username: string): Promise<UserDoc | null> {
+  if (!db) return null
   const usernameSnap = await getDoc(doc(db, 'usernames', username.toLowerCase()))
   if (!usernameSnap.exists()) return null
-
   const { uid } = usernameSnap.data()
   const userSnap = await getDoc(doc(db, 'users', uid))
   if (!userSnap.exists()) return null
-
   return { uid: userSnap.id, ...userSnap.data() } as UserDoc
 }
 
 export async function getUserById(uid: string): Promise<UserDoc | null> {
+  if (!db) return null
   const snap = await getDoc(doc(db, 'users', uid))
   if (!snap.exists()) return null
   return { uid: snap.id, ...snap.data() } as UserDoc
 }
 
 export async function createUserDoc(uid: string, data: Partial<UserDoc>) {
+  if (!db) return
   await setDoc(doc(db, 'users', uid), {
     uid,
     email: '',
@@ -58,12 +53,16 @@ export async function createUserDoc(uid: string, data: Partial<UserDoc>) {
 }
 
 export async function updateUserDoc(uid: string, data: Partial<UserDoc>) {
+  if (!db) return
   await updateDoc(doc(db, 'users', uid), data as DocumentData)
 }
 
-// ── Pins ──
+// ══════════════════════════════════════════
+// PINS (Listings + Neighborhoods)
+// ══════════════════════════════════════════
 
-export async function createPin(data: Omit<Pin, 'id'>) {
+export async function createPin(data: Omit<Pin, 'id'>): Promise<string> {
+  if (!db) return `local-${Date.now()}`
   const ref = await addDoc(collection(db, 'pins'), {
     ...data,
     createdAt: serverTimestamp(),
@@ -72,11 +71,13 @@ export async function createPin(data: Omit<Pin, 'id'>) {
     taps: 0,
     saves: 0,
     enabled: true,
+    content: data.content || [],
   })
   return ref.id
 }
 
 export async function updatePin(pinId: string, data: Partial<Pin>) {
+  if (!db) return
   await updateDoc(doc(db, 'pins', pinId), {
     ...data,
     updatedAt: serverTimestamp(),
@@ -84,50 +85,163 @@ export async function updatePin(pinId: string, data: Partial<Pin>) {
 }
 
 export async function deletePin(pinId: string) {
+  if (!db) return
   await deleteDoc(doc(db, 'pins', pinId))
 }
 
+export async function addContentToPin(pinId: string, content: ContentItem) {
+  if (!db) return
+  const pinRef = doc(db, 'pins', pinId)
+  const snap = await getDoc(pinRef)
+  if (!snap.exists()) return
+  const existing = snap.data().content || []
+  await updateDoc(pinRef, {
+    content: [...existing, content],
+    updatedAt: serverTimestamp(),
+  })
+}
+
+export async function removeContentFromPin(pinId: string, contentId: string) {
+  if (!db) return
+  const pinRef = doc(db, 'pins', pinId)
+  const snap = await getDoc(pinRef)
+  if (!snap.exists()) return
+  const existing = (snap.data().content || []) as ContentItem[]
+  await updateDoc(pinRef, {
+    content: existing.filter((c) => c.id !== contentId),
+    updatedAt: serverTimestamp(),
+  })
+}
+
 export async function getAgentPins(agentId: string): Promise<Pin[]> {
+  if (!db) return []
   const q = query(
     collection(db, 'pins'),
     where('agentId', '==', agentId),
-    where('enabled', '==', true)
+    where('enabled', '==', true),
+    orderBy('createdAt', 'desc')
   )
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Pin)
 }
 
-// ── Featured agents ──
+export function subscribeToAgentPins(agentId: string, callback: (pins: Pin[]) => void): Unsubscribe | null {
+  if (!db) return null
+  const q = query(
+    collection(db, 'pins'),
+    where('agentId', '==', agentId),
+    where('enabled', '==', true),
+    orderBy('createdAt', 'desc')
+  )
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Pin))
+  })
+}
 
-export async function getFeaturedAgents(limit = 10): Promise<UserDoc[]> {
+// ══════════════════════════════════════════
+// FOLLOWS
+// ══════════════════════════════════════════
+
+export async function followAgent(followerUid: string, agentUid: string) {
+  if (!db) return
+  const followId = `${followerUid}_${agentUid}`
+  await setDoc(doc(db, 'follows', followId), {
+    followerUid,
+    followedUid: agentUid,
+    createdAt: serverTimestamp(),
+  })
+  await updateDoc(doc(db, 'users', agentUid), { followerCount: increment(1) }).catch(() => {})
+  await updateDoc(doc(db, 'users', followerUid), { followingCount: increment(1) }).catch(() => {})
+}
+
+export async function unfollowAgent(followerUid: string, agentUid: string) {
+  if (!db) return
+  const followId = `${followerUid}_${agentUid}`
+  await deleteDoc(doc(db, 'follows', followId))
+  await updateDoc(doc(db, 'users', agentUid), { followerCount: increment(-1) }).catch(() => {})
+  await updateDoc(doc(db, 'users', followerUid), { followingCount: increment(-1) }).catch(() => {})
+}
+
+export async function isFollowing(followerUid: string, agentUid: string): Promise<boolean> {
+  if (!db) return false
+  const followId = `${followerUid}_${agentUid}`
+  const snap = await getDoc(doc(db, 'follows', followId))
+  return snap.exists()
+}
+
+export async function getFollowers(agentUid: string): Promise<string[]> {
+  if (!db) return []
+  const q = query(collection(db, 'follows'), where('followedUid', '==', agentUid))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => d.data().followerUid)
+}
+
+// ══════════════════════════════════════════
+// SAVES
+// ══════════════════════════════════════════
+
+export async function savePin(userId: string, pinId: string, contentId?: string) {
+  if (!db) return
+  const saveId = contentId ? `${userId}_${pinId}_${contentId}` : `${userId}_${pinId}`
+  await setDoc(doc(db, 'saves', saveId), {
+    userId,
+    pinId,
+    contentId: contentId || null,
+    createdAt: serverTimestamp(),
+  })
+  // Increment pin save count
+  await updateDoc(doc(db, 'pins', pinId), { saves: increment(1) }).catch(() => {})
+}
+
+export async function unsavePin(userId: string, pinId: string, contentId?: string) {
+  if (!db) return
+  const saveId = contentId ? `${userId}_${pinId}_${contentId}` : `${userId}_${pinId}`
+  await deleteDoc(doc(db, 'saves', saveId))
+  await updateDoc(doc(db, 'pins', pinId), { saves: increment(-1) }).catch(() => {})
+}
+
+export async function getUserSaves(userId: string): Promise<{ pinId: string; contentId?: string }[]> {
+  if (!db) return []
+  const q = query(collection(db, 'saves'), where('userId', '==', userId))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ pinId: d.data().pinId, contentId: d.data().contentId }))
+}
+
+// ══════════════════════════════════════════
+// PIN VIEWS (increment on tap)
+// ══════════════════════════════════════════
+
+export async function incrementPinView(pinId: string) {
+  if (!db) return
+  await updateDoc(doc(db, 'pins', pinId), { views: increment(1) }).catch(() => {})
+}
+
+export async function incrementPinTap(pinId: string) {
+  if (!db) return
+  await updateDoc(doc(db, 'pins', pinId), { taps: increment(1) }).catch(() => {})
+}
+
+// ══════════════════════════════════════════
+// FEATURED AGENTS (for explore page)
+// ══════════════════════════════════════════
+
+export async function getFeaturedAgents(max = 10): Promise<UserDoc[]> {
+  if (!db) return []
   const q = query(
     collection(db, 'users'),
     where('role', '==', 'agent'),
-    where('onboardingComplete', '==', true)
+    where('onboardingComplete', '==', true),
+    limit(max)
   )
   const snap = await getDocs(q)
   return snap.docs
     .map((d) => ({ uid: d.id, ...d.data() }) as UserDoc)
     .sort((a, b) => b.followerCount - a.followerCount)
-    .slice(0, limit)
 }
 
-// ── Setup percent calculation ──
-
-export function calculateSetupPercent(user: Partial<UserDoc>, pinCount: number): number {
-  let percent = 0
-  if (user.username) percent += 10
-  if (user.photoURL) percent += 15
-  if (user.bio && user.bio.length > 0) percent += 10
-  if (user.platforms && user.platforms.length > 0) percent += 15
-  if (user.licenseNumber) percent += 10
-  if (pinCount >= 1) percent += 20
-  if (user.displayName && user.displayName.length > 0) percent += 10
-  if (pinCount >= 3) percent += 10
-  return percent
-}
-
-// ── Geocoding helpers ──
+// ══════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════
 
 export function formatPrice(price: number): string {
   if (price >= 1_000_000) return `$${(price / 1_000_000).toFixed(1)}M`
@@ -145,4 +259,17 @@ export function getBounds(coords: Coordinates[]): [[number, number], [number, nu
   }
   const pad = 0.01
   return [[minLng - pad, minLat - pad], [maxLng + pad, maxLat + pad]]
+}
+
+export function calculateSetupPercent(user: Partial<UserDoc>, pinCount: number): number {
+  let percent = 0
+  if (user.username) percent += 10
+  if (user.photoURL) percent += 15
+  if (user.bio && user.bio.length > 0) percent += 10
+  if (user.platforms && user.platforms.length > 0) percent += 15
+  if (user.licenseNumber) percent += 10
+  if (pinCount >= 1) percent += 20
+  if (user.displayName && user.displayName.length > 0) percent += 10
+  if (pinCount >= 3) percent += 10
+  return percent
 }

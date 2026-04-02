@@ -108,14 +108,25 @@ export default function AgentProfile() {
 
   const handlePinClick = useCallback((pin: Pin) => {
     setSelectedPin(pin)
+    // Increment tap count in Firestore
+    import('@/lib/firestore').then(({ incrementPinTap }) => incrementPinTap(pin.id)).catch(() => {})
   }, [allPins])
 
-  const handleFollow = () => {
+  const handleFollow = async () => {
     if (!currentUser && !isPreview) {
       setShowAuth(true)
       return
     }
-    setIsFollowing(!isFollowing)
+    if (!agent || isPreview) return
+    // Real follow/unfollow via Firestore
+    const { followAgent, unfollowAgent } = await import('@/lib/firestore')
+    if (isFollowing) {
+      setIsFollowing(false)
+      if (currentUser) await unfollowAgent(currentUser.uid, agent.uid).catch(() => {})
+    } else {
+      setIsFollowing(true)
+      if (currentUser) await followAgent(currentUser.uid, agent.uid).catch(() => {})
+    }
   }
 
   const handleShare = async () => {
@@ -191,7 +202,7 @@ export default function AgentProfile() {
           </motion.div>
         ) : (
           <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0">
-            <ContentFeed pins={filteredPins} agent={agent} onPinTap={(p) => setSelectedPin(p)} isPreview={isPreview} />
+            <ContentFeed pins={filteredPins} agent={agent} onPinTap={(p) => setSelectedPin(p)} isPreview={isPreview} isSignedIn={!!currentUser} onAuthRequired={() => setShowAuth(true)} />
           </motion.div>
         )}
       </AnimatePresence>
