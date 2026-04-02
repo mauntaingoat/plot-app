@@ -9,7 +9,7 @@ import { PinCard } from '@/components/dashboard/PinCard'
 import { ListingModal } from '@/components/viewers/ListingModal'
 import { AgentDetailSheet, type AgentMode } from '@/components/sheets/AgentDetailSheet'
 import { AuthSheet } from '@/components/sheets/AuthSheet'
-import { useMapStore } from '@/stores/mapStore'
+import { useMapStore, applyPropertyFilters } from '@/stores/mapStore'
 import { useAuthStore } from '@/stores/authStore'
 import { firebaseConfigured } from '@/config/firebase'
 import { getUserByUsername } from '@/lib/firestore'
@@ -37,7 +37,7 @@ export default function AgentProfile() {
   const [agentMode, setAgentMode] = useState<AgentMode>('single')
   const [enabledAgentIds, setEnabledAgentIds] = useState<Set<string>>(new Set())
 
-  const { setViewingAgentId, activeFilters } = useMapStore()
+  const { setViewingAgentId, activeFilters, propertyFilters } = useMapStore()
   const { userDoc: currentUser } = useAuthStore()
 
   // Nearby agents (mock: the other agents)
@@ -77,11 +77,13 @@ export default function AgentProfile() {
     }
   }, [username, setViewingAgentId])
 
-  // Multi-select filter
+  // Multi-select filter + property attribute filters
   const filteredPins = useMemo(() => {
-    if (activeFilters.size === 0) return allPins
-    return allPins.filter((p) => activeFilters.has(p.type))
-  }, [allPins, activeFilters])
+    let result = allPins
+    if (activeFilters.size > 0) result = result.filter((p) => activeFilters.has(p.type))
+    result = applyPropertyFilters(result, propertyFilters)
+    return result
+  }, [allPins, activeFilters, propertyFilters])
 
   const pinCounts = useMemo(() => {
     const counts: Record<string, number> = {}

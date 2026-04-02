@@ -93,7 +93,7 @@ function FeedCard({ content, pin, agent, isPreview, following, onFollowToggle, o
           <motion.button whileTap={!isPreview ? { scale: 0.9 } : undefined}
             onClick={!isPreview ? onFollowToggle : undefined}
             className="w-10 h-10">
-            <Avatar src={agent.photoURL} name={agent.displayName} size={40} ring={following ? 'story' : 'none'} />
+            <Avatar src={agent.photoURL} name={agent.displayName} size={40} ring="none" />
           </motion.button>
           <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-[18px] h-[18px] rounded-full flex items-center justify-center"
             style={{ background: following ? '#34C759' : '#FF6B3D' }}>
@@ -147,9 +147,6 @@ function FeedCard({ content, pin, agent, isPreview, following, onFollowToggle, o
           <span className="text-[12px] text-white/50">{neighborhoodName}</span>
           <span className="text-[10px] text-white/30">·</span>
           <span className="text-[11px] text-white/40 uppercase font-semibold">{content.type.replace('_', ' ')}</span>
-          {content.type === 'live' && (
-            <><span className="text-[10px] text-white/30">·</span><span className="text-[11px] text-live-red font-bold uppercase">Live</span></>
-          )}
           {hasOpenHouse && (
             <><span className="text-[10px] text-white/30">·</span><span className="text-[11px] text-open-amber font-bold uppercase">Open House</span></>
           )}

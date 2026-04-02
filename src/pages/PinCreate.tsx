@@ -10,9 +10,8 @@ import { useAuthStore } from '@/stores/authStore'
 import { createPin } from '@/lib/firestore'
 import { uploadFile, pinMediaPath } from '@/lib/storage'
 import { PIN_CONFIG, type PinType } from '@/lib/types'
-import { PIN_TYPE_ICONS } from '@/components/icons/PinIcons'
 
-const PIN_TYPES: PinType[] = ['listing', 'sold', 'story', 'reel', 'live', 'open_house']
+const PIN_TYPES: PinType[] = ['for_sale', 'sold', 'neighborhood']
 
 export default function PinCreate() {
   const navigate = useNavigate()
@@ -181,7 +180,7 @@ export default function PinCreate() {
               <div className="space-y-3">
                 {PIN_TYPES.map((type, i) => {
                   const config = PIN_CONFIG[type]
-                  const Icon = PIN_TYPE_ICONS[type]
+                  const Icon = null // Icons removed — using config label
                   const selected = pinType === type
                   return (
                     <motion.button
@@ -196,8 +195,8 @@ export default function PinCreate() {
                         ${selected ? 'border-tangerine bg-tangerine-soft' : 'border-border-light bg-cream'}
                       `}
                     >
-                      <div className="w-12 h-12 rounded-[14px] flex items-center justify-center" style={{ backgroundColor: selected ? config.color : config.bgColor, color: selected ? 'white' : config.color }}>
-                        <Icon size={22} />
+                      <div className="w-12 h-12 rounded-[14px] flex items-center justify-center text-[18px] font-bold" style={{ backgroundColor: selected ? config.color : config.bgColor, color: selected ? 'white' : config.color }}>
+                        {config.label[0]}
                       </div>
                       <div className="flex-1">
                         <p className={`text-[15px] font-bold ${selected ? 'text-tangerine' : 'text-ink'}`}>{config.label}</p>

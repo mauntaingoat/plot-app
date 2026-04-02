@@ -157,7 +157,7 @@ function ContentCard({ content, pin, agent, isPreview }: { content: ContentItem;
           <span className="text-[12px] text-white/50">{neighborhoodName}</span>
           <span className="text-[10px] text-white/30">·</span>
           <span className="text-[11px] text-white/40 uppercase font-semibold">{content.type.replace('_', ' ')}</span>
-          {content.type === 'live' && <><span className="text-[10px] text-white/30">·</span><span className="text-[11px] text-live-red font-bold">LIVE</span></>}
+          {/* Live is a content type, not shown inline — only open house (listing state) would be */}
         </div>
         {content.caption && <p className="text-[13px] text-white/90 leading-relaxed line-clamp-3">{content.caption}</p>}
         <div className="flex items-center gap-1 mt-1.5">

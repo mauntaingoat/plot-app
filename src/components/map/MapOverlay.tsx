@@ -30,7 +30,7 @@ const FILTER_OPTIONS: { value: PinType; label: string }[] = [
 ]
 
 export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick, onFilterChange, isFollowing, viewMode = 'map', onToggleView, isPreview, agentMode = 'single', enabledAgentCount = 0 }: MapOverlayProps) {
-  const { activeFilters, toggleFilter, clearFilters, isAllSelected } = useMapStore()
+  const { activeFilters, toggleFilter, clearFilters, isAllSelected, propertyFilters, togglePropertyFilter, clearPropertyFilter } = useMapStore()
 
   const totalPins = Object.values(pinCounts).reduce((a, b) => a + b, 0)
   const isFeed = viewMode === 'feed'
@@ -148,25 +148,25 @@ export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick
             selected={activeFilters} onToggle={(v) => handleFilterClick(v as PinType)} onClear={clearFilters} />
           <FilterDropdown label="Price" dark={isFeed}
             options={[{ value: '0-500k', label: 'Under $500K' }, { value: '500k-1m', label: '$500K–$1M' }, { value: '1m-2m', label: '$1M–$2M' }, { value: '2m-5m', label: '$2M–$5M' }, { value: '5m+', label: '$5M+' }]}
-            selected={new Set()} onToggle={() => {}} />
+            selected={propertyFilters.price} onToggle={(v) => togglePropertyFilter('price', v)} onClear={() => clearPropertyFilter('price')} />
           <FilterDropdown label="Beds" dark={isFeed}
             options={[{ value: '1', label: '1+' }, { value: '2', label: '2+' }, { value: '3', label: '3+' }, { value: '4', label: '4+' }, { value: '5', label: '5+' }]}
-            selected={new Set()} onToggle={() => {}} />
+            selected={propertyFilters.beds} onToggle={(v) => togglePropertyFilter('beds', v)} onClear={() => clearPropertyFilter('beds')} />
           <FilterDropdown label="Baths" dark={isFeed}
             options={[{ value: '1', label: '1+' }, { value: '2', label: '2+' }, { value: '3', label: '3+' }, { value: '4', label: '4+' }]}
-            selected={new Set()} onToggle={() => {}} />
+            selected={propertyFilters.baths} onToggle={(v) => togglePropertyFilter('baths', v)} onClear={() => clearPropertyFilter('baths')} />
           <FilterDropdown label="Type" dark={isFeed}
             options={[{ value: 'single_family', label: 'Single Family' }, { value: 'condo', label: 'Condo' }, { value: 'townhouse', label: 'Townhouse' }, { value: 'multi_family', label: 'Multi-Family' }, { value: 'land', label: 'Land' }, { value: 'commercial', label: 'Commercial' }]}
-            selected={new Set()} onToggle={() => {}} />
+            selected={propertyFilters.homeType} onToggle={(v) => togglePropertyFilter('homeType', v)} onClear={() => clearPropertyFilter('homeType')} />
           <FilterDropdown label="Sqft" dark={isFeed}
             options={[{ value: '0-1000', label: 'Under 1,000' }, { value: '1000-1500', label: '1,000–1,500' }, { value: '1500-2000', label: '1,500–2,000' }, { value: '2000-3000', label: '2,000–3,000' }, { value: '3000+', label: '3,000+' }]}
-            selected={new Set()} onToggle={() => {}} />
-          <FilterDropdown label="Year Built" dark={isFeed}
-            options={[{ value: '2020+', label: '2020+' }, { value: '2010-2019', label: '2010–2019' }, { value: '2000-2009', label: '2000–2009' }, { value: '1990-1999', label: '1990–1999' }, { value: 'pre-1990', label: 'Before 1990' }]}
-            selected={new Set()} onToggle={() => {}} />
+            selected={propertyFilters.sqft} onToggle={(v) => togglePropertyFilter('sqft', v)} onClear={() => clearPropertyFilter('sqft')} />
+          <FilterDropdown label="Year" dark={isFeed}
+            options={[{ value: '2020+', label: '2020+' }, { value: '2010-2019', label: '2010–2019' }, { value: '2000-2009', label: '2000–2009' }, { value: '1990-1999', label: '1990–1999' }, { value: 'pre-1990', label: 'Pre-1990' }]}
+            selected={propertyFilters.yearBuilt} onToggle={(v) => togglePropertyFilter('yearBuilt', v)} onClear={() => clearPropertyFilter('yearBuilt')} />
           <FilterDropdown label="DOM" dark={isFeed}
-            options={[{ value: '0-7', label: '< 7 days' }, { value: '7-14', label: '7–14 days' }, { value: '14-30', label: '14–30 days' }, { value: '30-60', label: '30–60 days' }, { value: '60+', label: '60+ days' }]}
-            selected={new Set()} onToggle={() => {}} />
+            options={[{ value: '0-7', label: '< 7 days' }, { value: '7-14', label: '7–14' }, { value: '14-30', label: '14–30' }, { value: '30-60', label: '30–60' }, { value: '60+', label: '60+' }]}
+            selected={propertyFilters.dom} onToggle={(v) => togglePropertyFilter('dom', v)} onClear={() => clearPropertyFilter('dom')} />
         </FilterBar>
 
         {onToggleView && (
