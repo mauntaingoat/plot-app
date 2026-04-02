@@ -16,17 +16,14 @@ interface PinCardProps {
 export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark = true }: PinCardProps) {
   const config = PIN_CONFIG[pin.type]
 
-  const heroImage = 'heroPhotoUrl' in pin ? pin.heroPhotoUrl
-    : 'thumbnailUrl' in pin ? pin.thumbnailUrl
-    : 'mediaUrl' in pin ? pin.mediaUrl
-    : null
+  const heroImage = 'heroPhotoUrl' in pin ? pin.heroPhotoUrl : null
 
   const priceDisplay = 'price' in pin ? formatPrice(pin.price)
     : 'soldPrice' in pin ? formatPrice(pin.soldPrice)
-    : 'listingPrice' in pin ? formatPrice(pin.listingPrice)
     : null
 
   const specs = 'beds' in pin ? `${pin.beds} bd · ${pin.baths} ba · ${pin.sqft.toLocaleString()} sqft` : null
+  const contentCount = pin.content?.length || 0
 
   // In manage mode, only toggle + 3dot are interactive. In feed mode, whole card is tappable.
   const isManage = variant === 'manage'
@@ -83,11 +80,10 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
           )}
 
           {/* Live viewer count */}
-          {'viewerCount' in pin && (
+          {pin.type === 'for_sale' && 'isLive' in pin && pin.isLive && (
             <div className="absolute top-3 right-3 flex items-center gap-1.5">
               <span className="glass-dark rounded-full px-2.5 py-1 text-[11px] font-bold text-white flex items-center gap-1">
-                <Eye size={12} />
-                {pin.viewerCount.toLocaleString()}
+                <Eye size={12} /> LIVE
               </span>
             </div>
           )}
@@ -118,14 +114,14 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
                 {specs}
               </p>
             )}
-            {'caption' in pin && pin.caption && (
+            {'description' in pin && pin.description && (
               <p className={`text-[13px] mt-1 line-clamp-2 ${dark ? 'text-mist' : 'text-graphite'}`}>
-                {pin.caption}
+                {pin.description}
               </p>
             )}
-            {'title' in pin && pin.title && (
+            {'name' in pin && pin.name && (
               <p className={`text-[14px] font-semibold mt-0.5 ${dark ? 'text-white' : 'text-ink'}`}>
-                {pin.title}
+                {pin.name}
               </p>
             )}
           </div>

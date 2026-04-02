@@ -6,9 +6,6 @@ import { MapOverlay } from '@/components/map/MapOverlay'
 import { PeekDrawer } from '@/components/map/PeekDrawer'
 import { ContentFeed } from '@/components/map/ContentFeed'
 import { PinCard } from '@/components/dashboard/PinCard'
-import { StoryViewer } from '@/components/viewers/StoryViewer'
-import { ReelPlayer } from '@/components/viewers/ReelPlayer'
-import { ListingSheet } from '@/components/viewers/ListingSheet'
 import { AgentDetailSheet, type AgentMode } from '@/components/sheets/AgentDetailSheet'
 import { AuthSheet } from '@/components/sheets/AuthSheet'
 import { useMapStore } from '@/stores/mapStore'
@@ -16,7 +13,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { firebaseConfigured } from '@/config/firebase'
 import { getUserByUsername } from '@/lib/firestore'
 import { getMockAgent, getMockPins, MOCK_AGENTS } from '@/lib/mock'
-import type { UserDoc, Pin, StoryPin, ReelPin, ListingPin, SoldPin, OpenHousePin } from '@/lib/types'
+import type { UserDoc, Pin } from '@/lib/types'
 
 export default function AgentProfile() {
   const { username } = useParams<{ username: string }>()
@@ -33,9 +30,7 @@ export default function AgentProfile() {
   const [viewMode, setViewMode] = useState<'map' | 'feed'>('map')
 
   // Sheets
-  const [storyViewer, setStoryViewer] = useState<{ stories: StoryPin[]; index: number } | null>(null)
-  const [reelViewer, setReelViewer] = useState<ReelPin | null>(null)
-  const [listingSheet, setListingSheet] = useState<(ListingPin | SoldPin | OpenHousePin) | null>(null)
+  const [selectedPin, setSelectedPin] = useState<Pin | null>(null)
   const [showAgentDetail, setShowAgentDetail] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
   const [agentMode, setAgentMode] = useState<AgentMode>('single')
@@ -98,15 +93,7 @@ export default function AgentProfile() {
   }, [allPins])
 
   const handlePinClick = useCallback((pin: Pin) => {
-    if (pin.type === 'story') {
-      const stories = allPins.filter((p): p is StoryPin => p.type === 'story')
-      const idx = stories.findIndex((s) => s.id === pin.id)
-      setStoryViewer({ stories, index: Math.max(idx, 0) })
-    } else if (pin.type === 'reel') {
-      setReelViewer(pin as ReelPin)
-    } else if (pin.type === 'listing' || pin.type === 'sold' || pin.type === 'open_house') {
-      setListingSheet(pin as ListingPin | SoldPin | OpenHousePin)
-    }
+    setSelectedPin(pin)
   }, [allPins])
 
   const handleFollow = () => {
@@ -206,12 +193,33 @@ export default function AgentProfile() {
 
       {/* Modals — all with smooth swipe dismiss */}
       <AnimatePresence>
-        {storyViewer && <StoryViewer stories={storyViewer.stories} agent={agent} initialIndex={storyViewer.index} onClose={() => setStoryViewer(null)} />}
+        {/* Placeholder — listing modal will be built next */}
+        {selectedPin && (
+          <div className="fixed inset-0 z-[100] flex items-end" onClick={() => setSelectedPin(null)}>
+            <div className="absolute inset-0 bg-black/50" />
+            <div className="relative w-full bg-obsidian rounded-t-[24px] max-h-[85vh] overflow-y-auto p-5" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-center mb-3"><div className="w-9 h-[5px] rounded-full bg-charcoal" /></div>
+              <h2 className="text-[18px] font-bold text-white mb-2">{selectedPin.address}</h2>
+              {'price' in selectedPin && <p className="text-[24px] font-extrabold text-white font-mono">${selectedPin.price.toLocaleString()}</p>}
+              {'soldPrice' in selectedPin && <p className="text-[24px] font-extrabold text-sold-green font-mono">SOLD ${selectedPin.soldPrice.toLocaleString()}</p>}
+              {'name' in selectedPin && <p className="text-[16px] font-semibold text-tangerine">{selectedPin.name}</p>}
+              {'beds' in selectedPin && <p className="text-[14px] text-mist mt-2">{selectedPin.beds} bd · {selectedPin.baths} ba · {selectedPin.sqft.toLocaleString()} sqft</p>}
+              {selectedPin.content.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-[13px] text-ghost uppercase tracking-wider mb-2">{selectedPin.content.length} content items</p>
+                  {selectedPin.content.map((c) => (
+                    <div key={c.id} className="bg-slate rounded-xl p-3 mb-2">
+                      <p className="text-[12px] text-tangerine font-semibold uppercase">{c.type}</p>
+                      <p className="text-[13px] text-mist mt-1">{c.caption}</p>
+                      <p className="text-[11px] text-ghost mt-1">{c.views.toLocaleString()} views</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </AnimatePresence>
-      <AnimatePresence>
-        {reelViewer && <ReelPlayer reel={reelViewer} agent={agent} onClose={() => setReelViewer(null)} onFollow={handleFollow} isFollowing={isFollowing} />}
-      </AnimatePresence>
-      {listingSheet && <ListingSheet pin={listingSheet} agent={agent} isOpen onClose={() => setListingSheet(null)} />}
 
       {/* Agent detail */}
       <AgentDetailSheet

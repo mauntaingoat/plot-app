@@ -12,8 +12,7 @@ const RING_PAD = 6
 const TANGERINE = '#FF6B3D'
 
 const RING_COLORS: Record<PinType, string> = {
-  listing: '#3B82F6', sold: '#34C759', story: '#FF6B3D',
-  reel: '#A855F7', live: '#FF3B30', open_house: '#FFAA00',
+  for_sale: '#3B82F6', sold: '#34C759', neighborhood: '#FF6B3D',
 }
 
 interface MapCanvasProps {
@@ -57,14 +56,23 @@ function pinsToGeoJSON(pins: Pin[]) {
         lng += spreadOffset
       }
 
-      const price = 'price' in pin ? pin.price : 'soldPrice' in pin ? pin.soldPrice : 'listingPrice' in pin ? pin.listingPrice : 0
+      const price = 'price' in pin ? pin.price : 'soldPrice' in pin ? pin.soldPrice : 0
       const priceK = price >= 1_000_000 ? `$${(price / 1_000_000).toFixed(1)}M` : price >= 1_000 ? `$${(price / 1_000).toFixed(0)}K` : price > 0 ? `$${price}` : ''
+      // Label: price for for_sale, SOLD for sold, neighborhood name for neighborhood
+      const label = pin.type === 'sold' ? 'SOLD'
+        : pin.type === 'neighborhood' ? ('name' in pin ? pin.name : '')
+        : priceK || ''
+      // Check for live or open house indicators
+      const isLive = pin.type === 'for_sale' && 'isLive' in pin && pin.isLive
+      const hasOpenHouse = pin.type === 'for_sale' && 'openHouse' in pin && pin.openHouse
       return {
         type: 'Feature' as const, id: pin.id,
         geometry: { type: 'Point' as const, coordinates: [lng, lat] },
         properties: {
           id: pin.id, type: pin.type,
-          label: pin.type === 'live' ? 'LIVE' : pin.type === 'open_house' ? 'OPEN' : pin.type === 'sold' ? 'SOLD' : priceK || '',
+          label: isLive ? 'LIVE' : label,
+          isLive: isLive ? 'true' : 'false',
+          hasOpenHouse: hasOpenHouse ? 'true' : 'false',
         },
       }
     }),
@@ -130,8 +138,8 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
   const loadPinImages = useCallback(async (map: mapboxgl.Map, pinList: Pin[]) => {
     const agentImg = agentPhotoUrl ? await loadImage(agentPhotoUrl).catch(() => null) : null
     for (const pin of pinList) {
-      const imageUrl = 'heroPhotoUrl' in pin ? pin.heroPhotoUrl : 'thumbnailUrl' in pin ? pin.thumbnailUrl : 'mediaUrl' in pin ? pin.mediaUrl : ''
-      const color = pin.type === 'story' ? '#FF6B3D' : RING_COLORS[pin.type]
+      const imageUrl = 'heroPhotoUrl' in pin ? pin.heroPhotoUrl : ''
+      const color = RING_COLORS[pin.type] || '#FF6B3D'
       const letter = PIN_CONFIG[pin.type].label[0]
       let img: HTMLImageElement | null = null
       if (imageUrl) img = await loadImage(imageUrl).catch(() => null)
@@ -152,8 +160,8 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       }
 
       // Per-pin label pill (price/status in type-colored pill)
-      const label = pin.type === 'live' ? 'LIVE' : pin.type === 'open_house' ? 'OPEN' : pin.type === 'sold' ? 'SOLD'
-        : ('price' in pin ? formatPrice(pin.price) : 'soldPrice' in pin ? formatPrice(pin.soldPrice) : 'listingPrice' in pin ? formatPrice(pin.listingPrice) : '')
+      const label = pin.type === 'sold' ? 'SOLD'
+        : ('price' in pin ? formatPrice(pin.price) : 'soldPrice' in pin ? formatPrice(pin.soldPrice) : '')
       if (label) {
         const labelId = `label-${pin.id}`
         if (!loadedImagesRef.current.has(labelId)) {

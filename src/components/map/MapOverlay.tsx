@@ -4,7 +4,6 @@ import { Avatar } from '@/components/ui/Avatar'
 import { FilterPill, FilterBar } from '@/components/ui/FilterPill'
 import { useMapStore } from '@/stores/mapStore'
 import { type PinType, type UserDoc } from '@/lib/types'
-import { PIN_TYPE_ICONS } from '@/components/icons/PinIcons'
 import type { AgentMode } from '@/components/sheets/AgentDetailSheet'
 
 interface MapOverlayProps {
@@ -23,12 +22,9 @@ interface MapOverlayProps {
 }
 
 const FILTER_OPTIONS: { value: PinType; label: string }[] = [
-  { value: 'listing', label: 'For Sale' },
+  { value: 'for_sale', label: 'For Sale' },
   { value: 'sold', label: 'Sold' },
-  { value: 'story', label: 'Stories' },
-  { value: 'reel', label: 'Reels' },
-  { value: 'live', label: 'Live' },
-  { value: 'open_house', label: 'Open' },
+  { value: 'neighborhood', label: 'Neighborhoods' },
 ]
 
 export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick, onFilterChange, isFollowing, viewMode = 'map', onToggleView, isPreview, agentMode = 'single', enabledAgentCount = 0 }: MapOverlayProps) {
@@ -147,11 +143,10 @@ export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick
         <FilterBar className="flex-1">
           <FilterPill label="All" active={isAllSelected()} onClick={() => handleFilterClick('all')} count={totalPins} dark={isFeed} />
           {FILTER_OPTIONS.map((opt) => {
-            const Icon = PIN_TYPE_ICONS[opt.value]
             const count = pinCounts[opt.value] || 0
             if (count === 0) return null
             return (
-              <FilterPill key={opt.value} label={opt.label} active={activeFilters.has(opt.value)} onClick={() => handleFilterClick(opt.value)} icon={<Icon size={14} />} count={count} dark={isFeed} />
+              <FilterPill key={opt.value} label={opt.label} active={activeFilters.has(opt.value)} onClick={() => handleFilterClick(opt.value)} count={count} dark={isFeed} />
             )
           })}
         </FilterBar>
