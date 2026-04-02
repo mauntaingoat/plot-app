@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { MapCanvas } from '@/components/map/MapCanvas'
 import { MapOverlay } from '@/components/map/MapOverlay'
 import { PeekDrawer } from '@/components/map/PeekDrawer'
@@ -29,6 +30,7 @@ export default function AgentProfile() {
   const [notFound, setNotFound] = useState(false)
   const [isFollowing, setIsFollowing] = useState(false)
   const [viewMode, setViewMode] = useState<'map' | 'feed'>('map')
+  const [loadingComplete, setLoadingComplete] = useState(false)
 
   // Sheets
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null)
@@ -121,11 +123,18 @@ export default function AgentProfile() {
     catch { navigator.clipboard.writeText(window.location.href) }
   }
 
-  if (loading) {
+  // Loading screen state (hook moved — see below)
+
+  if (loading || !loadingComplete) {
+    // Try to get agent info from mock for the loading screen even before full load
+    const previewAgent = username ? getMockAgent(username) : null
     return (
-      <div className="map-page flex items-center justify-center bg-midnight">
-        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-8 h-8 border-2 border-tangerine border-t-transparent rounded-full" />
-      </div>
+      <LoadingScreen
+        agentName={agent?.displayName || previewAgent?.displayName}
+        agentPhoto={agent?.photoURL || previewAgent?.photoURL}
+        onComplete={() => setLoadingComplete(true)}
+        minDuration={loading ? 3000 : 1800}
+      />
     )
   }
 
