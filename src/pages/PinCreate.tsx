@@ -54,7 +54,10 @@ export default function PinCreate() {
   const photosRef = useRef<HTMLInputElement>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
 
-  const handleAddressSearch = (val: string) => { setAddress(val); setCoords(null); search(val) }
+  const handleAddressSearch = (val: string) => {
+    setAddress(val); setCoords(null)
+    search(val, pinType === 'neighborhood' ? 'neighborhood' : 'address')
+  }
 
   const selectAddress = (result: { placeName: string; center: [number, number] }) => {
     setAddress(result.placeName); setCoords({ lat: result.center[1], lng: result.center[0] }); clear()
@@ -80,12 +83,13 @@ export default function PinCreate() {
   }
 
   const handlePublish = async () => {
-    if (!userDoc || !pinType || !coords) return
+    if (!pinType || !coords) return
+    const agentId = userDoc?.uid || 'demo-agent'
     setSaving(true); setStep('publishing')
 
     try {
       const pinData: Record<string, unknown> = {
-        agentId: userDoc.uid,
+        agentId,
         type: pinType,
         coordinates: coords,
         address,
@@ -376,6 +380,11 @@ export default function PinCreate() {
                       </button>
                     ))}
                   </div>
+                  <p className="text-[10px] text-ash">
+                    {newContentType === 'reel' && 'Reels are permanent vertical videos showcasing the property.'}
+                    {newContentType === 'story' && 'Stories disappear after 24 hours. Great for open house announcements, quick updates.'}
+                    {newContentType === 'video_note' && 'A personal video message about why you love this property. Direct-to-camera.'}
+                  </p>
 
                   <input ref={fileRef} type="file" accept="image/*,video/*" onChange={handleMediaFile} className="hidden" />
 

@@ -8,13 +8,15 @@ interface GeocodingResult {
   text: string
 }
 
+type SearchType = 'address' | 'neighborhood'
+
 export function useGeocoding() {
   const [results, setResults] = useState<GeocodingResult[]>([])
   const [loading, setLoading] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const search = useCallback((query: string) => {
+  const search = useCallback((query: string, searchType: SearchType = 'address') => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current)
     if (abortRef.current) abortRef.current.abort()
 
@@ -29,7 +31,13 @@ export function useGeocoding() {
       setLoading(true)
 
       try {
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=us&types=address&limit=5`
+        // For neighborhoods: search places, neighborhoods, localities
+        // For addresses: search specific addresses
+        const types = searchType === 'neighborhood'
+          ? 'neighborhood,locality,place,district'
+          : 'address'
+
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=us&types=${types}&limit=5`
         const res = await fetch(url, { signal: controller.signal })
         const data = await res.json()
 
@@ -49,7 +57,7 @@ export function useGeocoding() {
       } finally {
         setLoading(false)
       }
-    }, 300) // 300ms debounce
+    }, 300)
   }, [])
 
   const clear = useCallback(() => {
