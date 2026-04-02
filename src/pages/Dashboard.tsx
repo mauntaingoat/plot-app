@@ -6,7 +6,7 @@ import {
   Eye, MousePointerClick, Bookmark,
   ExternalLink, LogOut, ChevronRight, Bell, CreditCard,
   User, Trash2, Edit3, EyeOff, Link2, Shield, Palette,
-  HelpCircle, Share2, Smartphone,
+  Film, Share2, Smartphone,
 } from 'lucide-react'
 import { TabBar } from '@/components/ui/TabBar'
 import { Button } from '@/components/ui/Button'
@@ -41,14 +41,19 @@ export default function Dashboard() {
   // Pins with toggle state
   const [pins, setPins] = useState<Pin[]>(!firebaseConfigured ? MOCK_PINS_CAROLINA : [])
 
-  const handleTogglePin = useCallback((pinId: string, enabled: boolean) => {
+  const handleTogglePin = useCallback(async (pinId: string, enabled: boolean) => {
     setPins((prev) => prev.map((p) => p.id === pinId ? { ...p, enabled } : p))
+    const { updatePin } = await import('@/lib/firestore')
+    await updatePin(pinId, { enabled } as any).catch(() => {})
   }, [])
 
-  const handleDeletePin = useCallback((pinId: string) => {
+  const handleDeletePin = useCallback(async (pinId: string) => {
     setPins((prev) => prev.filter((p) => p.id !== pinId))
     setShowDeleteConfirm(null)
     setShowPinActions(null)
+    // Delete from Firestore
+    const { deletePin } = await import('@/lib/firestore')
+    await deletePin(pinId).catch(() => {})
   }, [])
 
   const stats = useMemo(() => {
@@ -349,7 +354,13 @@ export default function Dashboard() {
           <motion.button whileTap={{ scale: 0.97 }} onClick={() => { navigate(`/dashboard/pin/${showPinActions?.id}/edit`); setShowPinActions(null) }}
             className="w-full flex items-center gap-3 p-3.5 rounded-[14px] bg-slate text-left">
             <Edit3 size={18} className="text-mist" />
-            <span className="text-[15px] font-medium text-white">Edit Pin</span>
+            <span className="text-[15px] font-medium text-white">Edit Details</span>
+          </motion.button>
+          <motion.button whileTap={{ scale: 0.97 }} onClick={() => { navigate(`/dashboard/pin/${showPinActions?.id}/edit?tab=content`); setShowPinActions(null) }}
+            className="w-full flex items-center gap-3 p-3.5 rounded-[14px] bg-slate text-left">
+            <Film size={18} className="text-tangerine" />
+            <span className="text-[15px] font-medium text-white">Add Content</span>
+            <span className="text-[11px] text-ghost ml-auto">{showPinActions?.content?.length || 0} items</span>
           </motion.button>
           <motion.button whileTap={{ scale: 0.97 }} onClick={() => { if (showPinActions) handleTogglePin(showPinActions.id, !showPinActions.enabled); setShowPinActions(null) }}
             className="w-full flex items-center gap-3 p-3.5 rounded-[14px] bg-slate text-left">
