@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Share2, UserPlus, UserCheck, ChevronDown, Map, Layers, Users, Globe } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
-import { FilterPill, FilterBar } from '@/components/ui/FilterPill'
+import { FilterBar } from '@/components/ui/FilterPill'
+import { FilterDropdown } from '@/components/ui/FilterDropdown'
 import { useMapStore } from '@/stores/mapStore'
 import { type PinType, type UserDoc } from '@/lib/types'
 import type { AgentMode } from '@/components/sheets/AgentDetailSheet'
@@ -141,19 +143,31 @@ export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick
         className="pointer-events-auto flex items-center"
       >
         <FilterBar className="flex-1">
-          <FilterPill label="All" active={isAllSelected()} onClick={() => handleFilterClick('all')} count={totalPins} dark={isFeed} />
-          {FILTER_OPTIONS.map((opt) => {
-            const count = pinCounts[opt.value] || 0
-            if (count === 0) return null
-            return (
-              <FilterPill key={opt.value} label={opt.label} active={activeFilters.has(opt.value)} onClick={() => handleFilterClick(opt.value)} count={count} dark={isFeed} />
-            )
-          })}
-          {/* Property attribute filters */}
-          <FilterPill label="Price" dark={isFeed} onClick={() => {}} />
-          <FilterPill label="Beds" dark={isFeed} onClick={() => {}} />
-          <FilterPill label="Baths" dark={isFeed} onClick={() => {}} />
-          <FilterPill label="Type" dark={isFeed} onClick={() => {}} />
+          {/* Pin type filter */}
+          <FilterDropdown
+            label="Status"
+            options={FILTER_OPTIONS.filter((o) => (pinCounts[o.value] || 0) > 0).map((o) => ({ value: o.value, label: `${o.label} (${pinCounts[o.value] || 0})` }))}
+            selected={activeFilters}
+            onToggle={(v) => handleFilterClick(v as PinType)}
+            onClear={clearFilters}
+            dark={isFeed}
+          />
+          {/* Property attribute filters — visual only for now */}
+          <FilterDropdown label="Price" dark={isFeed}
+            options={[{ value: '0-500k', label: 'Under $500K' }, { value: '500k-1m', label: '$500K – $1M' }, { value: '1m-2m', label: '$1M – $2M' }, { value: '2m+', label: '$2M+' }]}
+            selected={new Set()} onToggle={() => {}} />
+          <FilterDropdown label="Beds" dark={isFeed}
+            options={[{ value: '1', label: '1+' }, { value: '2', label: '2+' }, { value: '3', label: '3+' }, { value: '4', label: '4+' }, { value: '5', label: '5+' }]}
+            selected={new Set()} onToggle={() => {}} />
+          <FilterDropdown label="Baths" dark={isFeed}
+            options={[{ value: '1', label: '1+' }, { value: '2', label: '2+' }, { value: '3', label: '3+' }]}
+            selected={new Set()} onToggle={() => {}} />
+          <FilterDropdown label="Type" dark={isFeed}
+            options={[{ value: 'single_family', label: 'Single Family' }, { value: 'condo', label: 'Condo' }, { value: 'townhouse', label: 'Townhouse' }, { value: 'multi_family', label: 'Multi-Family' }, { value: 'land', label: 'Land' }]}
+            selected={new Set()} onToggle={() => {}} />
+          <FilterDropdown label="Sqft" dark={isFeed}
+            options={[{ value: '0-1000', label: 'Under 1,000' }, { value: '1000-1500', label: '1,000 – 1,500' }, { value: '1500-2000', label: '1,500 – 2,000' }, { value: '2000-3000', label: '2,000 – 3,000' }, { value: '3000+', label: '3,000+' }]}
+            selected={new Set()} onToggle={() => {}} />
         </FilterBar>
 
         {onToggleView && (
