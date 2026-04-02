@@ -141,6 +141,7 @@ export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.45, duration: 0.3, ease: 'easeOut' }}
         className="pointer-events-auto flex items-center"
+        style={{ touchAction: 'pan-x' }}
       >
         <FilterBar className="flex-1">
           <FilterDropdown label="Pin Type" dark={isFeed}
