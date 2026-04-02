@@ -2,6 +2,8 @@ import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { useAuthListener } from '@/hooks/useAuth'
 import { SimpleLoadingScreen } from '@/components/ui/LoadingScreen'
+import { AuthSheet } from '@/components/sheets/AuthSheet'
+import { useAuthModalStore } from '@/stores/authModalStore'
 
 const Home = lazy(() => import('@/pages/Home'))
 const ForAgents = lazy(() => import('@/pages/ForAgents'))
@@ -17,8 +19,6 @@ const Dashboard = lazy(() => import('@/pages/Dashboard'))
 const PinCreate = lazy(() => import('@/pages/PinCreate'))
 const NotFound = lazy(() => import('@/pages/NotFound'))
 
-// App-level fallback uses simple loading screen
-
 function ScrollToTop() {
   const { pathname } = useLocation()
   useEffect(() => {
@@ -29,6 +29,12 @@ function ScrollToTop() {
   return null
 }
 
+// Global auth modal — works on any page
+function GlobalAuthModal() {
+  const { isOpen, mode, close } = useAuthModalStore()
+  return <AuthSheet isOpen={isOpen} onClose={close} mode={mode} />
+}
+
 function AppRoutes() {
   useAuthListener()
 
@@ -36,7 +42,6 @@ function AppRoutes() {
     <>
       <ScrollToTop />
       <Routes>
-        {/* Marketing pages */}
         <Route path="/" element={<Home />} />
         <Route path="/for-agents" element={<ForAgents />} />
         <Route path="/pricing" element={<Pricing />} />
@@ -44,20 +49,15 @@ function AppRoutes() {
         <Route path="/about" element={<About />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
-
-        {/* Auth pages */}
         <Route path="/sign-up" element={<SignUp />} />
         <Route path="/sign-in" element={<SignIn />} />
-
-        {/* App pages */}
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/dashboard/pin/new" element={<PinCreate />} />
         <Route path="/dashboard/pin/:id/edit" element={<PinCreate />} />
-
-        {/* Agent profile — must be last (catches /:username) */}
         <Route path="/:username" element={<AgentProfile />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <GlobalAuthModal />
     </>
   )
 }

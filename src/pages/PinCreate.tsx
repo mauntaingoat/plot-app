@@ -84,8 +84,19 @@ export default function PinCreate() {
 
   const handlePublish = async () => {
     if (!pinType || !coords) return
+    // Neighborhood pins must have at least one content item
+    if (pinType === 'neighborhood' && contentItems.length === 0) {
+      alert('Neighborhood pins require at least one piece of content (reel, story, or video note).')
+      return
+    }
     const agentId = userDoc?.uid || 'demo-agent'
     setSaving(true); setStep('publishing')
+
+    // Timeout after 15s
+    const timeout = setTimeout(() => {
+      setSaving(false); setStep('content')
+      alert('Publishing timed out. Please try again.')
+    }, 15000)
 
     try {
       const pinData: Record<string, unknown> = {
@@ -161,10 +172,13 @@ export default function PinCreate() {
         await updatePin(pinId, { content: contentArray } as any)
       }
 
+      clearTimeout(timeout)
       navigate('/dashboard')
     } catch (err) {
+      clearTimeout(timeout)
       console.error('Failed to create pin:', err)
       setSaving(false); setStep('content')
+      alert(`Failed to publish: ${err instanceof Error ? err.message : 'Unknown error'}`)
     }
   }
 
@@ -252,9 +266,7 @@ export default function PinCreate() {
                 </motion.div>
               )}
 
-              {pinType === 'neighborhood' && (
-                <Input label="Neighborhood name" placeholder="e.g. Brickell, Wynwood" value={neighborhoodName} onChange={(e) => setNeighborhoodName(e.target.value)} />
-              )}
+              {/* Neighborhood name auto-derived from selected location — no separate input */}
 
               <div className="flex gap-3 mt-6">
                 <Button variant="secondary" size="xl" onClick={() => setStep('type')} className="flex-1">Back</Button>
@@ -337,9 +349,15 @@ export default function PinCreate() {
           {step === 'content' && (
             <motion.div key="content" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
               <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">Add content</h2>
-              <p className="text-[14px] text-smoke mb-6">
-                Attach reels, stories, or video notes to this {pinType === 'neighborhood' ? 'neighborhood' : 'listing'}. You can skip and add later.
+              <p className="text-[14px] text-smoke mb-4">
+                Attach reels, stories, or video notes to this {pinType === 'neighborhood' ? 'neighborhood' : 'listing'}.
+                {pinType !== 'neighborhood' && ' You can skip and add later.'}
               </p>
+              {pinType === 'neighborhood' && (
+                <div className="bg-tangerine-soft rounded-[12px] px-4 py-3 mb-4">
+                  <p className="text-[12px] text-ember font-medium">Neighborhood pins require at least one content item. Tip: include a reel or video note — stories disappear after 24 hours.</p>
+                </div>
+              )}
 
               {/* Existing content items */}
               {contentItems.length > 0 && (
@@ -386,7 +404,10 @@ export default function PinCreate() {
                     {newContentType === 'video_note' && 'A personal video message about why you love this property. Direct-to-camera.'}
                   </p>
 
-                  <input ref={fileRef} type="file" accept="image/*,video/*" onChange={handleMediaFile} className="hidden" />
+                  <input ref={fileRef} type="file"
+                    accept={newContentType === 'video_note' ? 'video/*' : 'image/*,video/*'}
+                    capture={newContentType === 'video_note' ? 'user' : undefined}
+                    onChange={handleMediaFile} className="hidden" />
 
                   {newPreview ? (
                     <div className="relative rounded-[12px] overflow-hidden aspect-video">
@@ -403,8 +424,10 @@ export default function PinCreate() {
                   ) : (
                     <button onClick={() => fileRef.current?.click()}
                       className="w-full py-8 border-2 border-dashed border-pearl rounded-[12px] flex flex-col items-center gap-1 text-smoke hover:bg-pearl/50 cursor-pointer">
-                      <Upload size={22} />
-                      <span className="text-[12px] font-medium">Upload photo or video</span>
+                      {newContentType === 'video_note' ? <Camera size={22} /> : <Upload size={22} />}
+                      <span className="text-[12px] font-medium">
+                        {newContentType === 'video_note' ? 'Record with camera' : 'Upload photo or video'}
+                      </span>
                     </button>
                   )}
 

@@ -39,31 +39,55 @@ export default function SignUp() {
   const handleCreate = () => {
     if (!email.trim()) { setError('Enter an email'); return }
     if (role === 'agent' && !displayName.trim()) { setError('Enter your name'); return }
+    if (firebaseConfigured && !password.trim()) { setError('Enter a password'); return }
     setLoading(true); setError('')
 
-    if (!firebaseConfigured) {
-      const newUser: UserDoc = {
-        uid: `demo-${Date.now()}`, email, role: role || 'consumer',
-        agentType: role === 'agent' ? 'agent' : undefined,
-        createdAt: Timestamp.now(), username: role === 'agent' ? username : null,
-        displayName: displayName || email.split('@')[0], photoURL: null, bio: '',
-        brokerage: null, licenseNumber: null, licenseState: null, platforms: [],
-        followerCount: 0, followingCount: 0,
-        onboardingComplete: role === 'consumer', onboardingStep: role === 'consumer' ? 8 : 2,
-        setupPercent: role === 'agent' ? 20 : 0,
-      }
-      setUserDoc(newUser); setLoading(false)
+    // Create user doc helper
+    const makeUser = (uid: string): UserDoc => ({
+      uid, email, role: role || 'consumer',
+      agentType: role === 'agent' ? 'agent' : undefined,
+      createdAt: Timestamp.now(), username: role === 'agent' ? username : null,
+      displayName: displayName || email.split('@')[0], photoURL: null, bio: '',
+      brokerage: null, licenseNumber: null, licenseState: null, platforms: [],
+      followerCount: 0, followingCount: 0,
+      onboardingComplete: role === 'consumer', onboardingStep: role === 'consumer' ? 8 : 2,
+      setupPercent: role === 'agent' ? 20 : 0,
+    })
+
+    if (!firebaseConfigured || !auth) {
+      setUserDoc(makeUser(`demo-${Date.now()}`)); setLoading(false)
       navigate(role === 'agent' ? '/dashboard' : '/explore')
       return
     }
 
+    // Timeout after 10s
+    const timeout = setTimeout(() => {
+      setLoading(false)
+      setError('Connection timed out. Please try again.')
+    }, 10000)
+
     ;(async () => {
       try {
-        const cred = await createUserWithEmailAndPassword(auth!, email, password)
-        await createUserDoc(cred.user.uid, { email, role: role || 'consumer', displayName: displayName || email.split('@')[0], username: role === 'agent' ? username : null })
+        const cred = await createUserWithEmailAndPassword(auth, email, password)
+        clearTimeout(timeout)
+        // Write user doc + claim username
+        await createUserDoc(cred.user.uid, makeUser(cred.user.uid) as any).catch((e) => console.warn('User doc write failed:', e))
+        if (role === 'agent' && username) {
+          const { claim } = useUsername()
+          // Direct Firestore write for username claim
+          const { doc, setDoc, serverTimestamp } = await import('firebase/firestore')
+          const { db } = await import('@/config/firebase')
+          if (db) await setDoc(doc(db, 'usernames', username.toLowerCase()), { uid: cred.user.uid, createdAt: serverTimestamp() }).catch(() => {})
+        }
         navigate(role === 'agent' ? '/dashboard' : '/explore')
       } catch (e: any) {
-        setError(e.code === 'auth/email-already-in-use' ? 'Email already in use' : e.code === 'auth/weak-password' ? 'Password needs 6+ chars' : 'Something went wrong')
+        clearTimeout(timeout)
+        const msg = e.code === 'auth/email-already-in-use' ? 'Email already in use'
+          : e.code === 'auth/weak-password' ? 'Password needs 6+ characters'
+          : e.code === 'auth/invalid-email' ? 'Invalid email address'
+          : e.code === 'auth/network-request-failed' ? 'Network error. Check your connection.'
+          : `Error: ${e.message || 'Something went wrong'}`
+        setError(msg)
       } finally { setLoading(false) }
     })()
   }
