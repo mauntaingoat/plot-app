@@ -69,7 +69,7 @@ export function FilterDropdown({ label, options, selected, onToggle, onClear, da
         onClick={() => setOpen(!open)}
         className={`
           inline-flex items-center gap-0.5 px-2.5 py-1.5 rounded-full shrink-0
-          text-[9px] font-semibold whitespace-nowrap cursor-pointer tracking-wide
+          text-[13px] font-semibold whitespace-nowrap cursor-pointer
           select-none border transition-all duration-200
           ${hasSelection
             ? 'bg-tangerine text-white border-tangerine'
@@ -100,14 +100,6 @@ export function FilterDropdown({ label, options, selected, onToggle, onClear, da
               }`}
               style={{ top: pos.top, left: pos.left, maxWidth: 'calc(100vw - 16px)' }}
             >
-              {hasSelection && onClear && (
-                <button onClick={() => { onClear(); setOpen(false) }}
-                  className={`w-full px-3 py-1.5 text-left text-[10px] font-semibold border-b ${
-                    dark ? 'text-tangerine border-white/10' : 'text-tangerine border-black/5'
-                  }`}>
-                  Clear
-                </button>
-              )}
               <div className="max-h-[200px] overflow-y-auto py-0.5">
                 {options.map((opt) => {
                   const isSelected = selected.has(opt.value)
@@ -126,6 +118,14 @@ export function FilterDropdown({ label, options, selected, onToggle, onClear, da
                   )
                 })}
               </div>
+              {hasSelection && onClear && (
+                <button onClick={() => { onClear(); setOpen(false) }}
+                  className={`w-full px-3 py-2 text-left text-[13px] font-semibold border-t ${
+                    dark ? 'text-tangerine border-white/10' : 'text-tangerine border-black/5'
+                  }`}>
+                  Clear
+                </button>
+              )}
             </motion.div>
           )}
         </AnimatePresence>,
