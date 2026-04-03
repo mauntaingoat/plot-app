@@ -12,9 +12,10 @@ interface ListingModalProps {
   agent: UserDoc
   onClose: () => void
   isPreview?: boolean
+  embedded?: boolean // true when rendered inside a SidePanel — skip own animation/backdrop
 }
 
-export function ListingModal({ pin, agent, onClose, isPreview }: ListingModalProps) {
+export function ListingModal({ pin, agent, onClose, isPreview, embedded }: ListingModalProps) {
   const [activeTab, setActiveTab] = useState<'content' | 'listing'>('content')
   const y = useMotionValue(0)
   const [rendered, setRendered] = useState(true)
@@ -34,11 +35,42 @@ export function ListingModal({ pin, agent, onClose, isPreview }: ListingModalPro
   }
 
   useEffect(() => {
+    if (embedded) return // No animation when embedded in SidePanel
     y.jump(window.innerHeight)
     requestAnimationFrame(() => animate(y, 0, { type: 'tween', duration: 0.32, ease: [0.32, 0.72, 0, 1] }))
-  }, [y])
+  }, [y, embedded])
 
   if (!rendered) return null
+
+  // Embedded mode: just render content, no backdrop/animation wrapper
+  if (embedded) {
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        {/* Tab toggle */}
+        {hasListingData && (
+          <div className="px-4 pt-3 pb-2 shrink-0">
+            <div className="flex bg-slate rounded-[12px] p-1">
+              <button onClick={() => setActiveTab('content')}
+                className={`flex-1 py-2 rounded-[10px] text-[12px] font-semibold transition-all ${activeTab === 'content' ? 'bg-tangerine text-white' : 'text-ghost'}`}>
+                Content
+              </button>
+              <button onClick={() => setActiveTab('listing')}
+                className={`flex-1 py-2 rounded-[10px] text-[12px] font-semibold transition-all ${activeTab === 'listing' ? 'bg-tangerine text-white' : 'text-ghost'}`}>
+                Listing
+              </button>
+            </div>
+          </div>
+        )}
+        <div className="flex-1 overflow-hidden">
+          {activeTab === 'content' ? (
+            <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={onClose} />
+          ) : (
+            <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={onClose} />
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>

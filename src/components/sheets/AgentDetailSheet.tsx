@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { ExternalLink, MapPin, Award, UserPlus, UserCheck, Globe, Users } from 'lucide-react'
-import { DarkBottomSheet } from '@/components/ui/BottomSheet'
+import { ResponsiveSheet } from '@/components/ui/ResponsiveSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -31,7 +31,7 @@ export function AgentDetailSheet({
   isPreview, agentMode = 'single', onSetMode,
 }: AgentDetailSheetProps) {
   return (
-    <DarkBottomSheet isOpen={isOpen} onClose={onClose}>
+    <ResponsiveSheet isOpen={isOpen} onClose={onClose} dark>
       <div className="px-5 pb-8 space-y-6">
         {/* Profile header */}
         <div className="flex items-center gap-4">
@@ -194,6 +194,6 @@ export function AgentDetailSheet({
           </div>
         )}
       </div>
-    </DarkBottomSheet>
+    </ResponsiveSheet>
   )
 }

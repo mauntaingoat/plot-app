@@ -227,7 +227,7 @@ export default function AgentProfile() {
       {/* Listing modal — side panel on desktop, full screen on mobile */}
       {selectedPin && typeof window !== 'undefined' && window.innerWidth >= 768 ? (
         <SidePanel isOpen={!!selectedPin} onClose={() => setSelectedPin(null)} title={selectedPin?.address}>
-          <ListingModal pin={selectedPin} agent={agent} onClose={() => setSelectedPin(null)} isPreview={isPreview} />
+          <ListingModal pin={selectedPin} agent={agent} onClose={() => setSelectedPin(null)} isPreview={isPreview} embedded />
         </SidePanel>
       ) : selectedPin ? (
         <ListingModal pin={selectedPin} agent={agent} onClose={() => setSelectedPin(null)} isPreview={isPreview} />

@@ -51,7 +51,7 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
       {/* Listing-only sheet — side panel on desktop, bottom sheet on mobile */}
       {listingSheet && typeof window !== 'undefined' && window.innerWidth >= 768 ? (
         <SidePanel isOpen={!!listingSheet} onClose={() => setListingSheet(null)} title={listingSheet?.address}>
-          <ListingOnlySheet pin={listingSheet} agent={agent} onClose={() => setListingSheet(null)} isPreview={isPreview} />
+          <ListingOnlySheet pin={listingSheet} agent={agent} onClose={() => setListingSheet(null)} isPreview={isPreview} embedded />
         </SidePanel>
       ) : listingSheet ? (
         <ListingOnlySheet pin={listingSheet} agent={agent} onClose={() => setListingSheet(null)} isPreview={isPreview} />
