@@ -50,7 +50,7 @@ interface FilterBarProps {
 
 export function FilterBar({ children, className = '' }: FilterBarProps) {
   return (
-    <div className={`flex gap-1.5 overflow-x-auto px-4 py-2 no-scrollbar items-center h-[44px] shrink-0 ${className}`} style={{ touchAction: 'pan-x', overscrollBehaviorY: 'none' }}>
+    <div className={`flex gap-1.5 overflow-x-auto overflow-y-hidden px-4 py-2 no-scrollbar items-center h-[44px] shrink-0 ${className}`} style={{ touchAction: 'pan-x', overscrollBehaviorY: 'none' }}>
       {children}
     </div>
   )
