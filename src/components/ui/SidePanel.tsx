@@ -1,4 +1,5 @@
 import { type ReactNode, useCallback, useRef, useState, useEffect } from 'react'
+import { X } from 'lucide-react'
 
 interface SidePanelProps {
   isOpen: boolean
@@ -6,11 +7,8 @@ interface SidePanelProps {
   children: ReactNode
   title?: string
   className?: string
-  width?: string // default '40%'
+  width?: string
 }
-
-// Desktop: slides in from left, takes 40% width
-// Mobile: falls back to regular bottom sheet behavior (don't use this component on mobile)
 
 export function SidePanel({ isOpen, onClose, children, title, className = '', width = '40%' }: SidePanelProps) {
   const [mounted, setMounted] = useState(false)
@@ -40,7 +38,6 @@ export function SidePanel({ isOpen, onClose, children, title, className = '', wi
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className="fixed inset-0 z-[90] bg-black/40 will-change-[opacity]"
         style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.25s ease' }}
@@ -48,26 +45,27 @@ export function SidePanel({ isOpen, onClose, children, title, className = '', wi
         onPointerDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
       />
-      {/* Panel — slides from left */}
       <div
         className={`fixed top-0 left-0 bottom-0 z-[100] bg-obsidian border-r border-border-dark
           flex flex-col overflow-hidden shadow-2xl will-change-transform ${className}`}
         style={{
-          width,
-          minWidth: 360,
-          maxWidth: '90vw',
+          width, minWidth: 360, maxWidth: '90vw',
           transform: visible ? 'translateX(0) translateZ(0)' : 'translateX(-100%) translateZ(0)',
           transition: 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
         }}
       >
-        {title && (
-          <div className="px-6 py-4 border-b border-border-dark shrink-0 flex items-center justify-between">
-            <h2 className="text-[18px] font-bold text-white tracking-tight">{title}</h2>
-            <button onClick={dismiss} className="w-8 h-8 rounded-full bg-charcoal flex items-center justify-center text-ghost hover:text-white">
-              <span className="text-[18px]">&times;</span>
-            </button>
-          </div>
-        )}
+        {/* Header — always shows X, optional title */}
+        <div className="px-5 py-4 shrink-0 flex items-center justify-between border-b border-border-dark">
+          {title ? (
+            <h2 className="text-[16px] font-bold text-white tracking-tight truncate flex-1 mr-3">{title}</h2>
+          ) : (
+            <div className="flex-1" />
+          )}
+          <button onClick={dismiss} className="w-8 h-8 rounded-full bg-charcoal flex items-center justify-center text-ghost hover:text-white cursor-pointer shrink-0">
+            <X size={16} />
+          </button>
+        </div>
+        {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
           {children}
         </div>
@@ -76,7 +74,6 @@ export function SidePanel({ isOpen, onClose, children, title, className = '', wi
   )
 }
 
-// Light variant
 export function LightSidePanel({ isOpen, onClose, children, title, className = '', width = '40%' }: SidePanelProps) {
   const [mounted, setMounted] = useState(false)
   const [visible, setVisible] = useState(false)
@@ -115,21 +112,21 @@ export function LightSidePanel({ isOpen, onClose, children, title, className = '
         className={`fixed top-0 left-0 bottom-0 z-[100] bg-ivory border-r border-border-light
           flex flex-col overflow-hidden shadow-2xl will-change-transform ${className}`}
         style={{
-          width,
-          minWidth: 360,
-          maxWidth: '90vw',
+          width, minWidth: 360, maxWidth: '90vw',
           transform: visible ? 'translateX(0) translateZ(0)' : 'translateX(-100%) translateZ(0)',
           transition: 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
         }}
       >
-        {title && (
-          <div className="px-6 py-4 border-b border-border-light shrink-0 flex items-center justify-between">
-            <h2 className="text-[18px] font-bold text-ink tracking-tight">{title}</h2>
-            <button onClick={dismiss} className="w-8 h-8 rounded-full bg-cream flex items-center justify-center text-smoke hover:text-ink">
-              <span className="text-[18px]">&times;</span>
-            </button>
-          </div>
-        )}
+        <div className="px-5 py-4 shrink-0 flex items-center justify-between border-b border-border-light">
+          {title ? (
+            <h2 className="text-[16px] font-bold text-ink tracking-tight truncate flex-1 mr-3">{title}</h2>
+          ) : (
+            <div className="flex-1" />
+          )}
+          <button onClick={dismiss} className="w-8 h-8 rounded-full bg-cream flex items-center justify-center text-smoke hover:text-ink cursor-pointer shrink-0">
+            <X size={16} />
+          </button>
+        </div>
         <div className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
           {children}
         </div>

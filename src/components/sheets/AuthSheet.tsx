@@ -158,7 +158,7 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
 
   return (
     <ResponsiveSheet isOpen={isOpen} onClose={onClose}>
-      <div className="px-6 pb-8 pt-2">
+      <div className="px-6 pb-8 pt-4 md:pt-6">
         
 
           {/* ── Step: Choose Role ── */}

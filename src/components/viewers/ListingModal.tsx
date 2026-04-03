@@ -61,7 +61,7 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded }: Listi
             </div>
           </div>
         )}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
           {activeTab === 'content' ? (
             <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={onClose} />
           ) : (

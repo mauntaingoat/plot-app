@@ -126,10 +126,10 @@ body {
   scrollbar-width: none;
 }
 
-/* ── Selection ── */
+/* ── Selection — keep text color, just highlight bg ── */
 ::selection {
-  background: var(--color-tangerine-soft);
-  color: var(--color-ink);
+  background: rgba(255, 107, 61, 0.25);
+  color: inherit;
 }
 
 /* ── Focus ring ── */
@@ -143,6 +143,11 @@ body {
 input, textarea, select, button {
   font-family: inherit;
   font-size: inherit;
+}
+
+/* All clickable elements get pointer cursor */
+button, [role="button"], a, [onclick], .cursor-pointer {
+  cursor: pointer;
 }
 
 input:focus, textarea:focus {
