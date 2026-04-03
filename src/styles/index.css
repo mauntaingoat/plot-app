@@ -221,6 +221,60 @@ input:focus, textarea:focus {
   to { opacity: 1; }
 }
 
+/* ── GPU-accelerated scroll reveal ──
+   Elements start invisible, get class "in-view" via IntersectionObserver.
+   All transitions run on compositor thread (transform + opacity only). */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px) translateZ(0);
+  will-change: transform, opacity;
+  transition: opacity 0.6s cubic-bezier(0.25, 0.1, 0.25, 1),
+              transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.reveal.in-view {
+  opacity: 1;
+  transform: translateY(0) translateZ(0);
+}
+
+/* Stagger delays via CSS custom property */
+.reveal[data-delay="1"] { transition-delay: 0.08s; }
+.reveal[data-delay="2"] { transition-delay: 0.16s; }
+.reveal[data-delay="3"] { transition-delay: 0.24s; }
+.reveal[data-delay="4"] { transition-delay: 0.32s; }
+.reveal[data-delay="5"] { transition-delay: 0.40s; }
+.reveal[data-delay="6"] { transition-delay: 0.48s; }
+.reveal[data-delay="7"] { transition-delay: 0.56s; }
+
+.reveal-fade {
+  opacity: 0;
+  will-change: opacity;
+  transition: opacity 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.reveal-fade.in-view {
+  opacity: 1;
+}
+
+.reveal-scale {
+  opacity: 0;
+  transform: scale(0.95) translateZ(0);
+  will-change: transform, opacity;
+  transition: opacity 0.5s cubic-bezier(0.25, 0.1, 0.25, 1),
+              transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.reveal-scale.in-view {
+  opacity: 1;
+  transform: scale(1) translateZ(0);
+}
+
+/* Content-visibility for below-fold sections */
+.below-fold {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 600px;
+}
+
 @keyframes pulse-live {
   0%, 100% { transform: scale(1); opacity: 0.8; }
   50% { transform: scale(1.6); opacity: 0; }
