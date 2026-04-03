@@ -30,7 +30,7 @@ export function BottomSheet({ isOpen, onClose, children, title, fullHeight, clas
     if (!isOpen && mounted && !closingRef.current) {
       closingRef.current = true
       setVisible(false)
-      setTimeout(() => { setMounted(false); closingRef.current = false }, 300)
+      setTimeout(() => { setMounted(false); requestAnimationFrame(() => { closingRef.current = false }) }, 300)
     }
   }, [isOpen, mounted])
 
@@ -38,7 +38,7 @@ export function BottomSheet({ isOpen, onClose, children, title, fullHeight, clas
     if (closingRef.current) return
     closingRef.current = true
     setVisible(false)
-    setTimeout(() => { setMounted(false); closingRef.current = false; onClose() }, 300)
+    setTimeout(() => { setMounted(false); onClose(); requestAnimationFrame(() => { closingRef.current = false }) }, 300)
   }, [onClose])
 
   const handleDragEnd = useCallback((_: any, info: PanInfo) => {
@@ -103,7 +103,7 @@ export function DarkBottomSheet({ isOpen, onClose, children, title, fullHeight, 
     if (!isOpen && mounted && !closingRef.current) {
       closingRef.current = true
       setVisible(false)
-      setTimeout(() => { setMounted(false); closingRef.current = false }, 300)
+      setTimeout(() => { setMounted(false); requestAnimationFrame(() => { closingRef.current = false }) }, 300)
     }
   }, [isOpen, mounted])
 
@@ -111,7 +111,7 @@ export function DarkBottomSheet({ isOpen, onClose, children, title, fullHeight, 
     if (closingRef.current) return
     closingRef.current = true
     setVisible(false)
-    setTimeout(() => { setMounted(false); closingRef.current = false; onClose() }, 300)
+    setTimeout(() => { setMounted(false); onClose(); requestAnimationFrame(() => { closingRef.current = false }) }, 300)
   }, [onClose])
 
   const handleDragEnd = useCallback((_: any, info: PanInfo) => {

@@ -159,11 +159,11 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose}>
       <div className="px-6 pb-8 pt-2">
-        <AnimatePresence mode="wait">
+        
 
           {/* ── Step: Choose Role ── */}
           {step === 'choose-role' && (
-            <motion.div key="role" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} className="space-y-5">
+            <div className="space-y-5">
               <div className="text-center space-y-1">
                 <h2 className="text-[24px] font-extrabold text-ink tracking-tight">Join Reelst</h2>
                 <p className="text-[14px] text-smoke">How do you want to use Reelst?</p>
@@ -203,12 +203,12 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
                 Already have an account?{' '}
                 <button onClick={() => setStep('login')} className="text-tangerine font-semibold">Sign in</button>
               </p>
-            </motion.div>
+            </div>
           )}
 
           {/* ── Step: Claim Username (Agent only) ── */}
           {step === 'claim-username' && (
-            <motion.div key="username" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} className="space-y-5">
+            <div className="space-y-5">
               <button onClick={() => setStep('choose-role')} className="flex items-center gap-1 text-[13px] text-smoke font-medium">
                 <ArrowLeft size={14} /> Back
               </button>
@@ -250,12 +250,12 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
               <Button variant="primary" size="xl" fullWidth onClick={() => setStep('create-account')} disabled={!available || checking || username.length < 3}>
                 Continue
               </Button>
-            </motion.div>
+            </div>
           )}
 
           {/* ── Step: Create Account ── */}
           {step === 'create-account' && (
-            <motion.div key="create" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} className="space-y-5">
+            <div className="space-y-5">
               <button onClick={() => setStep(role === 'agent' ? 'claim-username' : 'choose-role')} className="flex items-center gap-1 text-[13px] text-smoke font-medium">
                 <ArrowLeft size={14} /> Back
               </button>
@@ -297,12 +297,12 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
                   {role === 'agent' ? 'Get started' : 'Create account'}
                 </Button>
               </div>
-            </motion.div>
+            </div>
           )}
 
           {/* ── Step: Login ── */}
           {step === 'login' && (
-            <motion.div key="login" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} className="space-y-5">
+            <div className="space-y-5">
               <div className="text-center space-y-1">
                 <h2 className="text-[24px] font-extrabold text-ink tracking-tight">Welcome back</h2>
                 <p className="text-[14px] text-smoke">Sign in to your account</p>
@@ -331,10 +331,10 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
                 Don't have an account?{' '}
                 <button onClick={() => setStep('choose-role')} className="text-tangerine font-semibold">Sign up</button>
               </p>
-            </motion.div>
+            </div>
           )}
 
-        </AnimatePresence>
+        
       </div>
     </BottomSheet>
   )
