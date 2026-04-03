@@ -1,4 +1,4 @@
-import { motion, useMotionValue, animate, useDragControls, type PanInfo } from 'framer-motion'
+import { useDragControls, type PanInfo, useMotionValue, animate } from 'framer-motion'
 import { type ReactNode, useCallback, useRef, useState, useEffect } from 'react'
 
 interface BottomSheetProps {
@@ -10,65 +10,79 @@ interface BottomSheetProps {
   className?: string
 }
 
-const EASE = [0.32, 0.72, 0, 1]
+// CSS-driven entry + Framer only for drag gesture (which needs JS)
+// The slide-up/down uses CSS transform transition on the compositor thread
 
 export function BottomSheet({ isOpen, onClose, children, title, fullHeight, className = '' }: BottomSheetProps) {
   const dragControls = useDragControls()
   const y = useMotionValue(0)
-  const [rendered, setRendered] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const [visible, setVisible] = useState(false)
   const closingRef = useRef(false)
+  const sheetRef = useRef<HTMLDivElement>(null)
 
+  // Mount → make visible (triggers CSS transition)
   useEffect(() => {
-    if (isOpen && !rendered && !closingRef.current) {
-      setRendered(true)
+    if (isOpen && !mounted) {
+      setMounted(true)
+      requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)))
     }
-  }, [isOpen, rendered])
-
-  useEffect(() => {
-    if (!isOpen && rendered && !closingRef.current) {
+    if (!isOpen && mounted && !closingRef.current) {
       closingRef.current = true
-      animate(y, window.innerHeight, { type: 'tween', duration: 0.25, ease: EASE,
-        onComplete: () => { setRendered(false); closingRef.current = false },
-      })
+      setVisible(false)
+      setTimeout(() => { setMounted(false); closingRef.current = false }, 300)
     }
-  }, [isOpen, rendered, y])
+  }, [isOpen, mounted])
 
   const dismiss = useCallback(() => {
     if (closingRef.current) return
     closingRef.current = true
-    animate(y, window.innerHeight, { type: 'tween', duration: 0.25, ease: EASE,
-      onComplete: () => { setRendered(false); closingRef.current = false; onClose() },
-    })
-  }, [onClose, y])
+    setVisible(false)
+    setTimeout(() => { setMounted(false); closingRef.current = false; onClose() }, 300)
+  }, [onClose])
 
   const handleDragEnd = useCallback((_: any, info: PanInfo) => {
-    if (info.offset.y > 60 || info.velocity.y > 300) dismiss()
-    else animate(y, 0, { type: 'tween', duration: 0.15 })
-  }, [dismiss, y])
+    if (info.offset.y > 60 || info.velocity.y > 300) {
+      dismiss()
+    } else {
+      // Snap back — use CSS transition by resetting transform
+      if (sheetRef.current) sheetRef.current.style.transform = ''
+    }
+  }, [dismiss])
 
-  if (!rendered) return null
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    dragControls.start(e)
+  }, [dragControls])
+
+  if (!mounted) return null
 
   return (
     <>
-      <div className="fixed inset-0 z-[90] bg-black/50 animate-[fadeIn_0.2s_ease]"
-        onPointerDown={(e) => { if (e.target === e.currentTarget) dismiss() }} />
-      <motion.div
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        transition={{ type: 'tween', duration: 0.3, ease: EASE }}
-        style={{ y }}
-        drag="y" dragControls={dragControls} dragListener={false}
-        dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0, bottom: 0.3 }}
-        onDragEnd={handleDragEnd}
+      {/* Backdrop — CSS opacity transition */}
+      <div
+        className="fixed inset-0 z-[90] bg-black/50 will-change-[opacity]"
+        style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.25s ease' }}
+        onPointerDown={(e) => { if (e.target === e.currentTarget) dismiss() }}
+      />
+      {/* Sheet — CSS transform transition for entry/exit */}
+      <div
+        ref={sheetRef}
         className={`fixed bottom-0 left-0 right-0 z-[100] bg-ivory rounded-t-[24px]
-          ${fullHeight ? 'top-[5vh]' : 'max-h-[85vh]'} flex flex-col overflow-hidden shadow-xl ${className}`}>
-        <div className="flex justify-center pt-3 pb-2 shrink-0"
-          onPointerDown={(e) => dragControls.start(e)} style={{ touchAction: 'none' }}>
+          ${fullHeight ? 'top-[5vh]' : 'max-h-[85vh]'} flex flex-col overflow-hidden shadow-xl
+          will-change-transform ${className}`}
+        style={{
+          transform: visible ? 'translateY(0) translateZ(0)' : 'translateY(100%) translateZ(0)',
+          transition: 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
+        }}
+      >
+        {/* Drag handle */}
+        <div className="flex justify-center pt-3 pb-2 shrink-0 cursor-grab active:cursor-grabbing"
+          onPointerDown={handlePointerDown} style={{ touchAction: 'none' }}>
           <div className="w-9 h-[5px] rounded-full bg-pearl" />
         </div>
         {title && <div className="px-6 pb-3 shrink-0"><h2 className="text-[18px] font-bold text-ink tracking-tight">{title}</h2></div>}
         <div className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>{children}</div>
-      </motion.div>
+      </div>
     </>
   )
 }
@@ -76,58 +90,59 @@ export function BottomSheet({ isOpen, onClose, children, title, fullHeight, clas
 export function DarkBottomSheet({ isOpen, onClose, children, title, fullHeight, className = '' }: BottomSheetProps) {
   const dragControls = useDragControls()
   const y = useMotionValue(0)
-  const [rendered, setRendered] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const [visible, setVisible] = useState(false)
   const closingRef = useRef(false)
+  const sheetRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (isOpen && !rendered && !closingRef.current) setRendered(true)
-  }, [isOpen, rendered])
-
-  useEffect(() => {
-    if (!isOpen && rendered && !closingRef.current) {
-      closingRef.current = true
-      animate(y, window.innerHeight, { type: 'tween', duration: 0.25, ease: EASE,
-        onComplete: () => { setRendered(false); closingRef.current = false },
-      })
+    if (isOpen && !mounted) {
+      setMounted(true)
+      requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)))
     }
-  }, [isOpen, rendered, y])
+    if (!isOpen && mounted && !closingRef.current) {
+      closingRef.current = true
+      setVisible(false)
+      setTimeout(() => { setMounted(false); closingRef.current = false }, 300)
+    }
+  }, [isOpen, mounted])
 
   const dismiss = useCallback(() => {
     if (closingRef.current) return
     closingRef.current = true
-    animate(y, window.innerHeight, { type: 'tween', duration: 0.25, ease: EASE,
-      onComplete: () => { setRendered(false); closingRef.current = false; onClose() },
-    })
-  }, [onClose, y])
+    setVisible(false)
+    setTimeout(() => { setMounted(false); closingRef.current = false; onClose() }, 300)
+  }, [onClose])
 
   const handleDragEnd = useCallback((_: any, info: PanInfo) => {
     if (info.offset.y > 60 || info.velocity.y > 300) dismiss()
-    else animate(y, 0, { type: 'tween', duration: 0.15 })
-  }, [dismiss, y])
+    else if (sheetRef.current) sheetRef.current.style.transform = ''
+  }, [dismiss])
 
-  if (!rendered) return null
+  if (!mounted) return null
 
   return (
     <>
-      <div className="fixed inset-0 z-[90] bg-black/60 animate-[fadeIn_0.2s_ease]"
+      <div className="fixed inset-0 z-[90] bg-black/60 will-change-[opacity]"
+        style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.25s ease' }}
         onPointerDown={(e) => { if (e.target === e.currentTarget) dismiss() }} />
-      <motion.div
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        transition={{ type: 'tween', duration: 0.3, ease: EASE }}
-        style={{ y }}
-        drag="y" dragControls={dragControls} dragListener={false}
-        dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0, bottom: 0.3 }}
-        onDragEnd={handleDragEnd}
+      <div
+        ref={sheetRef}
         className={`fixed bottom-0 left-0 right-0 z-[100] bg-obsidian rounded-t-[24px] border-t border-border-dark
-          ${fullHeight ? 'top-[5vh]' : 'max-h-[85vh]'} flex flex-col overflow-hidden ${className}`}>
-        <div className="flex justify-center pt-3 pb-2 shrink-0"
+          ${fullHeight ? 'top-[5vh]' : 'max-h-[85vh]'} flex flex-col overflow-hidden
+          will-change-transform ${className}`}
+        style={{
+          transform: visible ? 'translateY(0) translateZ(0)' : 'translateY(100%) translateZ(0)',
+          transition: 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
+        }}
+      >
+        <div className="flex justify-center pt-3 pb-2 shrink-0 cursor-grab active:cursor-grabbing"
           onPointerDown={(e) => dragControls.start(e)} style={{ touchAction: 'none' }}>
           <div className="w-9 h-[5px] rounded-full bg-charcoal" />
         </div>
         {title && <div className="px-6 pb-3 shrink-0"><h2 className="text-[18px] font-bold text-white tracking-tight">{title}</h2></div>}
         <div className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>{children}</div>
-      </motion.div>
+      </div>
     </>
   )
 }

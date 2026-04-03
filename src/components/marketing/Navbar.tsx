@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useAuthModalStore } from '@/stores/authModalStore'
@@ -15,7 +14,7 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [visible, setVisible] = useState(true)
+  const [hidden, setHidden] = useState(false)
   const lastScrollY = useRef(0)
   const { pathname } = useLocation()
   const navigate = useNavigate()
@@ -25,9 +24,9 @@ export function Navbar() {
   useEffect(() => {
     const handleScroll = () => {
       const currentY = window.scrollY
-      if (currentY < 20) setVisible(true)
-      else if (currentY > lastScrollY.current + 8) setVisible(false)
-      else if (currentY < lastScrollY.current - 8) setVisible(true)
+      if (currentY < 20) setHidden(false)
+      else if (currentY > lastScrollY.current + 10) setHidden(true)
+      else if (currentY < lastScrollY.current - 10) setHidden(false)
       lastScrollY.current = currentY
     }
     window.addEventListener('scroll', handleScroll, { passive: true })
@@ -36,25 +35,15 @@ export function Navbar() {
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
 
-  const handleSignIn = () => {
-    setMobileOpen(false)
-    if (isMobile) openAuth('login')
-    else navigate('/sign-in')
-  }
-
-  const handleGetStarted = () => {
-    setMobileOpen(false)
-    if (isMobile) openAuth('signup')
-    else navigate('/sign-up')
-  }
-
   return (
     <>
-      <motion.nav
-        initial={false}
-        animate={{ y: visible ? 0 : -80 }}
-        transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-        className="fixed top-0 left-0 right-0 z-[70] bg-ivory/80 backdrop-blur-xl border-b border-border-light"
+      {/* Pure CSS transition for show/hide — runs on compositor thread */}
+      <nav
+        className="fixed top-0 left-0 right-0 z-[70] bg-ivory/80 backdrop-blur-xl border-b border-border-light will-change-transform"
+        style={{
+          transform: hidden ? 'translateY(-100%)' : 'translateY(0)',
+          transition: 'transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)',
+        }}
       >
         <div className="max-w-[1200px] mx-auto px-5 md:px-8 flex items-center justify-between h-14 md:h-16">
           <Link to="/" className="flex items-center gap-1.5 shrink-0">
@@ -87,34 +76,37 @@ export function Navbar() {
             {mobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
-      </motion.nav>
+      </nav>
 
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.15 }}
-            className="fixed top-14 left-0 right-0 z-[65] bg-ivory border-b border-border-light shadow-lg md:hidden">
-            <div className="px-5 py-4 space-y-1">
-              {NAV_LINKS.map((link) => (
-                <Link key={link.to} to={link.to} onClick={() => setMobileOpen(false)}
-                  className={`block px-4 py-3 rounded-xl text-[15px] font-medium ${pathname === link.to ? 'text-tangerine bg-tangerine-soft' : 'text-graphite'}`}>
-                  {link.label}
-                </Link>
-              ))}
-              <div className="pt-3 flex gap-3">
-                {userDoc ? (
-                  <Button variant="primary" size="lg" fullWidth onClick={() => { navigate('/dashboard'); setMobileOpen(false) }}>Dashboard</Button>
-                ) : (
-                  <>
-                    <Button variant="secondary" size="lg" className="flex-1" onClick={handleSignIn}>Sign in</Button>
-                    <Button variant="primary" size="lg" className="flex-1" onClick={handleGetStarted}>Get started</Button>
-                  </>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Mobile menu — CSS transition */}
+      <div
+        className="fixed top-14 left-0 right-0 z-[65] bg-ivory border-b border-border-light shadow-lg md:hidden will-change-transform"
+        style={{
+          transform: mobileOpen ? 'translateY(0)' : 'translateY(-110%)',
+          opacity: mobileOpen ? 1 : 0,
+          transition: 'transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.2s ease',
+          pointerEvents: mobileOpen ? 'auto' : 'none',
+        }}
+      >
+        <div className="px-5 py-4 space-y-1">
+          {NAV_LINKS.map((link) => (
+            <Link key={link.to} to={link.to} onClick={() => setMobileOpen(false)}
+              className={`block px-4 py-3 rounded-xl text-[15px] font-medium ${pathname === link.to ? 'text-tangerine bg-tangerine-soft' : 'text-graphite'}`}>
+              {link.label}
+            </Link>
+          ))}
+          <div className="pt-3 flex gap-3">
+            {userDoc ? (
+              <Button variant="primary" size="lg" fullWidth onClick={() => { navigate('/dashboard'); setMobileOpen(false) }}>Dashboard</Button>
+            ) : (
+              <>
+                <Button variant="secondary" size="lg" className="flex-1" onClick={() => { setMobileOpen(false); if (isMobile) openAuth('login'); else navigate('/sign-in') }}>Sign in</Button>
+                <Button variant="primary" size="lg" className="flex-1" onClick={() => { setMobileOpen(false); if (isMobile) openAuth('signup'); else navigate('/sign-up') }}>Get started</Button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
     </>
   )
 }
