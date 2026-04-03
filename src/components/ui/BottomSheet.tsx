@@ -62,7 +62,9 @@ export function BottomSheet({ isOpen, onClose, children, title, fullHeight, clas
       <div
         className="fixed inset-0 z-[90] bg-black/50 will-change-[opacity]"
         style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.25s ease' }}
-        onPointerDown={(e) => { if (e.target === e.currentTarget) dismiss() }}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); dismiss() }}
+        onPointerDown={(e) => { e.stopPropagation() }}
+        onTouchStart={(e) => { e.stopPropagation() }}
       />
       {/* Sheet — CSS transform transition for entry/exit */}
       <div
@@ -125,7 +127,9 @@ export function DarkBottomSheet({ isOpen, onClose, children, title, fullHeight, 
     <>
       <div className="fixed inset-0 z-[90] bg-black/60 will-change-[opacity]"
         style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.25s ease' }}
-        onPointerDown={(e) => { if (e.target === e.currentTarget) dismiss() }} />
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); dismiss() }}
+        onPointerDown={(e) => { e.stopPropagation() }}
+        onTouchStart={(e) => { e.stopPropagation() }} />
       <div
         ref={sheetRef}
         className={`fixed bottom-0 left-0 right-0 z-[100] bg-obsidian rounded-t-[24px] border-t border-border-dark
