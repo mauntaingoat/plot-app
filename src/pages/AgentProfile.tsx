@@ -163,12 +163,99 @@ export default function AgentProfile() {
     )
   }
 
-  // Any modal open?
   const anyModalOpen = !!selectedPin || showAgentDetail || showAuth
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768
 
+  // ═══════════════════════════════════════════
+  // DESKTOP: Split view — Map (left) + Feed (right)
+  // ═══════════════════════════════════════════
+  if (isDesktop) {
+    return (
+      <div className="map-page flex" ref={mapContainerRef}>
+        {/* Left: Map area — compresses when panel open via CSS transition */}
+        <div
+          className="relative flex-1 h-screen will-change-[width]"
+          style={{
+            transition: 'width 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
+          }}
+        >
+          <MapCanvas
+            pins={filteredPins}
+            agentPhotoUrl={agent.photoURL}
+            onPinClick={handlePinClick}
+            className="absolute inset-0"
+            showBackButton={isPreview}
+            onBack={() => navigate('/dashboard')}
+          />
+
+          {/* Overlay — filters + agent pill on map */}
+          <MapOverlay
+            agent={agent}
+            pinCounts={pinCounts}
+            onFollow={handleFollow}
+            onShare={handleShare}
+            onProfileClick={() => setShowAgentDetail(true)}
+            onFilterChange={handleFilterChange}
+            isFollowing={isFollowing}
+            viewMode="map"
+            isPreview={isPreview}
+            agentMode={agentMode}
+            enabledAgentCount={enabledAgentIds.size}
+          />
+
+          {/* Side panel overlays on top of map */}
+          {selectedPin && (
+            <SidePanel isOpen={!!selectedPin} onClose={() => setSelectedPin(null)} title={selectedPin?.address}>
+              <ListingModal pin={selectedPin} agent={agent} onClose={() => setSelectedPin(null)} isPreview={isPreview} embedded />
+            </SidePanel>
+          )}
+
+          <AgentDetailSheet
+            isOpen={showAgentDetail}
+            onClose={() => setShowAgentDetail(false)}
+            agent={agent}
+            isFollowing={isFollowing}
+            onFollow={handleFollow}
+            nearbyAgents={nearbyAgents}
+            enabledAgentIds={enabledAgentIds}
+            onToggleAgent={(id) => {
+              setEnabledAgentIds((prev) => {
+                const next = new Set(prev)
+                if (next.has(id)) next.delete(id)
+                else next.add(id)
+                return next
+              })
+            }}
+            onAgentTap={(a) => { setShowAgentDetail(false); navigate(`/${a.username}`) }}
+            isPreview={isPreview}
+            agentMode={agentMode}
+            onSetMode={setAgentMode}
+          />
+        </div>
+
+        {/* Right: Content feed — fixed mobile-width column */}
+        <div className="w-[380px] h-screen bg-midnight border-l border-border-dark shrink-0 relative overflow-hidden">
+          <ContentFeed
+            pins={filteredPins}
+            agent={agent}
+            onPinTap={(p) => setSelectedPin(p)}
+            isPreview={isPreview}
+            isSignedIn={!!currentUser}
+            onAuthRequired={() => setShowAuth(true)}
+          />
+        </div>
+
+        {/* Auth */}
+        <AuthSheet isOpen={showAuth} onClose={() => setShowAuth(false)} mode="signup" />
+      </div>
+    )
+  }
+
+  // ═══════════════════════════════════════════
+  // MOBILE: Toggle between Map and Feed
+  // ═══════════════════════════════════════════
   return (
     <div className="map-page" ref={mapContainerRef}>
-      {/* Map or Feed */}
       <AnimatePresence mode="wait">
         {viewMode === 'map' ? (
           <motion.div key="map" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0">
@@ -180,7 +267,6 @@ export default function AgentProfile() {
               showBackButton={isPreview}
               onBack={() => navigate('/dashboard')}
             />
-
             <PeekDrawer
               collapsedContent={
                 <div className="flex items-center justify-between">
@@ -208,7 +294,7 @@ export default function AgentProfile() {
         )}
       </AnimatePresence>
 
-      {/* Overlay */}
+      {/* Overlay — with toggle on mobile */}
       <MapOverlay
         agent={agent}
         pinCounts={pinCounts}
@@ -224,16 +310,11 @@ export default function AgentProfile() {
         enabledAgentCount={enabledAgentIds.size}
       />
 
-      {/* Listing modal — side panel on desktop, full screen on mobile */}
-      {selectedPin && typeof window !== 'undefined' && window.innerWidth >= 768 ? (
-        <SidePanel isOpen={!!selectedPin} onClose={() => setSelectedPin(null)} title={selectedPin?.address}>
-          <ListingModal pin={selectedPin} agent={agent} onClose={() => setSelectedPin(null)} isPreview={isPreview} embedded />
-        </SidePanel>
-      ) : selectedPin ? (
+      {/* Mobile: full-screen listing modal */}
+      {selectedPin && (
         <ListingModal pin={selectedPin} agent={agent} onClose={() => setSelectedPin(null)} isPreview={isPreview} />
-      ) : null}
+      )}
 
-      {/* Agent detail */}
       <AgentDetailSheet
         isOpen={showAgentDetail}
         onClose={() => setShowAgentDetail(false)}
@@ -256,7 +337,6 @@ export default function AgentProfile() {
         onSetMode={setAgentMode}
       />
 
-      {/* Consumer auth prompt */}
       <AuthSheet isOpen={showAuth} onClose={() => setShowAuth(false)} mode="signup" />
     </div>
   )
