@@ -39,8 +39,8 @@ export function FilterDropdown({ label, options, selected, onToggle, onClear, da
   useEffect(() => {
     if (!open) return
     updatePos()
-    // Reposition on scroll/resize
-    const handler = () => updatePos()
+    // Close on any scroll (filter bar or page) — dropdown shouldn't float detached
+    const handler = () => setOpen(false)
     window.addEventListener('scroll', handler, true)
     window.addEventListener('resize', handler)
     return () => {
@@ -68,8 +68,8 @@ export function FilterDropdown({ label, options, selected, onToggle, onClear, da
         ref={btnRef}
         onClick={() => setOpen(!open)}
         className={`
-          inline-flex items-center gap-0.5 px-2 py-1 rounded-full shrink-0
-          text-[10px] font-semibold whitespace-nowrap cursor-pointer
+          inline-flex items-center gap-0.5 px-2.5 py-1.5 rounded-full shrink-0
+          text-[9px] font-semibold whitespace-nowrap cursor-pointer tracking-wide
           select-none border transition-all duration-200
           ${hasSelection
             ? 'bg-tangerine text-white border-tangerine'

@@ -341,7 +341,7 @@ export default function Dashboard() {
           { id: 'settings', label: 'More', icon: <Settings size={20} /> },
         ]}
         active={activeTab}
-        onChange={(id) => setActiveTab(id as DashTab)}
+        onChange={(id) => { setActiveTab(id as DashTab); window.scrollTo(0, 0) }}
         centerAction={{ icon: <Plus size={24} />, onClick: () => navigate('/dashboard/pin/new') }}
       />
 

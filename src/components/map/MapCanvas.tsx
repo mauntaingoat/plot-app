@@ -233,7 +233,7 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
           ],
           'icon-size': [
             'interpolate', ['linear'], ['get', 'point_count'],
-            2, 0.9, 10, 1.0, 50, 1.1,
+            2, 0.92, 3, 0.98, 4, 1.04, 5, 1.08, 6, 1.12, 7, 1.15, 50, 1.15,
           ],
           'icon-allow-overlap': true,
         },
