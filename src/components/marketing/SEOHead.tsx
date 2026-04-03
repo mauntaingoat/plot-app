@@ -10,7 +10,7 @@ interface SEOHeadProps {
 const BASE_URL = 'https://reelst.co'
 const DEFAULT_TITLE = 'Reelst — Where Listings Come Alive'
 const DEFAULT_DESC = 'One link. A live map of your listings, stories, reels, and open houses. The modern agent\'s profile, built for content.'
-const DEFAULT_OG = '/reelst-logo.png'
+const DEFAULT_OG = '/icons/og-image.png'
 
 export function SEOHead({ title, description, ogImage, path = '' }: SEOHeadProps) {
   const fullTitle = title ? `${title} — Reelst` : DEFAULT_TITLE
