@@ -8,6 +8,7 @@ import { PeekDrawer } from '@/components/map/PeekDrawer'
 import { ContentFeed } from '@/components/map/ContentFeed'
 import { PinCard } from '@/components/dashboard/PinCard'
 import { ListingModal } from '@/components/viewers/ListingModal'
+import { SidePanel } from '@/components/ui/SidePanel'
 import { AgentDetailSheet, type AgentMode } from '@/components/sheets/AgentDetailSheet'
 import { AuthSheet } from '@/components/sheets/AuthSheet'
 import { useMapStore, applyPropertyFilters } from '@/stores/mapStore'
@@ -225,7 +226,13 @@ export default function AgentProfile() {
 
       {/* Listing modal — two tabs (Content / Listing) */}
       {selectedPin && (
-        <ListingModal pin={selectedPin} agent={agent} onClose={() => setSelectedPin(null)} isPreview={isPreview} />
+        {typeof window !== 'undefined' && window.innerWidth >= 768 ? (
+          <SidePanel isOpen={!!selectedPin} onClose={() => setSelectedPin(null)} title={selectedPin?.address}>
+            <ListingModal pin={selectedPin} agent={agent} onClose={() => setSelectedPin(null)} isPreview={isPreview} />
+          </SidePanel>
+        ) : (
+          <ListingModal pin={selectedPin} agent={agent} onClose={() => setSelectedPin(null)} isPreview={isPreview} />
+        )}
       )}
 
       {/* Agent detail */}

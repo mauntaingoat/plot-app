@@ -6,7 +6,7 @@ import { Timestamp } from 'firebase/firestore'
 import { auth, firebaseConfigured } from '@/config/firebase'
 import { createUserDoc } from '@/lib/firestore'
 import { useAuthStore } from '@/stores/authStore'
-import { BottomSheet } from '@/components/ui/BottomSheet'
+import { ResponsiveSheet } from '@/components/ui/ResponsiveSheet'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { GoogleLogo, AppleLogo } from '@/components/icons/PlatformLogos'
@@ -157,7 +157,7 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
   }
 
   return (
-    <BottomSheet isOpen={isOpen} onClose={onClose}>
+    <ResponsiveSheet isOpen={isOpen} onClose={onClose}>
       <div className="px-6 pb-8 pt-2">
         
 
@@ -336,6 +336,6 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
 
         
       </div>
-    </BottomSheet>
+    </ResponsiveSheet>
   )
 }

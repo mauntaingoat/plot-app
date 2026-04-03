@@ -67,9 +67,10 @@ export function FilterDropdown({ label, options, selected, onToggle, onClear, da
       <button
         ref={btnRef}
         onClick={() => setOpen(!open)}
+        style={{ fontSize: 12 }}
         className={`
           inline-flex items-center gap-0.5 px-2.5 py-1.5 rounded-full shrink-0
-          text-[11px] font-semibold whitespace-nowrap cursor-pointer
+          font-semibold whitespace-nowrap cursor-pointer
           select-none border transition-all duration-200
           ${hasSelection
             ? 'bg-tangerine text-white border-tangerine'
@@ -120,7 +121,8 @@ export function FilterDropdown({ label, options, selected, onToggle, onClear, da
               </div>
               {hasSelection && onClear && (
                 <button onClick={() => { onClear(); setOpen(false) }}
-                  className={`w-full px-3 py-2 text-left text-[11px] font-semibold border-t ${
+                  style={{ fontSize: 12 }}
+                  className={`w-full px-3 py-2 text-left font-semibold border-t ${
                     dark ? 'text-tangerine border-white/10' : 'text-tangerine border-black/5'
                   }`}>
                   Clear

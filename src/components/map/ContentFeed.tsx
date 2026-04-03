@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Eye, MapPin, Home, Bookmark, Share2, MessageCircle, Phone, UserPlus, UserCheck } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { ListingOnlySheet } from '@/components/viewers/ListingOnlySheet'
+import { SidePanel } from '@/components/ui/SidePanel'
 import { type Pin, type UserDoc, type ContentItem } from '@/lib/types'
 import { getAllContent } from '@/lib/mock'
 
@@ -49,7 +50,13 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
 
       {/* Listing-only sheet (no content tab, just MLS data) */}
       {listingSheet && (
-        <ListingOnlySheet pin={listingSheet} agent={agent} onClose={() => setListingSheet(null)} isPreview={isPreview} />
+        {typeof window !== 'undefined' && window.innerWidth >= 768 ? (
+          <SidePanel isOpen={!!listingSheet} onClose={() => setListingSheet(null)} title={listingSheet?.address}>
+            <ListingOnlySheet pin={listingSheet} agent={agent} onClose={() => setListingSheet(null)} isPreview={isPreview} />
+          </SidePanel>
+        ) : (
+          <ListingOnlySheet pin={listingSheet} agent={agent} onClose={() => setListingSheet(null)} isPreview={isPreview} />
+        )}
       )}
     </>
   )
