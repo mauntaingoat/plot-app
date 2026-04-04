@@ -48,7 +48,7 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
         ))}
       </div>
 
-      {/* Listing-only sheet — side panel on desktop, bottom sheet on mobile */}
+      {/* Listing-only sheet — side panel within feed on desktop, bottom sheet on mobile */}
       {listingSheet && typeof window !== 'undefined' && window.innerWidth >= 768 ? (
         <SidePanel isOpen={!!listingSheet} onClose={() => setListingSheet(null)} title={listingSheet?.address}>
           <ListingOnlySheet pin={listingSheet} agent={agent} onClose={() => setListingSheet(null)} isPreview={isPreview} embedded />
@@ -83,7 +83,7 @@ function FeedCard({ content, pin, agent, isPreview, following, onFollowToggle, o
 
   return (
     <div ref={cardRef} className="w-full relative"
-      style={{ height: '100dvh', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
+      style={{ height: '100%', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
       {/* Background media */}
       <div className="absolute inset-0 bg-charcoal">
         {isVideo && content.mediaUrl ? (

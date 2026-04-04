@@ -46,27 +46,33 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded }: Listi
   if (embedded) {
     return (
       <div className="flex flex-col h-full overflow-hidden">
-        {/* Tab toggle */}
+        {/* Tab toggle — fixed to top */}
         {hasListingData && (
-          <div className="px-4 pt-3 pb-2 shrink-0">
+          <div className="px-4 pt-3 pb-2 shrink-0 z-10 bg-obsidian">
             <div className="flex bg-slate rounded-[12px] p-1">
               <button onClick={() => setActiveTab('content')}
-                className={`flex-1 py-2 rounded-[10px] text-[12px] font-semibold transition-all ${activeTab === 'content' ? 'bg-tangerine text-white' : 'text-ghost'}`}>
+                className={`flex-1 py-2 rounded-[10px] text-[12px] font-semibold transition-all cursor-pointer ${activeTab === 'content' ? 'bg-tangerine text-white' : 'text-ghost'}`}>
                 Content
               </button>
               <button onClick={() => setActiveTab('listing')}
-                className={`flex-1 py-2 rounded-[10px] text-[12px] font-semibold transition-all ${activeTab === 'listing' ? 'bg-tangerine text-white' : 'text-ghost'}`}>
+                className={`flex-1 py-2 rounded-[10px] text-[12px] font-semibold transition-all cursor-pointer ${activeTab === 'listing' ? 'bg-tangerine text-white' : 'text-ghost'}`}>
                 Listing
               </button>
             </div>
           </div>
         )}
-        <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-          {activeTab === 'content' ? (
-            <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={onClose} />
-          ) : (
-            <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={onClose} />
-          )}
+        {/* Relative wrapper gives definite height for absolute scroll child */}
+        <div className="relative flex-1 min-h-0">
+          <div className="absolute inset-0 overflow-y-auto" style={{
+            WebkitOverflowScrolling: 'touch',
+            ...(activeTab === 'content' ? { scrollSnapType: 'y mandatory' } : {}),
+          }}>
+            {activeTab === 'content' ? (
+              <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={onClose} embedded />
+            ) : (
+              <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={onClose} embedded />
+            )}
+          </div>
         </div>
       </div>
     )
@@ -113,7 +119,7 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded }: Listi
 
 // ── Content Tab: full-screen vertical feed ──
 
-function ContentTab({ pin, agent, isPreview, onDismiss }: { pin: Pin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void }) {
+function ContentTab({ pin, agent, isPreview, onDismiss, embedded }: { pin: Pin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean }) {
   if (pin.content.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center bg-midnight">
@@ -122,6 +128,17 @@ function ContentTab({ pin, agent, isPreview, onDismiss }: { pin: Pin; agent: Use
           <p className="text-[13px] text-ghost">No reels, stories, or videos for this {pin.type === 'neighborhood' ? 'neighborhood' : 'listing'}.</p>
         </div>
       </div>
+    )
+  }
+
+  // When embedded, parent already provides scroll container with snap — render cards directly
+  if (embedded) {
+    return (
+      <>
+        {pin.content.map((content) => (
+          <ContentCard key={content.id} content={content} pin={pin} agent={agent} isPreview={isPreview} embedded />
+        ))}
+      </>
     )
   }
 
@@ -134,7 +151,7 @@ function ContentTab({ pin, agent, isPreview, onDismiss }: { pin: Pin; agent: Use
   )
 }
 
-function ContentCard({ content, pin, agent, isPreview }: { content: ContentItem; pin: Pin; agent: UserDoc; isPreview?: boolean }) {
+function ContentCard({ content, pin, agent, isPreview, embedded }: { content: ContentItem; pin: Pin; agent: UserDoc; isPreview?: boolean; embedded?: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const thumbnailUrl = content.thumbnailUrl || ('heroPhotoUrl' in pin ? pin.heroPhotoUrl : '') || ''
@@ -152,7 +169,7 @@ function ContentCard({ content, pin, agent, isPreview }: { content: ContentItem;
   }, [isVideo, content.mediaUrl])
 
   return (
-    <div ref={cardRef} className="relative w-full" style={{ height: '100dvh', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
+    <div ref={cardRef} className="relative w-full" style={{ height: embedded ? '100%' : '100dvh', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
       <div className="absolute inset-0 bg-charcoal">
         {isVideo && content.mediaUrl ? (
           <video ref={videoRef} src={content.mediaUrl} className="w-full h-full object-cover" loop playsInline muted autoPlay />
@@ -203,14 +220,14 @@ function ContentCard({ content, pin, agent, isPreview }: { content: ContentItem;
 
 // ── Listing Tab: scrollable MLS data ──
 
-function ListingTab({ pin, agent, isPreview, onDismiss }: { pin: ForSalePin | SoldPin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void }) {
+function ListingTab({ pin, agent, isPreview, onDismiss, embedded }: { pin: ForSalePin | SoldPin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean }) {
   const [photoIndex, setPhotoIndex] = useState(0)
   const photos = pin.photos || []
 
   return (
-    <div className="flex-1 overflow-y-auto bg-obsidian" style={{ WebkitOverflowScrolling: 'touch' }}>
-      {/* Spacer for overlay tabs */}
-      <div className="h-[calc(env(safe-area-inset-top,12px)+50px)]" />
+    <div className={`${embedded ? '' : 'flex-1 overflow-y-auto'} bg-obsidian`} style={embedded ? undefined : { WebkitOverflowScrolling: 'touch' }}>
+      {/* Spacer for overlay tabs — only needed in full-screen mode */}
+      {!embedded && <div className="h-[calc(env(safe-area-inset-top,12px)+50px)]" />}
 
       {photos.length > 0 && (
         <div className="relative aspect-[4/3] bg-charcoal">

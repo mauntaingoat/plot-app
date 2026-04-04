@@ -21,6 +21,8 @@ interface MapOverlayProps {
   isPreview?: boolean
   agentMode?: AgentMode
   enabledAgentCount?: number
+  hideHeader?: boolean
+  centerFilters?: boolean
 }
 
 const FILTER_OPTIONS: { value: PinType; label: string }[] = [
@@ -29,7 +31,7 @@ const FILTER_OPTIONS: { value: PinType; label: string }[] = [
   { value: 'neighborhood', label: 'Neighborhoods' },
 ]
 
-export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick, onFilterChange, isFollowing, viewMode = 'map', onToggleView, isPreview, agentMode = 'single', enabledAgentCount = 0 }: MapOverlayProps) {
+export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick, onFilterChange, isFollowing, viewMode = 'map', onToggleView, isPreview, agentMode = 'single', enabledAgentCount = 0, hideHeader, centerFilters }: MapOverlayProps) {
   const { activeFilters, toggleFilter, clearFilters, isAllSelected, propertyFilters, togglePropertyFilter, clearPropertyFilter } = useMapStore()
 
   const totalPins = Object.values(pinCounts).reduce((a, b) => a + b, 0)
@@ -106,44 +108,46 @@ export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick
 
   return (
     <div className="absolute top-0 left-0 right-0 z-[40] pointer-events-none">
-      <div style={{ height: 'env(safe-area-inset-top, 12px)' }} />
+      {!hideHeader && <div style={{ height: 'env(safe-area-inset-top, 12px)' }} />}
 
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3, duration: 0.3, ease: 'easeOut' }}
-        className="flex items-center justify-between px-4 pt-3 pb-2 pointer-events-auto"
-      >
-        {renderAgentPill()}
+      {/* Header — hidden when pill is external (desktop) */}
+      {!hideHeader && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.3, ease: 'easeOut' }}
+          className="flex items-center justify-between px-4 pt-3 pb-2 pointer-events-auto"
+        >
+          {renderAgentPill()}
 
-        <div className="flex items-center gap-1.5">
-          <motion.button
-            whileTap={!isPreview ? { scale: 0.88 } : undefined}
-            onClick={!isPreview ? onFollow : undefined}
-            className={`${pillBg} rounded-full w-9 h-9 flex items-center justify-center cursor-pointer shadow-md border ${isFollowing ? 'text-tangerine' : pillText} ${isPreview ? 'opacity-40' : ''}`}
-          >
-            {isFollowing ? <UserCheck size={16} /> : <UserPlus size={16} />}
-          </motion.button>
-          <motion.button
-            whileTap={!isPreview ? { scale: 0.88 } : undefined}
-            onClick={!isPreview ? onShare : undefined}
-            className={`${pillBg} rounded-full w-9 h-9 flex items-center justify-center ${pillText} cursor-pointer shadow-md border ${isPreview ? 'opacity-40' : ''}`}
-          >
-            <Share2 size={16} />
-          </motion.button>
-        </div>
-      </motion.div>
+          <div className="flex items-center gap-1.5">
+            <motion.button
+              whileTap={!isPreview ? { scale: 0.88 } : undefined}
+              onClick={!isPreview ? onFollow : undefined}
+              className={`${pillBg} rounded-full w-9 h-9 flex items-center justify-center cursor-pointer shadow-md border ${isFollowing ? 'text-tangerine' : pillText} ${isPreview ? 'opacity-40' : ''}`}
+            >
+              {isFollowing ? <UserCheck size={16} /> : <UserPlus size={16} />}
+            </motion.button>
+            <motion.button
+              whileTap={!isPreview ? { scale: 0.88 } : undefined}
+              onClick={!isPreview ? onShare : undefined}
+              className={`${pillBg} rounded-full w-9 h-9 flex items-center justify-center ${pillText} cursor-pointer shadow-md border ${isPreview ? 'opacity-40' : ''}`}
+            >
+              <Share2 size={16} />
+            </motion.button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Filters + toggle */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.45, duration: 0.3, ease: 'easeOut' }}
-        className="pointer-events-auto flex items-center"
+        transition={{ delay: hideHeader ? 0.3 : 0.45, duration: 0.3, ease: 'easeOut' }}
+        className={`pointer-events-auto flex items-center ${centerFilters ? 'justify-center' : ''} ${hideHeader ? 'pt-3' : ''}`}
         style={{ touchAction: 'pan-x' }}
       >
-        <FilterBar className="flex-1">
+        <FilterBar className={centerFilters ? '' : 'flex-1'}>
           <FilterDropdown label="Pin Type" dark={isFeed}
             options={FILTER_OPTIONS.filter((o) => (pinCounts[o.value] || 0) > 0).map((o) => ({ value: o.value, label: `${o.label} (${pinCounts[o.value] || 0})` }))}
             selected={activeFilters} onToggle={(v) => handleFilterClick(v as PinType)} onClear={clearFilters} />
