@@ -3,7 +3,6 @@ import { motion } from 'framer-motion'
 import { Eye, MapPin, Home, Bookmark, Share2, MessageCircle, Phone, UserPlus, UserCheck } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { ListingOnlySheet } from '@/components/viewers/ListingOnlySheet'
-import { SidePanel } from '@/components/ui/SidePanel'
 import { type Pin, type UserDoc, type ContentItem } from '@/lib/types'
 import { getAllContent } from '@/lib/mock'
 
@@ -36,10 +35,11 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
   return (
     <>
       <div ref={scrollRef} className="absolute inset-0 bg-midnight overflow-y-auto"
-        style={{ WebkitOverflowScrolling: 'touch', scrollSnapType: 'y mandatory' }}>
+        style={{ scrollSnapType: 'y mandatory', scrollBehavior: 'auto', overscrollBehavior: 'none' }}>
         {allContent.map(({ content, pin }) => (
           <FeedCard key={content.id} content={content} pin={pin} agent={agent}
             isPreview={isPreview} following={following}
+            isSignedIn={isSignedIn} onAuthRequired={onAuthRequired}
             onFollowToggle={() => {
               if (!isSignedIn && !isPreview && onAuthRequired) { onAuthRequired(); return }
               setFollowing(!following)
@@ -48,22 +48,54 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
         ))}
       </div>
 
-      {/* Listing-only sheet — side panel within feed on desktop, bottom sheet on mobile */}
-      {listingSheet && typeof window !== 'undefined' && window.innerWidth >= 768 ? (
-        <SidePanel isOpen={!!listingSheet} onClose={() => setListingSheet(null)} title={listingSheet?.address}>
-          <ListingOnlySheet pin={listingSheet} agent={agent} onClose={() => setListingSheet(null)} isPreview={isPreview} embedded />
-        </SidePanel>
+      {/* Listing-only sheet — slide-from-left panel within feed on desktop, bottom sheet on mobile */}
+      {typeof window !== 'undefined' && window.innerWidth >= 768 ? (
+        <>
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 z-[18] bg-black/40"
+            style={{
+              opacity: listingSheet ? 1 : 0,
+              pointerEvents: listingSheet ? 'auto' : 'none',
+              transition: 'opacity 0.25s ease',
+            }}
+            onClick={() => setListingSheet(null)}
+          />
+          {/* Panel — slides from left, constrained to feed */}
+          <div
+            className="absolute top-0 left-0 bottom-0 z-[20] flex flex-col bg-obsidian border-r border-border-dark overflow-hidden"
+            style={{
+              width: '100%',
+              transform: listingSheet ? 'translateX(0)' : 'translateX(-100%)',
+              transition: 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
+            }}
+          >
+            <div className="px-4 py-3 shrink-0 flex items-center justify-between border-b border-border-dark">
+              <h2 className="text-[14px] font-bold text-white truncate flex-1 mr-3">{listingSheet?.address}</h2>
+              <button onClick={() => setListingSheet(null)} className="w-7 h-7 rounded-full bg-charcoal flex items-center justify-center text-ghost hover:text-white cursor-pointer shrink-0">
+                <Home size={12} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto overscroll-contain">
+              {listingSheet && (
+                <ListingOnlySheet pin={listingSheet} agent={agent} onClose={() => setListingSheet(null)} isPreview={isPreview} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
+              )}
+            </div>
+          </div>
+        </>
       ) : listingSheet ? (
-        <ListingOnlySheet pin={listingSheet} agent={agent} onClose={() => setListingSheet(null)} isPreview={isPreview} />
+        <ListingOnlySheet pin={listingSheet} agent={agent} onClose={() => setListingSheet(null)} isPreview={isPreview} isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
       ) : null}
     </>
   )
 }
 
-function FeedCard({ content, pin, agent, isPreview, following, onFollowToggle, onListingTap }: {
+function FeedCard({ content, pin, agent, isPreview, following, onFollowToggle, onListingTap, isSignedIn, onAuthRequired }: {
   content: ContentItem; pin: Pin; agent: UserDoc; isPreview?: boolean
   following: boolean; onFollowToggle: () => void; onListingTap: () => void
+  isSignedIn?: boolean; onAuthRequired?: () => void
 }) {
+  const requireAuth = () => { if (!isSignedIn && onAuthRequired) onAuthRequired() }
   const videoRef = useRef<HTMLVideoElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const thumbnailUrl = content.thumbnailUrl || ('heroPhotoUrl' in pin ? pin.heroPhotoUrl : '') || ''
@@ -83,13 +115,19 @@ function FeedCard({ content, pin, agent, isPreview, following, onFollowToggle, o
 
   return (
     <div ref={cardRef} className="w-full relative"
-      style={{ height: '100%', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
-      {/* Background media */}
-      <div className="absolute inset-0 bg-charcoal">
+      style={{ height: '100%', scrollSnapAlign: 'start', scrollSnapStop: 'always', willChange: 'transform', contain: 'layout style paint' }}>
+      {/* Background media — blurred vertical fill for non-portrait, object-cover for portrait */}
+      <div className="absolute inset-0 bg-charcoal overflow-hidden">
         {isVideo && content.mediaUrl ? (
-          <video ref={videoRef} src={content.mediaUrl} className="w-full h-full object-cover" loop playsInline muted autoPlay />
+          <>
+            <video src={content.mediaUrl} className="absolute inset-0 w-full h-full object-cover blur-2xl scale-y-110 opacity-50" loop playsInline muted autoPlay />
+            <video ref={videoRef} src={content.mediaUrl} className="relative w-full h-full object-cover" loop playsInline muted autoPlay />
+          </>
         ) : thumbnailUrl ? (
-          <img src={thumbnailUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
+          <>
+            <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-y-110 opacity-50" loading="lazy" />
+            <img src={thumbnailUrl} alt="" className="relative w-full h-full object-cover" loading="lazy" />
+          </>
         ) : null}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/30" />
       </div>
@@ -97,7 +135,7 @@ function FeedCard({ content, pin, agent, isPreview, following, onFollowToggle, o
       {/* Open house + live indicators moved to caption below */}
 
       {/* Right sidebar */}
-      <div className="absolute right-3 bottom-[22%] z-10 flex flex-col items-center gap-5">
+      <div className="absolute right-3 bottom-[22%] z-10 flex flex-col items-center gap-5" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }}>
         {/* Agent avatar — tap to follow/unfollow (fixed size, no shift) */}
         <div className="relative w-10 h-12">
           <motion.button whileTap={!isPreview ? { scale: 0.9 } : undefined}
@@ -112,19 +150,21 @@ function FeedCard({ content, pin, agent, isPreview, following, onFollowToggle, o
         </div>
 
         <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
-          className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : ''}`}>
+          onClick={!isPreview ? requireAuth : undefined}
+          className={`flex flex-col items-center gap-0.5 cursor-pointer ${isPreview ? 'opacity-40' : ''}`}>
           <Bookmark size={26} className="text-white" />
           <span className="text-[10px] text-white font-semibold">{content.saves}</span>
         </motion.button>
 
         <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
-          className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : ''}`}>
+          onClick={!isPreview ? requireAuth : undefined}
+          className={`flex flex-col items-center gap-0.5 cursor-pointer ${isPreview ? 'opacity-40' : ''}`}>
           <MessageCircle size={24} className="text-white" />
           <span className="text-[10px] text-white font-semibold">0</span>
         </motion.button>
 
         <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
-          className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : ''}`}>
+          className={`flex flex-col items-center gap-0.5 cursor-pointer ${isPreview ? 'opacity-40' : ''}`}>
           <Share2 size={22} className="text-white" />
         </motion.button>
 
@@ -141,7 +181,8 @@ function FeedCard({ content, pin, agent, isPreview, following, onFollowToggle, o
 
         {/* Contact */}
         <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
-          className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : ''}`}>
+          onClick={!isPreview ? requireAuth : undefined}
+          className={`flex flex-col items-center gap-0.5 cursor-pointer ${isPreview ? 'opacity-40' : ''}`}>
           <div className="w-10 h-10 rounded-full bg-tangerine flex items-center justify-center">
             <Phone size={18} className="text-white" />
           </div>

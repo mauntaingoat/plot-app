@@ -25,7 +25,7 @@ export function FilterPill({ label, active, icon, count, onClick, dark = true }:
             : 'bg-tangerine text-white border-tangerine'
           : dark
             ? 'glass text-mist hover:text-white'
-            : 'bg-white/90 backdrop-blur-sm text-ink border-border-light hover:bg-pearl shadow-sm'
+            : 'bg-white/90 backdrop-blur-sm text-ink border-border-light hover:bg-pearl shadow-[0_2px_12px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.06)]'
         }
       `}
     >
@@ -50,7 +50,7 @@ interface FilterBarProps {
 
 export function FilterBar({ children, className = '' }: FilterBarProps) {
   return (
-    <div className={`flex gap-1.5 overflow-x-auto overflow-y-hidden px-4 py-2 no-scrollbar items-center h-[44px] shrink-0 ${className}`} style={{ touchAction: 'pan-x', overscrollBehaviorY: 'none' }}>
+    <div className={`flex gap-1.5 overflow-x-auto overflow-y-hidden px-4 py-2 no-scrollbar items-center h-[44px] shrink-0 ${className}`} style={{ touchAction: 'pan-x', overscrollBehaviorY: 'none', WebkitOverflowScrolling: 'touch', willChange: 'scroll-position' }}>
       {children}
     </div>
   )

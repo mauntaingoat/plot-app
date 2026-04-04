@@ -12,12 +12,14 @@ interface ResponsiveSheetProps {
   className?: string
   dark?: boolean
   noScroll?: boolean // content manages its own scroll (e.g. ListingModal)
+  mapBounds?: { left: number; right: number } // center modal within map area on desktop
+  zIndex?: number // for stacked modals (e.g. auth over profile)
 }
 
 const isDesktop = () => typeof window !== 'undefined' && window.innerWidth >= 768
 
 // Centered modal for desktop — mobile-width, soft blur
-function DesktopModal({ isOpen, onClose, children, title, dark, noScroll }: { isOpen: boolean; onClose: () => void; children: ReactNode; title?: string; dark?: boolean; noScroll?: boolean }) {
+function DesktopModal({ isOpen, onClose, children, title, dark, noScroll, mapBounds }: { isOpen: boolean; onClose: () => void; children: ReactNode; title?: string; dark?: boolean; noScroll?: boolean; mapBounds?: { left: number; right: number } }) {
   const bg = dark ? 'bg-obsidian' : 'bg-warm-white'
   const borderColor = dark ? 'border-border-dark' : 'border-border-light'
   const titleColor = dark ? 'text-white' : 'text-ink'
@@ -32,18 +34,16 @@ function DesktopModal({ isOpen, onClose, children, title, dark, noScroll }: { is
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5, ease: 'easeOut' }}
-          className="fixed inset-0 z-[200] flex items-center justify-center"
+          className="fixed inset-0 z-[200]"
           onClick={onClose}
         >
-          {/* Backdrop — soft blur, slow fade */}
-          <motion.div
-            className="absolute inset-0 bg-black/30"
-            style={{ backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
-          />
+          {/* Backdrop — dim overlay */}
+          <div className="absolute inset-0 bg-black/30" />
+          {/* Centering container — constrained to map area when mapBounds provided */}
+          <div
+            className="absolute top-0 bottom-0 flex items-center justify-center"
+            style={mapBounds ? { left: mapBounds.left, right: mapBounds.right } : { left: 0, right: 0 }}
+          >
           {/* Modal — mobile width */}
           <motion.div
             initial={{ opacity: 0, scale: 0.97, y: 20 }}
@@ -69,6 +69,7 @@ function DesktopModal({ isOpen, onClose, children, title, dark, noScroll }: { is
               {children}
             </div>
           </motion.div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>
@@ -76,14 +77,14 @@ function DesktopModal({ isOpen, onClose, children, title, dark, noScroll }: { is
 }
 
 // Auto-switches between BottomSheet (mobile) and centered Modal (desktop)
-export function ResponsiveSheet({ isOpen, onClose, children, title, fullHeight, className, dark, noScroll }: ResponsiveSheetProps) {
+export function ResponsiveSheet({ isOpen, onClose, children, title, fullHeight, className, dark, noScroll, mapBounds, zIndex }: ResponsiveSheetProps) {
   if (isDesktop()) {
-    return <DesktopModal isOpen={isOpen} onClose={onClose} title={title} dark={dark} noScroll={noScroll}>{children}</DesktopModal>
+    return <DesktopModal isOpen={isOpen} onClose={onClose} title={title} dark={dark} noScroll={noScroll} mapBounds={mapBounds}>{children}</DesktopModal>
   }
 
   return dark ? (
-    <DarkBottomSheet isOpen={isOpen} onClose={onClose} title={title} fullHeight={fullHeight} className={className}>{children}</DarkBottomSheet>
+    <DarkBottomSheet isOpen={isOpen} onClose={onClose} title={title} fullHeight={fullHeight} className={className} zIndex={zIndex}>{children}</DarkBottomSheet>
   ) : (
-    <BottomSheet isOpen={isOpen} onClose={onClose} title={title} fullHeight={fullHeight} className={className}>{children}</BottomSheet>
+    <BottomSheet isOpen={isOpen} onClose={onClose} title={title} fullHeight={fullHeight} className={className} zIndex={zIndex}>{children}</BottomSheet>
   )
 }

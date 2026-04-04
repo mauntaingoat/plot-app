@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
-import { motion, useMotionValue, animate, useDragControls } from 'framer-motion'
+import { useState } from 'react'
 import { Bed, Bath, Maximize, MapPin, Bookmark, Share2, Phone, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { formatPrice } from '@/lib/firestore'
 import type { Pin, ForSalePin, SoldPin, UserDoc } from '@/lib/types'
 
@@ -13,34 +13,15 @@ interface ListingOnlySheetProps {
   onClose: () => void
   isPreview?: boolean
   embedded?: boolean
+  isSignedIn?: boolean
+  onAuthRequired?: () => void
 }
 
-export function ListingOnlySheet({ pin, agent, onClose, isPreview, embedded }: ListingOnlySheetProps) {
+export function ListingOnlySheet({ pin, agent, onClose, isPreview, embedded, isSignedIn, onAuthRequired }: ListingOnlySheetProps) {
+  const requireAuth = () => { if (!isSignedIn && onAuthRequired) onAuthRequired() }
   const [photoIndex, setPhotoIndex] = useState(0)
-  const dragControls = useDragControls()
-  const y = useMotionValue(0)
-  const [rendered, setRendered] = useState(true)
-  const closingRef = useRef(false)
-
-  const dismiss = () => {
-    if (closingRef.current) return
-    closingRef.current = true
-    animate(y, window.innerHeight, { type: 'tween', duration: 0.28, ease: [0.32, 0.72, 0, 1], onComplete: () => { setRendered(false); onClose() } })
-  }
-
-  const handleDragEnd = (_: any, info: any) => {
-    if (info.offset.y > 60 || info.velocity.y > 300) dismiss()
-    else animate(y, 0, { type: 'tween', duration: 0.2 })
-  }
-
-  useEffect(() => {
-    if (embedded) return
-    y.jump(window.innerHeight)
-    requestAnimationFrame(() => animate(y, 0, { type: 'tween', duration: 0.32, ease: [0.32, 0.72, 0, 1] }))
-  }, [y, embedded])
 
   if (pin.type === 'neighborhood') return null
-  if (!rendered && !embedded) return null
 
   const lp = pin as ForSalePin | SoldPin
   const photos = lp.photos || []
@@ -58,8 +39,8 @@ export function ListingOnlySheet({ pin, agent, onClose, isPreview, embedded }: L
             </>
           )}
           <div className="absolute top-3 right-3 flex gap-2">
-            <button className={`w-9 h-9 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white ${isPreview ? 'opacity-40' : ''}`}><Bookmark size={16} /></button>
-            <button className={`w-9 h-9 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white ${isPreview ? 'opacity-40' : ''}`}><Share2 size={14} /></button>
+            <button onClick={!isPreview ? requireAuth : undefined} className={`w-9 h-9 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''}`}><Bookmark size={16} /></button>
+            <button className={`w-9 h-9 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''}`}><Share2 size={14} /></button>
           </div>
           {pin.type === 'sold' && <div className="absolute top-3 left-3"><Badge variant="sold">SOLD</Badge></div>}
         </div>
@@ -97,7 +78,7 @@ export function ListingOnlySheet({ pin, agent, onClose, isPreview, embedded }: L
         <div className="bg-slate rounded-[18px] p-4 flex items-center gap-3">
           <Avatar src={agent.photoURL} name={agent.displayName} size={48} />
           <div className="flex-1 min-w-0"><p className="text-[15px] font-bold text-white">{agent.displayName}</p>{agent.brokerage && <p className="text-[12px] text-ghost">{agent.brokerage}</p>}</div>
-          <Button variant="primary" size="sm" icon={<Phone size={14} />} disabled={isPreview}>Contact</Button>
+          <Button variant="primary" size="sm" icon={<Phone size={14} />} disabled={isPreview} onClick={!isPreview ? requireAuth : undefined}>Contact</Button>
         </div>
         <div className="h-8" />
       </div>
@@ -107,20 +88,11 @@ export function ListingOnlySheet({ pin, agent, onClose, isPreview, embedded }: L
   // Embedded in SidePanel — just the scrollable content
   if (embedded) return <div className="h-full overflow-y-auto bg-obsidian" style={{ WebkitOverflowScrolling: 'touch' }}>{content}</div>
 
-  // Mobile bottom sheet
+  // Mobile bottom sheet — uses shared DarkBottomSheet with scroll-aware swipe
   return (
-    <>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[90] bg-black/60"
-        onClick={(e) => { e.stopPropagation(); dismiss() }} onPointerDown={(e) => e.stopPropagation()} />
-      <motion.div style={{ y }} drag="y" dragControls={dragControls} dragListener={false}
-        dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0, bottom: 0.4 }} onDragEnd={handleDragEnd}
-        className="fixed bottom-0 left-0 right-0 z-[100] bg-obsidian rounded-t-[24px] border-t border-border-dark max-h-[85vh] flex flex-col overflow-hidden">
-        <div className="flex justify-center pt-3 pb-1 shrink-0" onPointerDown={(e) => dragControls.start(e)} style={{ touchAction: 'none' }}>
-          <div className="w-9 h-[5px] rounded-full bg-charcoal" />
-        </div>
-        <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>{content}</div>
-      </motion.div>
-    </>
+    <DarkBottomSheet isOpen={true} onClose={onClose} title={pin.address}>
+      {content}
+    </DarkBottomSheet>
   )
 }
 

@@ -23,15 +23,16 @@ interface AgentDetailSheetProps {
   isPreview?: boolean
   agentMode?: AgentMode
   onSetMode?: (mode: AgentMode) => void
+  mapBounds?: { left: number; right: number }
 }
 
 export function AgentDetailSheet({
   isOpen, onClose, agent, isFollowing, onFollow,
   nearbyAgents = [], enabledAgentIds, onToggleAgent, onExploreAll, onAgentTap,
-  isPreview, agentMode = 'single', onSetMode,
+  isPreview, agentMode = 'single', onSetMode, mapBounds,
 }: AgentDetailSheetProps) {
   return (
-    <ResponsiveSheet isOpen={isOpen} onClose={onClose} dark>
+    <ResponsiveSheet isOpen={isOpen} onClose={onClose} dark mapBounds={mapBounds}>
       <div className="px-5 pb-8 space-y-6">
         {/* Profile header */}
         <div className="flex items-center gap-4">

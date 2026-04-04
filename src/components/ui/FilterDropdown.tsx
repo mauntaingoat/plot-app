@@ -76,7 +76,7 @@ export function FilterDropdown({ label, options, selected, onToggle, onClear, da
             ? 'bg-tangerine text-white border-tangerine'
             : dark
               ? 'bg-black/30 backdrop-blur-md text-white/80 border-white/10'
-              : 'bg-white/90 backdrop-blur-sm text-ink border-black/8 shadow-sm'
+              : 'bg-white/90 backdrop-blur-sm text-ink border-black/8 shadow-[0_2px_12px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.05)]'
           }
         `}
       >

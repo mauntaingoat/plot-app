@@ -46,7 +46,7 @@ export default function PinCreate() {
   // Content items (added during creation)
   const [contentItems, setContentItems] = useState<{ type: string; caption: string; file: File | null; preview: string | null }[]>([])
   const [showAddContent, setShowAddContent] = useState(false)
-  const [newContentType, setNewContentType] = useState<'reel' | 'story' | 'video_note'>('reel')
+  const [newContentType, setNewContentType] = useState<'reel' | 'story' | 'video_note' | 'photo'>('reel')
   const [newCaption, setNewCaption] = useState('')
   const [newFile, setNewFile] = useState<File | null>(null)
   const [newPreview, setNewPreview] = useState<string | null>(null)
@@ -185,23 +185,25 @@ export default function PinCreate() {
   return (
     <div className="min-h-screen bg-ivory">
       {/* Header */}
-      <div className="sticky top-0 z-30 bg-ivory/95 backdrop-blur-xl border-b border-border-light px-5 flex items-center gap-3"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 12px) + 8px)', paddingBottom: '12px' }}>
-        <motion.button whileTap={{ scale: 0.88 }} onClick={() => navigate(-1)}
-          className="w-9 h-9 rounded-full bg-cream flex items-center justify-center">
-          <ArrowLeft size={18} className="text-ink" />
-        </motion.button>
-        <h1 className="text-[18px] font-bold text-ink tracking-tight">New Pin</h1>
-        <div className="flex-1" />
-        {/* Step indicator */}
-        <div className="flex gap-1">
-          {['type', 'address', 'details', 'content'].map((s, i) => (
-            <div key={s} className={`w-2 h-2 rounded-full ${step === s || (['type','address','details','content'].indexOf(step) > i) ? 'bg-tangerine' : 'bg-pearl'}`} />
-          ))}
+      <div className="sticky top-0 z-30 bg-ivory/95 backdrop-blur-xl border-b border-border-light">
+        <div className="max-w-2xl mx-auto px-5 flex items-center gap-3"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 12px) + 8px)', paddingBottom: '12px' }}>
+          <motion.button whileTap={{ scale: 0.88 }} onClick={() => navigate(-1)}
+            className="w-9 h-9 rounded-full bg-cream flex items-center justify-center">
+            <ArrowLeft size={18} className="text-ink" />
+          </motion.button>
+          <h1 className="text-[18px] font-bold text-ink tracking-tight">New Pin</h1>
+          <div className="flex-1" />
+          {/* Step indicator */}
+          <div className="flex gap-1">
+            {['type', 'address', 'details', 'content'].map((s, i) => (
+              <div key={s} className={`w-2 h-2 rounded-full ${step === s || (['type','address','details','content'].indexOf(step) > i) ? 'bg-tangerine' : 'bg-pearl'}`} />
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="px-5 py-6">
+      <div className="max-w-2xl mx-auto px-5 py-6">
         <AnimatePresence mode="wait">
           {/* ═══ STEP 1: TYPE ═══ */}
           {step === 'type' && (
@@ -391,21 +393,22 @@ export default function PinCreate() {
               {showAddContent ? (
                 <div className="bg-cream rounded-[18px] p-4 mb-6 space-y-3">
                   <div className="flex gap-2">
-                    {(['reel', 'story', 'video_note'] as const).map((t) => (
+                    {(['reel', 'story', 'photo', 'video_note'] as const).map((t) => (
                       <button key={t} onClick={() => setNewContentType(t)}
                         className={`flex-1 py-2 rounded-[10px] text-[11px] font-semibold transition-all ${newContentType === t ? 'bg-tangerine text-white' : 'bg-pearl text-smoke'}`}>
-                        {t === 'video_note' ? 'Video Note' : t.charAt(0).toUpperCase() + t.slice(1)}
+                        {t === 'video_note' ? 'Note' : t.charAt(0).toUpperCase() + t.slice(1)}
                       </button>
                     ))}
                   </div>
                   <p className="text-[10px] text-ash">
                     {newContentType === 'reel' && 'Reels are permanent vertical videos showcasing the property.'}
                     {newContentType === 'story' && 'Stories disappear after 24 hours. Great for open house announcements, quick updates.'}
+                    {newContentType === 'photo' && 'Upload professional photos to showcase the property. Great for photo carousels.'}
                     {newContentType === 'video_note' && 'A personal video message about why you love this property. Direct-to-camera.'}
                   </p>
 
                   <input ref={fileRef} type="file"
-                    accept={newContentType === 'video_note' ? 'video/*' : 'image/*,video/*'}
+                    accept={newContentType === 'video_note' ? 'video/*' : newContentType === 'photo' ? 'image/*' : 'image/*,video/*'}
                     capture={newContentType === 'video_note' ? 'user' : undefined}
                     onChange={handleMediaFile} className="hidden" />
 
@@ -426,7 +429,7 @@ export default function PinCreate() {
                       className="w-full py-8 border-2 border-dashed border-pearl rounded-[12px] flex flex-col items-center gap-1 text-smoke hover:bg-pearl/50 cursor-pointer">
                       {newContentType === 'video_note' ? <Camera size={22} /> : <Upload size={22} />}
                       <span className="text-[12px] font-medium">
-                        {newContentType === 'video_note' ? 'Record with camera' : 'Upload photo or video'}
+                        {newContentType === 'video_note' ? 'Record with camera' : newContentType === 'photo' ? 'Upload photo' : 'Upload photo or video'}
                       </span>
                     </button>
                   )}

@@ -13,13 +13,21 @@ interface ListingModalProps {
   onClose: () => void
   isPreview?: boolean
   embedded?: boolean // true when rendered inside a SidePanel — skip own animation/backdrop
+  isSignedIn?: boolean
+  onAuthRequired?: () => void
 }
 
-export function ListingModal({ pin, agent, onClose, isPreview, embedded }: ListingModalProps) {
+export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSignedIn, onAuthRequired }: ListingModalProps) {
   const [activeTab, setActiveTab] = useState<'content' | 'listing'>('content')
   const y = useMotionValue(0)
   const [rendered, setRendered] = useState(true)
   const closingRef = useRef(false)
+  const scrollAreaRef = useRef<HTMLDivElement>(null)
+
+  // Reset scroll to top when switching tabs
+  useEffect(() => {
+    if (scrollAreaRef.current) scrollAreaRef.current.scrollTop = 0
+  }, [activeTab])
 
   const isForSale = pin.type === 'for_sale'
   const isSold = pin.type === 'sold'
@@ -63,14 +71,14 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded }: Listi
         )}
         {/* Relative wrapper gives definite height for absolute scroll child */}
         <div className="relative flex-1 min-h-0">
-          <div className="absolute inset-0 overflow-y-auto" style={{
-            WebkitOverflowScrolling: 'touch',
+          <div ref={scrollAreaRef} className="absolute inset-0 overflow-y-auto" style={{
+            overscrollBehavior: 'none',
             ...(activeTab === 'content' ? { scrollSnapType: 'y mandatory' } : {}),
           }}>
             {activeTab === 'content' ? (
-              <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={onClose} embedded />
+              <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={onClose} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
             ) : (
-              <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={onClose} embedded />
+              <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={onClose} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
             )}
           </div>
         </div>
@@ -108,9 +116,9 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded }: Listi
 
         {/* Tab content — full screen */}
         {activeTab === 'content' ? (
-          <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={dismiss} />
+          <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={dismiss} isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
         ) : (
-          <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={dismiss} />
+          <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={dismiss} isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
         )}
       </motion.div>
     </>
@@ -119,7 +127,7 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded }: Listi
 
 // ── Content Tab: full-screen vertical feed ──
 
-function ContentTab({ pin, agent, isPreview, onDismiss, embedded }: { pin: Pin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean }) {
+function ContentTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, onAuthRequired }: { pin: Pin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void }) {
   if (pin.content.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center bg-midnight">
@@ -136,22 +144,23 @@ function ContentTab({ pin, agent, isPreview, onDismiss, embedded }: { pin: Pin; 
     return (
       <>
         {pin.content.map((content) => (
-          <ContentCard key={content.id} content={content} pin={pin} agent={agent} isPreview={isPreview} embedded />
+          <ContentCard key={content.id} content={content} pin={pin} agent={agent} isPreview={isPreview} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
         ))}
       </>
     )
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-midnight" style={{ scrollSnapType: 'y mandatory', WebkitOverflowScrolling: 'touch' }}>
+    <div className="flex-1 overflow-y-auto bg-midnight" style={{ scrollSnapType: 'y mandatory', overscrollBehavior: 'none' }}>
       {pin.content.map((content) => (
-        <ContentCard key={content.id} content={content} pin={pin} agent={agent} isPreview={isPreview} />
+        <ContentCard key={content.id} content={content} pin={pin} agent={agent} isPreview={isPreview} isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
       ))}
     </div>
   )
 }
 
-function ContentCard({ content, pin, agent, isPreview, embedded }: { content: ContentItem; pin: Pin; agent: UserDoc; isPreview?: boolean; embedded?: boolean }) {
+function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onAuthRequired }: { content: ContentItem; pin: Pin; agent: UserDoc; isPreview?: boolean; embedded?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void }) {
+  const requireAuth = () => { if (!isSignedIn && onAuthRequired) onAuthRequired() }
   const videoRef = useRef<HTMLVideoElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const thumbnailUrl = content.thumbnailUrl || ('heroPhotoUrl' in pin ? pin.heroPhotoUrl : '') || ''
@@ -169,12 +178,19 @@ function ContentCard({ content, pin, agent, isPreview, embedded }: { content: Co
   }, [isVideo, content.mediaUrl])
 
   return (
-    <div ref={cardRef} className="relative w-full" style={{ height: embedded ? '100%' : '100dvh', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
-      <div className="absolute inset-0 bg-charcoal">
+    <div ref={cardRef} className="relative w-full" style={{ height: embedded ? '100%' : '100dvh', scrollSnapAlign: 'start', scrollSnapStop: 'always', willChange: 'transform', contain: 'layout style paint' }}>
+      {/* Background media — blurred vertical fill for non-portrait, object-cover for portrait */}
+      <div className="absolute inset-0 bg-charcoal overflow-hidden">
         {isVideo && content.mediaUrl ? (
-          <video ref={videoRef} src={content.mediaUrl} className="w-full h-full object-cover" loop playsInline muted autoPlay />
+          <>
+            <video src={content.mediaUrl} className="absolute inset-0 w-full h-full object-cover blur-2xl scale-y-110 opacity-50" loop playsInline muted autoPlay />
+            <video ref={videoRef} src={content.mediaUrl} className="relative w-full h-full object-cover" loop playsInline muted autoPlay />
+          </>
         ) : thumbnailUrl ? (
-          <img src={thumbnailUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
+          <>
+            <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-y-110 opacity-50" loading="lazy" />
+            <img src={thumbnailUrl} alt="" className="relative w-full h-full object-cover" loading="lazy" />
+          </>
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-slate"><p className="text-ghost">{content.type}</p></div>
         )}
@@ -182,15 +198,15 @@ function ContentCard({ content, pin, agent, isPreview, embedded }: { content: Co
       </div>
 
       {/* Right sidebar */}
-      <div className="absolute right-3 bottom-[20%] z-10 flex flex-col items-center gap-4">
-        <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined} className={isPreview ? 'opacity-40' : ''}>
+      <div className="absolute right-3 bottom-[20%] z-10 flex flex-col items-center gap-4" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }}>
+        <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined} onClick={!isPreview ? requireAuth : undefined} className={isPreview ? 'opacity-40' : 'cursor-pointer'}>
           <Bookmark size={24} className="text-white" />
           <span className="text-[9px] text-white font-semibold block mt-0.5">{content.saves}</span>
         </motion.button>
-        <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined} className={isPreview ? 'opacity-40' : ''}>
+        <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined} className={isPreview ? 'opacity-40' : 'cursor-pointer'}>
           <Share2 size={20} className="text-white" />
         </motion.button>
-        <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined} className={isPreview ? 'opacity-40' : ''}>
+        <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined} onClick={!isPreview ? requireAuth : undefined} className={isPreview ? 'opacity-40' : 'cursor-pointer'}>
           <div className="w-9 h-9 rounded-full bg-tangerine flex items-center justify-center"><Phone size={16} className="text-white" /></div>
         </motion.button>
       </div>
@@ -220,7 +236,8 @@ function ContentCard({ content, pin, agent, isPreview, embedded }: { content: Co
 
 // ── Listing Tab: scrollable MLS data ──
 
-function ListingTab({ pin, agent, isPreview, onDismiss, embedded }: { pin: ForSalePin | SoldPin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean }) {
+function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, onAuthRequired }: { pin: ForSalePin | SoldPin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void }) {
+  const requireAuth = () => { if (!isSignedIn && onAuthRequired) onAuthRequired() }
   const [photoIndex, setPhotoIndex] = useState(0)
   const photos = pin.photos || []
 
@@ -244,8 +261,8 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded }: { pin: ForSa
             </>
           )}
           <div className="absolute top-3 right-3 flex gap-2">
-            <button className={`w-9 h-9 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white ${isPreview ? 'opacity-40' : ''}`}><Bookmark size={16} /></button>
-            <button className={`w-9 h-9 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white ${isPreview ? 'opacity-40' : ''}`}><Share2 size={14} /></button>
+            <button onClick={!isPreview ? requireAuth : undefined} className={`w-9 h-9 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''}`}><Bookmark size={16} /></button>
+            <button className={`w-9 h-9 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''}`}><Share2 size={14} /></button>
           </div>
           {pin.type === 'sold' && <div className="absolute top-3 left-3"><Badge variant="sold">SOLD</Badge></div>}
         </div>
@@ -298,7 +315,7 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded }: { pin: ForSa
         <div className="bg-slate rounded-[18px] p-4 flex items-center gap-3">
           <Avatar src={agent.photoURL} name={agent.displayName} size={48} />
           <div className="flex-1 min-w-0"><p className="text-[15px] font-bold text-white">{agent.displayName}</p>{agent.brokerage && <p className="text-[12px] text-ghost">{agent.brokerage}</p>}</div>
-          <Button variant="primary" size="sm" icon={<Phone size={14} />} disabled={isPreview}>Contact</Button>
+          <Button variant="primary" size="sm" icon={<Phone size={14} />} disabled={isPreview} onClick={!isPreview ? requireAuth : undefined}>Contact</Button>
         </div>
 
         <div className="h-8" />

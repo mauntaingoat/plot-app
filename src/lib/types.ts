@@ -35,7 +35,7 @@ export interface UserDoc {
 
 export type PinType = 'for_sale' | 'sold' | 'neighborhood'
 export type ListingStatus = 'active' | 'pending' | 'contingent' | 'closed'
-export type ContentType = 'reel' | 'story' | 'live' | 'video_note'
+export type ContentType = 'reel' | 'story' | 'live' | 'video_note' | 'photo'
 export type HomeType = 'single_family' | 'condo' | 'townhouse' | 'multi_family' | 'land' | 'commercial' | 'other'
 
 export interface Coordinates {
