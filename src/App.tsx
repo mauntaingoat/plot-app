@@ -1,9 +1,21 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuthListener } from '@/hooks/useAuth'
 import { SimpleLoadingScreen } from '@/components/ui/LoadingScreen'
 import { AuthSheet } from '@/components/sheets/AuthSheet'
 import { useAuthModalStore } from '@/stores/authModalStore'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+})
 
 const Home = lazy(() => import('@/pages/Home'))
 const ForAgents = lazy(() => import('@/pages/ForAgents'))
@@ -64,10 +76,12 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Suspense fallback={<SimpleLoadingScreen />}>
-        <AppRoutes />
-      </Suspense>
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Suspense fallback={<SimpleLoadingScreen />}>
+          <AppRoutes />
+        </Suspense>
+      </BrowserRouter>
+    </QueryClientProvider>
   )
 }

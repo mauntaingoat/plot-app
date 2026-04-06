@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronRight, ChevronLeft, Share2, UserPlus, UserCheck, ChevronDown, Users, Globe, X } from 'lucide-react'
+import { ChevronRight, ChevronLeft, Users, Globe, X, Map, Layers, Bookmark, UserCircle, LogIn } from 'lucide-react'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { MapCanvas } from '@/components/map/MapCanvas'
 import { MapOverlay } from '@/components/map/MapOverlay'
@@ -9,15 +9,16 @@ import { PeekDrawer } from '@/components/map/PeekDrawer'
 import { ContentFeed } from '@/components/map/ContentFeed'
 import { PinCard } from '@/components/dashboard/PinCard'
 import { ListingModal } from '@/components/viewers/ListingModal'
-import { ResponsiveSheet } from '@/components/ui/ResponsiveSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { AgentDetailSheet, type AgentMode } from '@/components/sheets/AgentDetailSheet'
 import { AuthSheet } from '@/components/sheets/AuthSheet'
+import { SidebarPanels, type SidebarPanelType } from '@/components/agent-profile/SidebarPanels'
+import { AgentPill } from '@/components/agent-profile/AgentPill'
+import { SidebarNavButton } from '@/components/agent-profile/SidebarNavButton'
 import { useMapStore, applyPropertyFilters } from '@/stores/mapStore'
 import { useAuthStore } from '@/stores/authStore'
-import { firebaseConfigured } from '@/config/firebase'
-import { getUserByUsername } from '@/lib/firestore'
-import { getMockAgent, getMockPins, MOCK_AGENTS } from '@/lib/mock'
+import { useAgent, useAgentPins } from '@/hooks/useQueries'
+import { getMockAgent, MOCK_AGENTS } from '@/lib/mock'
 import type { UserDoc, Pin } from '@/lib/types'
 
 function useIsDesktop() {
@@ -33,27 +34,43 @@ function useIsDesktop() {
 
 export default function AgentProfile() {
   const { username } = useParams<{ username: string }>()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const isPreview = searchParams.get('preview') === 'true'
   const navigate = useNavigate()
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapShapeRef = useRef<HTMLDivElement>(null)
   const isDesktop = useIsDesktop()
 
-  const [agent, setAgent] = useState<UserDoc | null>(null)
-  const [allPins, setAllPins] = useState<Pin[]>([])
-  const [loading, setLoading] = useState(true)
-  const [notFound, setNotFound] = useState(false)
+  // Data fetching via React Query (cached across navigations)
+  const { data: agent = null, isLoading: agentLoading } = useAgent(username)
+  const { data: allPins = [] } = useAgentPins(agent)
+  const loading = agentLoading
+  const notFound = !agentLoading && !agent
+
   const [isFollowing, setIsFollowing] = useState(false)
   const [viewMode, setViewMode] = useState<'map' | 'feed'>('map')
   const [loadingComplete, setLoadingComplete] = useState(false)
   const [feedExpanded, setFeedExpanded] = useState(false)
   const [mapDims, setMapDims] = useState({ w: 0, h: 0 })
+  const [winSize, setWinSize] = useState(0) // triggers re-render on window resize
 
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null)
   const [showAgentDetail, setShowAgentDetail] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
-  const [agentMode, setAgentMode] = useState<AgentMode>('single')
+  const initialMode = (searchParams.get('mode') as AgentMode) || 'single'
+  const [agentMode, _setAgentMode] = useState<AgentMode>(
+    ['single', 'following', 'explore', 'saved'].includes(initialMode) ? initialMode : 'single'
+  )
+  const setAgentMode = useCallback((mode: AgentMode) => {
+    _setAgentMode(mode)
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (mode === 'single') next.delete('mode')
+      else next.set('mode', mode)
+      return next
+    }, { replace: true })
+  }, [setSearchParams])
+  const [sidebarPanel, setSidebarPanel] = useState<SidebarPanelType>(null)
   const [enabledAgentIds, setEnabledAgentIds] = useState<Set<string>>(new Set())
 
   const { setViewingAgentId, activeFilters, propertyFilters } = useMapStore()
@@ -62,27 +79,10 @@ export default function AgentProfile() {
   const nearbyAgents = useMemo(() =>
     MOCK_AGENTS.filter((a) => a.uid !== agent?.uid), [agent])
 
+  // Set viewing agent when agent data loads
   useEffect(() => {
-    if (!username) return
-    setLoading(true)
-    const mockAgent = getMockAgent(username)
-    if (mockAgent) {
-      setAgent(mockAgent)
-      setAllPins(getMockPins(mockAgent.uid))
-      setViewingAgentId(mockAgent.uid)
-      setLoading(false)
-      return
-    }
-    if (firebaseConfigured) {
-      const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000))
-      Promise.race([getUserByUsername(username).catch(() => null), timeout])
-        .then((doc) => {
-          if (doc) { setAgent(doc); setViewingAgentId(doc.uid) }
-          else setNotFound(true)
-          setLoading(false)
-        })
-    } else { setNotFound(true); setLoading(false) }
-  }, [username, setViewingAgentId])
+    if (agent) setViewingAgentId(agent.uid)
+  }, [agent, setViewingAgentId])
 
   // Track map container size for clip-path computation
   useEffect(() => {
@@ -99,6 +99,13 @@ export default function AgentProfile() {
   useEffect(() => {
     if (!isDesktop) setFeedExpanded(false)
   }, [isDesktop])
+
+  // Re-render on window resize so FEED_W / mapRight stay fresh
+  useEffect(() => {
+    const onResize = () => setWinSize(window.innerWidth + window.innerHeight)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   const filteredPins = useMemo(() => {
     let result = allPins
@@ -123,6 +130,14 @@ export default function AgentProfile() {
       }, 100)
     }
   }, [allPins])
+
+  const handleFitToPins = useCallback(() => {
+    if (agentMode === 'explore') return // disabled in explore mode
+    const container = mapContainerRef.current?.querySelector('.mapboxgl-canvas')?.parentElement?.parentElement
+    if (container && (container as any).__plotFitTo) {
+      (container as any).__plotFitTo(filteredPins)
+    }
+  }, [filteredPins, agentMode])
 
   const handlePinClick = useCallback((pin: Pin) => {
     setSelectedPin(pin)
@@ -177,258 +192,223 @@ export default function AgentProfile() {
   // ═══════════════════════════════════════════
   // DESKTOP
   // ═══════════════════════════════════════════
-  const PAD = 28
+  const SIDEBAR_W = 240 // permanent left sidebar
+  const PAD = 16
   const GAP = 12
-  const BUMP_H = 48 // extrusion height above the main map top edge
-  // Feed width computed for 9:16 aspect ratio based on available height
-  const feedContainerH = (typeof window !== 'undefined' ? window.innerHeight : 900) - PAD * 2 - BUMP_H
+  const CORNER_R = 20
+  const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
+  const MAP_EASE = `right 0.4s ${EASE}`
+  // Feed width: 9:16 aspect ratio from available height
+  const feedContainerH = (typeof window !== 'undefined' ? window.innerHeight : 900) - PAD * 2
   const FEED_W = Math.min(500, Math.max(340, Math.round(feedContainerH * 9 / 16)))
-  const BUMP_HALF_W = 210 // half-width of the bump opening
-  const BUMP_R = 20 // pill curve radius at bump top corners
-  const CORNER_R = 24 // main rectangle corner radius
-  const MAP_EASE = 'right 0.4s cubic-bezier(0.32, 0.72, 0, 1)'
-  const mapRight = feedExpanded ? FEED_W + GAP + PAD : PAD
-
-  // Compute clip-path for the map's notch/bump shape
-  const mapClipPath = (() => {
-    const { w: W, h: H } = mapDims
-    if (W === 0 || H === 0) return undefined
-    const r = CORNER_R
-    const br = BUMP_R
-    const bh = BUMP_H
-    const bL = W / 2 - BUMP_HALF_W // bump left edge
-    const bR = W / 2 + BUMP_HALF_W // bump right edge
-    return `path('${[
-      `M 0 ${bh + r}`,                           // start: left edge, below top-left corner
-      `A ${r} ${r} 0 0 1 ${r} ${bh}`,            // top-left rounded corner
-      `L ${bL} ${bh}`,                            // straight right to bump start
-      `L ${bL} ${br}`,                            // sharp 90° corner: straight UP
-      `A ${br} ${br} 0 0 1 ${bL + br} 0`,        // pill curve at bump top-left
-      `L ${bR - br} 0`,                           // straight across bump top
-      `A ${br} ${br} 0 0 1 ${bR} ${br}`,          // pill curve at bump top-right
-      `L ${bR} ${bh}`,                            // sharp 90° corner: straight DOWN
-      `L ${W - r} ${bh}`,                         // straight right to top-right corner
-      `A ${r} ${r} 0 0 1 ${W} ${bh + r}`,        // top-right rounded corner
-      `L ${W} ${H - r}`,                          // right edge down
-      `A ${r} ${r} 0 0 1 ${W - r} ${H}`,         // bottom-right corner
-      `L ${r} ${H}`,                              // bottom edge
-      `A ${r} ${r} 0 0 1 0 ${H - r}`,            // bottom-left corner
-      'Z',
-    ].join(' ')}')`
-  })()
+  const mapLeft = SIDEBAR_W + GAP
+  const mapRight = feedExpanded ? FEED_W + GAP + PAD : PAD + 6 // +6 ensures expand button is fully visible
 
   if (isDesktop) {
-    // Render the pill content based on agentMode
-    const renderPillContent = () => {
-      if (agentMode === 'following') {
-        return (
-          <>
-            <div className="w-10 h-10 rounded-full bg-tangerine/10 flex items-center justify-center">
-              <Users size={18} className="text-tangerine" />
-            </div>
-            <div className="min-w-0 text-left">
-              <p className="text-[15px] font-bold text-ink">Following</p>
-              <p className="text-[11px] font-medium text-smoke">
-                {enabledAgentIds.size} agent{enabledAgentIds.size !== 1 ? 's' : ''} · {totalPins} pins
-              </p>
-            </div>
-          </>
-        )
-      }
-      if (agentMode === 'explore') {
-        return (
-          <>
-            <div className="w-10 h-10 rounded-full bg-tangerine/10 flex items-center justify-center">
-              <Globe size={18} className="text-tangerine" />
-            </div>
-            <div className="min-w-0 text-left">
-              <p className="text-[15px] font-bold text-ink">Explore All</p>
-              <p className="text-[11px] font-medium text-smoke">All agents · {totalPins} pins</p>
-            </div>
-          </>
-        )
-      }
-      return (
-        <>
-          <Avatar src={agent.photoURL} name={agent.displayName} size={44} ring="story" />
-          <div className="min-w-0 text-left">
-            <p className="text-[15px] font-bold text-ink truncate">{agent.displayName}</p>
-            <p className="text-[11px] font-medium text-smoke">
-              {totalPins} pins · {agent.followerCount.toLocaleString()} followers
-            </p>
-          </div>
-        </>
-      )
-    }
-
     return (
-      <div className="map-page" style={{ background: '#FBECDE' }} ref={mapContainerRef}>
+      <div className="map-page" style={{ background: '#14161E' }} ref={mapContainerRef}>
 
-        {/* ── Map shadow wrapper — filter on outer so clip-path doesn't eat the shadow ── */}
+        {/* ═══ LEFT SIDEBAR ═══ */}
+        <div className="fixed top-0 left-0 bottom-0 z-[70] flex flex-col" style={{ width: SIDEBAR_W, background: '#14161E', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+          {/* Logo lockup */}
+          <div className="flex items-center justify-center gap-2.5 py-6 shrink-0">
+            <img src="/reelst-logo.png" alt="Reelst" className="w-8 h-8" />
+            <span className="text-[20px] font-extrabold text-white tracking-tight">Reelst</span>
+          </div>
+
+          {/* Nav buttons */}
+          <div className="flex-1 px-4 space-y-1">
+            {/* Select Agent (single mode) */}
+            <SidebarNavButton
+              active={agentMode === 'single'}
+              onClick={() => {
+                setAgentMode('single')
+                setSidebarPanel(sidebarPanel === 'selectAgent' ? null : 'selectAgent')
+              }}
+            >
+              {agentMode === 'single' ? (
+                <>
+                  <Avatar src={agent.photoURL} name={agent.displayName} size={22} ring="none" />
+                  <span className="truncate">{agent.displayName}</span>
+                </>
+              ) : (
+                <>
+                  <UserCircle size={18} />
+                  <span>Select Agent</span>
+                </>
+              )}
+            </SidebarNavButton>
+
+            {/* Following (multi-select) */}
+            <SidebarNavButton
+              active={agentMode === 'following'}
+              onClick={() => {
+                setAgentMode('following')
+                setSidebarPanel(sidebarPanel === 'following' ? null : 'following')
+              }}
+            >
+              <Users size={18} /> Following
+            </SidebarNavButton>
+
+            {/* Explore All */}
+            <SidebarNavButton
+              active={agentMode === 'explore'}
+              onClick={() => {
+                setAgentMode('explore')
+                setSidebarPanel(sidebarPanel === 'exploreAll' ? null : 'exploreAll')
+              }}
+            >
+              <Globe size={18} /> Explore All
+            </SidebarNavButton>
+
+            {/* Divider */}
+            <div className="h-px bg-white/6 !my-3" />
+
+            {/* Saved */}
+            <SidebarNavButton
+              active={agentMode === 'saved'}
+              onClick={() => {
+                setAgentMode('saved')
+                setSidebarPanel(sidebarPanel === 'saved' ? null : 'saved')
+              }}
+            >
+              <Bookmark size={18} /> Saved
+            </SidebarNavButton>
+          </div>
+
+          {/* Bottom: account / auth */}
+          <div className="px-4 pb-5 pt-3 shrink-0 border-t border-white/6">
+            {currentUser ? (
+              <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/5">
+                <Avatar src={currentUser.photoURL} name={currentUser.displayName || 'You'} size={28} ring="none" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12px] font-semibold text-white truncate">{currentUser.displayName || 'You'}</p>
+                  <p className="text-[10px] text-white/35 truncate">@{currentUser.username || 'you'}</p>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowAuth(true)}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-tangerine/10 text-tangerine text-[13px] font-semibold cursor-pointer hover:bg-tangerine/15 transition-colors"
+              >
+                <LogIn size={15} />
+                Sign in
+              </button>
+            )}
+            <p className="text-[10px] text-white/15 text-center mt-3">© {new Date().getFullYear()} Reelst</p>
+          </div>
+        </div>
+
+        {/* ═══ SIDEBAR OVERLAY PANELS ═══ */}
+        <SidebarPanels
+          sidebarPanel={sidebarPanel}
+          setSidebarPanel={setSidebarPanel}
+          sidebarWidth={SIDEBAR_W}
+          agent={agent}
+          nearbyAgents={nearbyAgents}
+          enabledAgentIds={enabledAgentIds}
+          onToggleAgent={(id) => {
+            setEnabledAgentIds((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next })
+          }}
+          onSelectAgent={(a) => {
+            setAgentMode('single')
+            if (a.uid !== agent.uid) navigate(`/${a.username}`)
+          }}
+          onSetMode={setAgentMode}
+          isSignedIn={!!currentUser}
+          onAuthRequired={() => setShowAuth(true)}
+        />
+
+        {/* ═══ MAP (rounded rectangle, no extrusion) ═══ */}
         <div
-          className="absolute will-change-[left,right]"
+          ref={mapShapeRef}
+          className="absolute overflow-hidden will-change-[left,right]"
           style={{
             top: PAD,
             bottom: PAD,
-            left: PAD,
+            left: mapLeft,
             right: mapRight,
+            borderRadius: CORNER_R,
             transition: MAP_EASE,
-            filter: 'drop-shadow(0 8px 30px rgba(0,0,0,0.18)) drop-shadow(0 2px 10px rgba(0,0,0,0.1))',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.4), 0 2px 10px rgba(0,0,0,0.2)',
           }}
         >
-          {/* ── Map container — clip-path creates the notch/bump extrusion ── */}
-          <div
-            ref={mapShapeRef}
-            className="absolute inset-0 overflow-hidden"
-            style={{
-              clipPath: mapClipPath,
-              borderRadius: mapClipPath ? undefined : CORNER_R,
-            }}
-          >
-            <MapCanvas
-              pins={filteredPins}
-              agentPhotoUrl={agent.photoURL}
-              onPinClick={handlePinClick}
-              className="absolute inset-0"
-              showBackButton={isPreview}
-              onBack={() => navigate('/dashboard')}
+          <MapCanvas
+            pins={filteredPins}
+            agentPhotoUrl={agent.photoURL}
+            onPinClick={handlePinClick}
+            className="absolute inset-0"
+            showBackButton={isPreview}
+            onBack={() => navigate('/dashboard')}
+          />
+
+          {/* ── Pill + buttons inside map, near top ── */}
+          <AgentPill
+            agent={agent}
+            agentMode={agentMode}
+            totalPins={totalPins}
+            enabledAgentCount={enabledAgentIds.size}
+            isFollowing={isFollowing}
+            isPreview={isPreview}
+            onProfileClick={() => setShowAgentDetail(true)}
+            onFollow={handleFollow}
+            onShare={handleShare}
+            onFitToPins={handleFitToPins}
+          />
+
+          {/* ── Filters inside map, below pill ── */}
+          <div className="absolute top-[80px] left-0 right-0 z-[35] pointer-events-none">
+            <MapOverlay
+              agent={agent} pinCounts={pinCounts}
+              onFollow={handleFollow} onShare={handleShare}
+              onProfileClick={() => setShowAgentDetail(true)}
+              onFilterChange={handleFilterChange}
+              isFollowing={isFollowing} viewMode="map"
+              isPreview={isPreview} agentMode={agentMode}
+              enabledAgentCount={enabledAgentIds.size}
+              hideHeader centerFilters
             />
           </div>
         </div>
 
-        {/* ── Header row: pill + follow/share — centered to map ── */}
-        <div
-          className="absolute z-[60] flex items-center justify-center pointer-events-none"
-          style={{ top: PAD + 4, left: PAD, right: mapRight, transition: MAP_EASE }}
-        >
-          <div className="flex items-center gap-2 pointer-events-auto">
-            {/* Pill */}
-            <motion.button
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.4, ease: 'easeOut' }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setShowAgentDetail(true)}
-              className="bg-white/95 backdrop-blur-md rounded-full flex items-center gap-3 pl-2 pr-4 py-2 border border-black/5 cursor-pointer"
-              style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)' }}
-            >
-              {renderPillContent()}
-              <ChevronDown size={14} className="text-smoke ml-1" />
-            </motion.button>
-
-            {/* Follow */}
-            <motion.button
-              whileTap={!isPreview ? { scale: 0.88 } : undefined}
-              onClick={!isPreview ? handleFollow : undefined}
-              className={`bg-white/90 backdrop-blur-md rounded-full w-9 h-9 flex items-center justify-center cursor-pointer border border-black/5 ${isFollowing ? 'text-tangerine' : 'text-ink'} ${isPreview ? 'opacity-40' : ''}`}
-              style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.06)' }}
-            >
-              {isFollowing ? <UserCheck size={15} /> : <UserPlus size={15} />}
-            </motion.button>
-
-            {/* Share */}
-            <motion.button
-              whileTap={!isPreview ? { scale: 0.88 } : undefined}
-              onClick={!isPreview ? handleShare : undefined}
-              className={`bg-white/90 backdrop-blur-md rounded-full w-9 h-9 flex items-center justify-center text-ink cursor-pointer border border-black/5 ${isPreview ? 'opacity-40' : ''}`}
-              style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.06)' }}
-            >
-              <Share2 size={15} />
-            </motion.button>
-          </div>
-        </div>
-
-        {/* ── Filters — centered to map, below pill ── */}
-        <div
-          className="absolute z-[55] pointer-events-none"
-          style={{ top: PAD + 68, left: PAD, right: mapRight, transition: MAP_EASE }}
-        >
-          <MapOverlay
-            agent={agent}
-            pinCounts={pinCounts}
-            onFollow={handleFollow}
-            onShare={handleShare}
-            onProfileClick={() => setShowAgentDetail(true)}
-            onFilterChange={handleFilterChange}
-            isFollowing={isFollowing}
-            viewMode="map"
-            isPreview={isPreview}
-            agentMode={agentMode}
-            enabledAgentCount={enabledAgentIds.size}
-            hideHeader
-            centerFilters
-          />
-        </div>
-
-        {/* ── Expand/collapse button — always on map's right edge ── */}
+        {/* ═══ EXPAND/COLLAPSE BUTTON ═══ */}
         <button
           onClick={() => setFeedExpanded(!feedExpanded)}
           className="absolute z-[50] w-11 h-11 rounded-full bg-tangerine text-white shadow-lg flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-transform"
-          style={{
-            top: '50%',
-            marginTop: -22,
-            right: mapRight - 22,
-            transition: MAP_EASE,
-          }}
+          style={{ top: '50%', marginTop: -22, right: mapRight - 22, transition: MAP_EASE }}
         >
           {feedExpanded ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
         </button>
 
-        {/* ── Content feed — mobile width, rounded, slides in ── */}
+        {/* ═══ CONTENT FEED (9:16) ═══ */}
         <div
-          className="absolute rounded-3xl bg-midnight overflow-hidden will-change-transform"
+          className="absolute rounded-2xl bg-midnight overflow-hidden will-change-transform"
           style={{
-            top: PAD + BUMP_H,
-            bottom: PAD,
-            right: PAD,
-            width: FEED_W,
+            top: PAD, bottom: PAD, right: PAD, width: FEED_W,
+            borderRadius: CORNER_R,
             transform: feedExpanded ? 'translateX(0)' : `translateX(${FEED_W + PAD + 20}px)`,
             opacity: feedExpanded ? 1 : 0,
-            transition: 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s ease',
+            transition: `transform 0.4s ${EASE}, opacity 0.3s ease`,
             pointerEvents: feedExpanded ? 'auto' : 'none',
-            boxShadow: '0 12px 40px rgba(0,0,0,0.25), 0 4px 12px rgba(0,0,0,0.15)',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.4), 0 2px 10px rgba(0,0,0,0.2)',
           }}
         >
-          <ContentFeed
-            pins={filteredPins}
-            agent={agent}
-            onPinTap={(p) => setSelectedPin(p)}
-            isPreview={isPreview}
-            isSignedIn={!!currentUser}
-            onAuthRequired={() => setShowAuth(true)}
-          />
+          <ContentFeed pins={filteredPins} agent={agent} onPinTap={(p) => setSelectedPin(p)} isPreview={isPreview} isSignedIn={!!currentUser} onAuthRequired={() => setShowAuth(true)} />
         </div>
 
-        {/* Listing modal — centered to map area, 9:16 aspect ratio */}
+        {/* ═══ LISTING MODAL — centered to map ═══ */}
         <AnimatePresence>
           {selectedPin && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="fixed inset-0 z-[200]"
-              onClick={() => setSelectedPin(null)}
-            >
-              <div className="absolute inset-0 bg-black/30" />
-              <div
-                className="absolute top-0 bottom-0 flex items-center justify-center"
-                style={{ left: PAD, right: mapRight, transition: MAP_EASE }}
-              >
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.97, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.97, y: 20 }}
-                  transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
-                  onClick={(e) => e.stopPropagation()}
-                  className="bg-obsidian rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-                  style={{ height: '88vh', aspectRatio: '9/16', maxWidth: '90vw' }}
-                >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}
+              className="fixed inset-0 z-[200]" onClick={() => setSelectedPin(null)}>
+              <div className="absolute inset-0 bg-black/40" />
+              <div className="absolute top-0 bottom-0 flex items-center justify-center" style={{ left: mapLeft, right: mapRight, transition: MAP_EASE }}>
+                <motion.div initial={{ opacity: 0, scale: 0.97, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97, y: 20 }}
+                  transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }} onClick={(e) => e.stopPropagation()}
+                  className="bg-obsidian rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ height: '88vh', aspectRatio: '9/16', maxWidth: '90vw' }}>
                   <div className="px-5 pt-4 pb-3 shrink-0 flex items-center justify-between border-b border-border-dark">
                     <h2 className="text-[16px] font-bold text-white tracking-tight truncate flex-1 mr-3">{selectedPin.address}</h2>
-                    <button onClick={() => setSelectedPin(null)} className="w-8 h-8 rounded-full bg-charcoal flex items-center justify-center text-ghost hover:text-white cursor-pointer shrink-0">
-                      <X size={16} />
-                    </button>
+                    <button onClick={() => setSelectedPin(null)} className="w-8 h-8 rounded-full bg-charcoal flex items-center justify-center text-ghost hover:text-white cursor-pointer shrink-0"><X size={16} /></button>
                   </div>
                   <div className="flex-1 min-h-0 overflow-hidden">
                     <ListingModal pin={selectedPin} agent={agent} onClose={() => setSelectedPin(null)} isPreview={isPreview} embedded isSignedIn={!!currentUser} onAuthRequired={() => setShowAuth(true)} />
@@ -447,7 +427,7 @@ export default function AgentProfile() {
           onFollow={handleFollow}
           nearbyAgents={nearbyAgents}
           enabledAgentIds={enabledAgentIds}
-          mapBounds={{ left: PAD, right: mapRight }}
+          mapBounds={{ left: mapLeft, right: mapRight }}
           onToggleAgent={(id) => {
             setEnabledAgentIds((prev) => {
               const next = new Set(prev)
@@ -519,11 +499,66 @@ export default function AgentProfile() {
         onFilterChange={handleFilterChange}
         isFollowing={isFollowing}
         viewMode={viewMode}
-        onToggleView={() => setViewMode(viewMode === 'map' ? 'feed' : 'map')}
         isPreview={isPreview}
         agentMode={agentMode}
         enabledAgentCount={enabledAgentIds.size}
+        onFitToPins={handleFitToPins}
       />
+
+      {/* Map/Feed toggle — bottom right */}
+      <div className="fixed z-[40] right-4" style={{ bottom: 'calc(env(safe-area-inset-bottom, 8px) + 16px)' }}>
+        {/* Animated rainbow ring — map view only */}
+        {viewMode === 'map' && (
+          <motion.div
+            className="absolute -inset-[3px] rounded-full"
+            style={{
+              background: 'conic-gradient(from 0deg, #FF6B3D, #FF3B7A, #FFAA00, #FF6B3D, #E8522A, #FF6B3D)',
+              filter: 'blur(1px)',
+            }}
+            animate={{ rotate: 360 }}
+            transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+          />
+        )}
+
+        <motion.button
+          whileTap={{ scale: 0.88 }}
+          onClick={() => setViewMode(viewMode === 'map' ? 'feed' : 'map')}
+          className="relative rounded-full flex items-center justify-center text-white cursor-pointer shadow-lg overflow-hidden"
+          style={{
+            width: 52,
+            height: 52,
+            background: viewMode === 'map' ? 'rgba(255,107,61,0.9)' : 'rgba(0,0,0,0.4)',
+            backdropFilter: 'blur(12px)',
+          }}
+        >
+          {/* Particle glow interior — feed view */}
+          {viewMode === 'feed' && [0,1,2,3,4,5].map((i) => (
+            <motion.div
+              key={i}
+              className="absolute w-1.5 h-1.5 rounded-full"
+              style={{
+                background: 'linear-gradient(135deg, #FF6B3D, #E8522A)',
+                filter: 'blur(2px)',
+              }}
+              animate={{
+                x: [0, (Math.sin(i * 1.8) * 10)],
+                y: [0, (Math.cos(i * 2.1) * 10)],
+                scale: [0.3, 0.8, 0.3],
+                opacity: [0, 0.7, 0],
+              }}
+              transition={{
+                duration: 2 + i * 0.4,
+                repeat: Infinity,
+                repeatType: 'reverse',
+                ease: 'easeInOut',
+              }}
+            />
+          ))}
+          <div className="relative z-10">
+            {viewMode === 'map' ? <Layers size={20} /> : <Map size={20} />}
+          </div>
+        </motion.button>
+      </div>
 
       {selectedPin ? (
         <ListingModal pin={selectedPin} agent={agent} onClose={() => setSelectedPin(null)} isPreview={isPreview} isSignedIn={!!currentUser} onAuthRequired={() => setShowAuth(true)} />

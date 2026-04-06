@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { ExternalLink, MapPin, Award, UserPlus, UserCheck, Globe, Users } from 'lucide-react'
+import { ExternalLink, Award, UserPlus, UserCheck, Globe, Users, Bookmark, UserCircle } from 'lucide-react'
 import { ResponsiveSheet } from '@/components/ui/ResponsiveSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { PLATFORM_LOGOS, PLATFORM_LIST } from '@/components/icons/PlatformLogos'
 import type { UserDoc } from '@/lib/types'
 
-export type AgentMode = 'single' | 'following' | 'explore'
+export type AgentMode = 'single' | 'following' | 'explore' | 'saved'
 
 interface AgentDetailSheetProps {
   isOpen: boolean
@@ -105,9 +105,10 @@ export function AgentDetailSheet({
             {/* Mode selector */}
             <div className="flex gap-2 mb-4">
               {([
-                { mode: 'single' as const, label: 'This Agent', icon: MapPin },
+                { mode: 'single' as const, label: 'Select Agent', icon: UserCircle },
                 { mode: 'following' as const, label: 'Following', icon: Users },
                 { mode: 'explore' as const, label: 'Explore All', icon: Globe },
+                { mode: 'saved' as const, label: 'Saved', icon: Bookmark },
               ]).map(({ mode, label, icon: Icon }) => (
                 <motion.button
                   key={mode}
@@ -125,7 +126,42 @@ export function AgentDetailSheet({
               ))}
             </div>
 
-            {/* Agent list with toggles (for following mode) */}
+            {/* Select Agent — single-select from followed agents, current agent highlighted */}
+            {agentMode === 'single' && (
+              <div className="space-y-2">
+                <p className="text-[12px] text-ghost mb-2">Select an agent to view their Reelst</p>
+                {/* Current agent first, highlighted */}
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => onAgentTap?.(agent)}
+                  className="w-full flex items-center gap-3 bg-tangerine/15 border border-tangerine/20 rounded-[14px] p-3 text-left cursor-pointer"
+                >
+                  <Avatar src={agent.photoURL} name={agent.displayName} size={36} ring="story" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-semibold text-white truncate">{agent.displayName}</p>
+                    <p className="text-[11px] text-white/40">@{agent.username}</p>
+                  </div>
+                  <span className="text-[10px] text-tangerine font-bold uppercase">Viewing</span>
+                </motion.button>
+                {/* Other followed agents */}
+                {nearbyAgents.map((a) => (
+                  <motion.button
+                    key={a.uid}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => onAgentTap?.(a)}
+                    className="w-full flex items-center gap-3 bg-slate rounded-[14px] p-3 text-left cursor-pointer hover:bg-charcoal transition-colors"
+                  >
+                    <Avatar src={a.photoURL} name={a.displayName} size={36} ring="story" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-semibold text-white truncate">{a.displayName}</p>
+                      <p className="text-[11px] text-ghost">@{a.username} · {a.followerCount} followers</p>
+                    </div>
+                  </motion.button>
+                ))}
+              </div>
+            )}
+
+            {/* Following — multi-select toggles */}
             {agentMode === 'following' && (
               <div className="space-y-2">
                 <p className="text-[12px] text-ghost mb-2">Toggle agents to show their pins on map. Feed shows content from all toggled agents.</p>
@@ -172,24 +208,13 @@ export function AgentDetailSheet({
               </div>
             )}
 
-            {/* Single mode: just show nearby agents to navigate */}
-            {agentMode === 'single' && (
-              <div className="space-y-2">
-                {nearbyAgents.map((a) => (
-                  <motion.button
-                    key={a.uid}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => onAgentTap?.(a)}
-                    className="w-full flex items-center gap-3 bg-slate rounded-[14px] p-3 text-left cursor-pointer"
-                  >
-                    <Avatar src={a.photoURL} name={a.displayName} size={36} ring="story" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold text-white truncate">{a.displayName}</p>
-                      <p className="text-[11px] text-ghost">@{a.username} · {a.followerCount} followers</p>
-                    </div>
-                    <MapPin size={14} className="text-ghost" />
-                  </motion.button>
-                ))}
+            {/* Saved mode */}
+            {agentMode === 'saved' && (
+              <div className="bg-slate rounded-[14px] p-4 text-center">
+                <Bookmark size={20} className="text-ghost mx-auto mb-2" />
+                <p className="text-[13px] text-mist">
+                  Your saved listings and content will appear on the map. Tap the bookmark on any pin to save it.
+                </p>
               </div>
             )}
           </div>

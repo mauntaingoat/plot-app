@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -6,7 +6,7 @@ import {
   Eye, MousePointerClick, Bookmark,
   ExternalLink, LogOut, ChevronRight, Bell, CreditCard,
   User, Trash2, Edit3, EyeOff, Link2, Shield, Palette,
-  Film, Share2, Smartphone,
+  Film, Share2, Smartphone, Copy, Check, X,
 } from 'lucide-react'
 import { TabBar } from '@/components/ui/TabBar'
 import { Button } from '@/components/ui/Button'
@@ -27,6 +27,17 @@ import { PIN_CONFIG, type Pin, type Platform } from '@/lib/types'
 
 type DashTab = 'plot' | 'insights' | 'audience' | 'settings'
 
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(typeof window !== 'undefined' && window.innerWidth >= 1024)
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return isDesktop
+}
+
 export default function Dashboard() {
   const navigate = useNavigate()
   const { userDoc, setUserDoc } = useAuthStore()
@@ -35,6 +46,8 @@ export default function Dashboard() {
   const [showPinActions, setShowPinActions] = useState<Pin | null>(null)
   const [showAddPlatform, setShowAddPlatform] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Pin | null>(null)
+  const [copied, setCopied] = useState(false)
+  const isDesktop = useIsDesktop()
 
   const currentUser = userDoc || (!firebaseConfigured ? MOCK_CURRENT_USER : null)
 
@@ -51,7 +64,6 @@ export default function Dashboard() {
     setPins((prev) => prev.filter((p) => p.id !== pinId))
     setShowDeleteConfirm(null)
     setShowPinActions(null)
-    // Delete from Firestore
     const { deletePin } = await import('@/lib/firestore')
     await deletePin(pinId).catch(() => {})
   }, [])
@@ -78,6 +90,12 @@ export default function Dashboard() {
     catch { navigator.clipboard.writeText(url) }
   }
 
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(`https://reelst.co/${activeUser?.username || ''}`)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   const handleAddPlatform = (platformId: string, username: string) => {
     if (!activeUser || !username.trim()) return
     const updated = {
@@ -88,14 +106,456 @@ export default function Dashboard() {
     setShowAddPlatform(false)
   }
 
-  // If no user at all (not signed in AND no mock), redirect home
   if (!currentUser && !MOCK_CURRENT_USER) {
     navigate('/')
     return null
   }
-  // Use mock user as fallback for demo
   const activeUser = currentUser || MOCK_CURRENT_USER
+  const profileUrl = `reelst.co/${activeUser.username || 'you'}`
 
+  // ── Tab content (shared between mobile and desktop) ──
+
+  const renderTabContent = () => (
+    <div>
+
+        {/* ═══ MY PLOT ═══ */}
+        {activeTab === 'plot' && (
+          <div className={isDesktop ? 'space-y-5' : 'px-5 py-5 space-y-4'}>
+            {/* Desktop: profile card header */}
+            {isDesktop && (
+              <div className="flex items-center gap-4 bg-warm-white rounded-2xl p-5 border border-border-light">
+                <Avatar src={activeUser.photoURL} name={activeUser.displayName || 'Agent'} size={56} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[18px] font-bold text-ink">{activeUser.displayName || 'Agent'}</p>
+                  <p className="text-[13px] text-smoke">@{activeUser.username || 'you'}{activeUser.brokerage ? ` · ${activeUser.brokerage}` : ''}</p>
+                </div>
+                <div className="flex items-center gap-5">
+                  <div className="text-center">
+                    <p className="text-[22px] font-extrabold text-ink font-mono">{stats.pins}</p>
+                    <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Pins</p>
+                  </div>
+                  <div className="w-px h-8 bg-border-light" />
+                  <div className="text-center">
+                    <p className="text-[22px] font-extrabold text-ink font-mono">{stats.views.toLocaleString()}</p>
+                    <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Views</p>
+                  </div>
+                  <div className="w-px h-8 bg-border-light" />
+                  <div className="text-center">
+                    <p className="text-[22px] font-extrabold text-ink font-mono">{activeUser.followerCount}</p>
+                    <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Followers</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Mobile: compact stat chips */}
+            {!isDesktop && (
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-cream rounded-[14px] p-3 text-center">
+                  <p className="text-[20px] font-extrabold text-ink font-mono">{stats.pins}</p>
+                  <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Pins</p>
+                </div>
+                <div className="bg-cream rounded-[14px] p-3 text-center">
+                  <p className="text-[20px] font-extrabold text-ink font-mono">{stats.views.toLocaleString()}</p>
+                  <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Views</p>
+                </div>
+                <div className="bg-cream rounded-[14px] p-3 text-center">
+                  <p className="text-[20px] font-extrabold text-ink font-mono">{activeUser.followerCount}</p>
+                  <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Followers</p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between">
+              <h3 className="text-[16px] font-bold text-ink">Your Pins</h3>
+              <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => navigate('/dashboard/pin/new')}>Add Pin</Button>
+            </div>
+
+            {pins.length === 0 ? (
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-cream rounded-[20px] p-8 text-center">
+                <div className="w-16 h-16 rounded-full bg-tangerine-soft mx-auto mb-4 flex items-center justify-center">
+                  <MapPin size={28} className="text-tangerine" />
+                </div>
+                <h3 className="text-[18px] font-bold text-ink mb-1">Drop your first pin</h3>
+                <p className="text-[14px] text-smoke mb-5">Add a listing, story, or open house to your map.</p>
+                <Button variant="primary" size="lg" icon={<Plus size={18} />} onClick={() => navigate('/dashboard/pin/new')}>Create Pin</Button>
+              </motion.div>
+            ) : (
+              <div className={isDesktop ? 'grid grid-cols-2 gap-4' : 'space-y-3'}>
+                {pins.map((pin) => (
+                  <div key={pin.id}>
+                    <PinCard
+                      pin={pin}
+                      variant="manage"
+                      dark={false}
+                      onToggle={(enabled) => handleTogglePin(pin.id, enabled)}
+                      onMore={() => setShowPinActions(pin)}
+                      onClick={() => navigate(`/dashboard/pin/${pin.id}/edit`)}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══ INSIGHTS ═══ */}
+        {activeTab === 'insights' && (
+          <div className={isDesktop ? 'space-y-5' : 'px-5 py-5 space-y-4'}>
+            <div className="grid grid-cols-2 gap-3">
+              <StatCard label="Views" value={stats.views} change={12} changePeriod="vs last week" icon={<Eye size={18} />} format="compact" />
+              <StatCard label="Taps" value={stats.taps} change={8} changePeriod="vs last week" icon={<MousePointerClick size={18} />} color="#3B82F6" format="compact" />
+              <StatCard label="Saves" value={stats.saves} change={-3} changePeriod="vs last week" icon={<Bookmark size={18} />} color="#A855F7" format="compact" />
+              <StatCard label="Followers" value={activeUser.followerCount} change={15} changePeriod="vs last week" icon={<Users size={18} />} color="#34C759" />
+            </div>
+            <InsightsChart data={chartData} />
+            {pins.length > 0 && (
+              <div>
+                <h3 className="text-[14px] font-bold text-ink mb-3">Top Performing</h3>
+                <div className="space-y-2">
+                  {[...pins].sort((a, b) => b.views - a.views).slice(0, 5).map((pin, i) => (
+                    <div key={pin.id} className="flex items-center gap-3 bg-cream rounded-[14px] p-3">
+                      <span className="text-[18px] font-extrabold text-tangerine/30 font-mono w-6 text-center">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-semibold text-ink truncate">{pin.address}</p>
+                        <p className="text-[11px] text-smoke">{PIN_CONFIG[pin.type].label}</p>
+                      </div>
+                      <span className="text-[14px] font-bold text-ink font-mono">{pin.views.toLocaleString()}</span>
+                      <Eye size={12} className="text-ash" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══ AUDIENCE ═══ */}
+        {activeTab === 'audience' && (
+          <div className={isDesktop ? 'space-y-6' : 'px-5 py-5 space-y-6'}>
+            <div className="bg-cream rounded-[20px] p-6 text-center">
+              <p className="text-[40px] font-extrabold text-ink font-mono">{activeUser.followerCount}</p>
+              <p className="text-[14px] text-smoke font-medium">Total Followers</p>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-[16px] font-bold text-ink">Connected Platforms</h3>
+                <Button variant="secondary" size="sm" icon={<Plus size={14} />} onClick={() => setShowAddPlatform(true)}>Add</Button>
+              </div>
+              {activeUser.platforms.length === 0 ? (
+                <div className="bg-cream rounded-[16px] p-5 text-center">
+                  <p className="text-[14px] text-smoke mb-3">Connect platforms to grow your audience.</p>
+                  <Button variant="primary" size="sm" onClick={() => setShowAddPlatform(true)}>Connect Platform</Button>
+                </div>
+              ) : (
+                <div className={isDesktop ? 'grid grid-cols-2 gap-2' : 'space-y-2'}>
+                  {activeUser.platforms.map((p) => {
+                    const Logo = PLATFORM_LOGOS[p.id]
+                    return (
+                      <div key={p.id} className="flex items-center gap-3 bg-cream rounded-[14px] p-3">
+                        {Logo ? <Logo size={28} /> : <div className="w-7 h-7 rounded-lg bg-pearl" />}
+                        <div className="flex-1">
+                          <p className="text-[14px] font-semibold text-ink capitalize">{PLATFORM_LIST.find((pl) => pl.id === p.id)?.name || p.id}</p>
+                          <p className="text-[12px] text-smoke">@{p.username}</p>
+                        </div>
+                        <ChevronRight size={16} className="text-ash" />
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ═══ SETTINGS ═══ */}
+        {activeTab === 'settings' && (
+          <div className={isDesktop ? 'space-y-2' : 'px-5 py-5 space-y-2'}>
+            <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1">Account</p>
+            {[
+              { icon: User, label: 'Edit Profile', desc: 'Name, bio, photo', onClick: () => {} },
+              { icon: Link2, label: 'Social Links', desc: 'Connected platforms', onClick: () => setShowAddPlatform(true) },
+              { icon: Shield, label: 'License Verification', desc: activeUser.licenseNumber || 'Not verified', onClick: () => {} },
+            ].map((item, i) => (
+              <motion.button
+                key={i}
+                whileTap={{ scale: 0.98 }}
+                onClick={item.onClick}
+                className="w-full flex items-center gap-3.5 bg-cream rounded-[14px] p-4 text-left cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-[12px] bg-pearl flex items-center justify-center"><item.icon size={18} className="text-graphite" /></div>
+                <div className="flex-1">
+                  <span className="text-[15px] font-medium text-ink block">{item.label}</span>
+                  <span className="text-[12px] text-smoke">{item.desc}</span>
+                </div>
+                <ChevronRight size={16} className="text-ash" />
+              </motion.button>
+            ))}
+
+            <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Preferences</p>
+            {[
+              { icon: Bell, label: 'Notifications', desc: 'Push & email', onClick: () => {} },
+              { icon: Palette, label: 'Appearance', desc: 'Pin style, colors', onClick: () => {} },
+              { icon: Smartphone, label: 'Install App', desc: 'Add to home screen', onClick: () => {} },
+            ].map((item, i) => (
+              <motion.button
+                key={i}
+                whileTap={{ scale: 0.98 }}
+                onClick={item.onClick}
+                className="w-full flex items-center gap-3.5 bg-cream rounded-[14px] p-4 text-left cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-[12px] bg-pearl flex items-center justify-center"><item.icon size={18} className="text-graphite" /></div>
+                <div className="flex-1">
+                  <span className="text-[15px] font-medium text-ink block">{item.label}</span>
+                  <span className="text-[12px] text-smoke">{item.desc}</span>
+                </div>
+                <ChevronRight size={16} className="text-ash" />
+              </motion.button>
+            ))}
+
+            <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Plan</p>
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              className="w-full flex items-center gap-3.5 bg-cream rounded-[14px] p-4 text-left cursor-pointer"
+            >
+              <div className="w-10 h-10 rounded-[12px] bg-pearl flex items-center justify-center"><CreditCard size={18} className="text-graphite" /></div>
+              <div className="flex-1">
+                <span className="text-[15px] font-medium text-ink block">Subscription</span>
+                <span className="text-[12px] text-smoke">Free plan</span>
+              </div>
+              <Badge>Free</Badge>
+            </motion.button>
+
+            <div className="flex gap-3 pt-4">
+              <Button variant="secondary" size="lg" fullWidth icon={<Share2 size={16} />} onClick={handleSharePlot}>
+                Share Reelst
+              </Button>
+            </div>
+
+            <div className="pt-2">
+              <Button variant="danger" size="lg" fullWidth icon={<LogOut size={16} />} onClick={handleSignOut}>Sign out</Button>
+            </div>
+            <div className="flex items-center justify-center gap-3 pt-4">
+              <button className="text-[12px] text-ash">Privacy</button>
+              <span className="text-ash text-[10px]">&middot;</span>
+              <button className="text-[12px] text-ash">Terms</button>
+              <span className="text-ash text-[10px]">&middot;</span>
+              <span className="text-[12px] text-ash">Reelst v1.0.0</span>
+            </div>
+          </div>
+        )}
+    </div>
+  )
+
+  // ── Shared sheets (bottom sheets for mobile, modals for desktop platform connect) ──
+  const renderSheets = () => (
+    <>
+      <SetupChecklist isOpen={showSetup} onClose={() => setShowSetup(false)} user={activeUser} pinCount={pins.length} />
+
+      <DarkBottomSheet isOpen={!!showPinActions} onClose={() => setShowPinActions(null)} title={showPinActions?.address}>
+        <div className="px-5 pb-8 space-y-2">
+          <motion.button whileTap={{ scale: 0.97 }} onClick={() => { navigate(`/dashboard/pin/${showPinActions?.id}/edit`); setShowPinActions(null) }}
+            className="w-full flex items-center gap-3 p-3.5 rounded-[14px] bg-slate text-left">
+            <Edit3 size={18} className="text-mist" />
+            <span className="text-[15px] font-medium text-white">Edit Details</span>
+          </motion.button>
+          <motion.button whileTap={{ scale: 0.97 }} onClick={() => { navigate(`/dashboard/pin/${showPinActions?.id}/edit?tab=content`); setShowPinActions(null) }}
+            className="w-full flex items-center gap-3 p-3.5 rounded-[14px] bg-slate text-left">
+            <Film size={18} className="text-tangerine" />
+            <span className="text-[15px] font-medium text-white">Add Content</span>
+            <span className="text-[11px] text-ghost ml-auto">{showPinActions?.content?.length || 0} items</span>
+          </motion.button>
+          <motion.button whileTap={{ scale: 0.97 }} onClick={() => { if (showPinActions) handleTogglePin(showPinActions.id, !showPinActions.enabled); setShowPinActions(null) }}
+            className="w-full flex items-center gap-3 p-3.5 rounded-[14px] bg-slate text-left">
+            <EyeOff size={18} className="text-mist" />
+            <span className="text-[15px] font-medium text-white">{showPinActions?.enabled ? 'Hide from Map' : 'Show on Map'}</span>
+          </motion.button>
+          <motion.button whileTap={{ scale: 0.97 }} onClick={() => { setShowDeleteConfirm(showPinActions); }}
+            className="w-full flex items-center gap-3 p-3.5 rounded-[14px] bg-live-red/10 text-left">
+            <Trash2 size={18} className="text-live-red" />
+            <span className="text-[15px] font-medium text-live-red">Delete Pin</span>
+          </motion.button>
+        </div>
+      </DarkBottomSheet>
+
+      <DarkBottomSheet isOpen={!!showDeleteConfirm} onClose={() => setShowDeleteConfirm(null)} title="Delete this pin?">
+        <div className="px-5 pb-8 space-y-4">
+          <p className="text-[14px] text-mist">This will permanently remove the pin and all its data. This can't be undone.</p>
+          <div className="flex gap-3">
+            <Button variant="glass" size="lg" fullWidth onClick={() => setShowDeleteConfirm(null)}>Cancel</Button>
+            <Button variant="danger" size="lg" fullWidth onClick={() => showDeleteConfirm && handleDeletePin(showDeleteConfirm.id)}>Delete</Button>
+          </div>
+        </div>
+      </DarkBottomSheet>
+
+      {/* Platform connect — modal on desktop, bottom sheet on mobile */}
+      {isDesktop ? (
+        <PlatformModal isOpen={showAddPlatform} onClose={() => setShowAddPlatform(false)} onAdd={handleAddPlatform} existingPlatforms={activeUser.platforms} />
+      ) : (
+        <AddPlatformSheet isOpen={showAddPlatform} onClose={() => setShowAddPlatform(false)} onAdd={handleAddPlatform} existingPlatforms={activeUser.platforms} />
+      )}
+    </>
+  )
+
+  // ═══════════════════════════════════════════
+  // DESKTOP: Sidebar + Content + Preview
+  // ═══════════════════════════════════════════
+  if (isDesktop) {
+    const NAV_ITEMS: { id: DashTab; label: string; icon: typeof MapPin }[] = [
+      { id: 'plot', label: 'My Reelst', icon: MapPin },
+      { id: 'insights', label: 'Insights', icon: BarChart3 },
+      { id: 'audience', label: 'Audience', icon: Users },
+      { id: 'settings', label: 'Settings', icon: Settings },
+    ]
+
+    return (
+      <div className="h-screen flex bg-ivory overflow-hidden">
+        {/* ── Left Sidebar ── */}
+        <aside className="w-[240px] shrink-0 border-r border-border-light flex flex-col" style={{ background: 'linear-gradient(180deg, #FAFAF8 0%, #F5F3EF 100%)' }}>
+          {/* Logo */}
+          <div className="px-5 pt-6 pb-2">
+            <div className="flex items-center gap-2.5">
+              <img src="/reelst-logo.png" alt="Reelst" className="w-7 h-7" />
+              <span className="text-[17px] font-bold text-ink tracking-tight">Reelst</span>
+            </div>
+          </div>
+
+          {/* Agent card */}
+          <div className="mx-4 mt-4 mb-5 p-3 rounded-2xl bg-warm-white border border-border-light">
+            <div className="flex items-center gap-2.5">
+              <Avatar src={activeUser.photoURL} name={activeUser.displayName || 'Agent'} size={36} />
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-bold text-ink truncate">{activeUser.displayName || 'Agent'}</p>
+                <p className="text-[11px] text-smoke truncate">@{activeUser.username || 'you'}</p>
+              </div>
+            </div>
+            {activeUser.setupPercent < 100 && (
+              <button onClick={() => setShowSetup(true)} className="mt-3 w-full cursor-pointer">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-semibold text-smoke uppercase tracking-wider">Setup</span>
+                  <span className="text-[10px] font-bold text-tangerine">{activeUser.setupPercent}%</span>
+                </div>
+                <div className="w-full h-1.5 rounded-full bg-pearl overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${activeUser.setupPercent}%` }}
+                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                    className="h-full rounded-full bg-gradient-to-r from-tangerine to-ember"
+                  />
+                </div>
+              </button>
+            )}
+          </div>
+
+          {/* Nav */}
+          <nav className="flex-1 px-3 space-y-0.5">
+            {NAV_ITEMS.map((item) => {
+              const isActive = activeTab === item.id
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`
+                    w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left cursor-pointer
+                    transition-all duration-200
+                    ${isActive
+                      ? 'bg-tangerine text-white shadow-md'
+                      : 'text-graphite hover:bg-warm-white'
+                    }
+                  `}
+                >
+                  <item.icon size={18} className={isActive ? 'text-white' : 'text-smoke'} />
+                  <span className={`text-[13px] ${isActive ? 'font-bold' : 'font-medium'}`}>{item.label}</span>
+                </button>
+              )
+            })}
+          </nav>
+
+          {/* Bottom: Add Pin CTA */}
+          <div className="px-4 pb-6">
+            <button
+              onClick={() => navigate('/dashboard/pin/new')}
+              className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-2xl bg-midnight text-white font-semibold text-[13px] cursor-pointer shadow-lg hover:shadow-xl transition-shadow"
+            >
+              <Plus size={16} />
+              <span>Add Pin</span>
+            </button>
+            <button
+              onClick={handleSignOut}
+              className="w-full flex items-center justify-center gap-2 mt-2 px-3 py-2 rounded-xl text-smoke text-[12px] font-medium cursor-pointer hover:text-ink transition-colors"
+            >
+              <LogOut size={14} />
+              <span>Sign out</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* ── Center Content ── */}
+        <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
+          {/* Top bar */}
+          <div className="shrink-0 flex items-center justify-between px-8 h-[64px] border-b border-border-light bg-ivory">
+            <h1 className="text-[20px] font-bold text-ink tracking-tight">
+              {activeTab === 'plot' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'audience' ? 'Audience' : 'Settings'}
+            </h1>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 bg-warm-white border border-border-light rounded-full pl-4 pr-1.5 py-1.5">
+                <span className="text-[13px] text-smoke font-medium select-all">{profileUrl}</span>
+                <button
+                  onClick={handleCopyLink}
+                  className="w-7 h-7 rounded-full bg-cream flex items-center justify-center cursor-pointer hover:bg-pearl transition-colors"
+                >
+                  {copied ? <Check size={13} className="text-sold-green" /> : <Copy size={13} className="text-smoke" />}
+                </button>
+              </div>
+              <button
+                onClick={() => navigate(`/${activeUser.username || 'carolina'}?preview=true`)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-warm-white border border-border-light text-[13px] font-medium text-ink cursor-pointer hover:bg-cream transition-colors"
+              >
+                <ExternalLink size={14} className="text-smoke" />
+                Preview
+              </button>
+            </div>
+          </div>
+
+          {/* Scrollable content area */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-[760px] mx-auto px-8 py-6">
+              {renderTabContent()}
+            </div>
+          </div>
+        </main>
+
+        {/* ── Right Preview Panel (Live iframe) ── */}
+        <aside className="w-[300px] shrink-0 border-l border-border-light flex flex-col items-center justify-center" style={{ background: 'linear-gradient(180deg, #F5F3EF 0%, #EDEAE4 100%)' }}>
+          {/* Phone frame with live preview */}
+          <div className="relative">
+            <div className="w-[240px] rounded-[32px] bg-midnight shadow-2xl overflow-hidden" style={{ height: '480px' }}>
+              <iframe
+                src={`/${activeUser.username || 'carolina'}?preview=true`}
+                className="w-full h-full border-0"
+                style={{ pointerEvents: 'none' }}
+                title="Profile preview"
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={() => navigate(`/${activeUser.username || 'carolina'}?preview=true`)}
+            className="mt-4 text-[12px] font-semibold text-tangerine cursor-pointer hover:underline"
+          >
+            Open full preview
+          </button>
+        </aside>
+
+        {renderSheets()}
+      </div>
+    )
+  }
+
+  // ═══════════════════════════════════════════
+  // MOBILE: Original layout (unchanged)
+  // ═══════════════════════════════════════════
   return (
     <div className="min-h-screen bg-ivory pb-tab-safe">
       {/* Header */}
@@ -123,216 +583,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <AnimatePresence mode="wait">
-        <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
+      {renderTabContent()}
 
-          {/* ═══ MY PLOT ═══ */}
-          {activeTab === 'plot' && (
-            <div className="px-5 py-5 space-y-4">
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-cream rounded-[14px] p-3 text-center">
-                  <p className="text-[20px] font-extrabold text-ink font-mono">{stats.pins}</p>
-                  <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Pins</p>
-                </div>
-                <div className="bg-cream rounded-[14px] p-3 text-center">
-                  <p className="text-[20px] font-extrabold text-ink font-mono">{stats.views.toLocaleString()}</p>
-                  <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Views</p>
-                </div>
-                <div className="bg-cream rounded-[14px] p-3 text-center">
-                  <p className="text-[20px] font-extrabold text-ink font-mono">{activeUser.followerCount}</p>
-                  <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Followers</p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <h3 className="text-[16px] font-bold text-ink">Your Pins</h3>
-                <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => navigate('/dashboard/pin/new')}>Add Pin</Button>
-              </div>
-
-              {pins.length === 0 ? (
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-cream rounded-[20px] p-8 text-center">
-                  <div className="w-16 h-16 rounded-full bg-tangerine-soft mx-auto mb-4 flex items-center justify-center">
-                    <MapPin size={28} className="text-tangerine" />
-                  </div>
-                  <h3 className="text-[18px] font-bold text-ink mb-1">Drop your first pin</h3>
-                  <p className="text-[14px] text-smoke mb-5">Add a listing, story, or open house to your map.</p>
-                  <Button variant="primary" size="lg" icon={<Plus size={18} />} onClick={() => navigate('/dashboard/pin/new')}>Create Pin</Button>
-                </motion.div>
-              ) : (
-                <div className="space-y-3">
-                  {pins.map((pin, i) => (
-                    <motion.div key={pin.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                      <PinCard
-                        pin={pin}
-                        variant="manage"
-                        dark={false}
-                        onToggle={(enabled) => handleTogglePin(pin.id, enabled)}
-                        onMore={() => setShowPinActions(pin)}
-                        onClick={() => navigate(`/dashboard/pin/${pin.id}/edit`)}
-                      />
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ═══ INSIGHTS ═══ */}
-          {activeTab === 'insights' && (
-            <div className="px-5 py-5 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <StatCard label="Views" value={stats.views} change={12} changePeriod="vs last week" icon={<Eye size={18} />} format="compact" />
-                <StatCard label="Taps" value={stats.taps} change={8} changePeriod="vs last week" icon={<MousePointerClick size={18} />} color="#3B82F6" format="compact" />
-                <StatCard label="Saves" value={stats.saves} change={-3} changePeriod="vs last week" icon={<Bookmark size={18} />} color="#A855F7" format="compact" />
-                <StatCard label="Followers" value={activeUser.followerCount} change={15} changePeriod="vs last week" icon={<Users size={18} />} color="#34C759" />
-              </div>
-              <InsightsChart data={chartData} />
-              {pins.length > 0 && (
-                <div>
-                  <h3 className="text-[14px] font-bold text-ink mb-3">Top Performing</h3>
-                  <div className="space-y-2">
-                    {[...pins].sort((a, b) => b.views - a.views).slice(0, 5).map((pin, i) => (
-                      <div key={pin.id} className="flex items-center gap-3 bg-cream rounded-[14px] p-3">
-                        <span className="text-[18px] font-extrabold text-tangerine/30 font-mono w-6 text-center">{i + 1}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-semibold text-ink truncate">{pin.address}</p>
-                          <p className="text-[11px] text-smoke">{PIN_CONFIG[pin.type].label}</p>
-                        </div>
-                        <span className="text-[14px] font-bold text-ink font-mono">{pin.views.toLocaleString()}</span>
-                        <Eye size={12} className="text-ash" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ═══ AUDIENCE ═══ */}
-          {activeTab === 'audience' && (
-            <div className="px-5 py-5 space-y-6">
-              <div className="bg-cream rounded-[20px] p-6 text-center">
-                <p className="text-[40px] font-extrabold text-ink font-mono">{activeUser.followerCount}</p>
-                <p className="text-[14px] text-smoke font-medium">Total Followers</p>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-[16px] font-bold text-ink">Connected Platforms</h3>
-                  <Button variant="secondary" size="sm" icon={<Plus size={14} />} onClick={() => setShowAddPlatform(true)}>Add</Button>
-                </div>
-                {activeUser.platforms.length === 0 ? (
-                  <div className="bg-cream rounded-[16px] p-5 text-center">
-                    <p className="text-[14px] text-smoke mb-3">Connect platforms to grow your audience.</p>
-                    <Button variant="primary" size="sm" onClick={() => setShowAddPlatform(true)}>Connect Platform</Button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {activeUser.platforms.map((p) => {
-                      const Logo = PLATFORM_LOGOS[p.id]
-                      return (
-                        <div key={p.id} className="flex items-center gap-3 bg-cream rounded-[14px] p-3">
-                          {Logo ? <Logo size={28} /> : <div className="w-7 h-7 rounded-lg bg-pearl" />}
-                          <div className="flex-1">
-                            <p className="text-[14px] font-semibold text-ink capitalize">{PLATFORM_LIST.find((pl) => pl.id === p.id)?.name || p.id}</p>
-                            <p className="text-[12px] text-smoke">@{p.username}</p>
-                          </div>
-                          <ChevronRight size={16} className="text-ash" />
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ═══ SETTINGS ═══ */}
-          {activeTab === 'settings' && (
-            <div className="px-5 py-5 space-y-2">
-              <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1">Account</p>
-              {[
-                { icon: User, label: 'Edit Profile', desc: 'Name, bio, photo', onClick: () => {} },
-                { icon: Link2, label: 'Social Links', desc: 'Connected platforms', onClick: () => setShowAddPlatform(true) },
-                { icon: Shield, label: 'License Verification', desc: activeUser.licenseNumber || 'Not verified', onClick: () => {} },
-              ].map((item, i) => (
-                <motion.button
-                  key={i}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.04 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={item.onClick}
-                  className="w-full flex items-center gap-3.5 bg-cream rounded-[14px] p-4 text-left cursor-pointer"
-                >
-                  <div className="w-10 h-10 rounded-[12px] bg-pearl flex items-center justify-center"><item.icon size={18} className="text-graphite" /></div>
-                  <div className="flex-1">
-                    <span className="text-[15px] font-medium text-ink block">{item.label}</span>
-                    <span className="text-[12px] text-smoke">{item.desc}</span>
-                  </div>
-                  <ChevronRight size={16} className="text-ash" />
-                </motion.button>
-              ))}
-
-              <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Preferences</p>
-              {[
-                { icon: Bell, label: 'Notifications', desc: 'Push & email', onClick: () => {} },
-                { icon: Palette, label: 'Appearance', desc: 'Pin style, colors', onClick: () => {} },
-                { icon: Smartphone, label: 'Install App', desc: 'Add to home screen', onClick: () => {} },
-              ].map((item, i) => (
-                <motion.button
-                  key={i}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: (i + 3) * 0.04 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={item.onClick}
-                  className="w-full flex items-center gap-3.5 bg-cream rounded-[14px] p-4 text-left cursor-pointer"
-                >
-                  <div className="w-10 h-10 rounded-[12px] bg-pearl flex items-center justify-center"><item.icon size={18} className="text-graphite" /></div>
-                  <div className="flex-1">
-                    <span className="text-[15px] font-medium text-ink block">{item.label}</span>
-                    <span className="text-[12px] text-smoke">{item.desc}</span>
-                  </div>
-                  <ChevronRight size={16} className="text-ash" />
-                </motion.button>
-              ))}
-
-              <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Plan</p>
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                className="w-full flex items-center gap-3.5 bg-cream rounded-[14px] p-4 text-left cursor-pointer"
-              >
-                <div className="w-10 h-10 rounded-[12px] bg-pearl flex items-center justify-center"><CreditCard size={18} className="text-graphite" /></div>
-                <div className="flex-1">
-                  <span className="text-[15px] font-medium text-ink block">Subscription</span>
-                  <span className="text-[12px] text-smoke">Free plan</span>
-                </div>
-                <Badge>Free</Badge>
-              </motion.button>
-
-              <div className="flex gap-3 pt-4">
-                <Button variant="secondary" size="lg" fullWidth icon={<Share2 size={16} />} onClick={handleSharePlot}>
-                  Share Reelst
-                </Button>
-              </div>
-
-              <div className="pt-2">
-                <Button variant="danger" size="lg" fullWidth icon={<LogOut size={16} />} onClick={handleSignOut}>Sign out</Button>
-              </div>
-              <div className="flex items-center justify-center gap-3 pt-4">
-                <button className="text-[12px] text-ash">Privacy</button>
-                <span className="text-ash text-[10px]">&middot;</span>
-                <button className="text-[12px] text-ash">Terms</button>
-                <span className="text-ash text-[10px]">&middot;</span>
-                <span className="text-[12px] text-ash">Reelst v1.0.0</span>
-              </div>
-            </div>
-          )}
-        </motion.div>
-      </AnimatePresence>
-
-      {/* Tab bar */}
       <TabBar
         tabs={[
           { id: 'plot', label: 'My Reelst', icon: <MapPin size={20} /> },
@@ -345,54 +597,104 @@ export default function Dashboard() {
         centerAction={{ icon: <Plus size={24} />, onClick: () => navigate('/dashboard/pin/new') }}
       />
 
-      {/* Setup checklist */}
-      <SetupChecklist isOpen={showSetup} onClose={() => setShowSetup(false)} user={activeUser} pinCount={pins.length} />
-
-      {/* Pin action sheet (3-dot menu) */}
-      <DarkBottomSheet isOpen={!!showPinActions} onClose={() => setShowPinActions(null)} title={showPinActions?.address}>
-        <div className="px-5 pb-8 space-y-2">
-          <motion.button whileTap={{ scale: 0.97 }} onClick={() => { navigate(`/dashboard/pin/${showPinActions?.id}/edit`); setShowPinActions(null) }}
-            className="w-full flex items-center gap-3 p-3.5 rounded-[14px] bg-slate text-left">
-            <Edit3 size={18} className="text-mist" />
-            <span className="text-[15px] font-medium text-white">Edit Details</span>
-          </motion.button>
-          <motion.button whileTap={{ scale: 0.97 }} onClick={() => { navigate(`/dashboard/pin/${showPinActions?.id}/edit?tab=content`); setShowPinActions(null) }}
-            className="w-full flex items-center gap-3 p-3.5 rounded-[14px] bg-slate text-left">
-            <Film size={18} className="text-tangerine" />
-            <span className="text-[15px] font-medium text-white">Add Content</span>
-            <span className="text-[11px] text-ghost ml-auto">{showPinActions?.content?.length || 0} items</span>
-          </motion.button>
-          <motion.button whileTap={{ scale: 0.97 }} onClick={() => { if (showPinActions) handleTogglePin(showPinActions.id, !showPinActions.enabled); setShowPinActions(null) }}
-            className="w-full flex items-center gap-3 p-3.5 rounded-[14px] bg-slate text-left">
-            <EyeOff size={18} className="text-mist" />
-            <span className="text-[15px] font-medium text-white">{showPinActions?.enabled ? 'Hide from Map' : 'Show on Map'}</span>
-          </motion.button>
-          <motion.button whileTap={{ scale: 0.97 }} onClick={() => { setShowDeleteConfirm(showPinActions); }}
-            className="w-full flex items-center gap-3 p-3.5 rounded-[14px] bg-live-red/10 text-left">
-            <Trash2 size={18} className="text-live-red" />
-            <span className="text-[15px] font-medium text-live-red">Delete Pin</span>
-          </motion.button>
-        </div>
-      </DarkBottomSheet>
-
-      {/* Delete confirm */}
-      <DarkBottomSheet isOpen={!!showDeleteConfirm} onClose={() => setShowDeleteConfirm(null)} title="Delete this pin?">
-        <div className="px-5 pb-8 space-y-4">
-          <p className="text-[14px] text-mist">This will permanently remove the pin and all its data. This can't be undone.</p>
-          <div className="flex gap-3">
-            <Button variant="glass" size="lg" fullWidth onClick={() => setShowDeleteConfirm(null)}>Cancel</Button>
-            <Button variant="danger" size="lg" fullWidth onClick={() => showDeleteConfirm && handleDeletePin(showDeleteConfirm.id)}>Delete</Button>
-          </div>
-        </div>
-      </DarkBottomSheet>
-
-      {/* Add platform sheet */}
-      <AddPlatformSheet isOpen={showAddPlatform} onClose={() => setShowAddPlatform(false)} onAdd={handleAddPlatform} existingPlatforms={activeUser.platforms} />
+      {renderSheets()}
     </div>
   )
 }
 
-// ── Add Platform Sub-component ──
+// ── Platform Modal (desktop — centered ease-in) ──
+
+function PlatformModal({ isOpen, onClose, onAdd, existingPlatforms }: {
+  isOpen: boolean; onClose: () => void
+  onAdd: (platformId: string, username: string) => void
+  existingPlatforms: Platform[]
+}) {
+  const [selected, setSelected] = useState<string | null>(null)
+  const [username, setUsername] = useState('')
+
+  const available = PLATFORM_LIST.filter((p) => !existingPlatforms.some((ep) => ep.id === p.id))
+
+  // Reset state when closing
+  useEffect(() => {
+    if (!isOpen) {
+      setTimeout(() => { setSelected(null); setUsername('') }, 200)
+    }
+  }, [isOpen])
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[200] flex items-center justify-center"
+          onClick={onClose}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+
+          {/* Modal */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
+            onClick={(e) => e.stopPropagation()}
+            className="relative bg-warm-white rounded-2xl shadow-2xl w-[440px] max-h-[80vh] overflow-hidden"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-5 pb-3">
+              <h2 className="text-[18px] font-bold text-ink">Connect a platform</h2>
+              <button onClick={onClose} className="w-8 h-8 rounded-full bg-cream flex items-center justify-center cursor-pointer hover:bg-pearl transition-colors">
+                <X size={16} className="text-smoke" />
+              </button>
+            </div>
+
+            <div className="px-6 pb-6">
+              {!selected ? (
+                <div className="grid grid-cols-3 gap-3">
+                  {available.map((platform) => {
+                    const Logo = PLATFORM_LOGOS[platform.id]
+                    return (
+                      <motion.button
+                        key={platform.id}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => setSelected(platform.id)}
+                        className="flex flex-col items-center gap-2.5 p-5 rounded-2xl bg-cream border border-transparent hover:border-tangerine/20 cursor-pointer transition-colors"
+                      >
+                        {Logo && <Logo size={32} />}
+                        <span className="text-[12px] font-semibold text-graphite">{platform.name}</span>
+                      </motion.button>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-[14px] text-smoke">Enter your {PLATFORM_LIST.find((p) => p.id === selected)?.name} {selected === 'website' ? 'URL' : 'username'}</p>
+                  <Input
+                    placeholder={selected === 'website' ? 'https://yoursite.com' : `@${selected} username`}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    autoFocus
+                  />
+                  <div className="flex gap-3">
+                    <Button variant="secondary" size="lg" fullWidth onClick={() => { setSelected(null); setUsername('') }}>Back</Button>
+                    <Button variant="primary" size="lg" fullWidth onClick={() => { onAdd(selected, username); setSelected(null); setUsername('') }}>Connect</Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
+// ── Add Platform Bottom Sheet (mobile) ──
 
 function AddPlatformSheet({ isOpen, onClose, onAdd, existingPlatforms }: {
   isOpen: boolean; onClose: () => void

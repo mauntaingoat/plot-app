@@ -159,8 +159,9 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
         if (!map.hasImage(orangeId)) { map.addImage(orangeId, orangeData, { pixelRatio: 2 }); loadedImagesRef.current.add(orangeId) }
       }
 
-      // Per-pin label pill (price/status in type-colored pill)
+      // Per-pin label pill (price/status/neighborhood name in type-colored pill)
       const label = pin.type === 'sold' ? 'SOLD'
+        : pin.type === 'neighborhood' && 'name' in pin ? pin.name
         : ('price' in pin ? formatPrice(pin.price) : 'soldPrice' in pin ? formatPrice(pin.soldPrice) : '')
       if (label) {
         const labelId = `label-${pin.id}`
