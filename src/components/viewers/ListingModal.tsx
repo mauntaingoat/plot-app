@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, useMotionValue, animate, useDragControls } from 'framer-motion'
 import { X, Bed, Bath, Maximize, MapPin, Calendar, Eye, Bookmark, Share2, Phone, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
@@ -17,40 +17,112 @@ interface ListingModalProps {
   onAuthRequired?: () => void
 }
 
+// Scroll-aware swipe-to-dismiss — same logic as BottomSheet.tsx
+function useListingSwipeToDismiss(
+  sheetRef: React.RefObject<HTMLDivElement | null>,
+  scrollRef: React.RefObject<HTMLDivElement | null>,
+  active: boolean,
+  onDismiss: () => void
+) {
+  const touchStartY = useRef(0)
+  const translateY = useRef(0)
+  const isDragging = useRef(false)
+
+  useEffect(() => {
+    const sheet = sheetRef.current
+    if (!sheet || !active) return
+
+    const onTouchStart = (e: TouchEvent) => {
+      touchStartY.current = e.touches[0].clientY
+      translateY.current = 0
+      isDragging.current = false
+    }
+
+    const onTouchMove = (e: TouchEvent) => {
+      const dy = e.touches[0].clientY - touchStartY.current
+      const scrollEl = scrollRef.current
+      const atTop = !scrollEl || scrollEl.scrollTop <= 1
+
+      if (atTop && dy > 0) {
+        if (!isDragging.current) isDragging.current = true
+        translateY.current = dy
+        const resistance = Math.min(dy, dy * 0.6 + 40)
+        sheet.style.transform = `translateY(${resistance}px) translateZ(0)`
+        sheet.style.transition = 'none'
+        e.preventDefault()
+      } else if (isDragging.current && dy <= 0) {
+        isDragging.current = false
+        translateY.current = 0
+        sheet.style.transform = 'translateY(0) translateZ(0)'
+        sheet.style.transition = 'transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)'
+      }
+    }
+
+    const onTouchEnd = () => {
+      if (isDragging.current) {
+        if (translateY.current > 80) {
+          sheet.style.transform = `translateY(100%) translateZ(0)`
+          sheet.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
+          setTimeout(onDismiss, 280)
+        } else {
+          sheet.style.transform = 'translateY(0) translateZ(0)'
+          sheet.style.transition = 'transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)'
+        }
+      }
+      isDragging.current = false
+      translateY.current = 0
+    }
+
+    sheet.addEventListener('touchstart', onTouchStart, { passive: true })
+    sheet.addEventListener('touchmove', onTouchMove, { passive: false })
+    sheet.addEventListener('touchend', onTouchEnd, { passive: true })
+
+    return () => {
+      sheet.removeEventListener('touchstart', onTouchStart)
+      sheet.removeEventListener('touchmove', onTouchMove)
+      sheet.removeEventListener('touchend', onTouchEnd)
+    }
+  }, [sheetRef, scrollRef, active, onDismiss])
+}
+
 export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSignedIn, onAuthRequired }: ListingModalProps) {
   const [activeTab, setActiveTab] = useState<'content' | 'listing'>('content')
-  const y = useMotionValue(0)
-  const [rendered, setRendered] = useState(true)
+  const [mounted, setMounted] = useState(true)
+  const [visible, setVisible] = useState(false)
   const closingRef = useRef(false)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const sheetRef = useRef<HTMLDivElement>(null)
+  const mobileScrollRef = useRef<HTMLDivElement>(null)
 
   // Reset scroll to top when switching tabs
   useEffect(() => {
     if (scrollAreaRef.current) scrollAreaRef.current.scrollTop = 0
+    if (mobileScrollRef.current) mobileScrollRef.current.scrollTop = 0
   }, [activeTab])
 
   const isForSale = pin.type === 'for_sale'
   const isSold = pin.type === 'sold'
   const hasListingData = isForSale || isSold
 
-  const dismiss = () => {
+  const dismiss = useCallback(() => {
     if (closingRef.current) return
     closingRef.current = true
-    animate(y, window.innerHeight, {
-      type: 'tween', duration: 0.28, ease: [0.32, 0.72, 0, 1],
-      onComplete: () => { setRendered(false); onClose() },
-    })
-  }
+    setVisible(false)
+    setTimeout(() => { setMounted(false); onClose() }, 300)
+  }, [onClose])
 
+  // Slide in on mount (non-embedded only)
   useEffect(() => {
-    if (embedded) return // No animation when embedded in SidePanel
-    y.jump(window.innerHeight)
-    requestAnimationFrame(() => animate(y, 0, { type: 'tween', duration: 0.32, ease: [0.32, 0.72, 0, 1] }))
-  }, [y, embedded])
+    if (embedded) return
+    requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)))
+  }, [embedded])
 
-  if (!rendered) return null
+  // Wire up swipe-to-dismiss for mobile (non-embedded)
+  useListingSwipeToDismiss(sheetRef, mobileScrollRef, !embedded && visible, dismiss)
 
-  // Embedded mode: just render content, no backdrop/animation wrapper
+  if (!mounted) return null
+
+  // Embedded mode: just render content, no backdrop/animation wrapper (UNCHANGED)
   if (embedded) {
     return (
       <div className="flex flex-col h-full overflow-hidden">
@@ -86,15 +158,24 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
     )
   }
 
+  // Mobile: full-screen sheet with swipe-to-dismiss
   return (
     <>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[90] bg-black/60"
-        onPointerDown={(e) => { if (e.target === e.currentTarget) dismiss() }} />
-      <motion.div style={{ y }}
-        className="fixed inset-0 z-[100] flex flex-col overflow-hidden">
-
+      <div
+        className="fixed inset-0 z-[90] will-change-[opacity]"
+        style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.25s ease', backgroundColor: 'rgba(0,0,0,0.6)' }}
+        onClick={dismiss}
+      />
+      <div
+        ref={sheetRef}
+        className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-midnight will-change-transform"
+        style={{
+          transform: visible ? 'translateY(0) translateZ(0)' : 'translateY(100%) translateZ(0)',
+          transition: 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
+        }}
+      >
         {/* Close button — always visible */}
-        <button onClick={dismiss} className="absolute top-[calc(env(safe-area-inset-top,12px)+8px)] right-4 z-[110] w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white">
+        <button onClick={dismiss} className="absolute top-[calc(env(safe-area-inset-top,12px)+8px)] right-4 z-[110] w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer">
           <X size={18} />
         </button>
 
@@ -103,24 +184,29 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
           <div className="absolute top-[calc(env(safe-area-inset-top,12px)+8px)] left-4 z-[110]">
             <div className="flex bg-black/30 backdrop-blur-md rounded-full p-1 border border-white/10">
               <button onClick={() => setActiveTab('content')}
-                className={`px-4 py-1.5 rounded-full text-[12px] font-semibold transition-all ${activeTab === 'content' ? 'bg-tangerine text-white' : 'text-white/70'}`}>
+                className={`px-4 py-1.5 rounded-full text-[12px] font-semibold transition-all cursor-pointer ${activeTab === 'content' ? 'bg-tangerine text-white' : 'text-white/70'}`}>
                 Content
               </button>
               <button onClick={() => setActiveTab('listing')}
-                className={`px-4 py-1.5 rounded-full text-[12px] font-semibold transition-all ${activeTab === 'listing' ? 'bg-tangerine text-white' : 'text-white/70'}`}>
+                className={`px-4 py-1.5 rounded-full text-[12px] font-semibold transition-all cursor-pointer ${activeTab === 'listing' ? 'bg-tangerine text-white' : 'text-white/70'}`}>
                 Listing
               </button>
             </div>
           </div>
         )}
 
-        {/* Tab content — full screen */}
-        {activeTab === 'content' ? (
-          <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={dismiss} isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
-        ) : (
-          <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={dismiss} isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
-        )}
-      </motion.div>
+        {/* Tab content — full screen, scrollable with swipe-to-dismiss ref + snap scroll on content */}
+        <div ref={mobileScrollRef} className="flex-1 overflow-y-auto overscroll-none" style={{
+          WebkitOverflowScrolling: 'touch',
+          ...(activeTab === 'content' ? { scrollSnapType: 'y mandatory' } : {}),
+        }}>
+          {activeTab === 'content' ? (
+            <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
+          ) : (
+            <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
+          )}
+        </div>
+      </div>
     </>
   )
 }

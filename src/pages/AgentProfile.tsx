@@ -507,56 +507,30 @@ export default function AgentProfile() {
 
       {/* Map/Feed toggle — bottom right */}
       <div className="fixed z-[40] right-4" style={{ bottom: 'calc(env(safe-area-inset-bottom, 8px) + 16px)' }}>
-        {/* Animated rainbow ring — map view only */}
-        {viewMode === 'map' && (
-          <motion.div
-            className="absolute -inset-[3px] rounded-full"
-            style={{
-              background: 'conic-gradient(from 0deg, #FF6B3D, #FF3B7A, #FFAA00, #FF6B3D, #E8522A, #FF6B3D)',
-              filter: 'blur(1px)',
-            }}
-            animate={{ rotate: 360 }}
-            transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-          />
-        )}
+        {/* Animated rainbow ring — both modes */}
+        <motion.div
+          className="absolute -inset-[3px] rounded-full"
+          style={{
+            background: 'conic-gradient(from 0deg, #FF6B3D, #FF3B7A, #FFAA00, #FF6B3D, #E8522A, #FF6B3D)',
+            filter: 'blur(1px)',
+          }}
+          animate={{ rotate: 360 }}
+          transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+        />
 
         <motion.button
           whileTap={{ scale: 0.88 }}
           onClick={() => setViewMode(viewMode === 'map' ? 'feed' : 'map')}
-          className="relative rounded-full flex items-center justify-center text-white cursor-pointer shadow-lg overflow-hidden"
+          className="relative rounded-full flex items-center justify-center cursor-pointer shadow-lg"
           style={{
             width: 52,
             height: 52,
-            background: viewMode === 'map' ? 'rgba(255,107,61,0.9)' : 'rgba(0,0,0,0.4)',
+            background: viewMode === 'map' ? 'rgba(255,255,255,0.90)' : 'rgba(0,0,0,0.30)',
             backdropFilter: 'blur(12px)',
+            border: viewMode === 'map' ? '1px solid rgba(0,0,0,0.05)' : '1px solid rgba(255,255,255,0.10)',
           }}
         >
-          {/* Particle glow interior — feed view */}
-          {viewMode === 'feed' && [0,1,2,3,4,5].map((i) => (
-            <motion.div
-              key={i}
-              className="absolute w-1.5 h-1.5 rounded-full"
-              style={{
-                background: 'linear-gradient(135deg, #FF6B3D, #E8522A)',
-                filter: 'blur(2px)',
-              }}
-              animate={{
-                x: [0, (Math.sin(i * 1.8) * 10)],
-                y: [0, (Math.cos(i * 2.1) * 10)],
-                scale: [0.3, 0.8, 0.3],
-                opacity: [0, 0.7, 0],
-              }}
-              transition={{
-                duration: 2 + i * 0.4,
-                repeat: Infinity,
-                repeatType: 'reverse',
-                ease: 'easeInOut',
-              }}
-            />
-          ))}
-          <div className="relative z-10">
-            {viewMode === 'map' ? <Layers size={20} /> : <Map size={20} />}
-          </div>
+          {viewMode === 'map' ? <Layers size={20} className="text-ink" /> : <Map size={20} className="text-white" />}
         </motion.button>
       </div>
 

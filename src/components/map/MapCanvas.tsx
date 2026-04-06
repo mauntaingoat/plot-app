@@ -15,6 +15,13 @@ const RING_COLORS: Record<PinType, string> = {
   for_sale: '#3B82F6', sold: '#34C759', neighborhood: '#FF6B3D',
 }
 
+// Gradient companion colors for animated pins (shifted hue)
+const RING_GRADIENT_COLORS: Record<PinType, string> = {
+  for_sale: '#8B5CF6',  // blue → purple
+  sold: '#6EE7B7',      // green → pale mint
+  neighborhood: '#E8522A', // tangerine → ember
+}
+
 interface MapCanvasProps {
   pins: Pin[]
   agentPhotoUrl?: string | null
@@ -100,6 +107,312 @@ function createPinImage(img: HTMLImageElement | null, ringColor: string, fallbac
   return ctx.getImageData(0, 0, s, s)
 }
 
+// ── Draw a rounded house shape ──
+function drawHouseShape(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, cornerR: number, raised: number, chimneyT: number) {
+  const roofPeakY = cy - r * 1.05
+  const eaveY = cy - r * 0.2
+  const baseY = cy + r * 0.75 - raised
+  const leftX = cx - r * 0.88
+  const rightX = cx + r * 0.88
+
+  ctx.beginPath()
+  // Start from bottom-left, go clockwise with rounded corners
+  ctx.moveTo(leftX + cornerR, baseY)
+  ctx.lineTo(rightX - cornerR, baseY)
+  ctx.arcTo(rightX, baseY, rightX, baseY - cornerR, cornerR)
+  ctx.lineTo(rightX, eaveY + cornerR)
+  ctx.arcTo(rightX, eaveY, rightX - cornerR, eaveY - cornerR, cornerR * 0.5)
+  ctx.lineTo(cx + 2, roofPeakY)
+  ctx.arcTo(cx, roofPeakY - 2, cx - 2, roofPeakY, 3)
+  ctx.lineTo(leftX + cornerR * 0.5, eaveY - cornerR * 0.5)
+  ctx.arcTo(leftX, eaveY, leftX, eaveY + cornerR, cornerR * 0.5)
+  ctx.lineTo(leftX, baseY - cornerR)
+  ctx.arcTo(leftX, baseY, leftX + cornerR, baseY, cornerR)
+  ctx.closePath()
+}
+
+// ── Draw a transparent door cutout that animates upward ──
+function drawDoor(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, raised: number, doorT: number) {
+  if (doorT <= 0) return
+  const baseY = cy + r * 0.75 - raised
+  const doorW = r * 0.28
+  const doorH = r * 0.45 * doorT
+  const doorX = cx - doorW / 2
+  const doorY = baseY - doorH
+  const doorR = 3
+
+  ctx.save()
+  ctx.globalCompositeOperation = 'destination-out'
+  ctx.beginPath()
+  ctx.roundRect(doorX, doorY, doorW, doorH, [doorR, doorR, 0, 0])
+  ctx.fill()
+  ctx.restore()
+}
+
+// ── Interpolate between circle and a shape path ──
+// t: 0 = circle, 1 = target shape
+function drawMorphedPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, t: number, raised: number, cornerR: number, chimneyT: number) {
+  if (t <= 0.001) {
+    // Pure circle
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.closePath()
+    return
+  }
+  if (t >= 0.999) {
+    // Pure house
+    drawHouseShape(ctx, cx, cy, r, cornerR, raised, chimneyT)
+    return
+  }
+
+  // For intermediate morph values, sample points from both shapes and lerp
+  const steps = 72
+  const circlePoints: { x: number; y: number }[] = []
+  const housePoints: { x: number; y: number }[] = []
+
+  // Sample circle
+  for (let i = 0; i < steps; i++) {
+    const angle = (i / steps) * Math.PI * 2 - Math.PI / 2
+    circlePoints.push({ x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r })
+  }
+
+  // Sample house shape by rendering to a temp path and extracting points
+  // Approximation: use key vertices of the house, distributed across steps
+  const roofPeakY = cy - r * 1.05
+  const eaveY = cy - r * 0.2
+  const baseY = cy + r * 0.75 - raised
+  const leftX = cx - r * 0.88
+  const rightX = cx + r * 0.88
+
+  // Define house outline as sequential points
+  const houseOutline = [
+    { x: cx, y: roofPeakY },              // peak
+    { x: rightX, y: eaveY },              // right eave
+    { x: rightX, y: baseY },              // bottom-right
+    { x: leftX, y: baseY },               // bottom-left
+    { x: leftX, y: eaveY },               // left eave
+  ]
+
+  // Distribute house points evenly along perimeter
+  const segments: { x: number; y: number }[] = []
+  let totalLen = 0
+  const segLens: number[] = []
+  for (let i = 0; i < houseOutline.length; i++) {
+    const next = houseOutline[(i + 1) % houseOutline.length]
+    const dx = next.x - houseOutline[i].x, dy = next.y - houseOutline[i].y
+    const len = Math.sqrt(dx * dx + dy * dy)
+    segLens.push(len); totalLen += len
+  }
+  for (let i = 0; i < steps; i++) {
+    let target = (i / steps) * totalLen
+    let seg = 0
+    while (seg < segLens.length - 1 && target > segLens[seg]) { target -= segLens[seg]; seg++ }
+    const segProgress = target / segLens[seg]
+    const p1 = houseOutline[seg], p2 = houseOutline[(seg + 1) % houseOutline.length]
+    housePoints.push({ x: p1.x + (p2.x - p1.x) * segProgress, y: p1.y + (p2.y - p1.y) * segProgress })
+  }
+
+  // Lerp and draw
+  ctx.beginPath()
+  for (let i = 0; i < steps; i++) {
+    const px = circlePoints[i].x + (housePoints[i].x - circlePoints[i].x) * t
+    const py = circlePoints[i].y + (housePoints[i].y - circlePoints[i].y) * t
+    if (i === 0) ctx.moveTo(px, py)
+    else ctx.lineTo(px, py)
+  }
+  ctx.closePath()
+}
+
+// Animation timing (40 frames total, ~160ms/frame = ~6.4s cycle):
+// Phase 1: Circle hold (1s)        = frames 0-5    (6 frames)
+// Phase 2: Morph to house (0.8s)   = frames 6-10   (5 frames)
+// Phase 3: Door + shake (1.6s)     = frames 11-20  (10 frames)
+// Phase 4: House hold (2.1s)       = frames 21-34  (14 frames)
+// Phase 5: Morph back (0.8s)       = frames 35-39  (5 frames)
+const OH_CIRCLE_END = 6
+const OH_MORPH_IN_END = 11
+const OH_SHAKE_END = 21
+const OH_HOUSE_HOLD_END = 35
+
+const ANIM_FRAMES = 40
+const ANIM_EXTRA_SIZE = 12 // extra canvas space for chimney + pulse ring
+
+function createOpenHouseFrame(img: HTMLImageElement | null, fallbackLetter: string, frame: number, ringColor: string, gradientColor: string): ImageData {
+  const size = PIN_SIZE + RING_PAD + ANIM_EXTRA_SIZE
+  const canvas = document.createElement('canvas')
+  const s = size * 2
+  canvas.width = s; canvas.height = s
+  const ctx = canvas.getContext('2d')!
+  const cx = s / 2, cy = s / 2
+  const outerR = (PIN_SIZE + RING_PAD) * 2 / 2
+  const ringW = (RING_PAD / 2) * 2, innerR = outerR - ringW
+  const raisedAmount = 4
+  const houseCornerR = 6
+
+  // Create gradient for animated fills
+  const grad = ctx.createLinearGradient(cx - outerR, cy - outerR, cx + outerR, cy + outerR)
+  grad.addColorStop(0, ringColor)
+  grad.addColorStop(1, gradientColor)
+
+  let morph = 0
+  let chimneyT = 0
+  let doorT = 0
+  let shakeAngle = 0
+  let fillT = 0 // 0 = show thumbnail, 1 = solid color fill
+
+  if (frame < OH_CIRCLE_END) {
+    // Phase 1: circle hold — thumbnail visible
+    morph = 0
+    fillT = 0
+  } else if (frame < OH_MORPH_IN_END) {
+    // Phase 2: morph to house + fill in solid
+    const t = (frame - OH_CIRCLE_END) / (OH_MORPH_IN_END - OH_CIRCLE_END)
+    morph = 1 - (1 - t) * (1 - t)
+    fillT = t
+  } else if (frame < OH_SHAKE_END) {
+    // Phase 3: solid house + chimney pop + door rise + shake
+    morph = 1
+    fillT = 1
+    const shakeProgress = (frame - OH_MORPH_IN_END) / (OH_SHAKE_END - OH_MORPH_IN_END)
+    chimneyT = Math.min(1, shakeProgress * 3)
+    doorT = Math.min(1, shakeProgress * 3) // door rises at same time as chimney
+    const shakeDecay = Math.max(0, 1 - shakeProgress * 0.8)
+    shakeAngle = Math.sin(shakeProgress * Math.PI * 6) * 4 * shakeDecay
+  } else if (frame < OH_HOUSE_HOLD_END) {
+    // Phase 4: solid house hold with chimney + door
+    morph = 1
+    fillT = 1
+    chimneyT = 1
+    doorT = 1
+  } else {
+    // Phase 5: morph back to circle + reveal thumbnail
+    const t = (frame - OH_HOUSE_HOLD_END) / (ANIM_FRAMES - OH_HOUSE_HOLD_END)
+    morph = 1 - t * t
+    fillT = 1 - t
+    chimneyT = 1 - t
+    doorT = 1 - t
+  }
+
+  // Apply shake rotation
+  if (shakeAngle !== 0) {
+    ctx.save()
+    ctx.translate(cx, cy)
+    ctx.rotate((shakeAngle * Math.PI) / 180)
+    ctx.translate(-cx, -cy)
+  }
+
+  // Outer ring / house outline
+  ctx.fillStyle = grad
+  drawMorphedPath(ctx, cx, cy, outerR, morph, raisedAmount, houseCornerR, chimneyT)
+  ctx.fill()
+
+  // Inner area
+  drawMorphedPath(ctx, cx, cy, innerR, morph, raisedAmount, houseCornerR - 2, chimneyT > 0 ? chimneyT * 0.8 : 0)
+
+  if (fillT >= 0.999) {
+    // Fully solid — fill with gradient
+    ctx.fillStyle = grad; ctx.fill()
+    // Draw door on top of solid fill
+    drawDoor(ctx, cx, cy, outerR, raisedAmount, doorT)
+  } else if (fillT <= 0.001) {
+    // Fully thumbnail — dark bg + image
+    ctx.fillStyle = '#0A0E17'; ctx.fill()
+    if (img && img.complete && img.naturalWidth > 0) {
+      ctx.save()
+      drawMorphedPath(ctx, cx, cy, innerR - 2, morph, raisedAmount, houseCornerR - 2, 0)
+      ctx.clip()
+      const imgSize = (innerR - 2) * 2
+      ctx.drawImage(img, cx - innerR + 2, cy - innerR + 2, imgSize, imgSize)
+      ctx.restore()
+    } else if (fallbackLetter) {
+      ctx.fillStyle = '#ffffff'; ctx.font = `bold ${innerR * 0.7}px Outfit, sans-serif`
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(fallbackLetter, cx, cy)
+    }
+  } else {
+    // Transitioning — draw thumbnail then overlay solid color with opacity
+    ctx.fillStyle = '#0A0E17'; ctx.fill()
+    if (img && img.complete && img.naturalWidth > 0) {
+      ctx.save()
+      drawMorphedPath(ctx, cx, cy, innerR - 2, morph, raisedAmount, houseCornerR - 2, 0)
+      ctx.clip()
+      const imgSize = (innerR - 2) * 2
+      ctx.drawImage(img, cx - innerR + 2, cy - innerR + 2, imgSize, imgSize)
+      ctx.restore()
+    } else if (fallbackLetter) {
+      ctx.fillStyle = '#ffffff'; ctx.font = `bold ${innerR * 0.7}px Outfit, sans-serif`
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(fallbackLetter, cx, cy)
+    }
+    // Overlay solid color with transition opacity
+    ctx.save()
+    ctx.globalAlpha = fillT
+    drawMorphedPath(ctx, cx, cy, innerR, morph, raisedAmount, houseCornerR - 2, chimneyT > 0 ? chimneyT * 0.8 : 0)
+    ctx.fillStyle = grad; ctx.fill()
+    ctx.restore()
+    // Draw door on top
+    if (doorT > 0) drawDoor(ctx, cx, cy, outerR, raisedAmount, doorT)
+  }
+
+  if (shakeAngle !== 0) ctx.restore()
+
+  return ctx.getImageData(0, 0, s, s)
+}
+
+// Livestream: pulsing ring that expands and fades, color matches pin type
+function createLiveFrame(img: HTMLImageElement | null, fallbackLetter: string, frame: number, ringColor: string, gradientColor: string): ImageData {
+  const size = PIN_SIZE + RING_PAD + ANIM_EXTRA_SIZE
+  const canvas = document.createElement('canvas')
+  const s = size * 2
+  canvas.width = s; canvas.height = s
+  const ctx = canvas.getContext('2d')!
+  const cx = s / 2, cy = s / 2
+  const outerR = (PIN_SIZE + RING_PAD) * 2 / 2
+  const ringW = (RING_PAD / 2) * 2, innerR = outerR - ringW
+
+  // Parse ringColor hex to RGB for pulse rgba
+  const rc = parseInt(ringColor.slice(1), 16)
+  const rr = (rc >> 16) & 255, rg = (rc >> 8) & 255, rb = rc & 255
+
+  // Pulse on a shorter cycle (20 frames) so it pulses twice per full animation loop
+  const pulseFrames = 20
+  const progress = (frame % pulseFrames) / pulseFrames
+  const pulseR = outerR + (ANIM_EXTRA_SIZE * 2) * progress
+  const pulseOpacity = 0.6 * (1 - progress)
+  if (pulseOpacity > 0.01) {
+    ctx.beginPath(); ctx.arc(cx, cy, pulseR, 0, Math.PI * 2)
+    ctx.strokeStyle = `rgba(${rr}, ${rg}, ${rb}, ${pulseOpacity})`
+    ctx.lineWidth = 3
+    ctx.stroke()
+  }
+
+  // Second pulse ring, offset
+  const progress2 = ((frame + pulseFrames / 2) % pulseFrames) / pulseFrames
+  const pulseR2 = outerR + (ANIM_EXTRA_SIZE * 2) * progress2
+  const pulseOpacity2 = 0.4 * (1 - progress2)
+  if (pulseOpacity2 > 0.01) {
+    ctx.beginPath(); ctx.arc(cx, cy, pulseR2, 0, Math.PI * 2)
+    ctx.strokeStyle = `rgba(${rr}, ${rg}, ${rb}, ${pulseOpacity2})`
+    ctx.lineWidth = 2
+    ctx.stroke()
+  }
+
+  // Main pin ring with gradient
+  const grad = ctx.createLinearGradient(cx - outerR, cy - outerR, cx + outerR, cy + outerR)
+  grad.addColorStop(0, ringColor)
+  grad.addColorStop(1, gradientColor)
+  ctx.beginPath(); ctx.arc(cx, cy, outerR, 0, Math.PI * 2); ctx.fillStyle = grad; ctx.fill()
+  ctx.beginPath(); ctx.arc(cx, cy, innerR, 0, Math.PI * 2); ctx.fillStyle = '#0A0E17'; ctx.fill()
+
+  if (img && img.complete && img.naturalWidth > 0) {
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, innerR - 2, 0, Math.PI * 2); ctx.clip()
+    const imgSize = (innerR - 2) * 2
+    ctx.drawImage(img, cx - innerR + 2, cy - innerR + 2, imgSize, imgSize)
+    ctx.restore()
+  } else if (fallbackLetter) {
+    ctx.fillStyle = '#ffffff'; ctx.font = `bold ${innerR * 0.7}px Outfit, sans-serif`
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(fallbackLetter, cx, cy)
+  }
+
+  return ctx.getImageData(0, 0, s, s)
+}
+
 // Create a pill-shaped badge image with custom bg color
 function createPillImage(text: string, bgColor: string, textColor: string = '#ffffff'): ImageData {
   const canvas = document.createElement('canvas')
@@ -135,8 +448,15 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
   const { center, zoom } = useMapStore()
   const pinClickRef = useRef(onPinClick); pinClickRef.current = onPinClick
 
+  const animatedPinIds = useRef<{ openHouse: string[]; live: string[] }>({ openHouse: [], live: [] })
+  const animFrameRef = useRef(0)
+  const animIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   const loadPinImages = useCallback(async (map: mapboxgl.Map, pinList: Pin[]) => {
     const agentImg = agentPhotoUrl ? await loadImage(agentPhotoUrl).catch(() => null) : null
+    const newOpenHouse: string[] = []
+    const newLive: string[] = []
+
     for (const pin of pinList) {
       const imageUrl = 'heroPhotoUrl' in pin ? pin.heroPhotoUrl : ''
       const color = RING_COLORS[pin.type] || '#FF6B3D'
@@ -144,6 +464,35 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       let img: HTMLImageElement | null = null
       if (imageUrl) img = await loadImage(imageUrl).catch(() => null)
       if (!img && agentImg) img = agentImg
+
+      const isLive = pin.type === 'for_sale' && 'isLive' in pin && pin.isLive
+      const hasOpenHouse = pin.type === 'for_sale' && 'openHouse' in pin && pin.openHouse
+
+      // Generate animation frames for open house pins
+      if (hasOpenHouse) {
+        newOpenHouse.push(pin.id)
+        for (let f = 0; f < ANIM_FRAMES; f++) {
+          const frameId = `pin-oh-${pin.id}-${f}`
+          if (!loadedImagesRef.current.has(frameId)) {
+            const gradColor = RING_GRADIENT_COLORS[pin.type] || color
+            const frameData = createOpenHouseFrame(img, letter, f, color, gradColor)
+            if (!map.hasImage(frameId)) { map.addImage(frameId, frameData, { pixelRatio: 2 }); loadedImagesRef.current.add(frameId) }
+          }
+        }
+      }
+
+      // Generate animation frames for live pins
+      if (isLive) {
+        newLive.push(pin.id)
+        for (let f = 0; f < ANIM_FRAMES; f++) {
+          const frameId = `pin-live-${pin.id}-${f}`
+          if (!loadedImagesRef.current.has(frameId)) {
+            const gradColor = RING_GRADIENT_COLORS[pin.type] || color
+            const frameData = createLiveFrame(img, letter, f, color, gradColor)
+            if (!map.hasImage(frameId)) { map.addImage(frameId, frameData, { pixelRatio: 2 }); loadedImagesRef.current.add(frameId) }
+          }
+        }
+      }
 
       // Type-colored ring version (for individual pins)
       const imgId = `pin-img-${pin.id}`
@@ -172,6 +521,8 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       }
     }
 
+    animatedPinIds.current = { openHouse: newOpenHouse, live: newLive }
+
     // Pre-render cluster badge pills
     for (let i = 1; i <= 20; i++) {
       const badgeId = `badge-${i}`
@@ -187,19 +538,10 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
     const map = new mapboxgl.Map({
       container: mapContainer.current, style: MAPBOX_STYLE, center, zoom,
       attributionControl: false, interactive, pitchWithRotate: false,
-      dragRotate: false, touchPitch: false, minZoom: 3, maxZoom: 18, fadeDuration: 0,
+      dragRotate: false, touchPitch: false, minZoom: 3, maxZoom: 16.8, fadeDuration: 0,
     })
 
-    map.on('style.load', () => {
-      const style = map.getStyle()
-      if (style?.layers) {
-        for (const layer of style.layers) {
-          const id = layer.id.toLowerCase()
-          if (id.includes('rain') || id.includes('snow') || id.includes('precip') || id.includes('weather') || id.includes('particle') || id.includes('fog') || id.includes('haze') || id.includes('cloud') || id.includes('storm'))
-            try { map.removeLayer(layer.id) } catch {}
-        }
-      }
-    })
+    map.on('style.load', () => {})
 
     map.on('load', async () => {
       await loadPinImages(map, pinsRef.current)
@@ -310,11 +652,57 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
         if (coords.length === 1) map.easeTo({ center: [coords[0].lng, coords[0].lat], zoom: 15, duration: 800 })
         else map.fitBounds(getBounds(coords), { padding: 80, duration: 800 })
       }
+
+      // ── Animation loop using requestAnimationFrame ──
+      // Pauses automatically when tab is hidden, throttled to ~160ms/frame
+      let lastFrameTime = 0
+      const FRAME_INTERVAL = 160 // ms per frame (~6fps, smooth enough for morph)
+
+      const animLoop = (timestamp: number) => {
+        animIntervalRef.current = requestAnimationFrame(animLoop)
+        if (!map.isStyleLoaded()) return
+        if (timestamp - lastFrameTime < FRAME_INTERVAL) return
+        lastFrameTime = timestamp
+
+        const { openHouse, live } = animatedPinIds.current
+        if (openHouse.length === 0 && live.length === 0) return
+
+        // Check which animated pins are actually visible in the viewport
+        const visibleFeatures = map.queryRenderedFeatures(undefined, { layers: ['pin-icons'] })
+        const visibleIds = new Set(visibleFeatures.map((f) => f.properties?.id))
+
+        const visibleOH = openHouse.filter((id) => visibleIds.has(id))
+        const visibleLive = live.filter((id) => visibleIds.has(id))
+        if (visibleOH.length === 0 && visibleLive.length === 0) return
+
+        const frame = animFrameRef.current
+        const pinIconExpr: any[] = ['case']
+
+        for (const id of visibleOH) {
+          pinIconExpr.push(['==', ['get', 'id'], id], `pin-oh-${id}-${frame}`)
+        }
+        for (const id of visibleLive) {
+          pinIconExpr.push(['==', ['get', 'id'], id], `pin-live-${id}-${frame}`)
+        }
+
+        pinIconExpr.push(['concat', 'pin-img-', ['get', 'id']])
+
+        try {
+          map.setLayoutProperty('pin-icons', 'icon-image', pinIconExpr)
+        } catch {}
+
+        animFrameRef.current = (frame + 1) % ANIM_FRAMES
+      }
+
+      animIntervalRef.current = requestAnimationFrame(animLoop)
     })
 
     map.on('moveend', () => onMapMoved?.())
     mapRef.current = map
-    return () => { loadedImagesRef.current.clear(); map.remove(); mapRef.current = null }
+    return () => {
+      if (animIntervalRef.current) cancelAnimationFrame(animIntervalRef.current)
+      loadedImagesRef.current.clear(); map.remove(); mapRef.current = null
+    }
   }, []) // eslint-disable-line
 
   useEffect(() => {
