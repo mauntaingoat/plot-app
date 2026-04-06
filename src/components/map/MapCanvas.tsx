@@ -449,7 +449,8 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
   const pinClickRef = useRef(onPinClick); pinClickRef.current = onPinClick
 
   const animatedPinIds = useRef<{ openHouse: string[]; live: string[] }>({ openHouse: [], live: [] })
-  const animFrameRef = useRef(0)
+  const pinFrames = useRef<Map<string, number>>(new Map()) // per-pin frame counter
+  const prevVisibleIds = useRef<Set<string>>(new Set()) // track which pins were visible last tick
   const animIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const loadPinImages = useCallback(async (map: mapboxgl.Map, pinList: Pin[]) => {
@@ -673,25 +674,50 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
 
         const visibleOH = openHouse.filter((id) => visibleIds.has(id))
         const visibleLive = live.filter((id) => visibleIds.has(id))
-        if (visibleOH.length === 0 && visibleLive.length === 0) return
+        // Reset icon to static for any pin that just left the viewport
+        if (prevVisibleIds.current.size > 0) {
+          const allVisible = new Set([...visibleOH, ...visibleLive])
+          let needsReset = false
+          for (const id of prevVisibleIds.current) {
+            if (!allVisible.has(id)) { pinFrames.current.delete(id); needsReset = true }
+          }
+          if (needsReset && visibleOH.length === 0 && visibleLive.length === 0) {
+            // All gone — reset layer to default static icons
+            try { map.setLayoutProperty('pin-icons', 'icon-image', ['concat', 'pin-img-', ['get', 'id']]) } catch {}
+            prevVisibleIds.current.clear()
+            return
+          }
+        }
 
-        const frame = animFrameRef.current
+        if (visibleOH.length === 0 && visibleLive.length === 0) {
+          prevVisibleIds.current.clear()
+          return
+        }
+
         const pinIconExpr: any[] = ['case']
 
         for (const id of visibleOH) {
+          // Reset to frame 0 if pin just became visible
+          if (!prevVisibleIds.current.has(id)) pinFrames.current.set(id, 0)
+          const frame = pinFrames.current.get(id) || 0
           pinIconExpr.push(['==', ['get', 'id'], id], `pin-oh-${id}-${frame}`)
+          pinFrames.current.set(id, (frame + 1) % ANIM_FRAMES)
         }
         for (const id of visibleLive) {
+          if (!prevVisibleIds.current.has(id)) pinFrames.current.set(id, 0)
+          const frame = pinFrames.current.get(id) || 0
           pinIconExpr.push(['==', ['get', 'id'], id], `pin-live-${id}-${frame}`)
+          pinFrames.current.set(id, (frame + 1) % ANIM_FRAMES)
         }
+
+        // Update previous visible set
+        prevVisibleIds.current = new Set([...visibleOH, ...visibleLive])
 
         pinIconExpr.push(['concat', 'pin-img-', ['get', 'id']])
 
         try {
           map.setLayoutProperty('pin-icons', 'icon-image', pinIconExpr)
         } catch {}
-
-        animFrameRef.current = (frame + 1) % ANIM_FRAMES
       }
 
       animIntervalRef.current = requestAnimationFrame(animLoop)
