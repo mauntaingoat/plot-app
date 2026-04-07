@@ -432,6 +432,40 @@ function createPillImage(text: string, bgColor: string, textColor: string = '#ff
   return ctx.getImageData(0, 0, w, h)
 }
 
+// Generate animation frames in non-blocking batches (5 frames per batch, yield between)
+function queueFrameGeneration(
+  map: mapboxgl.Map,
+  loadedSet: Set<string>,
+  pinId: string,
+  prefix: string,
+  totalFrames: number,
+  createFrame: (frame: number) => ImageData
+) {
+  const BATCH_SIZE = 5
+  let f = 0
+  const processBatch = () => {
+    if (!map.isStyleLoaded()) { setTimeout(processBatch, 100); return }
+    const end = Math.min(f + BATCH_SIZE, totalFrames)
+    for (; f < end; f++) {
+      const frameId = `pin-${prefix}-${pinId}-${f}`
+      if (!loadedSet.has(frameId)) {
+        const frameData = createFrame(f)
+        if (!map.hasImage(frameId)) { map.addImage(frameId, frameData, { pixelRatio: 2 }); loadedSet.add(frameId) }
+      }
+    }
+    if (f < totalFrames) {
+      // Yield to browser — use requestIdleCallback if available, else setTimeout
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(processBatch, { timeout: 200 })
+      } else {
+        setTimeout(processBatch, 0)
+      }
+    }
+  }
+  // Start after a small delay so static pins render first
+  setTimeout(processBatch, 50)
+}
+
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image(); img.crossOrigin = 'anonymous'
@@ -454,45 +488,37 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
   const animIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const loadPinImages = useCallback(async (map: mapboxgl.Map, pinList: Pin[]) => {
-    const agentImg = agentPhotoUrl ? await loadImage(agentPhotoUrl).catch(() => null) : null
+    // Load all images in parallel for faster pin rendering
+    const agentImgPromise = agentPhotoUrl ? loadImage(agentPhotoUrl).catch(() => null) : Promise.resolve(null)
+    const pinImagePromises = pinList.map((pin) => {
+      const url = 'heroPhotoUrl' in pin ? pin.heroPhotoUrl : ''
+      return url ? loadImage(url).catch(() => null) : Promise.resolve(null)
+    })
+    const [agentImg, ...pinImages] = await Promise.all([agentImgPromise, ...pinImagePromises])
+
     const newOpenHouse: string[] = []
     const newLive: string[] = []
 
-    for (const pin of pinList) {
-      const imageUrl = 'heroPhotoUrl' in pin ? pin.heroPhotoUrl : ''
+    for (let idx = 0; idx < pinList.length; idx++) {
+      const pin = pinList[idx]
       const color = RING_COLORS[pin.type] || '#FF6B3D'
       const letter = PIN_CONFIG[pin.type].label[0]
-      let img: HTMLImageElement | null = null
-      if (imageUrl) img = await loadImage(imageUrl).catch(() => null)
-      if (!img && agentImg) img = agentImg
+      const img = pinImages[idx] || agentImg
 
       const isLive = pin.type === 'for_sale' && 'isLive' in pin && pin.isLive
       const hasOpenHouse = pin.type === 'for_sale' && 'openHouse' in pin && pin.openHouse
 
-      // Generate animation frames for open house pins
+      // Queue animation frame generation (non-blocking)
       if (hasOpenHouse) {
         newOpenHouse.push(pin.id)
-        for (let f = 0; f < ANIM_FRAMES; f++) {
-          const frameId = `pin-oh-${pin.id}-${f}`
-          if (!loadedImagesRef.current.has(frameId)) {
-            const gradColor = RING_GRADIENT_COLORS[pin.type] || color
-            const frameData = createOpenHouseFrame(img, letter, f, color, gradColor)
-            if (!map.hasImage(frameId)) { map.addImage(frameId, frameData, { pixelRatio: 2 }); loadedImagesRef.current.add(frameId) }
-          }
-        }
+        const ohImg = img, ohColor = color, ohGrad = RING_GRADIENT_COLORS[pin.type] || color, ohLetter = letter, ohId = pin.id
+        queueFrameGeneration(map, loadedImagesRef.current, ohId, 'oh', ANIM_FRAMES, (f) => createOpenHouseFrame(ohImg, ohLetter, f, ohColor, ohGrad))
       }
 
-      // Generate animation frames for live pins
       if (isLive) {
         newLive.push(pin.id)
-        for (let f = 0; f < ANIM_FRAMES; f++) {
-          const frameId = `pin-live-${pin.id}-${f}`
-          if (!loadedImagesRef.current.has(frameId)) {
-            const gradColor = RING_GRADIENT_COLORS[pin.type] || color
-            const frameData = createLiveFrame(img, letter, f, color, gradColor)
-            if (!map.hasImage(frameId)) { map.addImage(frameId, frameData, { pixelRatio: 2 }); loadedImagesRef.current.add(frameId) }
-          }
-        }
+        const liveImg = img, liveColor = color, liveGrad = RING_GRADIENT_COLORS[pin.type] || color, liveLetter = letter, liveId = pin.id
+        queueFrameGeneration(map, loadedImagesRef.current, liveId, 'live', ANIM_FRAMES, (f) => createLiveFrame(liveImg, liveLetter, f, liveColor, liveGrad))
       }
 
       // Type-colored ring version (for individual pins)

@@ -42,7 +42,7 @@ export function StepUsername() {
       <div className="w-full bg-cream rounded-[16px] px-4 py-3 mb-4">
         <p className="text-[13px] text-smoke font-medium mb-1">Your Reelst link</p>
         <p className="text-[18px] font-bold text-ink tracking-tight">
-          reelst.co/<span className={username ? 'text-tangerine' : 'text-ash'}>{username || 'username'}</span>
+          reel.st/<span className={username ? 'text-tangerine' : 'text-ash'}>{username || 'username'}</span>
         </p>
       </div>
 

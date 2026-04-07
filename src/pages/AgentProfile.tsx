@@ -18,8 +18,12 @@ import { SidebarNavButton } from '@/components/agent-profile/SidebarNavButton'
 import { useMapStore, applyPropertyFilters } from '@/stores/mapStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAgent, useAgentPins } from '@/hooks/useQueries'
-import { getMockAgent, MOCK_AGENTS } from '@/lib/mock'
+import { getMockAgent, getMockPins, MOCK_AGENTS } from '@/lib/mock'
+import { firebaseConfigured } from '@/config/firebase'
 import type { UserDoc, Pin } from '@/lib/types'
+
+// Demo mode: bypass auth gates when Firebase isn't configured
+const DEMO_MODE = !firebaseConfigured
 
 function useIsDesktop() {
   const [d, setD] = useState(typeof window !== 'undefined' && window.innerWidth >= 1024)
@@ -107,18 +111,40 @@ export default function AgentProfile() {
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
+  // Merge pins based on agent mode
+  const visiblePins = useMemo(() => {
+    if (agentMode === 'saved') return [] // TODO: wire up real saved pins from Firestore
+    if (agentMode === 'explore') {
+      // All agents' pins
+      const all: Pin[] = [...allPins]
+      for (const a of nearbyAgents) {
+        all.push(...getMockPins(a.uid))
+      }
+      return all
+    }
+    if (agentMode === 'following' && enabledAgentIds.size > 0) {
+      // Current agent + enabled agents
+      const all: Pin[] = [...allPins]
+      for (const id of enabledAgentIds) {
+        all.push(...getMockPins(id))
+      }
+      return all
+    }
+    return allPins
+  }, [allPins, agentMode, nearbyAgents, enabledAgentIds])
+
   const filteredPins = useMemo(() => {
-    let result = allPins
+    let result = visiblePins
     if (activeFilters.size > 0) result = result.filter((p) => activeFilters.has(p.type))
     result = applyPropertyFilters(result, propertyFilters)
     return result
-  }, [allPins, activeFilters, propertyFilters])
+  }, [visiblePins, activeFilters, propertyFilters])
 
   const pinCounts = useMemo(() => {
     const counts: Record<string, number> = {}
-    allPins.forEach((p) => { counts[p.type] = (counts[p.type] || 0) + 1 })
+    visiblePins.forEach((p) => { counts[p.type] = (counts[p.type] || 0) + 1 })
     return counts
-  }, [allPins])
+  }, [visiblePins])
 
   const handleFilterChange = useCallback(() => {
     const container = mapContainerRef.current?.querySelector('.mapboxgl-canvas')?.parentElement?.parentElement
@@ -145,7 +171,7 @@ export default function AgentProfile() {
   }, [allPins])
 
   const handleFollow = async () => {
-    if (!currentUser && !isPreview) { setShowAuth(true); return }
+    if (!DEMO_MODE && !currentUser && !isPreview) { setShowAuth(true); return }
     if (!agent || isPreview) return
     const { followAgent, unfollowAgent } = await import('@/lib/firestore')
     if (isFollowing) {
@@ -315,8 +341,9 @@ export default function AgentProfile() {
             if (a.uid !== agent.uid) navigate(`/${a.username}`)
           }}
           onSetMode={setAgentMode}
-          isSignedIn={!!currentUser}
-          onAuthRequired={() => setShowAuth(true)}
+          isSignedIn={DEMO_MODE || !!currentUser}
+          onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }}
+          savedPins={[]}
         />
 
         {/* ═══ MAP (rounded rectangle, no extrusion) ═══ */}
@@ -393,7 +420,7 @@ export default function AgentProfile() {
             boxShadow: '0 8px 30px rgba(0,0,0,0.4), 0 2px 10px rgba(0,0,0,0.2)',
           }}
         >
-          <ContentFeed pins={filteredPins} agent={agent} onPinTap={(p) => setSelectedPin(p)} isPreview={isPreview} isSignedIn={!!currentUser} onAuthRequired={() => setShowAuth(true)} />
+          <ContentFeed pins={filteredPins} agent={agent} onPinTap={(p) => setSelectedPin(p)} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} />
         </div>
 
         {/* ═══ LISTING MODAL — centered to map ═══ */}
@@ -411,7 +438,7 @@ export default function AgentProfile() {
                     <button onClick={() => setSelectedPin(null)} className="w-8 h-8 rounded-full bg-charcoal flex items-center justify-center text-ghost hover:text-white cursor-pointer shrink-0"><X size={16} /></button>
                   </div>
                   <div className="flex-1 min-h-0 overflow-hidden">
-                    <ListingModal pin={selectedPin} agent={agent} onClose={() => setSelectedPin(null)} isPreview={isPreview} embedded isSignedIn={!!currentUser} onAuthRequired={() => setShowAuth(true)} />
+                    <ListingModal pin={selectedPin} agent={agent} onClose={() => setSelectedPin(null)} isPreview={isPreview} embedded isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} />
                   </div>
                 </motion.div>
               </div>
@@ -485,7 +512,7 @@ export default function AgentProfile() {
           </motion.div>
         ) : (
           <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0">
-            <ContentFeed pins={filteredPins} agent={agent} onPinTap={(p) => setSelectedPin(p)} isPreview={isPreview} isSignedIn={!!currentUser} onAuthRequired={() => setShowAuth(true)} />
+            <ContentFeed pins={filteredPins} agent={agent} onPinTap={(p) => setSelectedPin(p)} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -535,7 +562,7 @@ export default function AgentProfile() {
       </div>
 
       {selectedPin ? (
-        <ListingModal pin={selectedPin} agent={agent} onClose={() => setSelectedPin(null)} isPreview={isPreview} isSignedIn={!!currentUser} onAuthRequired={() => setShowAuth(true)} />
+        <ListingModal pin={selectedPin} agent={agent} onClose={() => setSelectedPin(null)} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} />
       ) : null}
 
       <AgentDetailSheet

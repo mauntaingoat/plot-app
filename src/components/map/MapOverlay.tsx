@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Share2, UserPlus, UserCheck, ChevronDown, Map, Layers, Users, Globe } from 'lucide-react'
+import { Share2, UserPlus, UserCheck, ChevronDown, Map, Layers, Users, Globe, Locate } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { FilterBar } from '@/components/ui/FilterPill'
 import { FilterDropdown } from '@/components/ui/FilterDropdown'
@@ -23,6 +23,7 @@ interface MapOverlayProps {
   enabledAgentCount?: number
   hideHeader?: boolean
   centerFilters?: boolean
+  onFitToPins?: () => void
 }
 
 const FILTER_OPTIONS: { value: PinType; label: string }[] = [
@@ -31,7 +32,7 @@ const FILTER_OPTIONS: { value: PinType; label: string }[] = [
   { value: 'neighborhood', label: 'Neighborhoods' },
 ]
 
-export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick, onFilterChange, isFollowing, viewMode = 'map', onToggleView, isPreview, agentMode = 'single', enabledAgentCount = 0, hideHeader, centerFilters }: MapOverlayProps) {
+export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick, onFilterChange, isFollowing, viewMode = 'map', onToggleView, isPreview, agentMode = 'single', enabledAgentCount = 0, hideHeader, centerFilters, onFitToPins }: MapOverlayProps) {
   const { activeFilters, toggleFilter, clearFilters, isAllSelected, propertyFilters, togglePropertyFilter, clearPropertyFilter } = useMapStore()
 
   const totalPins = Object.values(pinCounts).reduce((a, b) => a + b, 0)
@@ -135,6 +136,15 @@ export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick
             >
               <Share2 size={16} />
             </motion.button>
+            {onFitToPins && agentMode !== 'explore' && (
+              <motion.button
+                whileTap={{ scale: 0.88 }}
+                onClick={onFitToPins}
+                className={`${pillBg} rounded-full w-9 h-9 flex items-center justify-center ${pillText} cursor-pointer shadow-md border`}
+              >
+                <Locate size={16} />
+              </motion.button>
+            )}
           </div>
         </motion.div>
       )}

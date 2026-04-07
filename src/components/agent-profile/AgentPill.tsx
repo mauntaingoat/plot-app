@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { ChevronDown, UserPlus, UserCheck, Share2, Locate, Users, Globe } from 'lucide-react'
+import { ChevronDown, UserPlus, UserCheck, Share2, Locate, Users, Globe, Bookmark } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import type { UserDoc } from '@/lib/types'
 import type { AgentMode } from '@/components/sheets/AgentDetailSheet'
@@ -54,6 +54,19 @@ export function AgentPill({
           <div className="min-w-0 text-left">
             <p className="text-[15px] font-bold text-ink">Explore All</p>
             <p className="text-[11px] font-medium text-smoke">All agents · {totalPins} pins</p>
+          </div>
+        </>
+      )
+    }
+    if (agentMode === 'saved') {
+      return (
+        <>
+          <div className="w-10 h-10 rounded-full bg-tangerine/10 flex items-center justify-center">
+            <Bookmark size={18} className="text-tangerine" />
+          </div>
+          <div className="min-w-0 text-left">
+            <p className="text-[15px] font-bold text-ink">My Saved Map</p>
+            <p className="text-[11px] font-medium text-smoke">{totalPins} saved pins</p>
           </div>
         </>
       )

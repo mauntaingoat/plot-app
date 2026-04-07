@@ -85,13 +85,13 @@ export default function Dashboard() {
   }
 
   const handleSharePlot = async () => {
-    const url = `https://reelst.co/${activeUser?.username || ''}`
+    const url = `https://reel.st/${activeUser?.username || ''}`
     try { await navigator.share({ title: 'My Reelst', url }) }
     catch { navigator.clipboard.writeText(url) }
   }
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(`https://reelst.co/${activeUser?.username || ''}`)
+    navigator.clipboard.writeText(`https://reel.st/${activeUser?.username || ''}`)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -111,7 +111,7 @@ export default function Dashboard() {
     return null
   }
   const activeUser = currentUser || MOCK_CURRENT_USER
-  const profileUrl = `reelst.co/${activeUser.username || 'you'}`
+  const profileUrl = `reel.st/${activeUser.username || 'you'}`
 
   // ── Tab content (shared between mobile and desktop) ──
 
@@ -528,13 +528,13 @@ export default function Dashboard() {
 
         {/* ── Right Preview Panel (Live iframe) ── */}
         <aside className="w-[300px] shrink-0 border-l border-border-light flex flex-col items-center justify-center" style={{ background: 'linear-gradient(180deg, #F5F3EF 0%, #EDEAE4 100%)' }}>
-          {/* Phone frame with live preview */}
+          {/* Phone frame with live preview — scaled to fit */}
           <div className="relative">
             <div className="w-[240px] rounded-[32px] bg-midnight shadow-2xl overflow-hidden" style={{ height: '480px' }}>
               <iframe
                 src={`/${activeUser.username || 'carolina'}?preview=true`}
-                className="w-full h-full border-0"
-                style={{ pointerEvents: 'none' }}
+                className="border-0 origin-top-left"
+                style={{ pointerEvents: 'none', width: '375px', height: '750px', transform: 'scale(0.64)', transformOrigin: 'top left' }}
                 title="Profile preview"
               />
             </div>

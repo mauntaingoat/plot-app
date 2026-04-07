@@ -146,7 +146,7 @@ export function StepComplete() {
 
         <div className="mt-4 flex items-center gap-2 bg-pearl rounded-xl px-3 py-2">
           <ExternalLink size={14} className="text-smoke" />
-          <span className="text-[13px] text-smoke">reelst.co/{username}</span>
+          <span className="text-[13px] text-smoke">reel.st/{username}</span>
         </div>
       </motion.div>
 

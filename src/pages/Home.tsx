@@ -156,7 +156,7 @@ export default function Home() {
           </div>
           <div className="grid md:grid-cols-3 gap-6 md:gap-8">
             {[
-              { step: '01', title: 'Claim your link', desc: 'Pick a username. Your Reelst lives at reelst.co/you. Share it everywhere.' },
+              { step: '01', title: 'Claim your link', desc: 'Pick a username. Your Reelst lives at reel.st/you. Share it everywhere.' },
               { step: '02', title: 'Drop pins', desc: 'Add listings, stories, reels, open houses. Each pinned to a real address.' },
               { step: '03', title: 'Grow your audience', desc: 'Homebuyers follow you, save listings, and discover your expertise.' },
             ].map((item, i) => (

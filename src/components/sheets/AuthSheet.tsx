@@ -225,7 +225,7 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
               <div className="bg-cream rounded-[14px] px-4 py-3">
                 <p className="text-[12px] text-smoke font-medium mb-0.5">Your Reelst link</p>
                 <p className="text-[17px] font-bold text-ink">
-                  reelst.co/<span className={username ? 'text-tangerine' : 'text-ash'}>{username || '...'}</span>
+                  reel.st/<span className={username ? 'text-tangerine' : 'text-ash'}>{username || '...'}</span>
                 </p>
               </div>
 
@@ -265,7 +265,7 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
                   {role === 'agent' ? 'Create your account' : 'Create account'}
                 </h2>
                 {role === 'agent' && username && (
-                  <p className="text-[14px] text-smoke">Securing <span className="text-tangerine font-bold">reelst.co/{username}</span></p>
+                  <p className="text-[14px] text-smoke">Securing <span className="text-tangerine font-bold">reel.st/{username}</span></p>
                 )}
               </div>
 

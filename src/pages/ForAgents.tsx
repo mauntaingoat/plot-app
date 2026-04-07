@@ -14,7 +14,7 @@ const FEATURES = [
   { icon: BadgeCheck, title: 'Sold Pins', desc: 'Showcase your track record. Every sale stays on your map as social proof.', color: '#34C759' },
   { icon: BarChart3, title: 'Analytics', desc: 'Views, taps, saves, followers — track what\'s working across all your content week over week.', color: '#FF6B3D' },
   { icon: Users, title: 'Audience Tools', desc: 'See your followers, connected platforms, and growing audience in one place.', color: '#3B82F6' },
-  { icon: Link2, title: 'One Link', desc: 'reelst.co/you — put it in your Instagram bio, email signature, business card, everywhere.', color: '#FF6B3D' },
+  { icon: Link2, title: 'One Link', desc: 'reel.st/you — put it in your Instagram bio, email signature, business card, everywhere.', color: '#FF6B3D' },
 ]
 
 const COMPARISON = [

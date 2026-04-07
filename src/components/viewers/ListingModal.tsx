@@ -249,28 +249,42 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
   const requireAuth = () => { if (!isSignedIn && onAuthRequired) onAuthRequired() }
   const videoRef = useRef<HTMLVideoElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
+  const [isNearViewport, setIsNearViewport] = useState(false)
   const thumbnailUrl = content.thumbnailUrl || ('heroPhotoUrl' in pin ? pin.heroPhotoUrl : '') || ''
   const isVideo = content.type === 'reel' || content.type === 'live'
   const neighborhoodName = pin.type === 'neighborhood' && 'name' in pin ? pin.name : pin.neighborhoodId
 
+  // Lazy load: only mount video when card is near viewport
   useEffect(() => {
-    if (!videoRef.current || !isVideo || !content.mediaUrl) return
+    const el = cardRef.current
+    if (!el) return
     const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) videoRef.current?.play().catch(() => {})
-      else videoRef.current?.pause()
-    }, { threshold: 0.6 })
-    if (cardRef.current) observer.observe(cardRef.current)
+      if (entry.isIntersecting) {
+        setIsNearViewport(true)
+        if (videoRef.current) videoRef.current.play().catch(() => {})
+      } else {
+        if (videoRef.current) videoRef.current.pause()
+        // Don't unset isNearViewport — keep the video element mounted once loaded
+      }
+    }, { threshold: 0.1, rootMargin: '200px 0px' }) // preload 200px before visible
+    observer.observe(el)
     return () => observer.disconnect()
-  }, [isVideo, content.mediaUrl])
+  }, [])
 
   return (
     <div ref={cardRef} className="relative w-full" style={{ height: embedded ? '100%' : '100dvh', scrollSnapAlign: 'start', scrollSnapStop: 'always', willChange: 'transform', contain: 'layout style paint' }}>
-      {/* Background media — blurred vertical fill for non-portrait, object-cover for portrait */}
+      {/* Background media */}
       <div className="absolute inset-0 bg-charcoal overflow-hidden">
-        {isVideo && content.mediaUrl ? (
+        {isVideo && content.mediaUrl && isNearViewport ? (
           <>
-            <video src={content.mediaUrl} className="absolute inset-0 w-full h-full object-cover blur-2xl scale-y-110 opacity-50" loop playsInline muted autoPlay />
-            <video ref={videoRef} src={content.mediaUrl} className="relative w-full h-full object-cover" loop playsInline muted autoPlay />
+            {/* Blurred bg uses thumbnail image instead of a second video element */}
+            {thumbnailUrl && <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-y-110 opacity-50" />}
+            <video ref={videoRef} src={content.mediaUrl} className="relative w-full h-full object-cover" loop playsInline muted preload="auto" />
+          </>
+        ) : isVideo && content.mediaUrl && !isNearViewport ? (
+          <>
+            {/* Not near viewport yet — show thumbnail placeholder */}
+            {thumbnailUrl && <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />}
           </>
         ) : thumbnailUrl ? (
           <>

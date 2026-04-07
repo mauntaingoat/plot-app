@@ -166,7 +166,7 @@ export default function SignUp() {
               </div>
               <div className="bg-cream rounded-[16px] px-5 py-3">
                 <p className="text-[12px] text-smoke font-medium mb-0.5">Your Reelst link</p>
-                <p className="text-[18px] font-bold text-ink">reelst.co/<span className={username ? 'text-tangerine' : 'text-ash'}>{username || '...'}</span></p>
+                <p className="text-[18px] font-bold text-ink">reel.st/<span className={username ? 'text-tangerine' : 'text-ash'}>{username || '...'}</span></p>
               </div>
               <div className="relative">
                 <input type="text" value={username} onChange={(e) => handleUsernameChange(e.target.value)} placeholder="username" autoFocus
@@ -189,7 +189,7 @@ export default function SignUp() {
               <button onClick={() => setStep(role === 'agent' ? 'username' : 'role')} className="flex items-center gap-1 text-[13px] text-smoke font-medium mb-2"><ArrowLeft size={14} /> Back</button>
               <div>
                 <h1 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Create your account</h1>
-                {role === 'agent' && username && <p className="text-[15px] text-smoke">Securing <span className="text-tangerine font-bold">reelst.co/{username}</span></p>}
+                {role === 'agent' && username && <p className="text-[15px] text-smoke">Securing <span className="text-tangerine font-bold">reel.st/{username}</span></p>}
               </div>
 
               <div className="space-y-3">
@@ -240,7 +240,7 @@ export default function SignUp() {
           </div>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.2 }}
             className="absolute -bottom-4 -left-8 bg-white rounded-2xl shadow-xl p-3 border border-white/10">
-            <p className="text-[11px] font-bold text-ink">reelst.co/{username || 'you'}</p>
+            <p className="text-[11px] font-bold text-ink">reel.st/{username || 'you'}</p>
           </motion.div>
         </div>
       </div>
