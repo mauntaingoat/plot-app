@@ -88,8 +88,8 @@ export function StepProfile() {
         <Button variant="secondary" size="xl" onClick={prevStep} className="flex-1">
           Back
         </Button>
-        <Button variant="primary" size="xl" onClick={nextStep} className="flex-[2]">
-          {displayName ? 'Continue' : 'Skip'}
+        <Button variant="primary" size="xl" onClick={nextStep} disabled={!displayName.trim()} className="flex-[2]">
+          Continue
         </Button>
       </div>
     </div>
