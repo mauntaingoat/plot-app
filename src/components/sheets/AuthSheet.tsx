@@ -4,13 +4,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import { Timestamp } from 'firebase/firestore'
 import { auth, firebaseConfigured } from '@/config/firebase'
-import { createUserDoc } from '@/lib/firestore'
+import { createUserDoc, checkLicenseDuplicate } from '@/lib/firestore'
+import { sendEmailVerification } from 'firebase/auth'
 import { useAuthStore } from '@/stores/authStore'
 import { ResponsiveSheet } from '@/components/ui/ResponsiveSheet'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { GoogleLogo, AppleLogo } from '@/components/icons/PlatformLogos'
-import { Mail, Lock, ArrowRight, ArrowLeft, MapPin, Eye, AtSign, Check, X, Loader2 } from 'lucide-react'
+import { Mail, Lock, ArrowRight, ArrowLeft, MapPin, Eye, AtSign, Check, X, Loader2, Shield, AlertTriangle } from 'lucide-react'
 import { useUsername } from '@/hooks/useUsername'
 import type { UserDoc } from '@/lib/types'
 
@@ -20,7 +21,13 @@ interface AuthSheetProps {
   mode?: 'login' | 'signup'
 }
 
-type Step = 'choose-role' | 'claim-username' | 'create-account' | 'login'
+type Step = 'choose-role' | 'claim-username' | 'license-verify' | 'create-account' | 'login'
+
+const US_STATES = [
+  'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD',
+  'MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC',
+  'SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC',
+]
 
 export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: AuthSheetProps) {
   const navigate = useNavigate()
@@ -36,10 +43,24 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // License verification state
+  const [licenseNumber, setLicenseNumber] = useState('')
+  const [licenseState, setLicenseState] = useState('')
+  const [licenseName, setLicenseName] = useState('')
+  const [fairHousing, setFairHousing] = useState(false)
+  const [dataSecurity, setDataSecurity] = useState(false)
+  const [duplicateLicense, setDuplicateLicense] = useState<{ exists: boolean; username?: string } | null>(null)
+
   useEffect(() => {
     if (isOpen) {
       setStep(initialMode === 'login' ? 'login' : 'choose-role')
       setError('')
+      setLicenseNumber('')
+      setLicenseState('')
+      setLicenseName('')
+      setFairHousing(false)
+      setDataSecurity(false)
+      setDuplicateLicense(null)
     }
   }, [isOpen, initialMode])
 
@@ -69,8 +90,13 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
         photoURL: null,
         bio: '',
         brokerage: null,
-        licenseNumber: null,
-        licenseState: null,
+        licenseNumber: role === 'agent' ? licenseNumber : null,
+        licenseState: role === 'agent' ? licenseState : null,
+        licenseName: role === 'agent' ? licenseName : null,
+        verificationStatus: role === 'agent' ? 'pending' : 'unverified',
+        fairHousingAccepted: fairHousing,
+        dataSecurityAccepted: dataSecurity,
+        emailVerified: false,
         platforms: [],
         followerCount: 0,
         followingCount: 0,
@@ -94,7 +120,15 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
           role: role || 'consumer',
           displayName: displayName || email.split('@')[0],
           username: role === 'agent' ? username : null,
+          licenseNumber: role === 'agent' ? licenseNumber : null,
+          licenseState: role === 'agent' ? licenseState : null,
+          licenseName: role === 'agent' ? licenseName : null,
+          verificationStatus: role === 'agent' ? 'pending' : 'unverified',
+          fairHousingAccepted: fairHousing,
+          dataSecurityAccepted: dataSecurity,
         })
+        // Send email verification
+        try { await sendEmailVerification(cred.user) } catch {}
         onClose()
         if (role === 'agent') navigate('/dashboard')
       } catch (e: any) {
@@ -124,6 +158,11 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
         brokerage: null,
         licenseNumber: null,
         licenseState: null,
+        licenseName: null,
+        verificationStatus: 'unverified',
+        fairHousingAccepted: false,
+        dataSecurityAccepted: false,
+        emailVerified: false,
         platforms: [],
         followerCount: 0,
         followingCount: 0,
@@ -247,7 +286,111 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
 
               {!checking && available === false && <p className="text-[12px] text-live-red -mt-2">Taken. Try another.</p>}
 
-              <Button variant="primary" size="xl" fullWidth onClick={() => setStep('create-account')} disabled={!available || checking || username.length < 3}>
+              <Button variant="primary" size="xl" fullWidth onClick={() => setStep('license-verify')} disabled={!available || checking || username.length < 3}>
+                Continue
+              </Button>
+            </div>
+          )}
+
+          {/* ── Step: License Verification (Agent only) ── */}
+          {step === 'license-verify' && (
+            <div className="space-y-5">
+              <button onClick={() => setStep('claim-username')} className="flex items-center gap-1 text-[13px] text-smoke font-medium cursor-pointer">
+                <ArrowLeft size={14} /> Back
+              </button>
+
+              <div className="text-center space-y-1">
+                <div className="w-16 h-16 rounded-[18px] bg-tangerine/10 flex items-center justify-center mx-auto mb-3">
+                  <Shield size={28} className="text-tangerine" />
+                </div>
+                <h2 className="text-[24px] font-extrabold text-ink tracking-tight">Verify your license</h2>
+                <p className="text-[14px] text-smoke">We verify all agents to protect homebuyers</p>
+              </div>
+
+              <div className="space-y-3">
+                <Input
+                  placeholder="Legal name (as on license)"
+                  value={licenseName}
+                  onChange={(e) => setLicenseName(e.target.value)}
+                />
+                <div className="grid grid-cols-[1fr_100px] gap-2">
+                  <Input
+                    placeholder="License number"
+                    value={licenseNumber}
+                    onChange={(e) => setLicenseNumber(e.target.value.toUpperCase())}
+                  />
+                  <select
+                    value={licenseState}
+                    onChange={(e) => setLicenseState(e.target.value)}
+                    className="h-14 rounded-[14px] bg-cream border border-border-light px-3 text-[15px] font-medium text-ink outline-none cursor-pointer"
+                  >
+                    <option value="">State</option>
+                    {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+
+                {/* Duplicate license warning */}
+                {duplicateLicense?.exists && (
+                  <div className="flex items-start gap-3 bg-open-amber/10 rounded-[14px] p-4">
+                    <AlertTriangle size={18} className="text-open-amber shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[13px] font-semibold text-ink">This license is already registered</p>
+                      <p className="text-[12px] text-smoke mt-0.5">
+                        An account with this license exists{duplicateLicense.username ? ` (@${duplicateLicense.username})` : ''}. If this is you, please sign in instead. If you believe this is an error, contact hello@reelst.co.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Compliance checkboxes */}
+              <div className="space-y-3 pt-1">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox" checked={fairHousing} onChange={(e) => setFairHousing(e.target.checked)}
+                    className="mt-1 w-4 h-4 rounded accent-tangerine cursor-pointer"
+                  />
+                  <span className="text-[13px] text-smoke leading-snug">
+                    I commit to fair housing practices and will not discriminate based on race, color, religion, sex, disability, familial status, or national origin.
+                  </span>
+                </label>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox" checked={dataSecurity} onChange={(e) => setDataSecurity(e.target.checked)}
+                    className="mt-1 w-4 h-4 rounded accent-tangerine cursor-pointer"
+                  />
+                  <span className="text-[13px] text-smoke leading-snug">
+                    I acknowledge that Reelst uses HTTPS encryption and I agree to the <button onClick={() => window.open('/terms', '_blank')} className="text-tangerine font-medium">Terms of Use</button> and <button onClick={() => window.open('/privacy', '_blank')} className="text-tangerine font-medium">Privacy Policy</button>.
+                  </span>
+                </label>
+              </div>
+
+              {error && <p className="text-[12px] text-live-red">{error}</p>}
+
+              <Button
+                variant="primary" size="xl" fullWidth
+                disabled={!licenseName.trim() || !licenseNumber.trim() || !licenseState || !fairHousing || !dataSecurity || duplicateLicense?.exists}
+                loading={loading}
+                onClick={async () => {
+                  setError('')
+                  setLoading(true)
+                  try {
+                    const result = await checkLicenseDuplicate(licenseNumber, licenseState)
+                    if (result.exists) {
+                      setDuplicateLicense(result)
+                      setLoading(false)
+                      return
+                    }
+                    setDuplicateLicense(null)
+                    setDisplayName(licenseName) // pre-fill display name from license name
+                    setStep('create-account')
+                  } catch {
+                    setError('Could not verify license. Try again.')
+                  } finally {
+                    setLoading(false)
+                  }
+                }}
+              >
                 Continue
               </Button>
             </div>
@@ -256,7 +399,7 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
           {/* ── Step: Create Account ── */}
           {step === 'create-account' && (
             <div className="space-y-5">
-              <button onClick={() => setStep(role === 'agent' ? 'claim-username' : 'choose-role')} className="flex items-center gap-1 text-[13px] text-smoke font-medium">
+              <button onClick={() => setStep(role === 'agent' ? 'license-verify' : 'choose-role')} className="flex items-center gap-1 text-[13px] text-smoke font-medium cursor-pointer">
                 <ArrowLeft size={14} /> Back
               </button>
 

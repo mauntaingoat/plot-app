@@ -10,6 +10,8 @@ export interface Platform {
   username: string
 }
 
+export type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'rejected'
+
 export interface UserDoc {
   uid: string
   email: string
@@ -23,6 +25,11 @@ export interface UserDoc {
   brokerage: string | null
   licenseNumber: string | null
   licenseState: string | null
+  licenseName: string | null // legal name on the license
+  verificationStatus: VerificationStatus
+  fairHousingAccepted: boolean
+  dataSecurityAccepted: boolean
+  emailVerified: boolean
   platforms: Platform[]
   followerCount: number
   followingCount: number
@@ -67,6 +74,8 @@ export interface OpenHouse {
 
 // ── Pin (listing or neighborhood) ──
 
+export type PinStatus = 'active' | 'archived'
+
 export interface PinBase {
   id: string
   agentId: string
@@ -76,6 +85,7 @@ export interface PinBase {
   neighborhoodId: string
   geohash: string
   enabled: boolean
+  status: PinStatus // 'active' | 'archived' — archived pins are soft-deleted
   createdAt: Timestamp
   updatedAt: Timestamp
   views: number

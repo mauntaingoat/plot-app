@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import { Timestamp } from 'firebase/firestore'
-import { ArrowRight, ArrowLeft, AtSign, MapPin, Eye, Check, X, Loader2, Mail, Lock } from 'lucide-react'
+import { ArrowRight, ArrowLeft, AtSign, MapPin, Eye, Check, X, Loader2, Mail, Lock, Shield, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { SEOHead } from '@/components/marketing/SEOHead'
@@ -11,10 +11,17 @@ import { useUsername } from '@/hooks/useUsername'
 import { useAuthStore } from '@/stores/authStore'
 import { auth, firebaseConfigured } from '@/config/firebase'
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
-import { createUserDoc } from '@/lib/firestore'
+import { createUserDoc, checkLicenseDuplicate } from '@/lib/firestore'
+import { sendEmailVerification } from 'firebase/auth'
 import type { UserDoc } from '@/lib/types'
 
-type Step = 'role' | 'username' | 'account'
+type Step = 'role' | 'username' | 'license' | 'account'
+
+const US_STATES = [
+  'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD',
+  'MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC',
+  'SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC',
+]
 
 export default function SignUp() {
   const navigate = useNavigate()
@@ -29,6 +36,14 @@ export default function SignUp() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // License verification
+  const [licenseNumber, setLicenseNumber] = useState('')
+  const [licenseState, setLicenseState] = useState('')
+  const [licenseName, setLicenseName] = useState('')
+  const [fairHousing, setFairHousing] = useState(false)
+  const [dataSecurity, setDataSecurity] = useState(false)
+  const [duplicateLicense, setDuplicateLicense] = useState<{ exists: boolean; username?: string } | null>(null)
 
   const handleUsernameChange = (val: string) => {
     const cleaned = val.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24)
@@ -48,7 +63,15 @@ export default function SignUp() {
       agentType: role === 'agent' ? 'agent' : undefined,
       createdAt: Timestamp.now(), username: role === 'agent' ? username : null,
       displayName: displayName || email.split('@')[0], photoURL: null, bio: '',
-      brokerage: null, licenseNumber: null, licenseState: null, platforms: [],
+      brokerage: null,
+      licenseNumber: role === 'agent' ? licenseNumber : null,
+      licenseState: role === 'agent' ? licenseState : null,
+      licenseName: role === 'agent' ? licenseName : null,
+      verificationStatus: role === 'agent' ? 'pending' : 'unverified',
+      fairHousingAccepted: fairHousing,
+      dataSecurityAccepted: dataSecurity,
+      emailVerified: false,
+      platforms: [],
       followerCount: 0, followingCount: 0,
       onboardingComplete: role === 'consumer', onboardingStep: role === 'consumer' ? 8 : 2,
       setupPercent: role === 'agent' ? 20 : 0,
@@ -72,6 +95,8 @@ export default function SignUp() {
         clearTimeout(timeout)
         // Write user doc + claim username
         await createUserDoc(cred.user.uid, makeUser(cred.user.uid) as any).catch((e) => console.warn('User doc write failed:', e))
+        // Send email verification
+        try { await sendEmailVerification(cred.user) } catch {}
         if (role === 'agent' && username) {
           const { claim } = useUsername()
           // Direct Firestore write for username claim
@@ -178,15 +203,90 @@ export default function SignUp() {
                 </div>
               </div>
               {!checking && available === false && <p className="text-[12px] text-live-red -mt-3">Taken. Try another.</p>}
-              <Button variant="primary" size="xl" fullWidth onClick={() => setStep('account')} disabled={!available || checking || username.length < 3}>Continue</Button>
+              <Button variant="primary" size="xl" fullWidth onClick={() => setStep('license')} disabled={!available || checking || username.length < 3}>Continue</Button>
               <p className="text-[11px] text-ash">3-24 characters. Letters, numbers, underscores.</p>
+            </motion.div>
+          )}
+
+          {/* ── License Verification (Agent only) ── */}
+          {step === 'license' && (
+            <motion.div key="license" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-6">
+              <button onClick={() => setStep('username')} className="flex items-center gap-1 text-[13px] text-smoke font-medium mb-2 cursor-pointer"><ArrowLeft size={14} /> Back</button>
+              <div className="w-14 h-14 rounded-[16px] bg-tangerine/10 flex items-center justify-center mb-2">
+                <Shield size={26} className="text-tangerine" />
+              </div>
+              <div>
+                <h1 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Verify your license</h1>
+                <p className="text-[15px] text-smoke">We verify all agents to protect homebuyers</p>
+              </div>
+
+              <div className="space-y-3">
+                <Input placeholder="Legal name (as on license)" value={licenseName} onChange={(e) => setLicenseName(e.target.value)} />
+                <div className="grid grid-cols-[1fr_110px] gap-2">
+                  <Input placeholder="License number" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value.toUpperCase())} />
+                  <select value={licenseState} onChange={(e) => setLicenseState(e.target.value)}
+                    className="h-14 rounded-[16px] bg-cream border border-border-light px-3 text-[15px] font-medium text-ink outline-none cursor-pointer">
+                    <option value="">State</option>
+                    {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+
+                {duplicateLicense?.exists && (
+                  <div className="flex items-start gap-3 bg-open-amber/10 rounded-[16px] p-4">
+                    <AlertTriangle size={18} className="text-open-amber shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[13px] font-semibold text-ink">This license is already registered</p>
+                      <p className="text-[12px] text-smoke mt-0.5">
+                        An account with this license exists{duplicateLicense.username ? ` (@${duplicateLicense.username})` : ''}. If this is you, <Link to="/sign-in" className="text-tangerine font-semibold">sign in instead</Link>. If you believe this is an error, contact hello@reelst.co.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="checkbox" checked={fairHousing} onChange={(e) => setFairHousing(e.target.checked)}
+                    className="mt-1 w-4 h-4 rounded accent-tangerine cursor-pointer" />
+                  <span className="text-[13px] text-smoke leading-snug">
+                    I commit to fair housing practices and will not discriminate based on race, color, religion, sex, disability, familial status, or national origin.
+                  </span>
+                </label>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="checkbox" checked={dataSecurity} onChange={(e) => setDataSecurity(e.target.checked)}
+                    className="mt-1 w-4 h-4 rounded accent-tangerine cursor-pointer" />
+                  <span className="text-[13px] text-smoke leading-snug">
+                    I acknowledge that Reelst uses HTTPS encryption and I agree to the <Link to="/terms" className="text-tangerine font-medium">Terms of Use</Link> and <Link to="/privacy" className="text-tangerine font-medium">Privacy Policy</Link>.
+                  </span>
+                </label>
+              </div>
+
+              {error && <p className="text-[12px] text-live-red">{error}</p>}
+
+              <Button variant="primary" size="xl" fullWidth
+                disabled={!licenseName.trim() || !licenseNumber.trim() || !licenseState || !fairHousing || !dataSecurity || duplicateLicense?.exists || loading}
+                loading={loading}
+                onClick={async () => {
+                  setError(''); setLoading(true)
+                  try {
+                    const result = await checkLicenseDuplicate(licenseNumber, licenseState)
+                    if (result.exists) { setDuplicateLicense(result); setLoading(false); return }
+                    setDuplicateLicense(null)
+                    setDisplayName(licenseName)
+                    setStep('account')
+                  } catch { setError('Could not verify license. Try again.') }
+                  finally { setLoading(false) }
+                }}
+              >
+                Continue
+              </Button>
             </motion.div>
           )}
 
           {/* ── Account ── */}
           {step === 'account' && (
             <motion.div key="account" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-6">
-              <button onClick={() => setStep(role === 'agent' ? 'username' : 'role')} className="flex items-center gap-1 text-[13px] text-smoke font-medium mb-2"><ArrowLeft size={14} /> Back</button>
+              <button onClick={() => setStep(role === 'agent' ? 'license' : 'role')} className="flex items-center gap-1 text-[13px] text-smoke font-medium mb-2 cursor-pointer"><ArrowLeft size={14} /> Back</button>
               <div>
                 <h1 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Create your account</h1>
                 {role === 'agent' && username && <p className="text-[15px] text-smoke">Securing <span className="text-tangerine font-bold">reel.st/{username}</span></p>}

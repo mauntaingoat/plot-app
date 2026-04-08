@@ -42,6 +42,11 @@ export async function createUserDoc(uid: string, data: Partial<UserDoc>) {
     brokerage: null,
     licenseNumber: null,
     licenseState: null,
+    licenseName: null,
+    verificationStatus: 'unverified',
+    fairHousingAccepted: false,
+    dataSecurityAccepted: false,
+    emailVerified: false,
     platforms: [],
     followerCount: 0,
     followingCount: 0,
@@ -71,6 +76,7 @@ export async function createPin(data: Omit<Pin, 'id'>): Promise<string> {
     taps: 0,
     saves: 0,
     enabled: true,
+    status: 'active',
     content: data.content || [],
   })
   return ref.id
@@ -84,9 +90,36 @@ export async function updatePin(pinId: string, data: Partial<Pin>) {
   } as DocumentData)
 }
 
+// Soft delete — archive instead of destroy. Data persists for RTBF compliance.
+export async function archivePin(pinId: string) {
+  if (!db) return
+  await updateDoc(doc(db, 'pins', pinId), {
+    status: 'archived',
+    enabled: false,
+    updatedAt: serverTimestamp(),
+  })
+}
+
+// Hard delete — only for RTBF (Right To Be Forgotten) requests
 export async function deletePin(pinId: string) {
   if (!db) return
   await deleteDoc(doc(db, 'pins', pinId))
+}
+
+// ── License duplicate check ──
+
+export async function checkLicenseDuplicate(licenseNumber: string, licenseState: string): Promise<{ exists: boolean; uid?: string; username?: string }> {
+  if (!db) return { exists: false }
+  const q = query(
+    collection(db, 'users'),
+    where('licenseNumber', '==', licenseNumber),
+    where('licenseState', '==', licenseState),
+    limit(1)
+  )
+  const snap = await getDocs(q)
+  if (snap.empty) return { exists: false }
+  const existing = snap.docs[0].data() as UserDoc
+  return { exists: true, uid: existing.uid, username: existing.username || undefined }
 }
 
 export async function addContentToPin(pinId: string, content: ContentItem) {

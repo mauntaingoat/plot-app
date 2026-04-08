@@ -64,8 +64,9 @@ export default function Dashboard() {
     setPins((prev) => prev.filter((p) => p.id !== pinId))
     setShowDeleteConfirm(null)
     setShowPinActions(null)
-    const { deletePin } = await import('@/lib/firestore')
-    await deletePin(pinId).catch(() => {})
+    // Soft delete — archive instead of destroy
+    const { archivePin } = await import('@/lib/firestore')
+    await archivePin(pinId).catch(() => {})
   }, [])
 
   const stats = useMemo(() => {
@@ -374,17 +375,17 @@ export default function Dashboard() {
           <motion.button whileTap={{ scale: 0.97 }} onClick={() => { setShowDeleteConfirm(showPinActions); }}
             className="w-full flex items-center gap-3 p-3.5 rounded-[14px] bg-live-red/10 text-left">
             <Trash2 size={18} className="text-live-red" />
-            <span className="text-[15px] font-medium text-live-red">Delete Pin</span>
+            <span className="text-[15px] font-medium text-live-red">Archive Pin</span>
           </motion.button>
         </div>
       </DarkBottomSheet>
 
-      <DarkBottomSheet isOpen={!!showDeleteConfirm} onClose={() => setShowDeleteConfirm(null)} title="Delete this pin?">
+      <DarkBottomSheet isOpen={!!showDeleteConfirm} onClose={() => setShowDeleteConfirm(null)} title="Archive this pin?">
         <div className="px-5 pb-8 space-y-4">
-          <p className="text-[14px] text-mist">This will permanently remove the pin and all its data. This can't be undone.</p>
+          <p className="text-[14px] text-mist">This will remove the pin from your map. The data is kept and can be restored later.</p>
           <div className="flex gap-3">
             <Button variant="glass" size="lg" fullWidth onClick={() => setShowDeleteConfirm(null)}>Cancel</Button>
-            <Button variant="danger" size="lg" fullWidth onClick={() => showDeleteConfirm && handleDeletePin(showDeleteConfirm.id)}>Delete</Button>
+            <Button variant="danger" size="lg" fullWidth onClick={() => showDeleteConfirm && handleDeletePin(showDeleteConfirm.id)}>Archive</Button>
           </div>
         </div>
       </DarkBottomSheet>

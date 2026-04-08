@@ -15,6 +15,7 @@ export const MOCK_AGENTS: UserDoc[] = [
     bio: 'Miami luxury specialist. Helping families find their dream home in South Florida.',
     brokerage: 'Compass', licenseNumber: 'SL3489201', licenseState: 'FL',
     platforms: [{ id: 'instagram', username: 'carolina.reyes.re' }, { id: 'tiktok', username: 'carolinasellsmiami' }, { id: 'zillow', username: 'carolina-reyes' }],
+    licenseName: 'Carolina M. Reyes', verificationStatus: 'verified' as const, fairHousingAccepted: true, dataSecurityAccepted: true, emailVerified: true,
     followerCount: 1247, followingCount: 83, onboardingComplete: true, onboardingStep: 8, setupPercent: 90,
   },
   {
@@ -23,6 +24,7 @@ export const MOCK_AGENTS: UserDoc[] = [
     photoURL: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face',
     bio: 'Brickell & Downtown Miami condos. Your skyline expert.',
     brokerage: 'Douglas Elliman', licenseNumber: 'SL3501882', licenseState: 'FL',
+    licenseName: 'David A. Hartman', verificationStatus: 'verified' as const, fairHousingAccepted: true, dataSecurityAccepted: true, emailVerified: true,
     platforms: [{ id: 'instagram', username: 'davidhartman_re' }, { id: 'youtube', username: 'DavidSellsMiami' }],
     followerCount: 834, followingCount: 45, onboardingComplete: true, onboardingStep: 8, setupPercent: 85,
   },
@@ -32,6 +34,7 @@ export const MOCK_AGENTS: UserDoc[] = [
     photoURL: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&crop=face',
     bio: 'Coral Gables & Coconut Grove. Architecture lover, neighborhood storyteller.',
     brokerage: 'The Keyes Company', licenseNumber: 'SL3612003', licenseState: 'FL',
+    licenseName: 'Lucia M. Fernandez', verificationStatus: 'verified' as const, fairHousingAccepted: true, dataSecurityAccepted: true, emailVerified: true,
     platforms: [{ id: 'instagram', username: 'lucia.homes' }, { id: 'tiktok', username: 'luciafernandez' }],
     followerCount: 2103, followingCount: 112, onboardingComplete: true, onboardingStep: 8, setupPercent: 100,
   },
@@ -40,7 +43,8 @@ export const MOCK_AGENTS: UserDoc[] = [
 export const MOCK_CURRENT_USER: UserDoc = {
   uid: 'agent-mau', email: 'mau@reelst.co', role: 'agent', agentType: 'agent',
   createdAt: daysAgo(1), username: 'mau', displayName: 'Mau Romano',
-  photoURL: null, bio: '', brokerage: null, licenseNumber: null, licenseState: null,
+  photoURL: null, bio: '', brokerage: null, licenseNumber: null, licenseState: null, licenseName: null,
+  verificationStatus: 'unverified', fairHousingAccepted: false, dataSecurityAccepted: false, emailVerified: false,
   platforms: [], followerCount: 0, followingCount: 0, onboardingComplete: true, onboardingStep: 8, setupPercent: 20,
 }
 
