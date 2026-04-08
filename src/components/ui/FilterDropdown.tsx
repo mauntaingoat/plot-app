@@ -21,7 +21,7 @@ export function FilterDropdown({ label, options, selected, onToggle, onClear, da
   const [open, setOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
-  const [pos, setPos] = useState({ top: 0, left: 0 })
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
 
   const hasSelection = selected.size > 0
   const displayLabel = hasSelection ? `${label} (${selected.size})` : label
@@ -36,9 +36,16 @@ export function FilterDropdown({ label, options, selected, onToggle, onClear, da
     })
   }, [])
 
+  // Calculate position synchronously when opening to prevent flash at (0,0)
+  const handleToggle = useCallback(() => {
+    if (!open) {
+      updatePos()
+    }
+    setOpen(!open)
+  }, [open, updatePos])
+
   useEffect(() => {
     if (!open) return
-    updatePos()
     // Close on any scroll (filter bar or page) — dropdown shouldn't float detached
     const handler = () => setOpen(false)
     window.addEventListener('scroll', handler, true)
@@ -47,7 +54,7 @@ export function FilterDropdown({ label, options, selected, onToggle, onClear, da
       window.removeEventListener('scroll', handler, true)
       window.removeEventListener('resize', handler)
     }
-  }, [open, updatePos])
+  }, [open])
 
   // Close on outside click
   useEffect(() => {
@@ -66,7 +73,7 @@ export function FilterDropdown({ label, options, selected, onToggle, onClear, da
     <>
       <button
         ref={btnRef}
-        onClick={() => setOpen(!open)}
+        onClick={handleToggle}
         style={{ fontSize: 12 }}
         className={`
           inline-flex items-center gap-0.5 px-2.5 py-1.5 rounded-full shrink-0
@@ -99,7 +106,7 @@ export function FilterDropdown({ label, options, selected, onToggle, onClear, da
                   ? 'bg-black/70 backdrop-blur-xl border-white/10'
                   : 'bg-white/95 backdrop-blur-xl border-black/8'
               }`}
-              style={{ top: pos.top, left: pos.left, maxWidth: 'calc(100vw - 16px)' }}
+              style={{ top: pos?.top ?? -9999, left: pos?.left ?? -9999, maxWidth: 'calc(100vw - 16px)' }}
             >
               <div className="max-h-[200px] overflow-y-auto py-0.5">
                 {options.map((opt) => {

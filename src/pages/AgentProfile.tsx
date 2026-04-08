@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronRight, ChevronLeft, Users, Globe, X, Map, Layers, Bookmark, UserCircle, LogIn } from 'lucide-react'
+import { ChevronRight, ChevronLeft, Users, Globe, X, Map, Play, Bookmark, UserCircle, LogIn } from 'lucide-react'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { MapCanvas } from '@/components/map/MapCanvas'
 import { MapOverlay } from '@/components/map/MapOverlay'
@@ -533,33 +533,22 @@ export default function AgentProfile() {
       />
 
       {/* Map/Feed toggle — bottom right */}
-      <div className="fixed z-[40] right-4" style={{ bottom: 'calc(env(safe-area-inset-bottom, 8px) + 16px)' }}>
-        {/* Animated rainbow ring — both modes */}
-        <motion.div
-          className="absolute -inset-[3px] rounded-full"
-          style={{
-            background: 'conic-gradient(from 0deg, #FF6B3D, #FF3B7A, #FFAA00, #FF6B3D, #E8522A, #FF6B3D)',
-            filter: 'blur(1px)',
-          }}
-          animate={{ rotate: 360 }}
-          transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-        />
-
-        <motion.button
-          whileTap={{ scale: 0.88 }}
-          onClick={() => setViewMode(viewMode === 'map' ? 'feed' : 'map')}
-          className="relative rounded-full flex items-center justify-center cursor-pointer shadow-lg"
-          style={{
-            width: 52,
-            height: 52,
-            background: viewMode === 'map' ? 'rgba(255,255,255,0.90)' : 'rgba(0,0,0,0.30)',
-            backdropFilter: 'blur(12px)',
-            border: viewMode === 'map' ? '1px solid rgba(0,0,0,0.05)' : '1px solid rgba(255,255,255,0.10)',
-          }}
-        >
-          {viewMode === 'map' ? <Layers size={20} className="text-ink" /> : <Map size={20} className="text-white" />}
-        </motion.button>
-      </div>
+      <motion.button
+        whileTap={{ scale: 0.88 }}
+        onClick={() => setViewMode(viewMode === 'map' ? 'feed' : 'map')}
+        className="fixed z-[40] right-4 rounded-full flex items-center justify-center cursor-pointer shadow-lg overflow-hidden"
+        style={{
+          bottom: 'calc(env(safe-area-inset-bottom, 8px) + 16px)',
+          width: 52,
+          height: 52,
+          background: viewMode === 'map' ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.30)',
+          backdropFilter: 'blur(16px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+          border: viewMode === 'map' ? '1px solid rgba(255,255,255,0.35)' : '1px solid rgba(255,255,255,0.10)',
+        }}
+      >
+        {viewMode === 'map' ? <Play size={20} className="text-tangerine" fill="#FF6B3D" /> : <Map size={20} className="text-white" />}
+      </motion.button>
 
       {selectedPin ? (
         <ListingModal pin={selectedPin} agent={agent} onClose={() => setSelectedPin(null)} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} />
