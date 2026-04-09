@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { Eye, MousePointerClick, Bookmark, MapPin, MoreHorizontal } from 'lucide-react'
 import { PIN_CONFIG, type Pin } from '@/lib/types'
 import { formatPrice } from '@/lib/firestore'
+import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
 
 interface PinCardProps {
   pin: Pin
@@ -40,11 +41,10 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
       {/* Image area */}
       {heroImage && (
         <div className="relative aspect-[16/10] overflow-hidden">
-          <img
+          <ProgressiveImage
             src={heroImage}
             alt={pin.address}
-            className="w-full h-full object-cover"
-            loading="lazy"
+            className="absolute inset-0 w-full h-full"
           />
 
           {/* Gradient overlay */}

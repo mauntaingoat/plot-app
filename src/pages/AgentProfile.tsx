@@ -12,6 +12,8 @@ import { ListingModal } from '@/components/viewers/ListingModal'
 import { Avatar } from '@/components/ui/Avatar'
 import { AgentDetailSheet, type AgentMode } from '@/components/sheets/AgentDetailSheet'
 import { AuthSheet } from '@/components/sheets/AuthSheet'
+import { SEOHead } from '@/components/marketing/SEOHead'
+import { StructuredData } from '@/components/marketing/StructuredData'
 import { SidebarPanels, type SidebarPanelType } from '@/components/agent-profile/SidebarPanels'
 import { AgentPill } from '@/components/agent-profile/AgentPill'
 import { SidebarNavButton } from '@/components/agent-profile/SidebarNavButton'
@@ -250,9 +252,23 @@ export default function AgentProfile() {
   const mapLeft = SIDEBAR_W + GAP
   const mapRight = feedExpanded ? FEED_W + GAP + PAD : PAD + 6 // +6 ensures expand button is fully visible
 
+  // SEO meta tags for the agent profile (browser tab + JS-aware crawlers)
+  const seoElement = (
+    <>
+      <SEOHead
+        title={agent.displayName}
+        description={agent.bio || `${agent.displayName} on Reelst — interactive map of listings, stories, and reels.`}
+        ogImage={agent.photoURL || undefined}
+        path={`/${agent.username || agent.uid}`}
+      />
+      <StructuredData agent={agent} pins={allPins} />
+    </>
+  )
+
   if (isDesktop) {
     return (
       <div className="map-page" style={{ background: '#14161E' }} ref={mapContainerRef}>
+        {seoElement}
 
         {/* ═══ LEFT SIDEBAR ═══ */}
         <div className="fixed top-0 left-0 bottom-0 z-[70] flex flex-col" style={{ width: SIDEBAR_W, background: '#14161E', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
@@ -499,6 +515,7 @@ export default function AgentProfile() {
   // ═══════════════════════════════════════════
   return (
     <div className="map-page" ref={mapContainerRef}>
+      {seoElement}
       <AnimatePresence mode="wait">
         {viewMode === 'map' ? (
           <motion.div key="map" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0">

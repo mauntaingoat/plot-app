@@ -6,7 +6,7 @@ import {
   Eye, MousePointerClick, Bookmark,
   ExternalLink, LogOut, ChevronRight, Bell, CreditCard,
   User, Trash2, Edit3, EyeOff, Link2, Shield, Palette,
-  Film, Share2, Smartphone, Copy, Check, X,
+  Film, Share2, Smartphone, Copy, Check, X, QrCode,
 } from 'lucide-react'
 import { TabBar } from '@/components/ui/TabBar'
 import { Button } from '@/components/ui/Button'
@@ -20,6 +20,7 @@ import { InsightsChart } from '@/components/dashboard/InsightsChart'
 import { PaywallPrompt } from '@/components/dashboard/PaywallPrompt'
 import { PinBreakdown, ContentConversion, GeoHeatmap, TimeOfDay, FollowerGrowth, LockedFeature } from '@/components/dashboard/AdvancedInsights'
 import { SavedMapInsights, CustomBranding } from '@/components/dashboard/StudioFeatures'
+import { QRCodeModal } from '@/components/dashboard/QRCodeModal'
 import { canActivatePin, hasFeature, type Tier } from '@/lib/tiers'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { Input } from '@/components/ui/Input'
@@ -52,6 +53,7 @@ export default function Dashboard() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Pin | null>(null)
   const [copied, setCopied] = useState(false)
   const [paywall, setPaywall] = useState<{ open: boolean; reason: string; upgradeTo?: Tier }>({ open: false, reason: '' })
+  const [qrPin, setQrPin] = useState<Pin | null>(null)
   const isDesktop = useIsDesktop()
 
   // Use real userDoc if signed in, otherwise fall back to Carolina (mock) for demo
@@ -408,6 +410,11 @@ export default function Dashboard() {
             <span className="text-[15px] font-medium text-white">Add Content</span>
             <span className="text-[11px] text-ghost ml-auto">{showPinActions?.content?.length || 0} items</span>
           </motion.button>
+          <motion.button whileTap={{ scale: 0.97 }} onClick={() => { setQrPin(showPinActions); setShowPinActions(null) }}
+            className="w-full flex items-center gap-3 p-3.5 rounded-[14px] bg-slate text-left">
+            <QrCode size={18} className="text-tangerine" />
+            <span className="text-[15px] font-medium text-white">Get QR Code</span>
+          </motion.button>
           <motion.button whileTap={{ scale: 0.97 }} onClick={() => { if (showPinActions) handleTogglePin(showPinActions.id, !showPinActions.enabled); setShowPinActions(null) }}
             className="w-full flex items-center gap-3 p-3.5 rounded-[14px] bg-slate text-left">
             <EyeOff size={18} className="text-mist" />
@@ -443,6 +450,13 @@ export default function Dashboard() {
         onClose={() => setPaywall({ open: false, reason: '' })}
         reason={paywall.reason}
         upgradeTo={paywall.upgradeTo}
+      />
+
+      <QRCodeModal
+        isOpen={!!qrPin}
+        onClose={() => setQrPin(null)}
+        pin={qrPin}
+        agent={activeUser}
       />
     </>
   )

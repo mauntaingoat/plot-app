@@ -7,7 +7,7 @@ interface SEOHeadProps {
   path?: string
 }
 
-const BASE_URL = 'https://reelst.co'
+const BASE_URL = 'https://reel.st'
 const DEFAULT_TITLE = 'Reelst — Where Listings Come Alive'
 const DEFAULT_DESC = 'One link. A live map of your listings, stories, reels, and open houses. The modern agent\'s profile, built for content.'
 const DEFAULT_OG = '/icons/og-image.png'
