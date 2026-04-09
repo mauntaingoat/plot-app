@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, ArrowRight, MapPin, Search, Check, Upload, Video, Camera, X, DollarSign, Home, BadgeCheck, Compass, Plus, Film, Mic } from 'lucide-react'
+import { ArrowLeft, ArrowRight, MapPin, Search, Check, Upload, Video, Camera, X, DollarSign, Home, BadgeCheck, Compass, Plus, Film, Mic, Clock, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useGeocoding } from '@/hooks/useGeocoding'
@@ -10,7 +10,7 @@ import { createPin } from '@/lib/firestore'
 import { uploadFile, pinMediaPath } from '@/lib/storage'
 import { PIN_CONFIG, type PinType, type ContentItem } from '@/lib/types'
 import { Timestamp } from 'firebase/firestore'
-import { getTierLimits, canUploadVideo, type Tier } from '@/lib/tiers'
+import { getTierLimits, canUploadVideo, hasFeature, type Tier } from '@/lib/tiers'
 import { PaywallPrompt } from '@/components/dashboard/PaywallPrompt'
 
 const PIN_OPTIONS: { type: PinType; label: string; desc: string; icon: typeof Home; color: string }[] = [
@@ -49,12 +49,14 @@ export default function PinCreate() {
   const [neighborhoodName, setNeighborhoodName] = useState('')
 
   // Content items (added during creation)
-  const [contentItems, setContentItems] = useState<{ type: string; caption: string; file: File | null; preview: string | null }[]>([])
+  const [contentItems, setContentItems] = useState<{ type: string; caption: string; file: File | null; preview: string | null; publishAt: string | null }[]>([])
   const [showAddContent, setShowAddContent] = useState(false)
   const [newContentType, setNewContentType] = useState<'reel' | 'story' | 'photo'>('reel')
   const [newCaption, setNewCaption] = useState('')
   const [newFile, setNewFile] = useState<File | null>(null)
   const [newPreview, setNewPreview] = useState<string | null>(null)
+  // Schedule for later — Pro feature; ISO datetime-local string ('' = publish now)
+  const [newPublishAt, setNewPublishAt] = useState<string>('')
   const fileRef = useRef<HTMLInputElement>(null)
   const photosRef = useRef<HTMLInputElement>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -100,8 +102,14 @@ export default function PinCreate() {
       }
     }
 
-    setContentItems([...contentItems, { type: newContentType, caption: newCaption, file: newFile, preview: newPreview }])
-    setNewCaption(''); setNewFile(null); setNewPreview(null); setShowAddContent(false)
+    setContentItems([...contentItems, {
+      type: newContentType,
+      caption: newCaption,
+      file: newFile,
+      preview: newPreview,
+      publishAt: newPublishAt || null,
+    }])
+    setNewCaption(''); setNewFile(null); setNewPreview(null); setNewPublishAt(''); setShowAddContent(false)
   }
 
   const getVideoDuration = (file: File): Promise<number> => {
@@ -202,6 +210,7 @@ export default function PinCreate() {
             createdAt: Timestamp.now(),
             views: 0,
             saves: 0,
+            publishAt: item.publishAt ? Timestamp.fromDate(new Date(item.publishAt)) : null,
           })
         }
         const { updatePin } = await import('@/lib/firestore')
@@ -412,8 +421,13 @@ export default function PinCreate() {
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[10px] font-bold text-tangerine uppercase">{item.type.replace('_', ' ')}</span>
+                          {item.publishAt && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-tangerine bg-tangerine-soft px-1.5 py-0.5 rounded-full">
+                              <Clock size={9} /> {new Date(item.publishAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                            </span>
+                          )}
                         </div>
                         <p className="text-[13px] text-ink truncate mt-0.5">{item.caption || 'No caption'}</p>
                       </div>
@@ -471,9 +485,21 @@ export default function PinCreate() {
                   <textarea value={newCaption} onChange={(e) => setNewCaption(e.target.value)} placeholder="Add a caption..."
                     rows={2} className="w-full rounded-[10px] bg-warm-white border border-border-light px-3 py-2 text-[13px] text-ink resize-none placeholder:text-ash outline-none" />
 
+                  {/* Schedule for later — Pro feature */}
+                  <ScheduleField
+                    value={newPublishAt}
+                    onChange={setNewPublishAt}
+                    locked={!hasFeature(userDoc, 'scheduledContent')}
+                    onLockedClick={() => setPaywall({
+                      open: true,
+                      reason: 'Scheduling content for later is a Pro feature.',
+                      upgradeTo: 'pro',
+                    })}
+                  />
+
                   <div className="flex gap-2">
-                    <Button variant="secondary" size="sm" onClick={() => { setShowAddContent(false); setNewCaption(''); setNewFile(null); setNewPreview(null) }} className="flex-1">Cancel</Button>
-                    <Button variant="primary" size="sm" onClick={addContent} className="flex-1">Add</Button>
+                    <Button variant="secondary" size="sm" onClick={() => { setShowAddContent(false); setNewCaption(''); setNewFile(null); setNewPreview(null); setNewPublishAt('') }} className="flex-1">Cancel</Button>
+                    <Button variant="primary" size="sm" onClick={addContent} className="flex-1">{newPublishAt ? 'Schedule' : 'Add'}</Button>
                   </div>
                 </div>
               ) : (
@@ -523,6 +549,80 @@ export default function PinCreate() {
         reason={paywall.reason}
         upgradeTo={paywall.upgradeTo}
       />
+    </div>
+  )
+}
+
+// ── Schedule field for content publishing ──
+
+function ScheduleField({
+  value,
+  onChange,
+  locked,
+  onLockedClick,
+}: {
+  value: string
+  onChange: (v: string) => void
+  locked: boolean
+  onLockedClick: () => void
+}) {
+  const [open, setOpen] = useState(false)
+
+  if (locked) {
+    return (
+      <button
+        type="button"
+        onClick={onLockedClick}
+        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-[10px] bg-warm-white border border-border-light text-left cursor-pointer hover:border-tangerine transition-colors"
+      >
+        <Lock size={13} className="text-ash" />
+        <span className="text-[12px] text-smoke flex-1">Schedule for later</span>
+        <span className="text-[10px] font-bold text-tangerine bg-tangerine-soft px-2 py-0.5 rounded-full">PRO</span>
+      </button>
+    )
+  }
+
+  if (!open && !value) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-[10px] bg-warm-white border border-border-light text-left cursor-pointer hover:border-tangerine transition-colors"
+      >
+        <Clock size={13} className="text-tangerine" />
+        <span className="text-[12px] text-graphite flex-1">Schedule for later</span>
+        <Plus size={13} className="text-ash" />
+      </button>
+    )
+  }
+
+  return (
+    <div className="bg-warm-white border border-tangerine/30 rounded-[10px] p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <Clock size={12} className="text-tangerine" />
+          <span className="text-[11px] font-bold uppercase tracking-wider text-tangerine">Publishes at</span>
+        </div>
+        {value && (
+          <button
+            type="button"
+            onClick={() => { onChange(''); setOpen(false) }}
+            className="text-[11px] text-smoke hover:text-ink cursor-pointer"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      <input
+        type="datetime-local"
+        value={value}
+        min={new Date(Date.now() + 5 * 60 * 1000).toISOString().slice(0, 16)}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full bg-cream rounded-[8px] px-2.5 py-2 text-[12px] font-medium text-ink border border-border-light outline-none focus:border-tangerine"
+      />
+      <p className="text-[10px] text-smoke leading-snug">
+        Hidden from your profile until this time. You can edit before then.
+      </p>
     </div>
   )
 }

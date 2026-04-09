@@ -6,7 +6,7 @@ import {
   Eye, MousePointerClick, Bookmark,
   ExternalLink, LogOut, ChevronRight, Bell, CreditCard,
   User, Trash2, Edit3, EyeOff, Link2, Shield, Palette,
-  Film, Share2, Smartphone, Copy, Check, X, QrCode,
+  Film, Share2, Smartphone, Copy, Check, X, QrCode, CalendarDays, Inbox,
 } from 'lucide-react'
 import { TabBar } from '@/components/ui/TabBar'
 import { Button } from '@/components/ui/Button'
@@ -21,6 +21,8 @@ import { PaywallPrompt } from '@/components/dashboard/PaywallPrompt'
 import { PinBreakdown, ContentConversion, GeoHeatmap, TimeOfDay, FollowerGrowth, LockedFeature } from '@/components/dashboard/AdvancedInsights'
 import { SavedMapInsights, CustomBranding } from '@/components/dashboard/StudioFeatures'
 import { QRCodeModal } from '@/components/dashboard/QRCodeModal'
+import { OpenHouseEditor } from '@/components/dashboard/OpenHouseEditor'
+import { ShowingInbox } from '@/components/dashboard/ShowingInbox'
 import { canActivatePin, hasFeature, type Tier } from '@/lib/tiers'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { Input } from '@/components/ui/Input'
@@ -28,9 +30,9 @@ import { useAuthStore } from '@/stores/authStore'
 import { firebaseConfigured } from '@/config/firebase'
 import { MOCK_PINS_CAROLINA, MOCK_CURRENT_USER, MOCK_AGENTS } from '@/lib/mock'
 import { PLATFORM_LIST, PLATFORM_LOGOS } from '@/components/icons/PlatformLogos'
-import { PIN_CONFIG, type Pin, type Platform } from '@/lib/types'
+import { PIN_CONFIG, type Pin, type Platform, type ForSalePin, type OpenHouse } from '@/lib/types'
 
-type DashTab = 'plot' | 'insights' | 'audience' | 'settings'
+type DashTab = 'plot' | 'insights' | 'inbox' | 'audience' | 'settings'
 
 function useIsDesktop() {
   const [isDesktop, setIsDesktop] = useState(typeof window !== 'undefined' && window.innerWidth >= 1024)
@@ -54,6 +56,7 @@ export default function Dashboard() {
   const [copied, setCopied] = useState(false)
   const [paywall, setPaywall] = useState<{ open: boolean; reason: string; upgradeTo?: Tier }>({ open: false, reason: '' })
   const [qrPin, setQrPin] = useState<Pin | null>(null)
+  const [openHousePin, setOpenHousePin] = useState<ForSalePin | null>(null)
   const isDesktop = useIsDesktop()
 
   // Use real userDoc if signed in, otherwise fall back to Carolina (mock) for demo
@@ -83,6 +86,12 @@ export default function Dashboard() {
     // Soft delete — archive instead of destroy
     const { archivePin } = await import('@/lib/firestore')
     await archivePin(pinId).catch(() => {})
+  }, [])
+
+  const handleSaveOpenHouse = useCallback(async (pinId: string, openHouse: OpenHouse | null) => {
+    setPins((prev) => prev.map((p) => (p.id === pinId && p.type === 'for_sale' ? { ...p, openHouse } : p)))
+    const { updatePin } = await import('@/lib/firestore')
+    await updatePin(pinId, { openHouse } as any).catch(() => {})
   }, [])
 
   const stats = useMemo(() => {
@@ -246,6 +255,19 @@ export default function Dashboard() {
                 onUpgrade={() => setPaywall({ open: true, reason: 'Advanced analytics is a Pro feature.', upgradeTo: 'pro' })}
               />
             )}
+          </div>
+        )}
+
+        {/* ═══ INBOX ═══ */}
+        {activeTab === 'inbox' && (
+          <div className={isDesktop ? 'space-y-5' : 'px-5 py-5 space-y-4'}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-[16px] font-bold text-ink">Showing Requests</h3>
+                <p className="text-[12px] text-smoke mt-0.5">Visitors who asked to tour your listings.</p>
+              </div>
+            </div>
+            <ShowingInbox agentId={activeUser.uid} />
           </div>
         )}
 
@@ -415,6 +437,18 @@ export default function Dashboard() {
             <QrCode size={18} className="text-tangerine" />
             <span className="text-[15px] font-medium text-white">Get QR Code</span>
           </motion.button>
+          {showPinActions?.type === 'for_sale' && (
+            <motion.button whileTap={{ scale: 0.97 }} onClick={() => { setOpenHousePin(showPinActions as ForSalePin); setShowPinActions(null) }}
+              className="w-full flex items-center gap-3 p-3.5 rounded-[14px] bg-slate text-left">
+              <CalendarDays size={18} className="text-open-amber" />
+              <span className="text-[15px] font-medium text-white">Schedule Open House</span>
+              {(showPinActions as ForSalePin).openHouse?.sessions?.length ? (
+                <span className="text-[10px] font-bold text-open-amber bg-open-amber/15 px-2 py-0.5 rounded-full ml-auto">
+                  {(showPinActions as ForSalePin).openHouse!.sessions.length}
+                </span>
+              ) : null}
+            </motion.button>
+          )}
           <motion.button whileTap={{ scale: 0.97 }} onClick={() => { if (showPinActions) handleTogglePin(showPinActions.id, !showPinActions.enabled); setShowPinActions(null) }}
             className="w-full flex items-center gap-3 p-3.5 rounded-[14px] bg-slate text-left">
             <EyeOff size={18} className="text-mist" />
@@ -458,6 +492,13 @@ export default function Dashboard() {
         pin={qrPin}
         agent={activeUser}
       />
+
+      <OpenHouseEditor
+        isOpen={!!openHousePin}
+        onClose={() => setOpenHousePin(null)}
+        pin={openHousePin}
+        onSave={handleSaveOpenHouse}
+      />
     </>
   )
 
@@ -468,6 +509,7 @@ export default function Dashboard() {
     const NAV_ITEMS: { id: DashTab; label: string; icon: typeof MapPin }[] = [
       { id: 'plot', label: 'My Reelst', icon: MapPin },
       { id: 'insights', label: 'Insights', icon: BarChart3 },
+      { id: 'inbox', label: 'Inbox', icon: Inbox },
       { id: 'audience', label: 'Connected', icon: Link2 },
       { id: 'settings', label: 'Settings', icon: Settings },
     ]
@@ -559,7 +601,7 @@ export default function Dashboard() {
           {/* Top bar */}
           <div className="shrink-0 flex items-center justify-between px-8 h-[64px] border-b border-border-light bg-ivory">
             <h1 className="text-[20px] font-bold text-ink tracking-tight">
-              {activeTab === 'plot' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'audience' ? 'Connected' : 'Settings'}
+              {activeTab === 'plot' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'inbox' ? 'Inbox' : activeTab === 'audience' ? 'Connected' : 'Settings'}
             </h1>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 bg-warm-white border border-border-light rounded-full pl-4 pr-1.5 py-1.5">
@@ -628,7 +670,7 @@ export default function Dashboard() {
             <Avatar src={activeUser.photoURL} name={activeUser.displayName || 'Agent'} size={36} />
             <div>
               <p className="text-[16px] font-bold text-ink tracking-tight">
-                {activeTab === 'plot' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'audience' ? 'Connected' : 'Settings'}
+                {activeTab === 'plot' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'inbox' ? 'Inbox' : activeTab === 'audience' ? 'Connected' : 'Settings'}
               </p>
               <p className="text-[12px] text-smoke">@{activeUser.username || 'you'}</p>
             </div>
@@ -652,7 +694,7 @@ export default function Dashboard() {
         tabs={[
           { id: 'plot', label: 'My Reelst', icon: <MapPin size={20} /> },
           { id: 'insights', label: 'Insights', icon: <BarChart3 size={20} /> },
-          { id: 'audience', label: 'Connected', icon: <Link2 size={20} /> },
+          { id: 'inbox', label: 'Inbox', icon: <Inbox size={20} /> },
           { id: 'settings', label: 'More', icon: <Settings size={20} /> },
         ]}
         active={activeTab}

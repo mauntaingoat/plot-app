@@ -72,7 +72,14 @@ export const MOCK_PINS_CAROLINA: Pin[] = [
     photos: ['https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&h=600&fit=crop', 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop', 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=600&fit=crop'],
     description: 'Stunning waterfront condo in the heart of Brickell. Floor-to-ceiling windows with panoramic bay views.',
     status: 'active', daysOnMarket: 14, mlsNumber: 'A11234567',
-    openHouse: { date: '2026-04-05', startTime: '2:00 PM', endTime: '5:00 PM' }, isLive: false,
+    openHouse: {
+      sessions: [
+        { id: 'oh_1_a', date: '2026-04-12', startTime: '14:00', endTime: '17:00' },
+        { id: 'oh_1_b', date: '2026-04-13', startTime: '13:00', endTime: '16:00' },
+      ],
+      recurringWeeks: 0,
+    },
+    isLive: false,
     content: makeContent([
       { type: 'reel', caption: 'Walk through this stunning Brickell waterfront condo with me.', thumbnailUrl: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400&h=700&fit=crop', duration: 45, views: 12400, saves: 342 },
       { type: 'story', caption: 'Just listed! Open house this Saturday 2-5 PM.', thumbnailUrl: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400&h=700&fit=crop', views: 2800, saves: 56 },
@@ -196,8 +203,14 @@ export function getMockPins(agentId: string): Pin[] {
 
 export function getAllContent(pins: Pin[]): { content: ContentItem; pin: Pin }[] {
   const items: { content: ContentItem; pin: Pin }[] = []
+  const now = Date.now()
   for (const pin of pins) {
-    for (const c of pin.content) items.push({ content: c, pin })
+    for (const c of pin.content) {
+      // Hide content scheduled for the future from the public feed
+      const publishMs = (c.publishAt as any)?.toMillis?.() ?? null
+      if (publishMs != null && publishMs > now) continue
+      items.push({ content: c, pin })
+    }
   }
   items.sort((a, b) => b.content.createdAt.toMillis() - a.content.createdAt.toMillis())
   return items

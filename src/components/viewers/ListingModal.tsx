@@ -1,11 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, useMotionValue, animate, useDragControls } from 'framer-motion'
-import { X, Bed, Bath, Maximize, MapPin, Calendar, Eye, Bookmark, Share2, Phone, ChevronLeft, ChevronRight } from 'lucide-react'
+import { X, Bed, Bath, Maximize, MapPin, Eye, Bookmark, Share2, Phone, ChevronLeft, ChevronRight, CalendarCheck } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { formatPrice } from '@/lib/firestore'
 import { useSaves } from '@/hooks/useSaves'
+import { OpenHouseBlock } from '@/components/listing/OpenHouseBlock'
+import { ShowingRequestSheet } from '@/components/listing/ShowingRequestSheet'
+import { publicContent } from '@/lib/contentVisibility'
 import type { Pin, ForSalePin, SoldPin, ContentItem, UserDoc } from '@/lib/types'
 
 interface ListingModalProps {
@@ -90,6 +93,7 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
   const [activeTab, setActiveTab] = useState<'content' | 'listing'>('content')
   const [mounted, setMounted] = useState(true)
   const [visible, setVisible] = useState(false)
+  const [showShowingRequest, setShowShowingRequest] = useState(false)
   const closingRef = useRef(false)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
@@ -215,7 +219,10 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
 // ── Content Tab: full-screen vertical feed ──
 
 function ContentTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, onAuthRequired }: { pin: Pin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void }) {
-  if (pin.content.length === 0) {
+  // Filter out content scheduled for the future — public should never see it
+  const visibleContent = publicContent(pin)
+
+  if (visibleContent.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center bg-midnight">
         <div className="text-center px-6">
@@ -230,7 +237,7 @@ function ContentTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
   if (embedded) {
     return (
       <>
-        {pin.content.map((content) => (
+        {visibleContent.map((content) => (
           <ContentCard key={content.id} content={content} pin={pin} agent={agent} isPreview={isPreview} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
         ))}
       </>
@@ -239,7 +246,7 @@ function ContentTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
 
   return (
     <div className="flex-1 overflow-y-auto bg-midnight" style={{ scrollSnapType: 'y mandatory', overscrollBehavior: 'none' }}>
-      {pin.content.map((content) => (
+      {visibleContent.map((content) => (
         <ContentCard key={content.id} content={content} pin={pin} agent={agent} isPreview={isPreview} isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
       ))}
     </div>
@@ -395,12 +402,7 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
         )}
         <p className="text-[14px] text-mist flex items-center gap-1.5"><MapPin size={13} className="text-ghost" /> {pin.address}</p>
 
-        {'openHouse' in pin && pin.openHouse && (
-          <div className="bg-open-amber/10 rounded-[14px] px-4 py-3 flex items-center gap-2">
-            <Calendar size={16} className="text-open-amber" />
-            <div><p className="text-[13px] font-semibold text-open-amber">Open House</p><p className="text-[12px] text-mist">{pin.openHouse.date} · {pin.openHouse.startTime} - {pin.openHouse.endTime}</p></div>
-          </div>
-        )}
+        {pin.type === 'for_sale' && <OpenHouseBlock pin={pin as ForSalePin} agent={agent} />}
 
         <div className="flex items-center gap-3">
           {[
@@ -429,14 +431,35 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
           <div><h3 className="text-[14px] font-bold text-white mb-2">About this property</h3><p className="text-[14px] text-mist leading-relaxed">{pin.description}</p></div>
         )}
 
-        <div className="bg-slate rounded-[18px] p-4 flex items-center gap-3">
-          <Avatar src={agent.photoURL} name={agent.displayName} size={48} />
-          <div className="flex-1 min-w-0"><p className="text-[15px] font-bold text-white">{agent.displayName}</p>{agent.brokerage && <p className="text-[12px] text-ghost">{agent.brokerage}</p>}</div>
-          <Button variant="primary" size="sm" icon={<Phone size={14} />} disabled={isPreview} onClick={!isPreview ? requireAuth : undefined}>Contact</Button>
+        <div className="bg-slate rounded-[18px] p-4 space-y-3">
+          <div className="flex items-center gap-3">
+            <Avatar src={agent.photoURL} name={agent.displayName} size={48} />
+            <div className="flex-1 min-w-0"><p className="text-[15px] font-bold text-white">{agent.displayName}</p>{agent.brokerage && <p className="text-[12px] text-ghost">{agent.brokerage}</p>}</div>
+            <Button variant="glass" size="sm" icon={<Phone size={14} />} disabled={isPreview} onClick={!isPreview ? requireAuth : undefined}>Contact</Button>
+          </div>
+          {pin.type === 'for_sale' && (
+            <Button
+              variant="primary"
+              size="md"
+              fullWidth
+              icon={<CalendarCheck size={15} />}
+              disabled={isPreview}
+              onClick={!isPreview ? () => setShowShowingRequest(true) : undefined}
+            >
+              Request a Showing
+            </Button>
+          )}
         </div>
 
         <div className="h-8" />
       </div>
+
+      <ShowingRequestSheet
+        isOpen={showShowingRequest}
+        onClose={() => setShowShowingRequest(false)}
+        pin={pin}
+        agent={agent}
+      />
     </div>
   )
 }

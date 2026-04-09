@@ -5,7 +5,7 @@ import {
   type DocumentData, type Unsubscribe,
 } from 'firebase/firestore'
 import { db, firebaseConfigured } from '@/config/firebase'
-import type { UserDoc, Pin, ContentItem, Coordinates, PinType } from '@/lib/types'
+import type { UserDoc, Pin, ContentItem, Coordinates, PinType, ShowingRequest } from '@/lib/types'
 
 // ══════════════════════════════════════════
 // USERS
@@ -269,6 +269,56 @@ export async function getSharedMap(shareId: string): Promise<{ shareId: string; 
     displayName: data.displayName,
     pinIds: data.pinIds || [],
   }
+}
+
+// ══════════════════════════════════════════
+// SHOWING REQUESTS (lead capture)
+// ══════════════════════════════════════════
+
+export async function createShowingRequest(
+  data: Omit<ShowingRequest, 'id' | 'createdAt' | 'status'>,
+): Promise<string> {
+  if (!db) {
+    // Demo fallback — store in localStorage so the agent inbox demo still works
+    const id = `req_${Date.now()}`
+    const list = JSON.parse(localStorage.getItem('reelst_showing_requests') || '[]')
+    list.push({ ...data, id, status: 'new', createdAt: { toMillis: () => Date.now() } })
+    localStorage.setItem('reelst_showing_requests', JSON.stringify(list))
+    return id
+  }
+  const ref = await addDoc(collection(db, 'showing_requests'), {
+    ...data,
+    status: 'new',
+    createdAt: serverTimestamp(),
+  })
+  return ref.id
+}
+
+export async function listShowingRequests(agentId: string): Promise<ShowingRequest[]> {
+  if (!db) {
+    const list = JSON.parse(localStorage.getItem('reelst_showing_requests') || '[]')
+    return list.filter((r: ShowingRequest) => r.agentId === agentId)
+  }
+  const q = query(
+    collection(db, 'showing_requests'),
+    where('agentId', '==', agentId),
+    orderBy('createdAt', 'desc'),
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as ShowingRequest))
+}
+
+export async function updateShowingRequestStatus(
+  requestId: string,
+  status: ShowingRequest['status'],
+) {
+  if (!db) {
+    const list = JSON.parse(localStorage.getItem('reelst_showing_requests') || '[]')
+    const updated = list.map((r: ShowingRequest) => (r.id === requestId ? { ...r, status } : r))
+    localStorage.setItem('reelst_showing_requests', JSON.stringify(updated))
+    return
+  }
+  await updateDoc(doc(db, 'showing_requests', requestId), { status })
 }
 
 // ══════════════════════════════════════════

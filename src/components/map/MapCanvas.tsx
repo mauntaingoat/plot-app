@@ -71,7 +71,7 @@ function pinsToGeoJSON(pins: Pin[]) {
         : priceK || ''
       // Check for live or open house indicators
       const isLive = pin.type === 'for_sale' && 'isLive' in pin && pin.isLive
-      const hasOpenHouse = pin.type === 'for_sale' && 'openHouse' in pin && pin.openHouse
+      const hasOpenHouse = pin.type === 'for_sale' && 'openHouse' in pin && !!pin.openHouse?.sessions?.length
       return {
         type: 'Feature' as const, id: pin.id,
         geometry: { type: 'Point' as const, coordinates: [lng, lat] },
@@ -506,7 +506,7 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       const img = pinImages[idx] || agentImg
 
       const isLive = pin.type === 'for_sale' && 'isLive' in pin && pin.isLive
-      const hasOpenHouse = pin.type === 'for_sale' && 'openHouse' in pin && pin.openHouse
+      const hasOpenHouse = pin.type === 'for_sale' && 'openHouse' in pin && !!pin.openHouse?.sessions?.length
 
       // Queue animation frame generation (non-blocking)
       if (hasOpenHouse) {

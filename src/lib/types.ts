@@ -65,14 +65,41 @@ export interface ContentItem {
   createdAt: Timestamp
   views: number
   saves: number
+  publishAt?: Timestamp | null // if set + in the future, content is hidden from the public until then
 }
 
 // ── Open house schedule ──
 
+export interface OpenHouseSession {
+  id: string
+  date: string // YYYY-MM-DD
+  startTime: string // 24h "HH:MM"
+  endTime: string // 24h "HH:MM"
+}
+
 export interface OpenHouse {
-  date: string // ISO date
-  startTime: string // "2:00 PM"
-  endTime: string // "5:00 PM"
+  sessions: OpenHouseSession[]
+  // Repeat the first session weekly for N additional weeks (0 = no recurrence)
+  recurringWeeks?: number
+}
+
+// ── Showing request (lead capture from a listing) ──
+
+export type ShowingRequestStatus = 'new' | 'read' | 'scheduled' | 'closed'
+
+export interface ShowingRequest {
+  id: string
+  agentId: string
+  pinId: string
+  pinAddress: string
+  visitorName: string
+  visitorEmail: string
+  visitorPhone: string
+  preferredDate: string // YYYY-MM-DD
+  preferredTime: string // HH:MM 24h
+  note: string
+  status: ShowingRequestStatus
+  createdAt: Timestamp
 }
 
 // ── Pin (listing or neighborhood) ──
