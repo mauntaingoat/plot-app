@@ -1,7 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { TrendingUp, Eye, MousePointerClick, Bookmark, Lock, Sparkles, MapPin, Clock, Film, Image, Mic } from 'lucide-react'
-import type { Pin, ContentItem } from '@/lib/types'
+import { TrendingUp, Eye, MousePointerClick, Bookmark, Lock, Sparkles, MapPin, Clock, Film, Image, Radio, CalendarClock } from 'lucide-react'
+import type { Pin } from '@/lib/types'
 
 // ── Per-Pin Performance Breakdown ──
 interface PinBreakdownProps {
@@ -12,21 +12,28 @@ interface PinBreakdownProps {
 export function PinBreakdown({ pins, metric = 'views' }: PinBreakdownProps) {
   const sorted = useMemo(() => [...pins].sort((a, b) => b[metric] - a[metric]).slice(0, 10), [pins, metric])
   const max = sorted[0]?.[metric] || 1
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
 
   const Icon = metric === 'views' ? Eye : metric === 'taps' ? MousePointerClick : Bookmark
 
   return (
-    <div className="bg-warm-white rounded-[18px] border border-border-light p-5">
+    <div className="bg-warm-white rounded-[18px] border border-border-light p-5 relative">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-[14px] font-bold text-ink">Top Pins by {metric.charAt(0).toUpperCase() + metric.slice(1)}</h3>
         <Icon size={14} className="text-smoke" />
       </div>
-      <div className="space-y-2.5">
+      <div className="space-y-2.5" onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}>
         {sorted.map((pin, i) => {
           const value = pin[metric]
           const pct = (value / max) * 100
           return (
-            <div key={pin.id} className="flex items-center gap-3">
+            <div
+              key={pin.id}
+              className="flex items-center gap-3 cursor-pointer"
+              onMouseEnter={() => setHoverIdx(i)}
+              onMouseLeave={() => setHoverIdx(null)}
+            >
               <span className="text-[11px] font-bold text-tangerine/40 font-mono w-5 text-right">{i + 1}</span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
@@ -47,6 +54,22 @@ export function PinBreakdown({ pins, metric = 'views' }: PinBreakdownProps) {
         })}
         {sorted.length === 0 && <p className="text-[12px] text-smoke text-center py-4">No pins yet.</p>}
       </div>
+      {/* Cursor-following tooltip */}
+      {hoverIdx !== null && sorted[hoverIdx] && (
+        <div
+          className="fixed pointer-events-none z-[100] px-3 py-2 bg-ink text-warm-white rounded-[10px] shadow-xl"
+          style={{ left: mousePos.x + 12, top: mousePos.y + 12 }}
+        >
+          <p className="text-[11px] font-bold truncate max-w-[220px]">{sorted[hoverIdx].address}</p>
+          <div className="flex items-center gap-3 mt-1">
+            <span className="text-[10px] opacity-70">{sorted[hoverIdx].views.toLocaleString()} views</span>
+            <span className="text-[10px] opacity-70">·</span>
+            <span className="text-[10px] opacity-70">{sorted[hoverIdx].taps.toLocaleString()} taps</span>
+            <span className="text-[10px] opacity-70">·</span>
+            <span className="text-[10px] opacity-70">{sorted[hoverIdx].saves.toLocaleString()} saves</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -57,21 +80,40 @@ interface ContentConversionProps {
 }
 
 export function ContentConversion({ pins }: ContentConversionProps) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+
   const stats = useMemo(() => {
     const byType: Record<string, { count: number; views: number; saves: number }> = {
       reel: { count: 0, views: 0, saves: 0 },
       story: { count: 0, views: 0, saves: 0 },
-      video_note: { count: 0, views: 0, saves: 0 },
+      live: { count: 0, views: 0, saves: 0 },
       photo: { count: 0, views: 0, saves: 0 },
     }
+    let openHouseCount = 0
+    let openHouseViews = 0
+    let openHouseSaves = 0
+
     for (const pin of pins) {
+      // Count open houses as a category (from for_sale pins with openHouse set)
+      if (pin.type === 'for_sale' && 'openHouse' in pin && pin.openHouse) {
+        openHouseCount += 1
+        openHouseViews += pin.views
+        openHouseSaves += pin.saves
+      }
       for (const c of pin.content) {
+        if (c.type === 'video_note') continue // skip — removed
         const t = byType[c.type] || (byType[c.type] = { count: 0, views: 0, saves: 0 })
         t.count += 1
         t.views += c.views
         t.saves += c.saves
       }
     }
+
+    if (openHouseCount > 0) {
+      byType.open_house = { count: openHouseCount, views: openHouseViews, saves: openHouseSaves }
+    }
+
     return Object.entries(byType).map(([type, s]) => ({
       type,
       ...s,
@@ -82,17 +124,18 @@ export function ContentConversion({ pins }: ContentConversionProps) {
   const TYPE_META: Record<string, { label: string; icon: typeof Film; color: string }> = {
     reel: { label: 'Reels', icon: Film, color: '#FF6B3D' },
     story: { label: 'Stories', icon: Image, color: '#A855F7' },
-    video_note: { label: 'Video Notes', icon: Mic, color: '#3B82F6' },
+    live: { label: 'Live Streams', icon: Radio, color: '#FF3B30' },
     photo: { label: 'Photos', icon: Image, color: '#34C759' },
+    open_house: { label: 'Open Houses', icon: CalendarClock, color: '#FFAA00' },
   }
 
   return (
-    <div className="bg-warm-white rounded-[18px] border border-border-light p-5">
+    <div className="bg-warm-white rounded-[18px] border border-border-light p-5 relative">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-[14px] font-bold text-ink">Content Performance</h3>
         <span className="text-[11px] text-smoke">By type</span>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-3" onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}>
         {stats.map((s, i) => {
           const meta = TYPE_META[s.type] || { label: s.type, icon: Film, color: '#6B7280' }
           const Icon = meta.icon
@@ -102,7 +145,9 @@ export function ContentConversion({ pins }: ContentConversionProps) {
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="flex items-center gap-3 bg-cream rounded-[14px] p-3"
+              onMouseEnter={() => setHoverIdx(i)}
+              onMouseLeave={() => setHoverIdx(null)}
+              className="flex items-center gap-3 bg-cream rounded-[14px] p-3 cursor-pointer hover:bg-pearl transition-colors"
             >
               <div className="w-9 h-9 rounded-[10px] flex items-center justify-center" style={{ background: `${meta.color}15` }}>
                 <Icon size={16} style={{ color: meta.color }} />
@@ -123,6 +168,21 @@ export function ContentConversion({ pins }: ContentConversionProps) {
         })}
         {stats.length === 0 && <p className="text-[12px] text-smoke text-center py-4">No content yet.</p>}
       </div>
+      {hoverIdx !== null && stats[hoverIdx] && (
+        <div
+          className="fixed pointer-events-none z-[100] px-3 py-2 bg-ink text-warm-white rounded-[10px] shadow-xl"
+          style={{ left: mousePos.x + 12, top: mousePos.y + 12 }}
+        >
+          <p className="text-[11px] font-bold">{TYPE_META[stats[hoverIdx].type]?.label || stats[hoverIdx].type}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[10px] opacity-70">{stats[hoverIdx].count} items</span>
+            <span className="text-[10px] opacity-70">·</span>
+            <span className="text-[10px] opacity-70">{stats[hoverIdx].views.toLocaleString()} views</span>
+            <span className="text-[10px] opacity-70">·</span>
+            <span className="text-[10px] opacity-70">{stats[hoverIdx].saves.toLocaleString()} saves</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -133,28 +193,35 @@ interface GeoHeatmapProps {
 }
 
 export function GeoHeatmap({ pins }: GeoHeatmapProps) {
-  // Mock data — would come from view tracking with viewer location
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+
   const cities = useMemo(() => {
     if (pins.length === 0) return []
     return [
-      { city: 'Miami, FL', viewers: 1240, pct: 100 },
-      { city: 'Fort Lauderdale, FL', viewers: 680, pct: 55 },
-      { city: 'New York, NY', viewers: 420, pct: 34 },
-      { city: 'Los Angeles, CA', viewers: 280, pct: 23 },
-      { city: 'Chicago, IL', viewers: 190, pct: 15 },
-      { city: 'Boston, MA', viewers: 145, pct: 12 },
+      { city: 'Miami, FL', viewers: 1240, pct: 100, percentage: 38 },
+      { city: 'Fort Lauderdale, FL', viewers: 680, pct: 55, percentage: 21 },
+      { city: 'New York, NY', viewers: 420, pct: 34, percentage: 13 },
+      { city: 'Los Angeles, CA', viewers: 280, pct: 23, percentage: 9 },
+      { city: 'Chicago, IL', viewers: 190, pct: 15, percentage: 6 },
+      { city: 'Boston, MA', viewers: 145, pct: 12, percentage: 4 },
     ]
   }, [pins])
 
   return (
-    <div className="bg-warm-white rounded-[18px] border border-border-light p-5">
+    <div className="bg-warm-white rounded-[18px] border border-border-light p-5 relative">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-[14px] font-bold text-ink">Top Viewer Cities</h3>
         <MapPin size={14} className="text-smoke" />
       </div>
-      <div className="space-y-2.5">
+      <div className="space-y-2.5" onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}>
         {cities.map((c, i) => (
-          <div key={c.city} className="flex items-center gap-3">
+          <div
+            key={c.city}
+            className="flex items-center gap-3 cursor-pointer"
+            onMouseEnter={() => setHoverIdx(i)}
+            onMouseLeave={() => setHoverIdx(null)}
+          >
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-[12px] font-semibold text-ink truncate">{c.city}</p>
@@ -173,6 +240,15 @@ export function GeoHeatmap({ pins }: GeoHeatmapProps) {
         ))}
         {cities.length === 0 && <p className="text-[12px] text-smoke text-center py-4">No view data yet.</p>}
       </div>
+      {hoverIdx !== null && cities[hoverIdx] && (
+        <div
+          className="fixed pointer-events-none z-[100] px-3 py-2 bg-ink text-warm-white rounded-[10px] shadow-xl"
+          style={{ left: mousePos.x + 12, top: mousePos.y + 12 }}
+        >
+          <p className="text-[11px] font-bold">{cities[hoverIdx].city}</p>
+          <p className="text-[10px] opacity-70 mt-0.5">{cities[hoverIdx].viewers.toLocaleString()} viewers · {cities[hoverIdx].percentage}% of audience</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -183,10 +259,12 @@ interface TimeOfDayProps {
 }
 
 export function TimeOfDay({ pins }: TimeOfDayProps) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+
   // Mock data — 24 hour engagement curve. Real impl would aggregate from event log.
   const hours = useMemo(() => {
     if (pins.length === 0) return Array(24).fill(0)
-    // Bell curve peaking at 7-9pm
     return Array.from({ length: 24 }, (_, h) => {
       const peak = 20
       const dist = Math.abs(h - peak)
@@ -198,15 +276,16 @@ export function TimeOfDay({ pins }: TimeOfDayProps) {
 
   const max = Math.max(...hours, 1)
   const peakHour = hours.indexOf(Math.max(...hours))
+  const CHART_HEIGHT = 120
 
   const formatHour = (h: number) => {
-    if (h === 0) return '12a'
-    if (h === 12) return '12p'
-    return h > 12 ? `${h - 12}p` : `${h}a`
+    if (h === 0) return '12 AM'
+    if (h === 12) return '12 PM'
+    return h > 12 ? `${h - 12} PM` : `${h} AM`
   }
 
   return (
-    <div className="bg-warm-white rounded-[18px] border border-border-light p-5">
+    <div className="bg-warm-white rounded-[18px] border border-border-light p-5 relative">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-[14px] font-bold text-ink">When viewers are active</h3>
@@ -214,17 +293,33 @@ export function TimeOfDay({ pins }: TimeOfDayProps) {
         </div>
         <Clock size={14} className="text-smoke" />
       </div>
-      <div className="flex items-end gap-[2px] h-[100px]">
+      <div
+        className="relative flex items-end gap-[3px]"
+        style={{ height: CHART_HEIGHT }}
+        onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
+      >
         {hours.map((value, i) => {
-          const h = (value / max) * 100
+          const barHeightPx = Math.max(4, (value / max) * CHART_HEIGHT)
           const isPeak = i === peakHour
+          const isHovered = hoverIdx === i
           return (
-            <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1">
+            <div
+              key={i}
+              className="flex-1 flex flex-col items-center justify-end cursor-pointer"
+              onMouseEnter={() => setHoverIdx(i)}
+              onMouseLeave={() => setHoverIdx(null)}
+              style={{ height: '100%' }}
+            >
               <motion.div
                 initial={{ height: 0 }}
-                animate={{ height: `${h}%` }}
+                animate={{ height: barHeightPx }}
                 transition={{ duration: 0.5, delay: i * 0.015, ease: [0.25, 0.1, 0.25, 1] }}
-                className={`w-full rounded-t-[3px] min-h-[2px] ${isPeak ? 'bg-gradient-to-t from-tangerine to-ember' : 'bg-tangerine/25'}`}
+                className="w-full rounded-t-[3px]"
+                style={{
+                  background: isHovered || isPeak
+                    ? 'linear-gradient(to top, #E8522A, #FF6B3D)'
+                    : 'rgba(255, 107, 61, 0.3)',
+                }}
               />
             </div>
           )
@@ -237,6 +332,15 @@ export function TimeOfDay({ pins }: TimeOfDayProps) {
         <span>6p</span>
         <span>12a</span>
       </div>
+      {hoverIdx !== null && (
+        <div
+          className="fixed pointer-events-none z-[100] px-3 py-2 bg-ink text-warm-white rounded-[10px] shadow-xl"
+          style={{ left: mousePos.x + 12, top: mousePos.y + 12 }}
+        >
+          <p className="text-[11px] font-bold">{formatHour(hoverIdx)}</p>
+          <p className="text-[10px] opacity-70 mt-0.5">{hours[hoverIdx]} active viewers</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -247,7 +351,9 @@ interface FollowerGrowthProps {
 }
 
 export function FollowerGrowth({ currentFollowers }: FollowerGrowthProps) {
-  // Mock data — 30 day growth
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+
   const data = useMemo(() => {
     const days = 30
     const start = Math.max(0, currentFollowers - Math.round(currentFollowers * 0.4))
@@ -264,7 +370,6 @@ export function FollowerGrowth({ currentFollowers }: FollowerGrowthProps) {
   const growth = currentFollowers - data[0]
   const growthPct = data[0] > 0 ? ((growth / data[0]) * 100).toFixed(1) : '—'
 
-  // SVG path
   const width = 100
   const height = 100
   const points = data.map((v, i) => {
@@ -273,8 +378,17 @@ export function FollowerGrowth({ currentFollowers }: FollowerGrowthProps) {
     return `${x},${y}`
   }).join(' ')
 
+  // Helper for chart hover — figure out which day index the cursor is over
+  const handleMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const xPct = (e.clientX - rect.left) / rect.width
+    const idx = Math.round(xPct * (data.length - 1))
+    setHoverIdx(Math.max(0, Math.min(data.length - 1, idx)))
+    setMousePos({ x: e.clientX, y: e.clientY })
+  }
+
   return (
-    <div className="bg-warm-white rounded-[18px] border border-border-light p-5">
+    <div className="bg-warm-white rounded-[18px] border border-border-light p-5 relative">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-[14px] font-bold text-ink">Follower Growth</h3>
@@ -285,7 +399,13 @@ export function FollowerGrowth({ currentFollowers }: FollowerGrowthProps) {
         <TrendingUp size={14} className="text-sold-green" />
       </div>
       <div className="relative h-[120px]">
-        <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="w-full h-full">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          preserveAspectRatio="none"
+          className="w-full h-full cursor-crosshair"
+          onMouseMove={handleMove}
+          onMouseLeave={() => setHoverIdx(null)}
+        >
           <defs>
             <linearGradient id="grad-followers" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#FF6B3D" stopOpacity="0.4" />
@@ -305,12 +425,44 @@ export function FollowerGrowth({ currentFollowers }: FollowerGrowthProps) {
             points={points}
             vectorEffect="non-scaling-stroke"
           />
+          {hoverIdx !== null && (
+            <>
+              <line
+                x1={(hoverIdx / (data.length - 1)) * width}
+                y1="0"
+                x2={(hoverIdx / (data.length - 1)) * width}
+                y2={height}
+                stroke="#1A1A1A"
+                strokeWidth="0.4"
+                strokeDasharray="1,1"
+                vectorEffect="non-scaling-stroke"
+              />
+              <circle
+                cx={(hoverIdx / (data.length - 1)) * width}
+                cy={height - ((data[hoverIdx] - min) / range) * height}
+                r="1.5"
+                fill="#FF6B3D"
+                stroke="white"
+                strokeWidth="0.5"
+                vectorEffect="non-scaling-stroke"
+              />
+            </>
+          )}
         </svg>
       </div>
       <div className="flex items-center justify-between mt-2">
         <span className="text-[10px] text-ash">30 days ago</span>
         <span className="text-[10px] text-ash">Today</span>
       </div>
+      {hoverIdx !== null && (
+        <div
+          className="fixed pointer-events-none z-[100] px-3 py-2 bg-ink text-warm-white rounded-[10px] shadow-xl"
+          style={{ left: mousePos.x + 12, top: mousePos.y + 12 }}
+        >
+          <p className="text-[11px] font-bold">{data[hoverIdx].toLocaleString()} followers</p>
+          <p className="text-[10px] opacity-70 mt-0.5">{30 - hoverIdx} day{30 - hoverIdx !== 1 ? 's' : ''} ago</p>
+        </div>
+      )}
     </div>
   )
 }

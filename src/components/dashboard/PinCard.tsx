@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion'
 import { Eye, MousePointerClick, Bookmark, MapPin, MoreHorizontal } from 'lucide-react'
-import { Badge } from '@/components/ui/Badge'
 import { PIN_CONFIG, type Pin } from '@/lib/types'
 import { formatPrice } from '@/lib/firestore'
 
@@ -51,14 +50,14 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
           {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-          {/* Badge */}
+          {/* Type pill — white bg with colored text for readability */}
           <div className="absolute top-3 left-3">
-            <Badge
-              variant={pin.type === 'sold' ? 'sold' : pin.type === 'neighborhood' ? 'story' : 'listing'}
-              pulse={pin.type === 'for_sale' && 'isLive' in pin && !!pin.isLive}
+            <span
+              className="inline-flex items-center px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-sm text-[11px] font-bold shadow-sm"
+              style={{ color: config.color }}
             >
               {config.label}
-            </Badge>
+            </span>
           </div>
 
           {/* Price pill */}

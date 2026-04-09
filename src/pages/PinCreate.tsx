@@ -51,7 +51,7 @@ export default function PinCreate() {
   // Content items (added during creation)
   const [contentItems, setContentItems] = useState<{ type: string; caption: string; file: File | null; preview: string | null }[]>([])
   const [showAddContent, setShowAddContent] = useState(false)
-  const [newContentType, setNewContentType] = useState<'reel' | 'story' | 'video_note' | 'photo'>('reel')
+  const [newContentType, setNewContentType] = useState<'reel' | 'story' | 'photo'>('reel')
   const [newCaption, setNewCaption] = useState('')
   const [newFile, setNewFile] = useState<File | null>(null)
   const [newPreview, setNewPreview] = useState<string | null>(null)
@@ -91,7 +91,7 @@ export default function PinCreate() {
     }
 
     // Gate: video length
-    if (newFile && (newContentType === 'reel' || newContentType === 'video_note')) {
+    if (newFile && newContentType === 'reel') {
       const duration = await getVideoDuration(newFile).catch(() => 0)
       const gate = canUploadVideo(userDoc, duration)
       if (!gate.allowed) {
@@ -429,10 +429,10 @@ export default function PinCreate() {
               {showAddContent ? (
                 <div className="bg-cream rounded-[18px] p-4 mb-6 space-y-3">
                   <div className="flex gap-2">
-                    {(['reel', 'story', 'photo', 'video_note'] as const).map((t) => (
+                    {(['reel', 'story', 'photo'] as const).map((t) => (
                       <button key={t} onClick={() => setNewContentType(t)}
                         className={`flex-1 py-2 rounded-[10px] text-[11px] font-semibold transition-all ${newContentType === t ? 'bg-tangerine text-white' : 'bg-pearl text-smoke'}`}>
-                        {t === 'video_note' ? 'Note' : t.charAt(0).toUpperCase() + t.slice(1)}
+                        {t.charAt(0).toUpperCase() + t.slice(1)}
                       </button>
                     ))}
                   </div>
@@ -440,12 +440,10 @@ export default function PinCreate() {
                     {newContentType === 'reel' && 'Reels are permanent vertical videos showcasing the property.'}
                     {newContentType === 'story' && 'Stories disappear after 24 hours. Great for open house announcements, quick updates.'}
                     {newContentType === 'photo' && 'Upload professional photos to showcase the property. Great for photo carousels.'}
-                    {newContentType === 'video_note' && 'A personal video message about why you love this property. Direct-to-camera.'}
                   </p>
 
                   <input ref={fileRef} type="file"
-                    accept={newContentType === 'video_note' ? 'video/*' : newContentType === 'photo' ? 'image/*' : 'image/*,video/*'}
-                    capture={newContentType === 'video_note' ? 'user' : undefined}
+                    accept={newContentType === 'photo' ? 'image/*' : 'image/*,video/*'}
                     onChange={handleMediaFile} className="hidden" />
 
                   {newPreview ? (
@@ -463,9 +461,9 @@ export default function PinCreate() {
                   ) : (
                     <button onClick={() => fileRef.current?.click()}
                       className="w-full py-8 border-2 border-dashed border-pearl rounded-[12px] flex flex-col items-center gap-1 text-smoke hover:bg-pearl/50 cursor-pointer">
-                      {newContentType === 'video_note' ? <Camera size={22} /> : <Upload size={22} />}
+                      <Upload size={22} />
                       <span className="text-[12px] font-medium">
-                        {newContentType === 'video_note' ? 'Record with camera' : newContentType === 'photo' ? 'Upload photo' : 'Upload photo or video'}
+                        {newContentType === 'photo' ? 'Upload photo' : 'Upload photo or video'}
                       </span>
                     </button>
                   )}

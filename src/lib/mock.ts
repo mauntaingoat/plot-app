@@ -14,7 +14,7 @@ export const MOCK_AGENTS: UserDoc[] = [
     photoURL: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=face',
     bio: 'Miami luxury specialist. Helping families find their dream home in South Florida.',
     brokerage: 'Compass', licenseNumber: 'SL3489201', licenseState: 'FL',
-    platforms: [{ id: 'instagram', username: 'carolina.reyes.re' }, { id: 'tiktok', username: 'carolinasellsmiami' }, { id: 'zillow', username: 'carolina-reyes' }],
+    platforms: [{ id: 'instagram', username: 'carolina.reyes.re' }, { id: 'tiktok', username: 'carolinasellsmiami' }, { id: 'youtube', username: 'CarolinaReyesRE' }, { id: 'facebook', username: 'CarolinaReyesRealEstate' }],
     licenseName: 'Carolina M. Reyes', verificationStatus: 'verified' as const, fairHousingAccepted: true, dataSecurityAccepted: true, emailVerified: true, tier: 'pro' as const, brandColor: null,
     followerCount: 1247, followingCount: 83, onboardingComplete: true, onboardingStep: 8, setupPercent: 90,
   },
@@ -40,12 +40,9 @@ export const MOCK_AGENTS: UserDoc[] = [
   },
 ]
 
+// Dashboard logged-in user — Carolina (pro tier) for demoing advanced analytics
 export const MOCK_CURRENT_USER: UserDoc = {
-  uid: 'agent-mau', email: 'mau@reelst.co', role: 'agent', agentType: 'agent',
-  createdAt: daysAgo(1), username: 'mau', displayName: 'Mau Romano',
-  photoURL: null, bio: '', brokerage: null, licenseNumber: null, licenseState: null, licenseName: null,
-  verificationStatus: 'unverified', fairHousingAccepted: false, dataSecurityAccepted: false, emailVerified: false, tier: 'free', brandColor: null,
-  platforms: [], followerCount: 0, followingCount: 0, onboardingComplete: true, onboardingStep: 8, setupPercent: 20,
+  ...MOCK_AGENTS[0],
 }
 
 // ── Content helper ──
@@ -179,6 +176,7 @@ export const MOCK_PINS_CAROLINA: Pin[] = [
     neighborhoodId: 'key-biscayne', geohash: 'dhwf3m', enabled: true,
     createdAt: daysAgo(8), updatedAt: daysAgo(2), views: 3200, taps: 198, saves: 67,
     name: 'Key Biscayne', description: 'Island living minutes from downtown. Family-friendly beaches, top schools.',
+    heroPhotoUrl: 'https://images.unsplash.com/photo-1600573472556-e636c2acda9e?w=800&h=600&fit=crop',
     content: makeContent([
       { type: 'reel', caption: 'Why Key Biscayne is Miami\'s best-kept secret for families.', thumbnailUrl: 'https://images.unsplash.com/photo-1600573472556-e636c2acda9e?w=400&h=700&fit=crop', duration: 52, views: 11200, saves: 312 },
     ]),

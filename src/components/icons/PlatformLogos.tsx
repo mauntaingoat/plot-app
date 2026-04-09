@@ -132,11 +132,8 @@ export const PLATFORM_LOGOS: Record<string, typeof InstagramLogo> = {
 export const PLATFORM_LIST = [
   { id: 'instagram', name: 'Instagram' },
   { id: 'tiktok', name: 'TikTok' },
-  { id: 'mls', name: 'MLS' },
-  { id: 'zillow', name: 'Zillow' },
-  { id: 'realtor', name: 'Realtor.com' },
   { id: 'youtube', name: 'YouTube' },
-  { id: 'website', name: 'Personal Site' },
-  { id: 'linkedin', name: 'LinkedIn' },
   { id: 'facebook', name: 'Facebook' },
+  { id: 'linkedin', name: 'LinkedIn' },
+  { id: 'website', name: 'Personal Site' },
 ]

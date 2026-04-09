@@ -54,10 +54,11 @@ export default function Dashboard() {
   const [paywall, setPaywall] = useState<{ open: boolean; reason: string; upgradeTo?: Tier }>({ open: false, reason: '' })
   const isDesktop = useIsDesktop()
 
-  const currentUser = userDoc || (!firebaseConfigured ? MOCK_CURRENT_USER : null)
+  // Use real userDoc if signed in, otherwise fall back to Carolina (mock) for demo
+  const currentUser = userDoc || MOCK_CURRENT_USER
 
-  // Pins with toggle state
-  const [pins, setPins] = useState<Pin[]>(!firebaseConfigured ? MOCK_PINS_CAROLINA : [])
+  // Pins with toggle state — use Carolina's mock pins when there's no real data
+  const [pins, setPins] = useState<Pin[]>(MOCK_PINS_CAROLINA)
 
   const handleTogglePin = useCallback(async (pinId: string, enabled: boolean) => {
     // Gate activation — block if at active pin cap
@@ -90,7 +91,7 @@ export default function Dashboard() {
 
   const chartData = useMemo(() => {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    return days.map((label, i) => ({ label, value: [78, 125, 94, 156, 203, 187, 142][i] }))
+    return days.map((label, i) => ({ label, value: [1240, 1890, 1560, 2340, 3120, 2870, 2180][i] }))
   }, [])
 
   const handleSignOut = () => {
@@ -249,19 +250,29 @@ export default function Dashboard() {
         {/* ═══ AUDIENCE ═══ */}
         {activeTab === 'audience' && (
           <div className={isDesktop ? 'space-y-6' : 'px-5 py-5 space-y-6'}>
-            <div className="bg-cream rounded-[20px] p-6 text-center">
-              <p className="text-[40px] font-extrabold text-ink font-mono">{activeUser.followerCount}</p>
-              <p className="text-[14px] text-smoke font-medium">Total Followers</p>
+            {/* What connected platforms do — info card */}
+            <div className="bg-tangerine-soft rounded-[16px] p-4">
+              <p className="text-[13px] font-bold text-ink mb-2">Connected platforms do two things:</p>
+              <ul className="space-y-1.5">
+                <li className="text-[12px] text-graphite flex items-start gap-2">
+                  <span className="text-tangerine font-bold mt-0.5">1.</span>
+                  <span>Show up on your profile pill so visitors can click into your other channels.</span>
+                </li>
+                <li className="text-[12px] text-graphite flex items-start gap-2">
+                  <span className="text-tangerine font-bold mt-0.5">2.</span>
+                  <span>Let you import content from those channels when creating or updating a listing pin.</span>
+                </li>
+              </ul>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-[16px] font-bold text-ink">Connected Platforms</h3>
+                <h3 className="text-[16px] font-bold text-ink">Your Channels</h3>
                 <Button variant="secondary" size="sm" icon={<Plus size={14} />} onClick={() => setShowAddPlatform(true)}>Add</Button>
               </div>
               {activeUser.platforms.length === 0 ? (
                 <div className="bg-cream rounded-[16px] p-5 text-center">
-                  <p className="text-[14px] text-smoke mb-3">Connect platforms to grow your audience.</p>
+                  <p className="text-[14px] text-smoke mb-3">Connect platforms to bring your existing content into Reelst.</p>
                   <Button variant="primary" size="sm" onClick={() => setShowAddPlatform(true)}>Connect Platform</Button>
                 </div>
               ) : (
@@ -443,7 +454,7 @@ export default function Dashboard() {
     const NAV_ITEMS: { id: DashTab; label: string; icon: typeof MapPin }[] = [
       { id: 'plot', label: 'My Reelst', icon: MapPin },
       { id: 'insights', label: 'Insights', icon: BarChart3 },
-      { id: 'audience', label: 'Audience', icon: Users },
+      { id: 'audience', label: 'Connected', icon: Link2 },
       { id: 'settings', label: 'Settings', icon: Settings },
     ]
 
@@ -534,7 +545,7 @@ export default function Dashboard() {
           {/* Top bar */}
           <div className="shrink-0 flex items-center justify-between px-8 h-[64px] border-b border-border-light bg-ivory">
             <h1 className="text-[20px] font-bold text-ink tracking-tight">
-              {activeTab === 'plot' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'audience' ? 'Audience' : 'Settings'}
+              {activeTab === 'plot' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'audience' ? 'Connected' : 'Settings'}
             </h1>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 bg-warm-white border border-border-light rounded-full pl-4 pr-1.5 py-1.5">
@@ -603,7 +614,7 @@ export default function Dashboard() {
             <Avatar src={activeUser.photoURL} name={activeUser.displayName || 'Agent'} size={36} />
             <div>
               <p className="text-[16px] font-bold text-ink tracking-tight">
-                {activeTab === 'plot' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'audience' ? 'Audience' : 'Settings'}
+                {activeTab === 'plot' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'audience' ? 'Connected' : 'Settings'}
               </p>
               <p className="text-[12px] text-smoke">@{activeUser.username || 'you'}</p>
             </div>
@@ -627,7 +638,7 @@ export default function Dashboard() {
         tabs={[
           { id: 'plot', label: 'My Reelst', icon: <MapPin size={20} /> },
           { id: 'insights', label: 'Insights', icon: <BarChart3 size={20} /> },
-          { id: 'audience', label: 'Audience', icon: <Users size={20} /> },
+          { id: 'audience', label: 'Connected', icon: <Link2 size={20} /> },
           { id: 'settings', label: 'More', icon: <Settings size={20} /> },
         ]}
         active={activeTab}
