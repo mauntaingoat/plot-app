@@ -213,8 +213,20 @@ export default function PinCreate() {
             publishAt: item.publishAt ? Timestamp.fromDate(new Date(item.publishAt)) : null,
           })
         }
+
+        // Compute earliest future publishAt — used as a hint field
+        // for the publishScheduledContent cron Function so it can
+        // skip pins with no due content via a simple <= query.
+        const now = Date.now()
+        const future = contentArray
+          .map((c) => c.publishAt?.toMillis?.() ?? null)
+          .filter((ms): ms is number => ms != null && ms > now)
+        const nextPublishAt = future.length > 0
+          ? Timestamp.fromMillis(Math.min(...future))
+          : null
+
         const { updatePin } = await import('@/lib/firestore')
-        await updatePin(pinId, { content: contentArray } as any)
+        await updatePin(pinId, { content: contentArray, nextPublishAt } as any)
       }
 
       clearTimeout(timeout)
