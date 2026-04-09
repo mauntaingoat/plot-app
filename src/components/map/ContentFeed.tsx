@@ -5,6 +5,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { ListingOnlySheet } from '@/components/viewers/ListingOnlySheet'
 import { type Pin, type UserDoc, type ContentItem } from '@/lib/types'
 import { getAllContent } from '@/lib/mock'
+import { useSaves } from '@/hooks/useSaves'
 
 interface ContentFeedProps {
   pins: Pin[]
@@ -101,8 +102,11 @@ function FeedCard({ content, pin, agent, isPreview, following, onFollowToggle, o
   const [isNearViewport, setIsNearViewport] = useState(false)
   const thumbnailUrl = content.thumbnailUrl || ('heroPhotoUrl' in pin ? pin.heroPhotoUrl : '') || ''
   const isVideo = content.type === 'reel' || content.type === 'live'
+  const isStory = content.type === 'story'
   const neighborhoodName = pin.type === 'neighborhood' && 'name' in pin ? pin.name : pin.neighborhoodId
   const hasOpenHouse = pin.type === 'for_sale' && 'openHouse' in pin && pin.openHouse
+  const { isSaved, toggleSave } = useSaves()
+  const saved = isSaved(pin.id, content.id)
 
   // Lazy load video: only mount when near viewport, preload 200px ahead
   useEffect(() => {
@@ -160,11 +164,14 @@ function FeedCard({ content, pin, agent, isPreview, following, onFollowToggle, o
           </div>
         </div>
 
-        <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
-          onClick={!isPreview ? requireAuth : undefined}
-          className={`flex flex-col items-center gap-0.5 cursor-pointer ${isPreview ? 'opacity-40' : ''}`}>
-          <Bookmark size={26} className="text-white" />
-          <span className="text-[10px] text-white font-semibold">{content.saves}</span>
+        <motion.button
+          whileTap={!isPreview && !isStory ? { scale: 0.75 } : undefined}
+          onClick={!isPreview && !isStory ? () => toggleSave(pin.id, content.id, content.type) : undefined}
+          className={`flex flex-col items-center gap-0.5 ${(isPreview || isStory) ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+          title={isStory ? 'Stories expire and cannot be saved' : undefined}
+        >
+          <Bookmark size={26} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
+          <span className="text-[10px] text-white font-semibold">{content.saves + (saved ? 1 : 0)}</span>
         </motion.button>
 
         <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}

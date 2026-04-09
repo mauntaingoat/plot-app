@@ -18,6 +18,8 @@ import { SidebarNavButton } from '@/components/agent-profile/SidebarNavButton'
 import { useMapStore, applyPropertyFilters } from '@/stores/mapStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAgent, useAgentPins } from '@/hooks/useQueries'
+import { useFollow, useFollowingList } from '@/hooks/useFollow'
+import { useSaves } from '@/hooks/useSaves'
 import { getMockAgent, getMockPins, MOCK_AGENTS } from '@/lib/mock'
 import { firebaseConfigured } from '@/config/firebase'
 import type { UserDoc, Pin } from '@/lib/types'
@@ -51,7 +53,10 @@ export default function AgentProfile() {
   const loading = agentLoading
   const notFound = !agentLoading && !agent
 
-  const [isFollowing, setIsFollowing] = useState(false)
+  // Follow state via hook (Firestore in prod, localStorage in demo)
+  const { isFollowing, toggle: toggleFollow } = useFollow(agent?.uid)
+  const { followingIds } = useFollowingList()
+  const { saves } = useSaves()
   const [viewMode, setViewMode] = useState<'map' | 'feed'>('map')
   const [loadingComplete, setLoadingComplete] = useState(false)
   const [feedExpanded, setFeedExpanded] = useState(false)
@@ -76,6 +81,13 @@ export default function AgentProfile() {
   }, [setSearchParams])
   const [sidebarPanel, setSidebarPanel] = useState<SidebarPanelType>(null)
   const [enabledAgentIds, setEnabledAgentIds] = useState<Set<string>>(new Set())
+
+  // Initialize enabled agents from real follow list (for the Following mode)
+  useEffect(() => {
+    if (followingIds.length > 0) {
+      setEnabledAgentIds(new Set(followingIds))
+    }
+  }, [followingIds])
 
   const { setViewingAgentId, activeFilters, propertyFilters } = useMapStore()
   const { userDoc: currentUser } = useAuthStore()
@@ -113,7 +125,23 @@ export default function AgentProfile() {
 
   // Merge pins based on agent mode
   const visiblePins = useMemo(() => {
-    if (agentMode === 'saved') return [] // TODO: wire up real saved pins from Firestore
+    if (agentMode === 'saved') {
+      // Saved mode: show all pins the user has saved across all agents
+      if (saves.length === 0) return []
+      const allAgentPins: Pin[] = [...allPins]
+      for (const a of MOCK_AGENTS) {
+        allAgentPins.push(...getMockPins(a.uid))
+      }
+      const savedPinIds = new Set(saves.map((s) => s.pinId))
+      // Dedupe by pin id
+      const seen = new Set<string>()
+      return allAgentPins.filter((p) => {
+        if (!savedPinIds.has(p.id)) return false
+        if (seen.has(p.id)) return false
+        seen.add(p.id)
+        return true
+      })
+    }
     if (agentMode === 'explore') {
       // All agents' pins
       const all: Pin[] = [...allPins]
@@ -131,7 +159,7 @@ export default function AgentProfile() {
       return all
     }
     return allPins
-  }, [allPins, agentMode, nearbyAgents, enabledAgentIds])
+  }, [allPins, agentMode, nearbyAgents, enabledAgentIds, saves])
 
   const filteredPins = useMemo(() => {
     let result = visiblePins
@@ -171,16 +199,8 @@ export default function AgentProfile() {
   }, [allPins])
 
   const handleFollow = async () => {
-    if (!DEMO_MODE && !currentUser && !isPreview) { setShowAuth(true); return }
-    if (!agent || isPreview) return
-    const { followAgent, unfollowAgent } = await import('@/lib/firestore')
-    if (isFollowing) {
-      setIsFollowing(false)
-      if (currentUser) await unfollowAgent(currentUser.uid, agent.uid).catch(() => {})
-    } else {
-      setIsFollowing(true)
-      if (currentUser) await followAgent(currentUser.uid, agent.uid).catch(() => {})
-    }
+    if (isPreview) return
+    await toggleFollow()
   }
 
   const handleShare = async () => {
@@ -343,7 +363,7 @@ export default function AgentProfile() {
           onSetMode={setAgentMode}
           isSignedIn={DEMO_MODE || !!currentUser}
           onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }}
-          savedPins={[]}
+          savedPins={agentMode === 'saved' ? visiblePins : []}
         />
 
         {/* ═══ MAP (rounded rectangle, no extrusion) ═══ */}

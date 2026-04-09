@@ -5,6 +5,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { formatPrice } from '@/lib/firestore'
+import { useSaves } from '@/hooks/useSaves'
 import type { Pin, ForSalePin, SoldPin, ContentItem, UserDoc } from '@/lib/types'
 
 interface ListingModalProps {
@@ -250,6 +251,9 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
   const videoRef = useRef<HTMLVideoElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const [isNearViewport, setIsNearViewport] = useState(false)
+  const { isSaved, toggleSave } = useSaves()
+  const saved = isSaved(pin.id, content.id)
+  const isStory = content.type === 'story'
   const thumbnailUrl = content.thumbnailUrl || ('heroPhotoUrl' in pin ? pin.heroPhotoUrl : '') || ''
   const isVideo = content.type === 'reel' || content.type === 'live'
   const neighborhoodName = pin.type === 'neighborhood' && 'name' in pin ? pin.name : pin.neighborhoodId
@@ -299,9 +303,15 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
 
       {/* Right sidebar */}
       <div className="absolute right-3 bottom-[20%] z-10 flex flex-col items-center gap-4" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }}>
-        <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined} onClick={!isPreview ? requireAuth : undefined} className={isPreview ? 'opacity-40' : 'cursor-pointer'}>
-          <Bookmark size={24} className="text-white" />
-          <span className="text-[9px] text-white font-semibold block mt-0.5">{content.saves}</span>
+        {/* Save button — disabled for stories (ephemeral content) */}
+        <motion.button
+          whileTap={!isPreview && !isStory ? { scale: 0.75 } : undefined}
+          onClick={!isPreview && !isStory ? () => toggleSave(pin.id, content.id, content.type) : undefined}
+          className={(isPreview || isStory) ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
+          title={isStory ? 'Stories expire and cannot be saved' : undefined}
+        >
+          <Bookmark size={24} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
+          <span className="text-[9px] text-white font-semibold block mt-0.5">{content.saves + (saved ? 1 : 0)}</span>
         </motion.button>
         <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined} className={isPreview ? 'opacity-40' : 'cursor-pointer'}>
           <Share2 size={20} className="text-white" />
@@ -340,6 +350,8 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
   const requireAuth = () => { if (!isSignedIn && onAuthRequired) onAuthRequired() }
   const [photoIndex, setPhotoIndex] = useState(0)
   const photos = pin.photos || []
+  const { isPinSaved, toggleSave } = useSaves()
+  const saved = isPinSaved(pin.id)
 
   return (
     <div className={`${embedded ? '' : 'flex-1 overflow-y-auto'} bg-obsidian`} style={embedded ? undefined : { WebkitOverflowScrolling: 'touch' }}>
@@ -361,7 +373,12 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
             </>
           )}
           <div className="absolute top-3 right-3 flex gap-2">
-            <button onClick={!isPreview ? requireAuth : undefined} className={`w-9 h-9 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''}`}><Bookmark size={16} /></button>
+            <button
+              onClick={!isPreview ? () => toggleSave(pin.id) : undefined}
+              className={`w-9 h-9 rounded-full ${saved ? 'bg-tangerine' : 'bg-black/30'} backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''} transition-colors`}
+            >
+              <Bookmark size={16} fill={saved ? 'white' : 'none'} />
+            </button>
             <button className={`w-9 h-9 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''}`}><Share2 size={14} /></button>
           </div>
           {pin.type === 'sold' && <div className="absolute top-3 left-3"><Badge variant="sold">SOLD</Badge></div>}

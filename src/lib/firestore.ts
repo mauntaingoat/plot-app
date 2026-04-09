@@ -242,6 +242,35 @@ export async function getUserSaves(userId: string): Promise<{ pinId: string; con
   return snap.docs.map((d) => ({ pinId: d.data().pinId, contentId: d.data().contentId }))
 }
 
+// ── Shared saved maps ──
+
+export async function createSharedMap(userId: string, displayName: string, pinIds: string[]): Promise<string> {
+  // Generate a short share ID (8 chars)
+  const shareId = Math.random().toString(36).substring(2, 10)
+  if (!db) return shareId
+  await setDoc(doc(db, 'shared_maps', shareId), {
+    shareId,
+    userId,
+    displayName,
+    pinIds,
+    createdAt: serverTimestamp(),
+  })
+  return shareId
+}
+
+export async function getSharedMap(shareId: string): Promise<{ shareId: string; userId: string; displayName: string; pinIds: string[] } | null> {
+  if (!db) return null
+  const snap = await getDoc(doc(db, 'shared_maps', shareId))
+  if (!snap.exists()) return null
+  const data = snap.data()
+  return {
+    shareId: data.shareId,
+    userId: data.userId,
+    displayName: data.displayName,
+    pinIds: data.pinIds || [],
+  }
+}
+
 // ══════════════════════════════════════════
 // PIN VIEWS (increment on tap)
 // ══════════════════════════════════════════

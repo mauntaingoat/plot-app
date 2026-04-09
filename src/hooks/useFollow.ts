@@ -1,52 +1,112 @@
 import { useState, useEffect, useCallback } from 'react'
-import { doc, getDoc, setDoc, deleteDoc, increment, updateDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '@/config/firebase'
 import { useAuthStore } from '@/stores/authStore'
+import { useAuthModalStore } from '@/stores/authModalStore'
+import { followAgent as followFs, unfollowAgent as unfollowFs, isFollowing as isFollowingFs } from '@/lib/firestore'
+import { firebaseConfigured } from '@/config/firebase'
 
-export function useFollow(targetUid: string | null) {
-  const { firebaseUser } = useAuthStore()
+// Hook for managing follow relationships.
+// Backed by Firestore in production, localStorage in demo mode.
+
+const DEMO_KEY = 'reelst-demo-follows'
+
+export function useFollow(targetAgentUid: string | null | undefined) {
+  const { userDoc } = useAuthStore()
+  const { open: openAuth } = useAuthModalStore()
   const [isFollowing, setIsFollowing] = useState(false)
-  const [loading, setLoading] = useState(false)
-
-  const followDocId = firebaseUser && targetUid ? `${firebaseUser.uid}_${targetUid}` : null
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    if (!followDocId) {
-      setIsFollowing(false)
+    if (!targetAgentUid) { setLoaded(true); return }
+
+    // Demo mode (or signed out) — read from localStorage
+    if (!userDoc || !firebaseConfigured) {
+      try {
+        const raw = localStorage.getItem(DEMO_KEY)
+        const list: string[] = raw ? JSON.parse(raw) : []
+        setIsFollowing(list.includes(targetAgentUid))
+      } catch {
+        setIsFollowing(false)
+      }
+      setLoaded(true)
       return
     }
 
-    getDoc(doc(db, 'follows', followDocId)).then((snap) => {
-      setIsFollowing(snap.exists())
-    })
-  }, [followDocId])
+    // Firestore lookup
+    isFollowingFs(userDoc.uid, targetAgentUid)
+      .then((result) => setIsFollowing(result))
+      .catch(() => {})
+      .finally(() => setLoaded(true))
+  }, [userDoc, targetAgentUid])
 
   const toggle = useCallback(async () => {
-    if (!firebaseUser || !targetUid || !followDocId) return false // needs auth
-    setLoading(true)
+    if (!targetAgentUid) return false
 
-    try {
-      if (isFollowing) {
-        await deleteDoc(doc(db, 'follows', followDocId))
-        await updateDoc(doc(db, 'users', targetUid), { followerCount: increment(-1) })
-        await updateDoc(doc(db, 'users', firebaseUser.uid), { followingCount: increment(-1) })
-        setIsFollowing(false)
-      } else {
-        await setDoc(doc(db, 'follows', followDocId), {
-          followerUid: firebaseUser.uid,
-          followedUid: targetUid,
-          createdAt: serverTimestamp(),
-        })
-        await updateDoc(doc(db, 'users', targetUid), { followerCount: increment(1) })
-        await updateDoc(doc(db, 'users', firebaseUser.uid), { followingCount: increment(1) })
-        setIsFollowing(true)
+    // If sign-in required, prompt for auth
+    if (!userDoc && firebaseConfigured) {
+      openAuth('signup')
+      return false
+    }
+
+    const wasFollowing = isFollowing
+    setIsFollowing(!wasFollowing)
+
+    if (userDoc && firebaseConfigured) {
+      try {
+        if (wasFollowing) await unfollowFs(userDoc.uid, targetAgentUid)
+        else await followFs(userDoc.uid, targetAgentUid)
+      } catch {
+        setIsFollowing(wasFollowing)
+        return false
       }
-    } finally {
-      setLoading(false)
+    } else {
+      // Demo mode — persist to localStorage
+      try {
+        const raw = localStorage.getItem(DEMO_KEY)
+        const list: string[] = raw ? JSON.parse(raw) : []
+        const next = wasFollowing
+          ? list.filter((id) => id !== targetAgentUid)
+          : [...list, targetAgentUid]
+        localStorage.setItem(DEMO_KEY, JSON.stringify(next))
+      } catch {}
     }
 
     return true
-  }, [firebaseUser, targetUid, followDocId, isFollowing])
+  }, [isFollowing, userDoc, targetAgentUid, openAuth])
 
-  return { isFollowing, loading, toggle, needsAuth: !firebaseUser }
+  return { isFollowing, loaded, toggle, needsAuth: !userDoc && firebaseConfigured }
+}
+
+// Hook for getting all agents a user is currently following
+export function useFollowingList(): { followingIds: string[]; loaded: boolean } {
+  const { userDoc } = useAuthStore()
+  const [followingIds, setFollowingIds] = useState<string[]>([])
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    // Demo mode (or signed out) — read from localStorage
+    if (!userDoc || !firebaseConfigured) {
+      try {
+        const raw = localStorage.getItem(DEMO_KEY)
+        setFollowingIds(raw ? JSON.parse(raw) : [])
+      } catch {
+        setFollowingIds([])
+      }
+      setLoaded(true)
+      return
+    }
+
+    // Firestore — query follows where followerUid == userDoc.uid
+    import('@/config/firebase').then(({ db }) => {
+      if (!db) { setLoaded(true); return }
+      import('firebase/firestore').then(({ collection, query, where, getDocs }) => {
+        const q = query(collection(db, 'follows'), where('followerUid', '==', userDoc.uid))
+        getDocs(q).then((snap) => {
+          setFollowingIds(snap.docs.map((d) => d.data().followedUid as string))
+          setLoaded(true)
+        }).catch(() => setLoaded(true))
+      })
+    })
+  }, [userDoc])
+
+  return { followingIds, loaded }
 }

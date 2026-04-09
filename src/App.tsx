@@ -29,6 +29,7 @@ const SignIn = lazy(() => import('@/pages/SignIn'))
 const AgentProfile = lazy(() => import('@/pages/AgentProfile'))
 const Dashboard = lazy(() => import('@/pages/Dashboard'))
 const PinCreate = lazy(() => import('@/pages/PinCreate'))
+const SharedMap = lazy(() => import('@/pages/SharedMap'))
 const NotFound = lazy(() => import('@/pages/NotFound'))
 
 function ScrollToTop() {
@@ -66,6 +67,7 @@ function AppRoutes() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/dashboard/pin/new" element={<PinCreate />} />
         <Route path="/dashboard/pin/:id/edit" element={<PinCreate />} />
+        <Route path="/saved/:shareId" element={<SharedMap />} />
         <Route path="/:username" element={<AgentProfile />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

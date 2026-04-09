@@ -1,6 +1,9 @@
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Bookmark } from 'lucide-react'
+import { X, Bookmark, Share2, Check } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
+import { createSharedMap } from '@/lib/firestore'
+import { useAuthStore } from '@/stores/authStore'
 import type { UserDoc, Pin } from '@/lib/types'
 
 export type SidebarPanelType = 'selectAgent' | 'following' | 'exploreAll' | 'saved' | null
@@ -144,7 +147,10 @@ export function SidebarPanels({
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <p className="text-[13px] text-white/40 mb-2">{savedPins.length} saved listing{savedPins.length !== 1 ? 's' : ''}</p>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-[13px] text-white/40">{savedPins.length} saved listing{savedPins.length !== 1 ? 's' : ''}</p>
+                        <ShareSavedMapButton savedPins={savedPins} />
+                      </div>
                       {savedPins.map((pin) => (
                         <div key={pin.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5">
                           {pin.content?.[0]?.thumbnailUrl ? (
@@ -169,5 +175,46 @@ export function SidebarPanels({
         </>
       )}
     </AnimatePresence>
+  )
+}
+
+// ── Share Saved Map button ──
+function ShareSavedMapButton({ savedPins }: { savedPins: Pin[] }) {
+  const { userDoc } = useAuthStore()
+  const [copied, setCopied] = useState(false)
+  const [creating, setCreating] = useState(false)
+
+  const handleShare = async () => {
+    if (creating || savedPins.length === 0) return
+    setCreating(true)
+    try {
+      const displayName = userDoc?.displayName || 'Anonymous'
+      const userId = userDoc?.uid || 'demo-user'
+      const pinIds = savedPins.map((p) => p.id)
+      const shareId = await createSharedMap(userId, displayName, pinIds)
+      const url = `${window.location.origin}/saved/${shareId}`
+      try {
+        await navigator.share({ title: `${displayName}'s Saved Map`, url })
+      } catch {
+        await navigator.clipboard.writeText(url)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      }
+    } catch (e) {
+      console.warn('Failed to create shared map:', e)
+    }
+    setCreating(false)
+  }
+
+  return (
+    <motion.button
+      whileTap={{ scale: 0.95 }}
+      onClick={handleShare}
+      disabled={creating}
+      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-tangerine/15 text-tangerine text-[11px] font-bold cursor-pointer hover:bg-tangerine/25 transition-colors"
+    >
+      {copied ? <Check size={11} /> : <Share2 size={11} />}
+      {copied ? 'Copied!' : 'Share map'}
+    </motion.button>
   )
 }
