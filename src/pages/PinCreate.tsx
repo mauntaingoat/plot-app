@@ -10,6 +10,8 @@ import { createPin } from '@/lib/firestore'
 import { uploadFile, pinMediaPath } from '@/lib/storage'
 import { PIN_CONFIG, type PinType, type ContentItem } from '@/lib/types'
 import { Timestamp } from 'firebase/firestore'
+import { getTierLimits, canUploadVideo, type Tier } from '@/lib/tiers'
+import { PaywallPrompt } from '@/components/dashboard/PaywallPrompt'
 
 const PIN_OPTIONS: { type: PinType; label: string; desc: string; icon: typeof Home; color: string }[] = [
   { type: 'for_sale', label: 'For Sale Listing', desc: 'Active listing with MLS data, photos, and content', icon: Home, color: '#3B82F6' },
@@ -29,6 +31,9 @@ export default function PinCreate() {
   const [address, setAddress] = useState('')
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [saving, setSaving] = useState(false)
+  const [paywall, setPaywall] = useState<{ open: boolean; reason: string; upgradeTo?: Tier }>({ open: false, reason: '' })
+
+  const tierLimits = getTierLimits(userDoc)
 
   // Listing details
   const [price, setPrice] = useState('')
@@ -72,10 +77,41 @@ export default function PinCreate() {
     setPhotos(Array.from(e.target.files || []))
   }
 
-  const addContent = () => {
+  const addContent = async () => {
     if (!newCaption.trim() && !newFile) return
+
+    // Gate: max content per pin
+    if (contentItems.length >= tierLimits.maxContentPerPin) {
+      setPaywall({
+        open: true,
+        reason: `You've reached ${tierLimits.maxContentPerPin} content items per pin on the ${tierLimits.name} plan.`,
+        upgradeTo: tierLimits.id === 'free' ? 'pro' : 'studio',
+      })
+      return
+    }
+
+    // Gate: video length
+    if (newFile && (newContentType === 'reel' || newContentType === 'video_note')) {
+      const duration = await getVideoDuration(newFile).catch(() => 0)
+      const gate = canUploadVideo(userDoc, duration)
+      if (!gate.allowed) {
+        setPaywall({ open: true, reason: gate.reason || '', upgradeTo: gate.upgradeTo })
+        return
+      }
+    }
+
     setContentItems([...contentItems, { type: newContentType, caption: newCaption, file: newFile, preview: newPreview }])
     setNewCaption(''); setNewFile(null); setNewPreview(null); setShowAddContent(false)
+  }
+
+  const getVideoDuration = (file: File): Promise<number> => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video')
+      video.preload = 'metadata'
+      video.onloadedmetadata = () => { resolve(video.duration); URL.revokeObjectURL(video.src) }
+      video.onerror = () => reject()
+      video.src = URL.createObjectURL(file)
+    })
   }
 
   const removeContent = (idx: number) => {
@@ -482,6 +518,13 @@ export default function PinCreate() {
           )}
         </AnimatePresence>
       </div>
+
+      <PaywallPrompt
+        isOpen={paywall.open}
+        onClose={() => setPaywall({ open: false, reason: '' })}
+        reason={paywall.reason}
+        upgradeTo={paywall.upgradeTo}
+      />
     </div>
   )
 }

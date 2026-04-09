@@ -11,6 +11,7 @@ export interface Platform {
 }
 
 export type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'rejected'
+export type UserTier = 'free' | 'pro' | 'studio'
 
 export interface UserDoc {
   uid: string
@@ -30,6 +31,8 @@ export interface UserDoc {
   fairHousingAccepted: boolean
   dataSecurityAccepted: boolean
   emailVerified: boolean
+  tier: UserTier // 'free' | 'pro' | 'studio'
+  brandColor: string | null // Studio tier custom branding
   platforms: Platform[]
   followerCount: number
   followingCount: number

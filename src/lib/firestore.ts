@@ -47,6 +47,8 @@ export async function createUserDoc(uid: string, data: Partial<UserDoc>) {
     fairHousingAccepted: false,
     dataSecurityAccepted: false,
     emailVerified: false,
+    tier: 'free',
+    brandColor: null,
     platforms: [],
     followerCount: 0,
     followingCount: 0,

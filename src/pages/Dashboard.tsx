@@ -17,6 +17,10 @@ import { StatCard } from '@/components/dashboard/StatCard'
 import { SetupRing } from '@/components/dashboard/SetupRing'
 import { SetupChecklist } from '@/components/dashboard/SetupChecklist'
 import { InsightsChart } from '@/components/dashboard/InsightsChart'
+import { PaywallPrompt } from '@/components/dashboard/PaywallPrompt'
+import { PinBreakdown, ContentConversion, GeoHeatmap, TimeOfDay, FollowerGrowth, LockedFeature } from '@/components/dashboard/AdvancedInsights'
+import { SavedMapInsights, CustomBranding } from '@/components/dashboard/StudioFeatures'
+import { canActivatePin, hasFeature, type Tier } from '@/lib/tiers'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { Input } from '@/components/ui/Input'
 import { useAuthStore } from '@/stores/authStore'
@@ -47,6 +51,7 @@ export default function Dashboard() {
   const [showAddPlatform, setShowAddPlatform] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Pin | null>(null)
   const [copied, setCopied] = useState(false)
+  const [paywall, setPaywall] = useState<{ open: boolean; reason: string; upgradeTo?: Tier }>({ open: false, reason: '' })
   const isDesktop = useIsDesktop()
 
   const currentUser = userDoc || (!firebaseConfigured ? MOCK_CURRENT_USER : null)
@@ -55,10 +60,18 @@ export default function Dashboard() {
   const [pins, setPins] = useState<Pin[]>(!firebaseConfigured ? MOCK_PINS_CAROLINA : [])
 
   const handleTogglePin = useCallback(async (pinId: string, enabled: boolean) => {
+    // Gate activation — block if at active pin cap
+    if (enabled) {
+      const gate = canActivatePin(currentUser, pins)
+      if (!gate.allowed) {
+        setPaywall({ open: true, reason: gate.reason || '', upgradeTo: gate.upgradeTo })
+        return
+      }
+    }
     setPins((prev) => prev.map((p) => p.id === pinId ? { ...p, enabled } : p))
     const { updatePin } = await import('@/lib/firestore')
     await updatePin(pinId, { enabled } as any).catch(() => {})
-  }, [])
+  }, [currentUser, pins])
 
   const handleDeletePin = useCallback(async (pinId: string) => {
     setPins((prev) => prev.filter((p) => p.id !== pinId))
@@ -203,6 +216,7 @@ export default function Dashboard() {
         {/* ═══ INSIGHTS ═══ */}
         {activeTab === 'insights' && (
           <div className={isDesktop ? 'space-y-5' : 'px-5 py-5 space-y-4'}>
+            {/* Basic stats — visible to all tiers */}
             <div className="grid grid-cols-2 gap-3">
               <StatCard label="Views" value={stats.views} change={12} changePeriod="vs last week" icon={<Eye size={18} />} format="compact" />
               <StatCard label="Taps" value={stats.taps} change={8} changePeriod="vs last week" icon={<MousePointerClick size={18} />} color="#3B82F6" format="compact" />
@@ -210,23 +224,24 @@ export default function Dashboard() {
               <StatCard label="Followers" value={activeUser.followerCount} change={15} changePeriod="vs last week" icon={<Users size={18} />} color="#34C759" />
             </div>
             <InsightsChart data={chartData} />
-            {pins.length > 0 && (
-              <div>
-                <h3 className="text-[14px] font-bold text-ink mb-3">Top Performing</h3>
-                <div className="space-y-2">
-                  {[...pins].sort((a, b) => b.views - a.views).slice(0, 5).map((pin, i) => (
-                    <div key={pin.id} className="flex items-center gap-3 bg-cream rounded-[14px] p-3">
-                      <span className="text-[18px] font-extrabold text-tangerine/30 font-mono w-6 text-center">{i + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-semibold text-ink truncate">{pin.address}</p>
-                        <p className="text-[11px] text-smoke">{PIN_CONFIG[pin.type].label}</p>
-                      </div>
-                      <span className="text-[14px] font-bold text-ink font-mono">{pin.views.toLocaleString()}</span>
-                      <Eye size={12} className="text-ash" />
-                    </div>
-                  ))}
-                </div>
-              </div>
+
+            {/* Advanced analytics — Pro/Studio only */}
+            {hasFeature(activeUser, 'advancedAnalytics') ? (
+              <>
+                <PinBreakdown pins={pins} metric="views" />
+                <ContentConversion pins={pins} />
+                <FollowerGrowth currentFollowers={activeUser.followerCount} />
+                <TimeOfDay pins={pins} />
+                <GeoHeatmap pins={pins} />
+                {/* Saved map insights — Studio only */}
+                {hasFeature(activeUser, 'savedMapInsights') && <SavedMapInsights pins={pins} />}
+              </>
+            ) : (
+              <LockedFeature
+                title="Unlock advanced analytics"
+                description="Per-pin breakdown, content conversion, geographic heatmap, time-of-day patterns, and follower growth charts."
+                onUpgrade={() => setPaywall({ open: true, reason: 'Advanced analytics is a Pro feature.', upgradeTo: 'pro' })}
+              />
             )}
           </div>
         )}
@@ -277,7 +292,7 @@ export default function Dashboard() {
             {[
               { icon: User, label: 'Edit Profile', desc: 'Name, bio, photo', onClick: () => {} },
               { icon: Link2, label: 'Social Links', desc: 'Connected platforms', onClick: () => setShowAddPlatform(true) },
-              { icon: Shield, label: 'License Verification', desc: activeUser.licenseNumber || 'Not verified', onClick: () => {} },
+              { icon: Shield, label: 'License Verification', desc: activeUser.verificationStatus === 'verified' ? `Verified · ${activeUser.licenseState} #${activeUser.licenseNumber}` : activeUser.verificationStatus === 'pending' ? 'Pending review' : 'Not verified', onClick: () => {} },
             ].map((item, i) => (
               <motion.button
                 key={i}
@@ -315,17 +330,32 @@ export default function Dashboard() {
               </motion.button>
             ))}
 
+            {/* Custom Branding — Studio only */}
+            {hasFeature(activeUser, 'customBranding') && (
+              <>
+                <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Branding</p>
+                <CustomBranding
+                  user={activeUser}
+                  onSave={(color) => {
+                    setUserDoc({ ...activeUser, brandColor: color })
+                    import('@/lib/firestore').then(({ updateUserDoc }) => updateUserDoc(activeUser.uid, { brandColor: color }).catch(() => {}))
+                  }}
+                />
+              </>
+            )}
+
             <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Plan</p>
             <motion.button
               whileTap={{ scale: 0.98 }}
+              onClick={() => navigate('/pricing')}
               className="w-full flex items-center gap-3.5 bg-cream rounded-[14px] p-4 text-left cursor-pointer"
             >
               <div className="w-10 h-10 rounded-[12px] bg-pearl flex items-center justify-center"><CreditCard size={18} className="text-graphite" /></div>
               <div className="flex-1">
                 <span className="text-[15px] font-medium text-ink block">Subscription</span>
-                <span className="text-[12px] text-smoke">Free plan</span>
+                <span className="text-[12px] text-smoke">{activeUser.tier === 'studio' ? 'Studio plan · $39/mo' : activeUser.tier === 'pro' ? 'Pro plan · $19/mo' : 'Free plan'}</span>
               </div>
-              <Badge>Free</Badge>
+              <Badge>{activeUser.tier === 'studio' ? 'Studio' : activeUser.tier === 'pro' ? 'Pro' : 'Free'}</Badge>
             </motion.button>
 
             <div className="flex gap-3 pt-4">
@@ -396,6 +426,13 @@ export default function Dashboard() {
       ) : (
         <AddPlatformSheet isOpen={showAddPlatform} onClose={() => setShowAddPlatform(false)} onAdd={handleAddPlatform} existingPlatforms={activeUser.platforms} />
       )}
+
+      <PaywallPrompt
+        isOpen={paywall.open}
+        onClose={() => setPaywall({ open: false, reason: '' })}
+        reason={paywall.reason}
+        upgradeTo={paywall.upgradeTo}
+      />
     </>
   )
 
