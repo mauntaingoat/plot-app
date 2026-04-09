@@ -13,6 +13,12 @@ export interface Platform {
 export type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'rejected'
 export type UserTier = 'free' | 'pro' | 'studio'
 
+export interface NotificationPrefs {
+  newFollower: boolean
+  showingRequest: boolean
+  pinSaved: boolean // off by default — can get noisy
+}
+
 export interface UserDoc {
   uid: string
   email: string
@@ -39,6 +45,8 @@ export interface UserDoc {
   onboardingComplete: boolean
   onboardingStep: number
   setupPercent: number
+  fcmTokens?: string[] // device tokens for web push
+  notificationPrefs?: NotificationPrefs
 }
 
 // ── Pin types — only 2 listing types + neighborhood ──

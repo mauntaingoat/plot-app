@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   MapPin, BarChart3, Users, Settings, Plus,
   Eye, MousePointerClick, Bookmark,
-  ExternalLink, LogOut, ChevronRight, Bell, CreditCard,
+  ExternalLink, LogOut, ChevronRight, CreditCard,
   User, Trash2, Edit3, EyeOff, Link2, Shield, Palette,
   Film, Share2, Smartphone, Copy, Check, X, QrCode, CalendarDays, Inbox,
 } from 'lucide-react'
@@ -23,6 +23,7 @@ import { SavedMapInsights, CustomBranding } from '@/components/dashboard/StudioF
 import { QRCodeModal } from '@/components/dashboard/QRCodeModal'
 import { OpenHouseEditor } from '@/components/dashboard/OpenHouseEditor'
 import { ShowingInbox } from '@/components/dashboard/ShowingInbox'
+import { NotificationSettings } from '@/components/dashboard/NotificationSettings'
 import { canActivatePin, hasFeature, type Tier } from '@/lib/tiers'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { Input } from '@/components/ui/Input'
@@ -344,9 +345,11 @@ export default function Dashboard() {
               </motion.button>
             ))}
 
+            <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Notifications</p>
+            <NotificationSettings />
+
             <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Preferences</p>
             {[
-              { icon: Bell, label: 'Notifications', desc: 'Push & email', onClick: () => {} },
               { icon: Palette, label: 'Appearance', desc: 'Pin style, colors', onClick: () => {} },
               { icon: Smartphone, label: 'Install App', desc: 'Add to home screen', onClick: () => {} },
             ].map((item, i) => (
