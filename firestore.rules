@@ -1,42 +1,96 @@
 rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────────────
+// Reelst Firestore security rules
+//
+// Public-by-default for read (agent profiles, pins, sitemap)
+// Strict ownership for writes — users can only mutate their own data
+// Showing requests are write-anywhere (lead capture) but read-protected
+// ─────────────────────────────────────────────────────────────────────
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users — anyone can read public profiles, only owner can write
-    match /users/{userId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null && request.auth.uid == userId;
-      allow delete: if request.auth != null && request.auth.uid == userId;
+    // ── Helpers ──
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
     }
 
-    // Usernames — anyone can read (for availability check), only authenticated can create
+    // ── USERS ──
+    // Public read (agent profiles are discoverable)
+    // Users can create their own doc on signup
+    // Only the user can update their doc
+    match /users/{uid} {
+      allow read: if true;
+      allow create: if isSelf(uid);
+      allow update: if isSelf(uid);
+      allow delete: if false; // soft-delete via account deactivation only
+    }
+
+    // ── USERNAMES (username → uid lookup table) ──
+    // Public read so login/profile lookups work
+    // Only the claiming user can create their own entry
     match /usernames/{username} {
       allow read: if true;
-      allow create: if request.auth != null;
-      allow delete: if request.auth != null;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
     }
 
-    // Pins — anyone can read enabled pins, only the agent who owns them can write
+    // ── PINS (listings + neighborhoods) ──
+    // Public read — anyone can see active listings
+    // Only the owning agent can write
     match /pins/{pinId} {
       allow read: if true;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null && request.auth.uid == resource.data.agentId;
-      allow delete: if request.auth != null && request.auth.uid == resource.data.agentId;
+      allow create: if isSignedIn() && request.resource.data.agentId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.agentId == request.auth.uid;
     }
 
-    // Follows — anyone can read, authenticated users create/delete their own
+    // ── FOLLOWS ──
+    // Public read (follower lists, counts)
+    // Only the follower can create/delete their own follow doc
     match /follows/{followId} {
       allow read: if true;
-      allow create: if request.auth != null;
-      allow delete: if request.auth != null;
+      allow create: if isSignedIn() && request.resource.data.followerUid == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.followerUid == request.auth.uid;
+      allow update: if false;
     }
 
-    // Saves — owner can read/write their own saves
+    // ── SAVES (bookmarks) ──
+    // Private to the user — only the saver can read/write their own saves
     match /saves/{saveId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow delete: if request.auth != null;
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if false;
+    }
+
+    // ── SHOWING REQUESTS ──
+    // ANYONE can create a request (lead capture form on listings)
+    // Only the receiving agent can read/update/delete
+    match /showing_requests/{reqId} {
+      allow create: if true;
+      allow read: if isSignedIn() && resource.data.agentId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.agentId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.agentId == request.auth.uid;
+    }
+
+    // ── SHARED MAPS (publicly shareable saved-pin collections) ──
+    // Public read (that's the whole point — links are shareable)
+    // Only the owner can create/update their share
+    match /shared_maps/{shareId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // ── DEFAULT DENY ──
+    // Anything not matched above is rejected
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

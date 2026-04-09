@@ -1,0 +1,53 @@
+rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────────────
+// Reelst Firebase Storage rules
+//
+// All media is publicly readable (listing photos, agent avatars, reels)
+// Writes are restricted to the owning user / pin's agent
+// Hard cap on file size to prevent abuse
+// ─────────────────────────────────────────────────────────────────────
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function reasonableSize() {
+      // 100 MB max — covers most reels + photos
+      return request.resource.size < 100 * 1024 * 1024;
+    }
+
+    function isImageOrVideo() {
+      return request.resource.contentType.matches('image/.*')
+          || request.resource.contentType.matches('video/.*');
+    }
+
+    // ── User avatars: users/{uid}/avatar/* ──
+    match /users/{uid}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSignedIn()
+                   && request.auth.uid == uid
+                   && reasonableSize()
+                   && isImageOrVideo();
+    }
+
+    // ── Pin media: pins/{pinId}/* ──
+    // Anyone can read (it's listing photos and reels — public content)
+    // Only the pin's agent can write
+    match /pins/{pinId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSignedIn()
+                   && firestore.get(/databases/(default)/documents/pins/$(pinId)).data.agentId == request.auth.uid
+                   && reasonableSize()
+                   && isImageOrVideo();
+    }
+
+    // ── Default deny ──
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
