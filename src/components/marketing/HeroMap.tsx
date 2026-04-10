@@ -127,7 +127,7 @@ function MapTile({ animatePins }: { animatePins?: boolean }) {
 export function HeroMap() {
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      {/* Grid container — full width on mobile, right-side with fade on desktop */}
+      {/* Grid container — full width on mobile, fixed-size clipped on desktop */}
       <div className="hero-map-grid absolute inset-0"
         style={{ overflow: 'hidden' }}
       >
@@ -189,12 +189,13 @@ export function HeroMap() {
           transform: scale(0.8);
           transform-origin: center;
         }
-        /* Desktop: fixed left position, extends right, viewport clips it */
+        /* Desktop: fixed-size grid, clipped by parent overflow */
         @media (min-width: 768px) {
           .hero-map-grid {
             left: 42% !important;
-            right: 0;
-            width: auto;
+            right: auto !important;
+            width: 800px !important;
+            min-width: 800px !important;
             mask-image: linear-gradient(to right, transparent 0%, black 8%);
             -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%);
           }
