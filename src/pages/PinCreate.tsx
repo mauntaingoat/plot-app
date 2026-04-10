@@ -26,7 +26,14 @@ export default function PinCreate() {
   const { userDoc } = useAuthStore()
   const { results, search, clear } = useGeocoding()
 
-  const [step, setStep] = useState<Step>('type')
+  const [step, _setStep] = useState<Step>('type')
+  const [direction, setDirection] = useState(1) // 1 = forward, -1 = back
+  const STEP_ORDER: Step[] = ['type', 'address', 'details', 'content', 'publishing']
+  const goTo = (next: Step) => {
+    setDirection(STEP_ORDER.indexOf(next) >= STEP_ORDER.indexOf(step) ? 1 : -1)
+    _setStep(next)
+  }
+  const setStep = goTo
   const [pinType, setPinType] = useState<PinType | null>(null)
   const [address, setAddress] = useState('')
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
@@ -264,7 +271,7 @@ export default function PinCreate() {
         <AnimatePresence mode="wait">
           {/* ═══ STEP 1: TYPE ═══ */}
           {step === 'type' && (
-            <motion.div key="type" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+            <motion.div key="type" initial={{ opacity: 0, x: 20 * direction }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 * direction }}>
               <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">What are you adding?</h2>
               <p className="text-[14px] text-smoke mb-6">Choose the type of pin for your map.</p>
               <div className="space-y-3">
@@ -294,7 +301,7 @@ export default function PinCreate() {
 
           {/* ═══ STEP 2: ADDRESS ═══ */}
           {step === 'address' && (
-            <motion.div key="address" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+            <motion.div key="address" initial={{ opacity: 0, x: 20 * direction }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 * direction }}>
               <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">
                 {pinType === 'neighborhood' ? 'Which neighborhood?' : 'Where is it?'}
               </h2>
@@ -336,7 +343,7 @@ export default function PinCreate() {
 
           {/* ═══ STEP 3: DETAILS ═══ */}
           {step === 'details' && (
-            <motion.div key="details" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+            <motion.div key="details" initial={{ opacity: 0, x: 20 * direction }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 * direction }}>
               <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">Add details</h2>
               <p className="text-[14px] text-smoke mb-6">{address}</p>
 
@@ -406,7 +413,7 @@ export default function PinCreate() {
 
           {/* ═══ STEP 4: CONTENT ═══ */}
           {step === 'content' && (
-            <motion.div key="content" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+            <motion.div key="content" initial={{ opacity: 0, x: 20 * direction }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 * direction }}>
               <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">Add content</h2>
               <p className="text-[14px] text-smoke mb-4">
                 Attach reels, stories, or video notes to this {pinType === 'neighborhood' ? 'neighborhood' : 'listing'}.

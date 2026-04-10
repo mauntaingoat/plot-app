@@ -32,7 +32,14 @@ export default function SignUp() {
   // Pre-fill username from URL param (from claim form on Home/Footer)
   const prefillUsername = searchParams.get('username')?.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24) || ''
 
-  const [step, setStep] = useState<Step>(prefillUsername ? 'username' : 'role')
+  const [step, _setStep] = useState<Step>(prefillUsername ? 'username' : 'role')
+  const [direction, setDirection] = useState(1)
+  const STEP_ORDER: Step[] = ['role', 'username', 'license', 'account']
+  const goToStep = (next: Step) => {
+    setDirection(STEP_ORDER.indexOf(next) >= STEP_ORDER.indexOf(step) ? 1 : -1)
+    _setStep(next)
+  }
+  const setStep = goToStep
   const [role, setRole] = useState<'agent' | 'consumer' | null>(prefillUsername ? 'agent' : null)
   const [username, setUsernameVal] = useState(prefillUsername)
 
@@ -153,7 +160,7 @@ export default function SignUp() {
         <AnimatePresence mode="wait">
           {/* ── Role ── */}
           {step === 'role' && (
-            <motion.div key="role" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-6">
+            <motion.div key="role" initial={{ opacity: 0, x: 30 * direction }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 * direction }} className="space-y-6">
               <div>
                 <h1 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Get started with Reelst</h1>
                 <p className="text-[15px] text-smoke">How do you want to use Reelst?</p>
@@ -189,7 +196,7 @@ export default function SignUp() {
 
           {/* ── Username ── */}
           {step === 'username' && (
-            <motion.div key="username" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-6">
+            <motion.div key="username" initial={{ opacity: 0, x: 30 * direction }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 * direction }} className="space-y-6">
               <button onClick={() => setStep('role')} className="flex items-center gap-1 text-[13px] text-smoke font-medium mb-2"><ArrowLeft size={14} /> Back</button>
               <div className="w-14 h-14 rounded-[16px] bg-gradient-to-br from-tangerine to-ember flex items-center justify-center mb-2">
                 <AtSign size={26} className="text-white" />
@@ -222,7 +229,7 @@ export default function SignUp() {
 
           {/* ── License Verification (Agent only) ── */}
           {step === 'license' && (
-            <motion.div key="license" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-6">
+            <motion.div key="license" initial={{ opacity: 0, x: 30 * direction }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 * direction }} className="space-y-6">
               <button onClick={() => setStep('username')} className="flex items-center gap-1 text-[13px] text-smoke font-medium mb-2 cursor-pointer"><ArrowLeft size={14} /> Back</button>
               <div className="w-14 h-14 rounded-[16px] bg-tangerine/10 flex items-center justify-center mb-2">
                 <Shield size={26} className="text-tangerine" />
@@ -297,7 +304,7 @@ export default function SignUp() {
 
           {/* ── Account ── */}
           {step === 'account' && (
-            <motion.div key="account" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-6">
+            <motion.div key="account" initial={{ opacity: 0, x: 30 * direction }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 * direction }} className="space-y-6">
               <button onClick={() => setStep(role === 'agent' ? 'license' : 'role')} className="flex items-center gap-1 text-[13px] text-smoke font-medium mb-2 cursor-pointer"><ArrowLeft size={14} /> Back</button>
               <div>
                 <h1 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Create your account</h1>
