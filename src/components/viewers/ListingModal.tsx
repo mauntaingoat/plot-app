@@ -96,6 +96,8 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
   useEffect(() => {
     if (initialTab) setActiveTab(initialTab)
   }, [initialTab])
+  // Debug — remove after fixing
+  useEffect(() => { console.log('[ListingModal] mounted, initialTab=', initialTab, 'activeTab=', initialTab || 'content', 'embedded=', embedded) }, [])
   const [mounted, setMounted] = useState(true)
   const [visible, setVisible] = useState(false)
   const [showShowingRequest, setShowShowingRequest] = useState(false)
