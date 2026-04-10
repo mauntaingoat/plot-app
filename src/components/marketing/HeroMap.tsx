@@ -67,7 +67,7 @@ function MapTile({ animatePins }: { animatePins?: boolean }) {
       {BUILDINGS.map((b, i) => (
         <div
           key={`b-${i}`}
-          className="absolute"
+          className="absolute map-tile-building"
           style={{ top: b.top, left: b.left, width: b.w, height: b.h }}
         >
           <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -127,14 +127,9 @@ function MapTile({ animatePins }: { animatePins?: boolean }) {
 export function HeroMap() {
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      {/* Clipping + left fade for desktop */}
-      <div
-        className="absolute inset-y-0 right-0 left-0 md:left-[42%]"
-        style={{
-          maskImage: 'linear-gradient(to right, transparent 0%, black 8%)',
-          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 8%)',
-          overflow: 'hidden',
-        }}
+      {/* Grid container — full width on mobile, right-side with fade on desktop */}
+      <div className="hero-map-grid absolute inset-0"
+        style={{ overflow: 'hidden' }}
       >
         <div className="absolute inset-0 bg-pearl/50" />
 
@@ -144,7 +139,7 @@ export function HeroMap() {
           because the 2x2 duplication makes it tileable.
         */}
         <div
-          className="absolute map-scroll-container"
+          className="absolute"
           style={{
             width: '200%',
             height: '200%',
@@ -179,12 +174,35 @@ export function HeroMap() {
 
       <style>{`
         @keyframes mapDrift {
-          0% { transform: translate(0, 0) scale(var(--map-scale, 1)); }
-          100% { transform: translate(50%, 50%) scale(var(--map-scale, 1)); }
+          0% { transform: translate(0, 0); }
+          100% { transform: translate(50%, 50%); }
         }
-        .map-scroll-container { --map-scale: 0.55; }
-        @media (min-width: 640px) { .map-scroll-container { --map-scale: 0.7; } }
-        @media (min-width: 768px) { .map-scroll-container { --map-scale: 1; } }
+        /* Mobile: full width, no mask, scale buildings down */
+        .hero-map-grid {
+          left: 0;
+        }
+        .hero-map-grid .map-tile-building {
+          transform: scale(0.5);
+          transform-origin: top left;
+        }
+        .hero-map-grid .map-tile-pin {
+          transform: scale(0.8);
+          transform-origin: center;
+        }
+        /* Desktop: push right + fade left edge */
+        @media (min-width: 768px) {
+          .hero-map-grid {
+            left: 42%;
+            mask-image: linear-gradient(to right, transparent 0%, black 8%);
+            -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%);
+          }
+          .hero-map-grid .map-tile-building {
+            transform: scale(1);
+          }
+          .hero-map-grid .map-tile-pin {
+            transform: scale(1);
+          }
+        }
       `}</style>
     </div>
   )
