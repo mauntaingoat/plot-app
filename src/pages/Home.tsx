@@ -5,6 +5,7 @@ import { ArrowRight, Play, BarChart3, Radio, Bell, CalendarDays, ChevronDown } f
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { SEOHead } from '@/components/marketing/SEOHead'
 import { HeroMap } from '@/components/marketing/HeroMap'
+import { CityScape } from '@/components/marketing/CityScape'
 import { PhoneCarousel } from '@/components/marketing/PhoneCarousel'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthModalStore } from '@/stores/authModalStore'
@@ -79,47 +80,32 @@ export default function Home() {
   return (
     <MarketingLayout>
       <SEOHead path="/" />
-      <style>{`
-        .hero-content-pad {
-          padding-left: 1.5rem;
-          padding-right: 1.5rem;
-        }
-        @media (min-width: 768px) {
-          .hero-content-pad {
-            padding-left: clamp(3rem, 8vw, 10rem);
-            padding-right: 0;
-          }
-        }
-      `}</style>
-
       {/* ════════════════════════════════════════════════════════════
-          SECTION 1 — HERO: Full-bleed animated map bg + left-aligned CTA
+          SECTION 1 — HERO: Generative cityscape + centered CTA
           ════════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden">
-        {/* Animated map background — desktop: right side, mobile: below content */}
-        <div className="hidden md:block">
-          <HeroMap />
-        </div>
+      <section className="relative overflow-hidden min-h-[600px] md:min-h-[700px]">
+        {/* 3D cityscape background */}
+        <CityScape />
 
-        {/* Content — centered on mobile, left-aligned on desktop */}
-        <div className="relative z-10 hero-content-pad pt-32 md:pt-48 pb-12 md:pb-36">
+        {/* Content — centered */}
+        <div className="relative z-10 max-w-[1200px] mx-auto px-6 sm:px-8 pt-32 md:pt-44 pb-16 md:pb-32">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-            className="max-w-[560px] text-center md:text-left mx-auto md:mx-0"
+            className="max-w-[620px] text-center mx-auto"
           >
             <h1 className="font-extrabold text-ink tracking-tight leading-[0.97] mb-5" style={{ fontSize: 'clamp(2.75rem, 5.5vw, 5.2rem)' }}>
               Where listings{' '}
               <span className="text-gradient">come alive.</span>
             </h1>
 
-            <p className="text-graphite leading-[1.4] mb-9 max-w-[500px] mx-auto md:mx-0" style={{ fontSize: 'clamp(1.06rem, 1.5vw, 1.4rem)' }}>
+            <p className="text-graphite leading-[1.4] mb-9 max-w-[520px] mx-auto" style={{ fontSize: 'clamp(1.06rem, 1.5vw, 1.4rem)' }}>
               One link. A live map of your listings, stories, reels, and open houses. The modern agent's profile, built for content.
             </p>
 
             {/* Inline claim form */}
-            <div className="flex items-center max-w-[460px] mx-auto md:mx-0 bg-white/80 backdrop-blur-sm border border-border-light rounded-[14px] p-2 focus-within:border-tangerine/50 focus-within:shadow-[0_0_20px_rgba(255,107,61,0.1)] transition-all">
+            <div className="flex items-center max-w-[460px] mx-auto bg-white/85 backdrop-blur-md border border-border-light rounded-[14px] p-2 focus-within:border-tangerine/50 focus-within:shadow-[0_0_20px_rgba(255,107,61,0.1)] transition-all">
               <span className="font-bold text-ink pl-4 shrink-0 select-none" style={{ fontSize: 'clamp(1rem, 1.3vw, 1.2rem)' }}>reel.st/</span>
               <input
                 type="text"
@@ -140,11 +126,6 @@ export default function Home() {
 
             <p className="text-[12px] text-ash mt-3">Free forever. No credit card required.</p>
           </motion.div>
-        </div>
-
-        {/* Mobile: map below the CTA */}
-        <div className="md:hidden relative w-full h-[280px] sm:h-[320px] mt-2">
-          <HeroMap />
         </div>
       </section>
 
