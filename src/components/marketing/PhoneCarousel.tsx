@@ -44,6 +44,14 @@ export function PhoneCarousel({ className = '' }: { className?: string }) {
     }
   }, [])
 
+  // Set different start times on mount
+  useEffect(() => {
+    const v0 = videoRefs.current[0]
+    const v1 = videoRefs.current[1]
+    if (v0) v0.currentTime = 0
+    if (v1) v1.currentTime = 3 // start Content video at 3s
+  }, [])
+
   // Play/pause videos based on which face is visible
   useEffect(() => {
     videoRefs.current.forEach((v, i) => {
@@ -56,23 +64,27 @@ export function PhoneCarousel({ className = '' }: { className?: string }) {
     })
   }, [activeFace, isSpinning])
 
+  // Resting tilt — angled slightly when paused
+  const tiltX = isSpinning ? 0 : 5
+  const tiltZ = isSpinning ? 0 : -2
+
   return (
-    <div className={`flex items-center justify-center ${className}`} style={{ perspective: 1200 }}>
+    <div className={`flex items-center justify-center ${className}`} style={{ perspective: 1400 }}>
       <div
         style={{
-          width: 280,
-          height: 560,
+          width: 300,
+          height: 620,
           position: 'relative',
           transformStyle: 'preserve-3d',
-          transform: `rotateY(${rotation}deg)`,
+          transform: `rotateY(${rotation}deg) rotateX(${tiltX}deg) rotateZ(${tiltZ}deg)`,
           transition: isSpinning
             ? `transform ${SPIN_DURATION}ms cubic-bezier(0.4, 0, 0.2, 1)`
-            : 'transform 0.1s ease',
+            : `transform 0.8s cubic-bezier(0.25, 0.1, 0.25, 1)`,
         }}
       >
         {/* Face 1 — Map video (front) */}
         <div
-          className="absolute inset-0 rounded-[28px] overflow-hidden shadow-2xl bg-midnight"
+          className="absolute inset-0 rounded-[22px] overflow-hidden shadow-2xl bg-midnight"
           style={{
             backfaceVisibility: 'hidden',
             transform: 'rotateY(0deg)',
@@ -81,7 +93,7 @@ export function PhoneCarousel({ className = '' }: { className?: string }) {
           <video
             ref={(el) => { videoRefs.current[0] = el }}
             src={VIDEOS[0]}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain bg-black"
             muted
             loop
             playsInline
@@ -91,7 +103,7 @@ export function PhoneCarousel({ className = '' }: { className?: string }) {
 
         {/* Face 2 — Content video (back, rotated 180deg) */}
         <div
-          className="absolute inset-0 rounded-[28px] overflow-hidden shadow-2xl bg-midnight"
+          className="absolute inset-0 rounded-[22px] overflow-hidden shadow-2xl bg-midnight"
           style={{
             backfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)',
@@ -100,7 +112,7 @@ export function PhoneCarousel({ className = '' }: { className?: string }) {
           <video
             ref={(el) => { videoRefs.current[1] = el }}
             src={VIDEOS[1]}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain bg-black"
             muted
             loop
             playsInline
