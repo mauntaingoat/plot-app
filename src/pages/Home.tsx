@@ -101,7 +101,7 @@ export default function Home() {
         </div>
 
         {/* Content — centered on mobile, left-aligned on desktop */}
-        <div className="relative z-10 hero-content-pad pt-28 md:pt-40 pb-12 md:pb-36">
+        <div className="relative z-10 hero-content-pad pt-32 md:pt-48 pb-12 md:pb-36">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -113,7 +113,7 @@ export default function Home() {
               <span className="text-gradient">come alive.</span>
             </h1>
 
-            <p className="text-smoke leading-[1.4] mb-9 max-w-[500px] mx-auto md:mx-0" style={{ fontSize: 'clamp(1.06rem, 1.5vw, 1.4rem)' }}>
+            <p className="text-graphite leading-[1.4] mb-9 max-w-[500px] mx-auto md:mx-0" style={{ fontSize: 'clamp(1.06rem, 1.5vw, 1.4rem)' }}>
               One link. A live map of your listings, stories, reels, and open houses. The modern agent's profile, built for content.
             </p>
 
