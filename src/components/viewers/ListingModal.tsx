@@ -381,7 +381,7 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
               </div>
             </>
           )}
-          <div className="absolute top-3 right-3 flex gap-2">
+          <div className="absolute top-[calc(env(safe-area-inset-top,12px)+52px)] right-3 flex gap-2">
             <button
               onClick={!isPreview ? () => toggleSave(pin.id) : undefined}
               className={`w-9 h-9 rounded-full ${saved ? 'bg-tangerine' : 'bg-black/30'} backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''} transition-colors`}

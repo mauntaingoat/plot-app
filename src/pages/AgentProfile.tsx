@@ -10,6 +10,8 @@ import { ContentFeed } from '@/components/map/ContentFeed'
 import { PinCard } from '@/components/dashboard/PinCard'
 import { ListingModal } from '@/components/viewers/ListingModal'
 import { MapIndicators } from '@/components/map/MapIndicators'
+import { DarkBottomSheet } from '@/components/ui/BottomSheet'
+import { formatPrice } from '@/lib/firestore'
 import { Avatar } from '@/components/ui/Avatar'
 import { AgentDetailSheet, type AgentMode } from '@/components/sheets/AgentDetailSheet'
 import { AuthSheet } from '@/components/sheets/AuthSheet'
@@ -67,6 +69,7 @@ export default function AgentProfile() {
   const [winSize, setWinSize] = useState(0) // triggers re-render on window resize
 
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null)
+  const [indicatorPins, setIndicatorPins] = useState<{ pins: Pin[]; type: 'live' | 'openhouse' } | null>(null)
   const [showAgentDetail, setShowAgentDetail] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
   const initialMode = (searchParams.get('mode') as AgentMode) || 'single'
@@ -200,6 +203,14 @@ export default function AgentProfile() {
     setSelectedPin(pin)
     import('@/lib/firestore').then(({ incrementPinTap }) => incrementPinTap(pin.id)).catch(() => {})
   }, [allPins])
+
+  const handleIndicatorTap = useCallback((pins: Pin[], type: 'live' | 'openhouse') => {
+    if (pins.length === 1) {
+      setSelectedPin(pins[0])
+    } else if (pins.length > 1) {
+      setIndicatorPins({ pins, type })
+    }
+  }, [])
 
   const handleFollow = async () => {
     if (isPreview) return
@@ -409,8 +420,8 @@ export default function AgentProfile() {
           {/* ── Live / Open House indicators ── */}
           <MapIndicators
             pins={filteredPins}
-            onLiveTap={(livePins) => { if (livePins[0]) setSelectedPin(livePins[0]) }}
-            onOpenHouseTap={(ohPins) => { if (ohPins[0]) setSelectedPin(ohPins[0]) }}
+            onLiveTap={(livePins) => handleIndicatorTap(livePins, 'live')}
+            onOpenHouseTap={(ohPins) => handleIndicatorTap(ohPins, 'openhouse')}
           />
 
           {/* ── Pill + buttons inside map, near top ── */}
@@ -600,9 +611,48 @@ export default function AgentProfile() {
         {viewMode === 'map' ? <Play size={20} className="text-tangerine" fill="#FF6B3D" /> : <Map size={20} className="text-white" />}
       </motion.button>
 
+      {/* Mobile saved mode pill */}
+      {agentMode === 'saved' && (
+        <div className="fixed top-[calc(env(safe-area-inset-top,0px)+12px)] left-4 right-4 z-[45] flex justify-center pointer-events-none">
+          <div className="bg-white/95 backdrop-blur-md rounded-full flex items-center gap-2.5 pl-2 pr-4 py-2 border border-black/5 shadow-sm pointer-events-auto">
+            <div className="w-9 h-9 rounded-full bg-tangerine/10 flex items-center justify-center">
+              <Bookmark size={16} className="text-tangerine" />
+            </div>
+            <div className="min-w-0 text-left">
+              <p className="text-[14px] font-bold text-ink">My Saved Map</p>
+              <p className="text-[10px] font-medium text-smoke">{filteredPins.length} saved pin{filteredPins.length !== 1 ? 's' : ''}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedPin ? (
         <ListingModal pin={selectedPin} agent={agent} onClose={() => setSelectedPin(null)} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} />
       ) : null}
+
+      {/* Indicator picker — multiple livestreams or open houses */}
+      <DarkBottomSheet
+        isOpen={!!indicatorPins}
+        onClose={() => setIndicatorPins(null)}
+        title={indicatorPins?.type === 'live'
+          ? `${indicatorPins.pins.length} Livestream${indicatorPins.pins.length !== 1 ? 's' : ''}`
+          : `${indicatorPins?.pins.length || 0} Open House${(indicatorPins?.pins.length || 0) !== 1 ? 's' : ''}`
+        }
+      >
+        <div className="px-4 pb-8 grid grid-cols-2 gap-3">
+          {indicatorPins?.pins.map((pin) => (
+            <PinCard
+              key={pin.id}
+              pin={pin}
+              dark
+              onClick={() => {
+                setIndicatorPins(null)
+                setSelectedPin(pin)
+              }}
+            />
+          ))}
+        </div>
+      </DarkBottomSheet>
 
       <AgentDetailSheet
         isOpen={showAgentDetail}

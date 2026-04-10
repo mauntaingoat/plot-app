@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Eye, MapPin, Home, Bookmark, Share2, MessageCircle, Phone, UserPlus, UserCheck } from 'lucide-react'
+import { Eye, MapPin, Home, X, Bookmark, Share2, MessageCircle, Phone, UserPlus, UserCheck } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { ListingOnlySheet } from '@/components/viewers/ListingOnlySheet'
 import { type Pin, type UserDoc, type ContentItem } from '@/lib/types'
@@ -74,7 +74,7 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
             <div className="px-4 py-3 shrink-0 flex items-center justify-between border-b border-border-dark">
               <h2 className="text-[14px] font-bold text-white truncate flex-1 mr-3">{listingSheet?.address}</h2>
               <button onClick={() => setListingSheet(null)} className="w-7 h-7 rounded-full bg-charcoal flex items-center justify-center text-ghost hover:text-white cursor-pointer shrink-0">
-                <Home size={12} />
+                <X size={12} />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto overscroll-contain">

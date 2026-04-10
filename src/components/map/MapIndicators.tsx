@@ -10,13 +10,14 @@ interface MapIndicatorsProps {
   onOpenHouseTap: (ohPins: Pin[]) => void
 }
 
-/**
- * Floating pills showing live streams and open houses.
- * Styled to match AgentPill + filter pills (white glass, border-black/5).
- * Uses same icons as dashboard insights (Radio, CalendarClock).
- * - Mobile: bottom-left
- * - Desktop: bottom-center
- */
+function CountBadge({ count }: { count: number }) {
+  return (
+    <div className="absolute -top-1.5 -right-1.5 w-[18px] h-[18px] rounded-full bg-tangerine flex items-center justify-center shadow-sm">
+      <span className="text-[10px] font-bold text-white leading-none">{count}</span>
+    </div>
+  )
+}
+
 export function MapIndicators({ pins, onLiveTap, onOpenHouseTap }: MapIndicatorsProps) {
   const livePins = useMemo(
     () => pins.filter((p): p is ForSalePin => p.type === 'for_sale' && 'isLive' in p && !!p.isLive),
@@ -52,12 +53,13 @@ export function MapIndicators({ pins, onLiveTap, onOpenHouseTap }: MapIndicators
             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => onLiveTap(livePins)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/90 backdrop-blur-md border border-black/5 shadow-sm cursor-pointer hover:bg-white transition-colors"
+            className="relative flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/90 backdrop-blur-md border border-black/5 shadow-sm cursor-pointer hover:bg-white transition-colors"
           >
             <Radio size={14} className="text-live-red" />
             <span className="text-[12px] font-bold text-ink">
-              {livePins.length} Live
+              {livePins.length === 1 ? 'Livestream' : 'Livestreams'}
             </span>
+            <CountBadge count={livePins.length} />
           </motion.button>
         )}
 
@@ -69,12 +71,13 @@ export function MapIndicators({ pins, onLiveTap, onOpenHouseTap }: MapIndicators
             transition={{ type: 'spring', damping: 20, stiffness: 300, delay: hasLive ? 0.08 : 0 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => onOpenHouseTap(openHousePins)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/90 backdrop-blur-md border border-black/5 shadow-sm cursor-pointer hover:bg-white transition-colors"
+            className="relative flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/90 backdrop-blur-md border border-black/5 shadow-sm cursor-pointer hover:bg-white transition-colors"
           >
             <CalendarClock size={14} className="text-open-amber" />
             <span className="text-[12px] font-bold text-ink">
-              {openHousePins.length} Open House{openHousePins.length !== 1 ? 's' : ''}
+              {openHousePins.length === 1 ? 'Open House' : 'Open Houses'}
             </span>
+            <CountBadge count={openHousePins.length} />
           </motion.button>
         )}
       </AnimatePresence>
