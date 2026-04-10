@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowRight, Play, BarChart3, Radio, Bell, CalendarDays, ChevronDown } from 'lucide-react'
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { SEOHead } from '@/components/marketing/SEOHead'
-import { Globe } from '@/components/marketing/Globe'
+import { HeroMap } from '@/components/marketing/HeroMap'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthModalStore } from '@/stores/authModalStore'
 import { useScrollReveal } from '@/hooks/useScrollReveal'
@@ -80,63 +80,50 @@ export default function Home() {
       <SEOHead path="/" />
 
       {/* ════════════════════════════════════════════════════════════
-          SECTION 1 — HERO: Claim form + rotating globe
+          SECTION 1 — HERO: Full-bleed animated map bg + left-aligned CTA
           ════════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden">
-        {/* Subtle bg glow */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute -top-32 right-0 w-[600px] h-[600px] bg-tangerine/5 rounded-full blur-[120px]" />
-        </div>
+      <section className="relative overflow-hidden min-h-[520px] md:min-h-[620px]">
+        {/* Animated map background — covers entire hero, fades left */}
+        <HeroMap />
 
-        <div className="relative max-w-[1200px] mx-auto px-5 md:px-8 pt-10 md:pt-20 pb-12 md:pb-24">
-          <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
-            {/* Left — copy + claim form */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-            >
-              <h1 className="text-[42px] md:text-[62px] lg:text-[74px] font-extrabold text-ink tracking-tight leading-[0.98] mb-5">
-                Where listings{' '}
-                <span className="text-gradient">come alive.</span>
-              </h1>
+        {/* Content — left-aligned, sits above the map */}
+        <div className="relative z-10 max-w-[1200px] mx-auto px-5 md:px-8 pt-12 md:pt-24 pb-16 md:pb-28">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+            className="max-w-[540px]"
+          >
+            <h1 className="text-[42px] md:text-[62px] lg:text-[74px] font-extrabold text-ink tracking-tight leading-[0.98] mb-5">
+              Where listings{' '}
+              <span className="text-gradient">come alive.</span>
+            </h1>
 
-              <p className="text-[16px] md:text-[20px] text-smoke leading-[1.4] mb-9 max-w-[480px]">
-                One link. A live map of your listings, stories, reels, and open houses. The modern agent's profile, built for content.
-              </p>
+            <p className="text-[16px] md:text-[20px] text-smoke leading-[1.4] mb-9 max-w-[480px]">
+              One link. A live map of your listings, stories, reels, and open houses. The modern agent's profile, built for content.
+            </p>
 
-              {/* Inline claim form — rounded rectangle, not pill */}
-              <div className="flex items-center max-w-[440px] bg-cream border border-border-light rounded-[14px] p-2 focus-within:border-tangerine/50 focus-within:shadow-[0_0_20px_rgba(255,107,61,0.1)] transition-all">
-                <span className="text-[15px] font-semibold text-ink pl-4 shrink-0 select-none">reel.st/</span>
-                <input
-                  type="text"
-                  value={heroUsername}
-                  onChange={(e) => setHeroUsername(e.target.value.replace(/[^a-z0-9._-]/gi, '').toLowerCase())}
-                  onKeyDown={(e) => e.key === 'Enter' && handleClaim()}
-                  placeholder="yourname"
-                  className="flex-1 bg-transparent text-tangerine text-[15px] font-semibold py-3 px-1 outline-none placeholder:text-tangerine/40 min-w-0"
-                />
-                <button
-                  onClick={handleClaim}
-                  className="shrink-0 h-11 px-6 rounded-[10px] bg-gradient-to-r from-tangerine to-ember text-white text-[14px] font-bold hover:brightness-110 transition-all flex items-center gap-1.5 cursor-pointer shadow-glow-tangerine"
-                >
-                  Claim it <ArrowRight size={15} />
-                </button>
-              </div>
+            {/* Inline claim form */}
+            <div className="flex items-center max-w-[440px] bg-white/80 backdrop-blur-sm border border-border-light rounded-[14px] p-2 focus-within:border-tangerine/50 focus-within:shadow-[0_0_20px_rgba(255,107,61,0.1)] transition-all">
+              <span className="text-[15px] font-semibold text-ink pl-4 shrink-0 select-none">reel.st/</span>
+              <input
+                type="text"
+                value={heroUsername}
+                onChange={(e) => setHeroUsername(e.target.value.replace(/[^a-z0-9._-]/gi, '').toLowerCase())}
+                onKeyDown={(e) => e.key === 'Enter' && handleClaim()}
+                placeholder="yourname"
+                className="flex-1 bg-transparent text-tangerine text-[15px] font-semibold py-3 px-1 outline-none placeholder:text-tangerine/40 min-w-0"
+              />
+              <button
+                onClick={handleClaim}
+                className="shrink-0 h-11 px-6 rounded-[10px] bg-gradient-to-r from-tangerine to-ember text-white text-[14px] font-bold hover:brightness-110 transition-all flex items-center gap-1.5 cursor-pointer shadow-glow-tangerine"
+              >
+                Claim it <ArrowRight size={15} />
+              </button>
+            </div>
 
-              <p className="text-[12px] text-ash mt-3">Free forever. No credit card required.</p>
-            </motion.div>
-
-            {/* Right — rotating globe */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
-              className="relative w-full max-w-[620px] mx-auto md:mx-0 md:ml-auto md:-mr-6"
-            >
-              <Globe className="w-full" />
-            </motion.div>
-          </div>
+            <p className="text-[12px] text-ash mt-3">Free forever. No credit card required.</p>
+          </motion.div>
         </div>
       </section>
 
