@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Share2, UserPlus, UserCheck, ChevronDown, Map, Layers, Users, Globe, Locate } from 'lucide-react'
+import { Share2, UserPlus, UserCheck, ChevronDown, Map, Layers, Users, Globe, Locate, Bookmark } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { FilterBar } from '@/components/ui/FilterPill'
 import { FilterDropdown } from '@/components/ui/FilterDropdown'
@@ -62,6 +62,25 @@ export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick
             <p className={`text-[14px] font-bold ${pillText}`}>Following</p>
             <p className={`text-[11px] font-medium ${pillSecText}`}>
               {enabledAgentCount} agent{enabledAgentCount !== 1 ? 's' : ''} · {totalPins} pins
+            </p>
+          </div>
+          <ChevronDown size={14} className={pillSecText + ' ml-0.5'} />
+        </motion.button>
+      )
+    }
+
+    if (agentMode === 'saved') {
+      return (
+        <motion.button
+          whileTap={{ scale: 0.96 }}
+          onClick={onProfileClick}
+          className={`${pillBg} rounded-full flex items-center gap-2.5 pl-3 pr-3 py-2 shadow-md border cursor-pointer`}
+        >
+          <Bookmark size={18} className="text-tangerine" />
+          <div className="min-w-0">
+            <p className={`text-[14px] font-bold ${pillText}`}>My Saved Map</p>
+            <p className={`text-[11px] font-medium ${pillSecText}`}>
+              {totalPins} saved pin{totalPins !== 1 ? 's' : ''}
             </p>
           </div>
           <ChevronDown size={14} className={pillSecText + ' ml-0.5'} />

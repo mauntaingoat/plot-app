@@ -202,7 +202,7 @@ export default function AgentProfile() {
   }, [filteredPins, agentMode])
 
   const handlePinClick = useCallback((pin: Pin) => {
-    setSelectedPinTab(undefined) // default tab
+    // Don't reset tab — if handleIndicatorTap set it in the same tick, keep it
     setSelectedPin(pin)
     import('@/lib/firestore').then(({ incrementPinTap }) => incrementPinTap(pin.id)).catch(() => {})
   }, [allPins])
@@ -616,21 +616,6 @@ export default function AgentProfile() {
       >
         {viewMode === 'map' ? <Play size={20} className="text-tangerine" fill="#FF6B3D" /> : <Map size={20} className="text-white" />}
       </motion.button>
-
-      {/* Mobile saved mode pill */}
-      {agentMode === 'saved' && (
-        <div className="fixed top-[calc(env(safe-area-inset-top,0px)+12px)] left-4 right-4 z-[45] flex justify-center pointer-events-none">
-          <div className="bg-white/95 backdrop-blur-md rounded-full flex items-center gap-2.5 pl-2 pr-4 py-2 border border-black/5 shadow-sm pointer-events-auto">
-            <div className="w-9 h-9 rounded-full bg-tangerine/10 flex items-center justify-center">
-              <Bookmark size={16} className="text-tangerine" />
-            </div>
-            <div className="min-w-0 text-left">
-              <p className="text-[14px] font-bold text-ink">My Saved Map</p>
-              <p className="text-[10px] font-medium text-smoke">{filteredPins.length} saved pin{filteredPins.length !== 1 ? 's' : ''}</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {selectedPin ? (
         <ListingModal key={`modal-m-${modalKey}`} pin={selectedPin} agent={agent} onClose={() => { setSelectedPin(null); setSelectedPinTab(undefined) }} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} initialTab={selectedPinTab} />
