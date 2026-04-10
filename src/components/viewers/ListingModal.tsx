@@ -155,10 +155,11 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
             {activeTab === 'content' ? (
               <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={onClose} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
             ) : (
-              <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={onClose} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
+              <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={onClose} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} onShowingRequest={() => setShowShowingRequest(true)} />
             )}
           </div>
         </div>
+        <ShowingRequestSheet isOpen={showShowingRequest} onClose={() => setShowShowingRequest(false)} pin={pin} agent={agent} />
       </div>
     )
   }
@@ -208,9 +209,10 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
           {activeTab === 'content' ? (
             <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
           ) : (
-            <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
+            <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} onShowingRequest={() => setShowShowingRequest(true)} />
           )}
         </div>
+        <ShowingRequestSheet isOpen={showShowingRequest} onClose={() => setShowShowingRequest(false)} pin={pin} agent={agent} />
       </div>
     </>
   )
@@ -353,7 +355,7 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
 
 // ── Listing Tab: scrollable MLS data ──
 
-function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, onAuthRequired }: { pin: ForSalePin | SoldPin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void }) {
+function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, onAuthRequired, onShowingRequest }: { pin: ForSalePin | SoldPin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void; onShowingRequest?: () => void }) {
   const requireAuth = () => { if (!isSignedIn && onAuthRequired) onAuthRequired() }
   const [photoIndex, setPhotoIndex] = useState(0)
   const photos = pin.photos || []
@@ -444,7 +446,7 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
               fullWidth
               icon={<CalendarCheck size={15} />}
               disabled={isPreview}
-              onClick={!isPreview ? () => setShowShowingRequest(true) : undefined}
+              onClick={!isPreview ? onShowingRequest : undefined}
             >
               Request a Showing
             </Button>
@@ -454,12 +456,6 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
         <div className="h-8" />
       </div>
 
-      <ShowingRequestSheet
-        isOpen={showShowingRequest}
-        onClose={() => setShowShowingRequest(false)}
-        pin={pin}
-        agent={agent}
-      />
     </div>
   )
 }
