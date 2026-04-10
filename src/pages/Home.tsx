@@ -89,25 +89,25 @@ export default function Home() {
         </div>
 
         {/* Content — centered on mobile, left-aligned on desktop */}
-        <div className="relative z-10 max-w-[1200px] mx-auto px-6 sm:px-8 md:px-8 pt-10 md:pt-24 pb-8 md:pb-28">
+        <div className="relative z-10 max-w-[1200px] mx-auto px-6 md:px-12 lg:px-8 pt-10 md:pt-24 pb-8 md:pb-28">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-            className="max-w-[560px] text-center sm:text-left mx-auto sm:mx-0"
+            className="max-w-[560px] text-center md:text-left mx-auto md:mx-0"
           >
-            <h1 className="font-extrabold text-ink tracking-tight leading-[0.97] mb-5" style={{ fontSize: 'clamp(2.6rem, 5.2vw, 4.9rem)' }}>
+            <h1 className="font-extrabold text-ink tracking-tight leading-[0.97] mb-5" style={{ fontSize: 'clamp(2.75rem, 5.5vw, 5.2rem)' }}>
               Where listings{' '}
               <span className="text-gradient">come alive.</span>
             </h1>
 
-            <p className="text-smoke leading-[1.4] mb-9 max-w-[500px] mx-auto md:mx-0" style={{ fontSize: 'clamp(1.05rem, 1.4vw, 1.3rem)' }}>
+            <p className="text-smoke leading-[1.4] mb-9 max-w-[500px] mx-auto md:mx-0" style={{ fontSize: 'clamp(1.06rem, 1.5vw, 1.4rem)' }}>
               One link. A live map of your listings, stories, reels, and open houses. The modern agent's profile, built for content.
             </p>
 
             {/* Inline claim form */}
-            <div className="flex items-center max-w-[460px] mx-auto sm:mx-0 bg-white/80 backdrop-blur-sm border border-border-light rounded-[14px] p-2 focus-within:border-tangerine/50 focus-within:shadow-[0_0_20px_rgba(255,107,61,0.1)] transition-all">
-              <span className="font-bold text-ink pl-4 shrink-0 select-none" style={{ fontSize: 'clamp(0.95rem, 1.2vw, 1.125rem)' }}>reel.st/</span>
+            <div className="flex items-center max-w-[460px] mx-auto md:mx-0 bg-white/80 backdrop-blur-sm border border-border-light rounded-[14px] p-2 focus-within:border-tangerine/50 focus-within:shadow-[0_0_20px_rgba(255,107,61,0.1)] transition-all">
+              <span className="font-bold text-ink pl-4 shrink-0 select-none" style={{ fontSize: 'clamp(1rem, 1.3vw, 1.2rem)' }}>reel.st/</span>
               <input
                 type="text"
                 value={heroUsername}
@@ -115,7 +115,7 @@ export default function Home() {
                 onKeyDown={(e) => e.key === 'Enter' && handleClaim()}
                 placeholder="yourname"
                 className="flex-1 bg-transparent text-tangerine font-bold py-3.5 px-1 outline-none placeholder:text-tangerine/40 min-w-0"
-                style={{ fontSize: 'clamp(0.95rem, 1.2vw, 1.125rem)' }}
+                style={{ fontSize: 'clamp(1rem, 1.3vw, 1.2rem)' }}
               />
               <button
                 onClick={handleClaim}
