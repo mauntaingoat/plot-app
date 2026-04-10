@@ -18,6 +18,7 @@ interface ListingModalProps {
   isPreview?: boolean
   embedded?: boolean // true when rendered inside a SidePanel — skip own animation/backdrop
   isSignedIn?: boolean
+  initialTab?: 'content' | 'listing'
   onAuthRequired?: () => void
 }
 
@@ -89,8 +90,8 @@ function useListingSwipeToDismiss(
   }, [sheetRef, scrollRef, active, onDismiss])
 }
 
-export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSignedIn, onAuthRequired }: ListingModalProps) {
-  const [activeTab, setActiveTab] = useState<'content' | 'listing'>('content')
+export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSignedIn, onAuthRequired, initialTab }: ListingModalProps) {
+  const [activeTab, setActiveTab] = useState<'content' | 'listing'>(initialTab || 'content')
   const [mounted, setMounted] = useState(true)
   const [visible, setVisible] = useState(false)
   const [showShowingRequest, setShowShowingRequest] = useState(false)
@@ -180,10 +181,12 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
           transition: 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
         }}
       >
-        {/* Close button — always visible */}
-        <button onClick={dismiss} className="absolute top-[calc(env(safe-area-inset-top,12px)+8px)] right-4 z-[110] w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer">
-          <X size={18} />
-        </button>
+        {/* Close button — always visible, listing tab save/share sit left of it */}
+        <div className="absolute top-[calc(env(safe-area-inset-top,12px)+8px)] right-4 z-[110] flex items-center gap-2">
+          <button onClick={dismiss} className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer">
+            <X size={18} />
+          </button>
+        </div>
 
         {/* Tab toggle — overlay on top, translucent */}
         {hasListingData && (
@@ -381,7 +384,7 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
               </div>
             </>
           )}
-          <div className="absolute top-[calc(env(safe-area-inset-top,12px)+52px)] right-3 flex gap-2">
+          <div className="absolute top-[calc(env(safe-area-inset-top,12px)+8px)] right-16 flex items-center gap-2 z-[111]">
             <button
               onClick={!isPreview ? () => toggleSave(pin.id) : undefined}
               className={`w-9 h-9 rounded-full ${saved ? 'bg-tangerine' : 'bg-black/30'} backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''} transition-colors`}

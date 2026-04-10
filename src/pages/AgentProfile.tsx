@@ -69,6 +69,7 @@ export default function AgentProfile() {
   const [winSize, setWinSize] = useState(0) // triggers re-render on window resize
 
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null)
+  const [selectedPinTab, setSelectedPinTab] = useState<'content' | 'listing' | undefined>(undefined)
   const [indicatorPins, setIndicatorPins] = useState<{ pins: Pin[]; type: 'live' | 'openhouse' } | null>(null)
   const [showAgentDetail, setShowAgentDetail] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
@@ -200,12 +201,15 @@ export default function AgentProfile() {
   }, [filteredPins, agentMode])
 
   const handlePinClick = useCallback((pin: Pin) => {
+    setSelectedPinTab(undefined) // default tab
     setSelectedPin(pin)
     import('@/lib/firestore').then(({ incrementPinTap }) => incrementPinTap(pin.id)).catch(() => {})
   }, [allPins])
 
   const handleIndicatorTap = useCallback((pins: Pin[], type: 'live' | 'openhouse') => {
+    const tab = type === 'openhouse' ? 'listing' as const : 'content' as const
     if (pins.length === 1) {
+      setSelectedPinTab(tab)
       setSelectedPin(pins[0])
     } else if (pins.length > 1) {
       setIndicatorPins({ pins, type })
@@ -493,7 +497,7 @@ export default function AgentProfile() {
                     <button onClick={() => setSelectedPin(null)} className="w-8 h-8 rounded-full bg-charcoal flex items-center justify-center text-ghost hover:text-white cursor-pointer shrink-0"><X size={16} /></button>
                   </div>
                   <div className="flex-1 min-h-0 overflow-hidden">
-                    <ListingModal pin={selectedPin} agent={agent} onClose={() => setSelectedPin(null)} isPreview={isPreview} embedded isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} />
+                    <ListingModal pin={selectedPin} agent={agent} onClose={() => { setSelectedPin(null); setSelectedPinTab(undefined) }} isPreview={isPreview} embedded isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} initialTab={selectedPinTab} />
                   </div>
                 </motion.div>
               </div>
@@ -627,7 +631,7 @@ export default function AgentProfile() {
       )}
 
       {selectedPin ? (
-        <ListingModal pin={selectedPin} agent={agent} onClose={() => setSelectedPin(null)} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} />
+        <ListingModal pin={selectedPin} agent={agent} onClose={() => { setSelectedPin(null); setSelectedPinTab(undefined) }} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} initialTab={selectedPinTab} />
       ) : null}
 
       {/* Indicator picker — multiple livestreams or open houses */}
@@ -646,7 +650,9 @@ export default function AgentProfile() {
               pin={pin}
               dark
               onClick={() => {
+                const tab = indicatorPins?.type === 'openhouse' ? 'listing' as const : 'content' as const
                 setIndicatorPins(null)
+                setSelectedPinTab(tab)
                 setSelectedPin(pin)
               }}
             />
