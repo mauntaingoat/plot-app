@@ -1,189 +1,212 @@
-import { useEffect, useRef, useState } from 'react'
-import createGlobe from 'cobe'
+"use client"
 
-/**
- * Animated dotted globe with listing pins popping in.
- * Uses `cobe` (5KB WebGL) — same renderer GitHub uses on their homepage.
- *
- * The globe rotates slowly. At random intervals, a pin "pops" from a dot
- * on the globe surface — the orange ring + thumbnail circle from the real app.
- */
+import { useEffect, useRef, useCallback } from "react"
+import createGlobe from "cobe"
 
-interface GlobePin {
-  id: number
-  lat: number
-  lng: number
-  opacity: number
-  scale: number
+interface LabelMarker {
+  id: string
+  location: [number, number]
+  text: string
+  color: string
+  rotate: number
 }
 
-// Real-ish city coordinates for pin pop-ins
-const PIN_LOCATIONS: [number, number][] = [
-  [25.76, -80.19],   // Miami
-  [34.05, -118.24],  // LA
-  [40.71, -74.01],   // NYC
-  [30.27, -97.74],   // Austin
-  [37.77, -122.42],  // San Francisco
-  [41.88, -87.63],   // Chicago
-  [29.76, -95.37],   // Houston
-  [33.45, -112.07],  // Phoenix
-  [47.61, -122.33],  // Seattle
-  [39.74, -104.99],  // Denver
-  [36.17, -115.14],  // Las Vegas
-  [32.72, -117.16],  // San Diego
-  [42.36, -71.06],   // Boston
-  [35.23, -80.84],   // Charlotte
-  [28.54, -81.38],   // Orlando
-  [26.12, -80.14],   // Fort Lauderdale
-  [51.51, -0.13],    // London
-  [48.86, 2.35],     // Paris
-  [35.68, 139.69],   // Tokyo
-  [-33.87, 151.21],  // Sydney
+interface GlobeProps {
+  markers?: LabelMarker[]
+  className?: string
+  speed?: number
+}
+
+// Real estate pin labels — styled like the pins on an agent profile
+const defaultMarkers: LabelMarker[] = [
+  { id: "pin-1", location: [25.76, -80.19], text: "$1.35M · Brickell", color: "#3B82F6", rotate: -5 },
+  { id: "pin-2", location: [34.05, -118.24], text: "SOLD $2.1M", color: "#34C759", rotate: 4 },
+  { id: "pin-3", location: [40.71, -74.01], text: "Open House Sat", color: "#FFAA00", rotate: -3 },
+  { id: "pin-4", location: [37.77, -122.42], text: "$890K · SoMa", color: "#3B82F6", rotate: 6 },
+  { id: "pin-5", location: [51.51, -0.13], text: "SOLD $4.5M", color: "#34C759", rotate: -4 },
+  { id: "pin-6", location: [-33.87, 151.21], text: "$975K · Bondi", color: "#3B82F6", rotate: 5 },
+  { id: "pin-7", location: [48.86, 2.35], text: "Open House Sun", color: "#FFAA00", rotate: -6 },
+  { id: "pin-8", location: [35.68, 139.69], text: "SOLD $1.8M", color: "#34C759", rotate: 3 },
+  { id: "pin-9", location: [29.76, -95.37], text: "$650K · Heights", color: "#3B82F6", rotate: -4 },
+  { id: "pin-10", location: [41.88, -87.63], text: "Open House Fri", color: "#FFAA00", rotate: 5 },
 ]
 
-export function Globe({ className = '' }: { className?: string }) {
+export function Globe({
+  markers = defaultMarkers,
+  className = "",
+  speed = 0.003,
+}: GlobeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const pointerInteracting = useRef<number | null>(null)
-  const pointerInteractionMovement = useRef(0)
-  const phiRef = useRef(0)
-  const [pins, setPins] = useState<GlobePin[]>([])
-  const pinIdRef = useRef(0)
+  const pointerInteracting = useRef<{ x: number; y: number } | null>(null)
+  const dragOffset = useRef({ phi: 0, theta: 0 })
+  const phiOffsetRef = useRef(0)
+  const thetaOffsetRef = useRef(0)
+  const isPausedRef = useRef(false)
 
-  // Pop a new pin every 2-4 seconds
-  useEffect(() => {
-    const addPin = () => {
-      const [lat, lng] = PIN_LOCATIONS[Math.floor(Math.random() * PIN_LOCATIONS.length)]
-      const id = pinIdRef.current++
-      setPins((prev) => {
-        // Keep max 6 visible pins
-        const kept = prev.length >= 6 ? prev.slice(1) : prev
-        return [...kept, { id, lat, lng, opacity: 0, scale: 0 }]
-      })
-      // Animate in
-      requestAnimationFrame(() => {
-        setPins((prev) => prev.map((p) => (p.id === id ? { ...p, opacity: 1, scale: 1 } : p)))
-      })
-    }
-    addPin() // initial
-    const interval = setInterval(addPin, 2500 + Math.random() * 1500)
-    return () => clearInterval(interval)
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    pointerInteracting.current = { x: e.clientX, y: e.clientY }
+    if (canvasRef.current) canvasRef.current.style.cursor = "grabbing"
+    isPausedRef.current = true
   }, [])
+
+  const handlePointerUp = useCallback(() => {
+    if (pointerInteracting.current !== null) {
+      phiOffsetRef.current += dragOffset.current.phi
+      thetaOffsetRef.current += dragOffset.current.theta
+      dragOffset.current = { phi: 0, theta: 0 }
+    }
+    pointerInteracting.current = null
+    if (canvasRef.current) canvasRef.current.style.cursor = "grab"
+    isPausedRef.current = false
+  }, [])
+
+  useEffect(() => {
+    const handlePointerMove = (e: PointerEvent) => {
+      if (pointerInteracting.current !== null) {
+        dragOffset.current = {
+          phi: (e.clientX - pointerInteracting.current.x) / 300,
+          theta: (e.clientY - pointerInteracting.current.y) / 1000,
+        }
+      }
+    }
+    window.addEventListener("pointermove", handlePointerMove, { passive: true })
+    window.addEventListener("pointerup", handlePointerUp, { passive: true })
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove)
+      window.removeEventListener("pointerup", handlePointerUp)
+    }
+  }, [handlePointerUp])
 
   useEffect(() => {
     if (!canvasRef.current) return
-    let width = 0
+    const canvas = canvasRef.current
+    let globe: ReturnType<typeof createGlobe> | null = null
+    let animationId: number
 
-    const onResize = () => {
-      if (canvasRef.current) width = canvasRef.current.offsetWidth
+    let phi = 0
+
+    function init() {
+      const width = canvas.offsetWidth
+      if (width === 0 || globe) return
+
+      globe = createGlobe(canvas, {
+        devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+        width,
+        height: width,
+        phi: 0,
+        theta: 0.2,
+        dark: 0,
+        diffuse: 1.5,
+        mapSamples: 16000,
+        mapBrightness: 9,
+        baseColor: [1, 1, 1],
+        markerColor: [1, 0.42, 0.24], // tangerine
+        glowColor: [0.98, 0.97, 0.96],
+        markerElevation: 0,
+        markers: markers.map((m) => ({
+          location: m.location,
+          size: 0.03,
+          id: m.id,
+        })),
+        arcs: [],
+        arcColor: [1, 0.42, 0.24],
+        arcWidth: 0.5,
+        arcHeight: 0.25,
+        opacity: 0.7,
+      })
+
+      function animate() {
+        if (!isPausedRef.current) phi += speed
+        globe!.update({
+          phi: phi + phiOffsetRef.current + dragOffset.current.phi,
+          theta: 0.2 + thetaOffsetRef.current + dragOffset.current.theta,
+        })
+        animationId = requestAnimationFrame(animate)
+      }
+      animate()
+      setTimeout(() => canvas && (canvas.style.opacity = "1"))
     }
-    window.addEventListener('resize', onResize)
-    onResize()
 
-    const globe = createGlobe(canvasRef.current, {
-      devicePixelRatio: 2,
-      width: width * 2,
-      height: width * 2,
-      phi: 0,
-      theta: 0.25,
-      dark: 0,
-      diffuse: 1.2,
-      mapSamples: 16000,
-      mapBrightness: 1.2,
-      baseColor: [1, 1, 1],
-      markerColor: [1, 0.42, 0.24], // tangerine
-      glowColor: [1, 1, 1],
-      markers: PIN_LOCATIONS.map(([lat, lng]) => ({
-        location: [lat, lng],
-        size: 0.04,
-      })),
-      opacity: 0.85,
-      offset: [0, 0],
-      scale: 1,
-      onRender: (state) => {
-        // Slow auto-rotation
-        if (!pointerInteracting.current) {
-          phiRef.current += 0.003
+    if (canvas.offsetWidth > 0) {
+      init()
+    } else {
+      const ro = new ResizeObserver((entries) => {
+        if (entries[0]?.contentRect.width > 0) {
+          ro.disconnect()
+          init()
         }
-        state.phi = phiRef.current + pointerInteractionMovement.current
-        state.width = width * 2
-        state.height = width * 2
-      },
-    })
+      })
+      ro.observe(canvas)
+    }
 
     return () => {
-      globe.destroy()
-      window.removeEventListener('resize', onResize)
+      if (animationId) cancelAnimationFrame(animationId)
+      if (globe) globe.destroy()
     }
-  }, [])
+  }, [markers, speed])
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative aspect-square select-none ${className}`}>
       <canvas
         ref={canvasRef}
-        className="w-full aspect-square"
+        onPointerDown={handlePointerDown}
         style={{
-          contain: 'layout paint size',
-          maxWidth: '100%',
-        }}
-        onPointerDown={(e) => {
-          pointerInteracting.current = e.clientX - pointerInteractionMovement.current
-          canvasRef.current!.style.cursor = 'grabbing'
-        }}
-        onPointerUp={() => {
-          pointerInteracting.current = null
-          canvasRef.current!.style.cursor = 'grab'
-        }}
-        onPointerOut={() => {
-          pointerInteracting.current = null
-          if (canvasRef.current) canvasRef.current.style.cursor = 'grab'
-        }}
-        onMouseMove={(e) => {
-          if (pointerInteracting.current !== null) {
-            const delta = e.clientX - pointerInteracting.current
-            pointerInteractionMovement.current = delta / 200
-          }
-        }}
-        onTouchMove={(e) => {
-          if (pointerInteracting.current !== null && e.touches[0]) {
-            const delta = e.touches[0].clientX - pointerInteracting.current
-            pointerInteractionMovement.current = delta / 200
-          }
+          width: "100%",
+          height: "100%",
+          cursor: "grab",
+          opacity: 0,
+          transition: "opacity 1.2s ease",
+          borderRadius: "50%",
+          touchAction: "none",
         }}
       />
-
-      {/* Floating pin badges that pop in */}
-      {pins.map((pin) => {
-        // Project lat/lng to rough screen position on the globe
-        // This is approximate — pins float around the globe edges
-        const angle = ((pin.lng + 180) / 360) * Math.PI * 2 + phiRef.current
-        const x = 50 + Math.cos(angle) * 35
-        const y = 50 + (pin.lat / 90) * -30
-        return (
-          <div
-            key={pin.id}
-            className="absolute pointer-events-none"
+      {markers.map((m) => (
+        <div
+          key={m.id}
+          style={{
+            position: "absolute",
+            // @ts-expect-error CSS Anchor Positioning
+            positionAnchor: `--cobe-${m.id}`,
+            bottom: "anchor(top)",
+            left: "anchor(center)",
+            translate: "-50% 0",
+            marginBottom: -10,
+            padding: "0.35rem 0.6rem 0.3rem",
+            background: m.color,
+            color: "#fff",
+            fontFamily: "var(--font-mono), ui-monospace, monospace",
+            fontSize: "0.72rem",
+            fontWeight: 700,
+            letterSpacing: "0.02em",
+            whiteSpace: "nowrap" as const,
+            transform: `rotate(${m.rotate}deg)`,
+            borderRadius: 5,
+            boxShadow:
+              "0 1px 3px rgba(0,0,0,0.2), 0 3px 8px rgba(0,0,0,0.1), inset 0 -1px 0 rgba(0,0,0,0.15)",
+            textShadow: "0 1px 1px rgba(0,0,0,0.25)",
+            pointerEvents: "none" as const,
+            overflow: "hidden",
+            opacity: `var(--cobe-visible-${m.id}, 0)`,
+            filter: `blur(calc((1 - var(--cobe-visible-${m.id}, 0)) * 8px))`,
+            transition: "opacity 0.3s, filter 0.3s",
+          }}
+        >
+          <span
             style={{
-              left: `${x}%`,
-              top: `${y}%`,
-              transform: `translate(-50%, -50%) scale(${pin.scale})`,
-              opacity: pin.opacity,
-              transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease',
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: "50%",
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 60%, transparent 100%)",
+              borderRadius: "5px 5px 50% 50%",
+              pointerEvents: "none" as const,
             }}
-          >
-            <div className="relative">
-              {/* Outer ring — tangerine */}
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-[2.5px] border-tangerine bg-white shadow-lg flex items-center justify-center">
-                {/* Inner thumbnail circle */}
-                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-br from-tangerine/20 to-ember/30" />
-              </div>
-              {/* Pulse ring */}
-              <div
-                className="absolute inset-0 rounded-full border-2 border-tangerine/40 animate-[pulse-live_2s_ease-in-out_infinite]"
-              />
-            </div>
-          </div>
-        )
-      })}
+          />
+          {m.text}
+        </div>
+      ))}
     </div>
   )
 }

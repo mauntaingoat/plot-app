@@ -51,12 +51,13 @@ export function Navbar() {
         <nav
           className={`
             flex items-center justify-between gap-2
-            h-12 md:h-[52px] px-2.5 md:px-3
-            rounded-full
+            h-[52px] md:h-[56px] px-2.5 md:px-3
+            rounded-[16px]
             transition-all duration-300
+            border border-tangerine/25
             ${scrolled
-              ? 'bg-white/85 backdrop-blur-2xl shadow-lg border border-black/[0.06]'
-              : 'bg-white/60 backdrop-blur-xl border border-black/[0.04]'
+              ? 'bg-ivory/90 backdrop-blur-2xl shadow-lg'
+              : 'bg-ivory/70 backdrop-blur-xl'
             }
           `}
           style={{

@@ -96,36 +96,31 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
             >
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-tangerine-soft border border-tangerine/15 mb-5">
-                <span className="w-1.5 h-1.5 rounded-full bg-tangerine animate-pulse" />
-                <span className="text-[11px] font-bold text-ember uppercase tracking-wide">Now in beta</span>
-              </div>
-
-              <h1 className="text-[34px] md:text-[52px] lg:text-[60px] font-extrabold text-ink tracking-tight leading-[1.06] mb-4">
+              <h1 className="text-[38px] md:text-[56px] lg:text-[66px] font-extrabold text-ink tracking-tight leading-[1.02] mb-4">
                 Where listings{' '}
                 <span className="text-gradient">come alive.</span>
               </h1>
 
-              <p className="text-[15px] md:text-[18px] text-smoke leading-relaxed mb-8 max-w-[460px]">
+              <p className="text-[15px] md:text-[18px] text-smoke leading-[1.45] mb-8 max-w-[460px]">
                 One link. A live map of your listings, stories, reels, and open houses. The modern agent's profile, built for content.
               </p>
 
-              {/* Inline claim form */}
-              <div className="flex items-center max-w-[420px] bg-cream border border-border-light rounded-full p-1.5 focus-within:border-tangerine/50 focus-within:shadow-[0_0_20px_rgba(255,107,61,0.1)] transition-all">
-                <span className="text-[14px] font-semibold text-ink pl-4 shrink-0 select-none">reel.st/</span>
+              {/* Inline claim form — rounded rectangle, not pill */}
+              <div className="flex items-center max-w-[440px] bg-cream border border-border-light rounded-[14px] p-2 focus-within:border-tangerine/50 focus-within:shadow-[0_0_20px_rgba(255,107,61,0.1)] transition-all">
+                <span className="text-[15px] font-semibold text-ink pl-4 shrink-0 select-none">reel.st/</span>
                 <input
                   type="text"
                   value={heroUsername}
                   onChange={(e) => setHeroUsername(e.target.value.replace(/[^a-z0-9._-]/gi, '').toLowerCase())}
                   onKeyDown={(e) => e.key === 'Enter' && handleClaim()}
                   placeholder="yourname"
-                  className="flex-1 bg-transparent text-tangerine text-[14px] font-semibold py-2.5 px-1 outline-none placeholder:text-tangerine/40 min-w-0"
+                  className="flex-1 bg-transparent text-tangerine text-[15px] font-semibold py-3 px-1 outline-none placeholder:text-tangerine/40 min-w-0"
                 />
                 <button
                   onClick={handleClaim}
-                  className="shrink-0 h-10 px-5 rounded-full bg-gradient-to-r from-tangerine to-ember text-white text-[13px] font-bold hover:brightness-110 transition-all flex items-center gap-1.5 cursor-pointer shadow-glow-tangerine"
+                  className="shrink-0 h-11 px-6 rounded-[10px] bg-gradient-to-r from-tangerine to-ember text-white text-[14px] font-bold hover:brightness-110 transition-all flex items-center gap-1.5 cursor-pointer shadow-glow-tangerine"
                 >
-                  Claim it <ArrowRight size={14} />
+                  Claim it <ArrowRight size={15} />
                 </button>
               </div>
 
@@ -137,9 +132,9 @@ export default function Home() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
-              className="relative w-full max-w-[580px] mx-auto md:mx-0 md:ml-auto md:-mr-8"
+              className="relative w-full max-w-[560px] mx-auto md:mx-0 md:ml-auto"
             >
-              <Globe className="w-full scale-110 md:scale-125 origin-center" />
+              <Globe className="w-full" />
             </motion.div>
           </div>
         </div>
