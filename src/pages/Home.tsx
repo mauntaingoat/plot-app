@@ -148,23 +148,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ═══ Skyline divider ═══ */}
-      <div className="relative -mb-px">
-        <svg viewBox="0 0 1440 120" preserveAspectRatio="none" className="w-full h-[60px] md:h-[90px] block">
-          {/* Skyline silhouette — filled with obsidian, tangerine stroke on top */}
-          <path
-            d="M0,120 L0,90 L40,90 L40,70 L60,70 L60,55 L75,55 L75,65 L95,65 L95,40 L115,40 L115,55 L130,55 L130,45 L150,45 L150,30 L165,30 L165,45 L180,45 L180,70 L210,70 L210,50 L225,50 L225,35 L250,35 L250,20 L270,20 L270,35 L285,35 L285,55 L310,55 L310,75 L340,75 L340,60 L355,60 L355,45 L375,45 L375,30 L390,30 L390,15 L405,15 L405,30 L420,30 L420,50 L450,50 L450,65 L480,65 L480,45 L500,45 L500,55 L520,55 L520,35 L540,35 L540,50 L570,50 L570,70 L600,70 L600,55 L620,55 L620,40 L640,40 L640,25 L660,25 L660,10 L675,10 L675,25 L690,25 L690,45 L720,45 L720,60 L750,60 L750,75 L780,75 L780,50 L800,50 L800,65 L830,65 L830,45 L850,45 L850,30 L870,30 L870,50 L900,50 L900,35 L920,35 L920,20 L935,20 L935,35 L950,35 L950,55 L980,55 L980,70 L1010,70 L1010,50 L1030,50 L1030,40 L1050,40 L1050,25 L1070,25 L1070,45 L1100,45 L1100,60 L1130,60 L1130,75 L1160,75 L1160,55 L1180,55 L1180,40 L1200,40 L1200,55 L1230,55 L1230,70 L1260,70 L1260,50 L1280,50 L1280,35 L1300,35 L1300,50 L1330,50 L1330,65 L1360,65 L1360,80 L1400,80 L1400,90 L1440,90 L1440,120 Z"
-            fill="var(--color-obsidian)"
-            stroke="var(--color-tangerine)"
-            strokeWidth="1.5"
-            strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
-          />
-          {/* Cover the bottom stroke so only the top skyline edge shows */}
-          <rect x="0" y="100" width="1440" height="20" fill="var(--color-obsidian)" />
-        </svg>
-      </div>
-
       {/* ════════════════════════════════════════════════════════════
           SECTION 2 — ARCHITECTURE: Video + text (Linktree-style split)
           ════════════════════════════════════════════════════════════ */}
