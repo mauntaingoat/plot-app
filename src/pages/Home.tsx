@@ -5,6 +5,7 @@ import { ArrowRight, Play, BarChart3, Radio, Bell, CalendarDays, ChevronDown } f
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { SEOHead } from '@/components/marketing/SEOHead'
 import { HeroMap } from '@/components/marketing/HeroMap'
+import { PhoneCarousel } from '@/components/marketing/PhoneCarousel'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthModalStore } from '@/stores/authModalStore'
 import { useScrollReveal } from '@/hooks/useScrollReveal'
@@ -153,29 +154,8 @@ export default function Home() {
       <section className="below-fold bg-obsidian">
         <div className="max-w-[1200px] mx-auto px-6 sm:px-8 md:px-8 py-20 md:py-28">
           <div className="reveal grid md:grid-cols-2 gap-8 md:gap-16 items-center">
-            {/* Left — video / animated preview */}
-            <div className="relative rounded-[20px] overflow-hidden bg-midnight border border-border-dark aspect-[9/16] max-h-[620px] md:max-h-[720px] mx-auto max-w-[360px] md:max-w-[380px] shadow-2xl">
-              {/* Placeholder — swap for real video/recording later */}
-              <div className="absolute inset-0 bg-gradient-to-br from-[#0C1E35] via-[#0F2847] to-[#0A1628] flex items-center justify-center">
-                <div className="text-center">
-                  <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center mx-auto mb-4 border border-white/15">
-                    <Play size={28} className="text-white ml-1" />
-                  </div>
-                  <p className="text-[13px] font-semibold text-mist">Product demo</p>
-                  <p className="text-[11px] text-ghost mt-1">Coming soon</p>
-                </div>
-              </div>
-              {/* Decorative map pins on the placeholder */}
-              {[
-                { x: 22, y: 20, color: '#3B82F6' },
-                { x: 65, y: 30, color: '#FF6B3D' },
-                { x: 40, y: 55, color: '#34C759' },
-                { x: 75, y: 65, color: '#FFAA00' },
-              ].map((p, i) => (
-                <div key={i} className="absolute w-3 h-3 rounded-full animate-[pulse-live_3s_ease-in-out_infinite]"
-                  style={{ left: `${p.x}%`, top: `${p.y}%`, background: p.color, boxShadow: `0 0 12px ${p.color}60`, animationDelay: `${i * 0.7}s` }} />
-              ))}
-            </div>
+            {/* Left — 3D rotating phone carousel */}
+            <PhoneCarousel className="py-8" />
 
             {/* Right — copy */}
             <div>
