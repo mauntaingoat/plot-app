@@ -14,9 +14,10 @@ interface ContentFeedProps {
   isPreview?: boolean
   isSignedIn?: boolean
   onAuthRequired?: () => void
+  agentMode?: string
 }
 
-export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAuthRequired }: ContentFeedProps) {
+export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAuthRequired, agentMode = 'single' }: ContentFeedProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const allContent = getAllContent(pins)
   const [listingSheet, setListingSheet] = useState<Pin | null>(null)
@@ -40,6 +41,7 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
         {allContent.map(({ content, pin }) => (
           <FeedCard key={content.id} content={content} pin={pin} agent={agent}
             isPreview={isPreview} following={following}
+            showFollowButton={agentMode === 'single'}
             isSignedIn={isSignedIn} onAuthRequired={onAuthRequired}
             onFollowToggle={() => {
               if (!isSignedIn && !isPreview && onAuthRequired) { onAuthRequired(); return }
@@ -91,9 +93,9 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
   )
 }
 
-function FeedCard({ content, pin, agent, isPreview, following, onFollowToggle, onListingTap, isSignedIn, onAuthRequired }: {
+function FeedCard({ content, pin, agent, isPreview, following, showFollowButton, onFollowToggle, onListingTap, isSignedIn, onAuthRequired }: {
   content: ContentItem; pin: Pin; agent: UserDoc; isPreview?: boolean
-  following: boolean; onFollowToggle: () => void; onListingTap: () => void
+  following: boolean; showFollowButton?: boolean; onFollowToggle: () => void; onListingTap: () => void
   isSignedIn?: boolean; onAuthRequired?: () => void
 }) {
   const requireAuth = () => { if (!isSignedIn && onAuthRequired) onAuthRequired() }

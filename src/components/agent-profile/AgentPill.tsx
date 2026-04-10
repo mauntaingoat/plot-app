@@ -99,11 +99,13 @@ export function AgentPill({
           {renderPillContent()}
           <ChevronDown size={14} className="text-smoke ml-1" />
         </motion.button>
-        <motion.button whileTap={!isPreview ? { scale: 0.88 } : undefined} onClick={!isPreview ? onFollow : undefined}
-          className={`bg-white/90 backdrop-blur-md rounded-full w-9 h-9 flex items-center justify-center cursor-pointer border border-black/5 ${isFollowing ? 'text-tangerine' : 'text-ink'} ${isPreview ? 'opacity-40' : ''}`}
-          style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
-          {isFollowing ? <UserCheck size={15} /> : <UserPlus size={15} />}
-        </motion.button>
+        {agentMode === 'single' && (
+          <motion.button whileTap={!isPreview ? { scale: 0.88 } : undefined} onClick={!isPreview ? onFollow : undefined}
+            className={`bg-white/90 backdrop-blur-md rounded-full w-9 h-9 flex items-center justify-center cursor-pointer border border-black/5 ${isFollowing ? 'text-tangerine' : 'text-ink'} ${isPreview ? 'opacity-40' : ''}`}
+            style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
+            {isFollowing ? <UserCheck size={15} /> : <UserPlus size={15} />}
+          </motion.button>
+        )}
         <motion.button whileTap={!isPreview ? { scale: 0.88 } : undefined} onClick={!isPreview ? onShare : undefined}
           className={`bg-white/90 backdrop-blur-md rounded-full w-9 h-9 flex items-center justify-center text-ink cursor-pointer border border-black/5 ${isPreview ? 'opacity-40' : ''}`}
           style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
