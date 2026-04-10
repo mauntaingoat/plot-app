@@ -214,7 +214,7 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
           {activeTab === 'content' ? (
             <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
           ) : (
-            <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} onShowingRequest={() => setShowShowingRequest(true)} />
+            <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isFullScreen isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} onShowingRequest={() => setShowShowingRequest(true)} />
           )}
         </div>
         <ShowingRequestSheet isOpen={showShowingRequest} onClose={() => setShowShowingRequest(false)} pin={pin} agent={agent} />
@@ -360,7 +360,7 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
 
 // ── Listing Tab: scrollable MLS data ──
 
-function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, onAuthRequired, onShowingRequest }: { pin: ForSalePin | SoldPin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void; onShowingRequest?: () => void }) {
+function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isFullScreen, isSignedIn, onAuthRequired, onShowingRequest }: { pin: ForSalePin | SoldPin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean; isFullScreen?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void; onShowingRequest?: () => void }) {
   const requireAuth = () => { if (!isSignedIn && onAuthRequired) onAuthRequired() }
   const [photoIndex, setPhotoIndex] = useState(0)
   const photos = pin.photos || []
@@ -386,7 +386,7 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
               </div>
             </>
           )}
-          <div className={`absolute flex items-center gap-2 z-[111] ${embedded ? 'top-3 right-3' : 'top-[calc(env(safe-area-inset-top,12px)+8px)] right-16'}`}>
+          <div className={`absolute flex items-center gap-2 z-[111] ${isFullScreen ? 'top-[calc(env(safe-area-inset-top,12px)+8px)] right-16' : 'top-3 right-3'}`}>
             <button
               onClick={!isPreview ? () => toggleSave(pin.id) : undefined}
               className={`w-9 h-9 rounded-full ${saved ? 'bg-tangerine' : 'bg-black/30'} backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''} transition-colors`}
