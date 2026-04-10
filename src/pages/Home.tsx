@@ -89,7 +89,7 @@ export default function Home() {
         </div>
 
         {/* Content — centered on mobile, left-aligned on desktop */}
-        <div className="relative z-10 max-w-[1200px] mx-auto px-6 md:px-12 lg:px-8 pt-10 md:pt-24 pb-8 md:pb-28">
+        <div className="relative z-10 pt-10 md:pt-24 pb-8 md:pb-28" style={{ paddingLeft: 'clamp(1.5rem, 8vw, 10rem)' }}>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
