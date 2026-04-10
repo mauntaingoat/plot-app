@@ -70,7 +70,7 @@ export function TabBar({ tabs, active, onChange, centerAction, dark }: TabBarPro
           whileHover={{ scale: 1.05 }}
           onClick={centerAction.onClick}
           className="
-            -mt-5 w-14 h-14 rounded-[18px]
+            -mt-5 w-[52px] h-[52px] rounded-[16px]
             bg-gradient-to-br from-tangerine to-ember
             text-white shadow-glow-tangerine
             flex items-center justify-center cursor-pointer
