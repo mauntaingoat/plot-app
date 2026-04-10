@@ -78,6 +78,18 @@ export default function Home() {
   return (
     <MarketingLayout>
       <SEOHead path="/" />
+      <style>{`
+        .hero-content-pad {
+          padding-left: 1.5rem;
+          padding-right: 1.5rem;
+        }
+        @media (min-width: 768px) {
+          .hero-content-pad {
+            padding-left: clamp(3rem, 8vw, 10rem);
+            padding-right: 0;
+          }
+        }
+      `}</style>
 
       {/* ════════════════════════════════════════════════════════════
           SECTION 1 — HERO: Full-bleed animated map bg + left-aligned CTA
@@ -89,7 +101,7 @@ export default function Home() {
         </div>
 
         {/* Content — centered on mobile, left-aligned on desktop */}
-        <div className="relative z-10 pt-10 md:pt-24 pb-8 md:pb-28" style={{ paddingLeft: 'clamp(1.5rem, 8vw, 10rem)' }}>
+        <div className="relative z-10 hero-content-pad pt-16 md:pt-32 pb-8 md:pb-28">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
