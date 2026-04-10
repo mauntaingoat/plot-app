@@ -567,14 +567,14 @@ function InlineShowingForm({ pin, agent, onBack }: { pin: ForSalePin | SoldPin; 
             <span className="text-tangerine"><Calendar size={12} /></span> Preferred date
           </label>
           <input type="date" value={date} min={new Date().toISOString().split('T')[0]} onChange={(e) => setDate(e.target.value)}
-            className="w-full bg-slate text-white text-[13px] font-medium rounded-[10px] px-3 py-2.5 border border-border-dark outline-none focus:border-tangerine transition-colors [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-40" />
+            className="w-full bg-slate text-white text-[13px] font-medium rounded-[10px] px-3 py-2.5 border border-border-dark outline-none focus:border-tangerine transition-colors hide-native-picker" />
         </div>
         <div>
           <label className="text-[10px] font-bold uppercase tracking-wider text-ghost mb-1.5 flex items-center gap-1.5">
             <span className="text-tangerine"><Clock size={12} /></span> Preferred time
           </label>
           <input type="time" value={time} onChange={(e) => setTime(e.target.value)}
-            className="w-full bg-slate text-white text-[13px] font-medium rounded-[10px] px-3 py-2.5 border border-border-dark outline-none focus:border-tangerine transition-colors [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-40" />
+            className="w-full bg-slate text-white text-[13px] font-medium rounded-[10px] px-3 py-2.5 border border-border-dark outline-none focus:border-tangerine transition-colors hide-native-picker" />
         </div>
       </div>
 
@@ -596,6 +596,10 @@ function InlineShowingForm({ pin, agent, onBack }: { pin: ForSalePin | SoldPin; 
       <p className="text-[10px] text-ghost text-center">
         By submitting, you agree to be contacted by {agent.displayName}.
       </p>
+      <style>{`
+        .hide-native-picker::-webkit-calendar-picker-indicator { display: none !important; }
+        .hide-native-picker::-webkit-inner-spin-button { display: none !important; }
+      `}</style>
     </div>
   )
 }

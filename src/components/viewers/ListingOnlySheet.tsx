@@ -179,11 +179,8 @@ function InlineShowingForm({ pin, agent, onBack }: { pin: ForSalePin | SoldPin; 
         </div>
       </div>
       <style>{`
-        .hide-native-picker::-webkit-calendar-picker-indicator {
-          filter: invert(1) brightness(0.5);
-          opacity: 0.4;
-          cursor: pointer;
-        }
+        .hide-native-picker::-webkit-calendar-picker-indicator { display: none !important; }
+        .hide-native-picker::-webkit-inner-spin-button { display: none !important; }
       `}</style>
       <div>
         <label className="text-[10px] font-bold uppercase tracking-wider text-ghost mb-1.5 flex items-center gap-1.5"><span className="text-tangerine"><MessageSquare size={12} /></span> Note (optional)</label>
