@@ -82,7 +82,7 @@ export default function Home() {
       {/* ════════════════════════════════════════════════════════════
           SECTION 1 — HERO: Full-bleed animated map bg + left-aligned CTA
           ════════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden bg-gradient-to-br from-tangerine to-ember">
         {/* Animated map background — desktop: right side, mobile: below content */}
         <div className="hidden md:block">
           <HeroMap />
@@ -96,35 +96,35 @@ export default function Home() {
             transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
             className="max-w-[560px] text-center md:text-left mx-auto md:mx-0"
           >
-            <h1 className="text-[44px] sm:text-[52px] md:text-[66px] lg:text-[78px] font-extrabold text-ink tracking-tight leading-[0.97] mb-5">
+            <h1 className="text-[44px] sm:text-[52px] md:text-[66px] lg:text-[78px] font-extrabold tracking-tight leading-[0.97] mb-5" style={{ color: '#FF7F6B' }}>
               Where listings{' '}
-              <span className="text-gradient">come alive.</span>
+              <span className="text-white">come alive.</span>
             </h1>
 
-            <p className="text-[17px] sm:text-[19px] md:text-[21px] text-smoke leading-[1.4] mb-9 max-w-[500px] mx-auto md:mx-0">
+            <p className="text-[17px] sm:text-[19px] md:text-[21px] text-white/90 leading-[1.4] mb-9 max-w-[500px] mx-auto md:mx-0">
               One link. A live map of your listings, stories, reels, and open houses. The modern agent's profile, built for content.
             </p>
 
             {/* Inline claim form */}
-            <div className="flex items-center max-w-[460px] mx-auto md:mx-0 bg-white/80 backdrop-blur-sm border border-border-light rounded-[14px] p-2 focus-within:border-tangerine/50 focus-within:shadow-[0_0_20px_rgba(255,107,61,0.1)] transition-all">
-              <span className="text-[17px] md:text-[18px] font-bold text-ink pl-4 shrink-0 select-none">reel.st/</span>
+            <div className="flex items-center max-w-[460px] mx-auto md:mx-0 bg-white/20 backdrop-blur-sm border border-white/25 rounded-[14px] p-2 focus-within:border-white/50 focus-within:shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-all">
+              <span className="text-[17px] md:text-[18px] font-bold text-white pl-4 shrink-0 select-none">reel.st/</span>
               <input
                 type="text"
                 value={heroUsername}
                 onChange={(e) => setHeroUsername(e.target.value.replace(/[^a-z0-9._-]/gi, '').toLowerCase())}
                 onKeyDown={(e) => e.key === 'Enter' && handleClaim()}
                 placeholder="yourname"
-                className="flex-1 bg-transparent text-tangerine text-[17px] md:text-[18px] font-bold py-3.5 px-1 outline-none placeholder:text-tangerine/40 min-w-0"
+                className="flex-1 bg-transparent text-white text-[17px] md:text-[18px] font-bold py-3.5 px-1 outline-none placeholder:text-white/40 min-w-0"
               />
               <button
                 onClick={handleClaim}
-                className="shrink-0 h-12 px-6 rounded-[10px] bg-gradient-to-r from-tangerine to-ember text-white text-[15px] font-bold hover:brightness-110 transition-all flex items-center gap-2 cursor-pointer shadow-glow-tangerine"
+                className="shrink-0 h-12 px-6 rounded-[10px] bg-white text-tangerine text-[15px] font-bold hover:bg-white/90 transition-all flex items-center gap-2 cursor-pointer shadow-lg"
               >
                 Claim it <ArrowRight size={16} />
               </button>
             </div>
 
-            <p className="text-[12px] text-ash mt-3">Free forever. No credit card required.</p>
+            <p className="text-[12px] text-white/60 mt-3">Free forever. No credit card required.</p>
           </motion.div>
         </div>
 
