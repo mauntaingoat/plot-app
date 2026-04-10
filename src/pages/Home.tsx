@@ -94,27 +94,28 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-            className="max-w-[560px] text-center md:text-left mx-auto md:mx-0"
+            className="max-w-[560px] text-center sm:text-left mx-auto sm:mx-0"
           >
-            <h1 className="text-[44px] sm:text-[52px] md:text-[66px] lg:text-[78px] font-extrabold text-ink tracking-tight leading-[0.97] mb-5">
+            <h1 className="font-extrabold text-ink tracking-tight leading-[0.97] mb-5" style={{ fontSize: 'clamp(2.6rem, 5.2vw, 4.9rem)' }}>
               Where listings{' '}
               <span className="text-gradient">come alive.</span>
             </h1>
 
-            <p className="text-[17px] sm:text-[19px] md:text-[21px] text-smoke leading-[1.4] mb-9 max-w-[500px] mx-auto md:mx-0">
+            <p className="text-smoke leading-[1.4] mb-9 max-w-[500px] mx-auto md:mx-0" style={{ fontSize: 'clamp(1.05rem, 1.4vw, 1.3rem)' }}>
               One link. A live map of your listings, stories, reels, and open houses. The modern agent's profile, built for content.
             </p>
 
             {/* Inline claim form */}
-            <div className="flex items-center max-w-[460px] mx-auto md:mx-0 bg-white/80 backdrop-blur-sm border border-border-light rounded-[14px] p-2 focus-within:border-tangerine/50 focus-within:shadow-[0_0_20px_rgba(255,107,61,0.1)] transition-all">
-              <span className="text-[17px] md:text-[18px] font-bold text-ink pl-4 shrink-0 select-none">reel.st/</span>
+            <div className="flex items-center max-w-[460px] mx-auto sm:mx-0 bg-white/80 backdrop-blur-sm border border-border-light rounded-[14px] p-2 focus-within:border-tangerine/50 focus-within:shadow-[0_0_20px_rgba(255,107,61,0.1)] transition-all">
+              <span className="font-bold text-ink pl-4 shrink-0 select-none" style={{ fontSize: 'clamp(0.95rem, 1.2vw, 1.125rem)' }}>reel.st/</span>
               <input
                 type="text"
                 value={heroUsername}
                 onChange={(e) => setHeroUsername(e.target.value.replace(/[^a-z0-9._-]/gi, '').toLowerCase())}
                 onKeyDown={(e) => e.key === 'Enter' && handleClaim()}
                 placeholder="yourname"
-                className="flex-1 bg-transparent text-tangerine text-[17px] md:text-[18px] font-bold py-3.5 px-1 outline-none placeholder:text-tangerine/40 min-w-0"
+                className="flex-1 bg-transparent text-tangerine font-bold py-3.5 px-1 outline-none placeholder:text-tangerine/40 min-w-0"
+                style={{ fontSize: 'clamp(0.95rem, 1.2vw, 1.125rem)' }}
               />
               <button
                 onClick={handleClaim}
