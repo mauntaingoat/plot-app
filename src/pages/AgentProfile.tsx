@@ -209,8 +209,13 @@ export default function AgentProfile() {
   const handleIndicatorTap = useCallback((pins: Pin[], type: 'live' | 'openhouse') => {
     const tab = type === 'openhouse' ? 'listing' as const : 'content' as const
     if (pins.length === 1) {
-      setSelectedPinTab(tab)
-      setSelectedPin(pins[0])
+      // Force remount by clearing first, then setting on next frame
+      setSelectedPin(null)
+      setSelectedPinTab(undefined)
+      requestAnimationFrame(() => {
+        setSelectedPinTab(tab)
+        setSelectedPin(pins[0])
+      })
     } else if (pins.length > 1) {
       setIndicatorPins({ pins, type })
     }
@@ -652,8 +657,12 @@ export default function AgentProfile() {
               onClick={() => {
                 const tab = indicatorPins?.type === 'openhouse' ? 'listing' as const : 'content' as const
                 setIndicatorPins(null)
-                setSelectedPinTab(tab)
-                setSelectedPin(pin)
+                setSelectedPin(null)
+                setSelectedPinTab(undefined)
+                requestAnimationFrame(() => {
+                  setSelectedPinTab(tab)
+                  setSelectedPin(pin)
+                })
               }}
             />
           ))}
