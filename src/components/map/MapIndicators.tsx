@@ -52,7 +52,7 @@ export function MapIndicators({ pins, onLiveTap, onOpenHouseTap }: MapIndicators
             exit={{ opacity: 0, y: 10, scale: 0.9 }}
             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => onLiveTap(livePins)}
+            onClick={(e) => { e.stopPropagation(); onLiveTap(livePins) }}
             className="relative flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/90 backdrop-blur-md border border-black/5 shadow-sm cursor-pointer hover:bg-white transition-colors"
           >
             <Radio size={14} className="text-live-red" />
@@ -70,7 +70,7 @@ export function MapIndicators({ pins, onLiveTap, onOpenHouseTap }: MapIndicators
             exit={{ opacity: 0, y: 10, scale: 0.9 }}
             transition={{ type: 'spring', damping: 20, stiffness: 300, delay: hasLive ? 0.08 : 0 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => onOpenHouseTap(openHousePins)}
+            onClick={(e) => { e.stopPropagation(); onOpenHouseTap(openHousePins) }}
             className="relative flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/90 backdrop-blur-md border border-black/5 shadow-sm cursor-pointer hover:bg-white transition-colors"
           >
             <CalendarClock size={14} className="text-open-amber" />
