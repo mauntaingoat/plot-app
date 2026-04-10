@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, useMotionValue, animate, useDragControls } from 'framer-motion'
-import { X, Bed, Bath, Maximize, MapPin, Eye, Bookmark, Share2, Phone, ChevronLeft, ChevronRight, CalendarCheck } from 'lucide-react'
+import { X, Bed, Bath, Maximize, MapPin, Eye, Bookmark, Share2, Phone, ChevronLeft, ChevronRight, CalendarCheck, Calendar, Clock, MessageSquare, User as UserIcon, Check, Mail } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { formatPrice } from '@/lib/firestore'
 import { useSaves } from '@/hooks/useSaves'
 import { OpenHouseBlock } from '@/components/listing/OpenHouseBlock'
-import { ShowingRequestSheet } from '@/components/listing/ShowingRequestSheet'
 import { publicContent } from '@/lib/contentVisibility'
 import type { Pin, ForSalePin, SoldPin, ContentItem, UserDoc } from '@/lib/types'
 
@@ -98,7 +97,6 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
   }, [initialTab])
   const [mounted, setMounted] = useState(true)
   const [visible, setVisible] = useState(false)
-  const [showShowingRequest, setShowShowingRequest] = useState(false)
   const closingRef = useRef(false)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
@@ -160,11 +158,10 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
             {activeTab === 'content' ? (
               <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={onClose} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
             ) : (
-              <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={onClose} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} onShowingRequest={() => setShowShowingRequest(true)} />
+              <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={onClose} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
             )}
           </div>
         </div>
-        <ShowingRequestSheet isOpen={showShowingRequest} onClose={() => setShowShowingRequest(false)} pin={pin} agent={agent} />
       </div>
     )
   }
@@ -216,10 +213,9 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
           {activeTab === 'content' ? (
             <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
           ) : (
-            <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isFullScreen isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} onShowingRequest={() => setShowShowingRequest(true)} />
+            <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isFullScreen isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
           )}
         </div>
-        <ShowingRequestSheet isOpen={showShowingRequest} onClose={() => setShowShowingRequest(false)} pin={pin} agent={agent} />
       </div>
     </>
   )
@@ -362,9 +358,10 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
 
 // ── Listing Tab: scrollable MLS data ──
 
-function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isFullScreen, isSignedIn, onAuthRequired, onShowingRequest }: { pin: ForSalePin | SoldPin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean; isFullScreen?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void; onShowingRequest?: () => void }) {
+function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isFullScreen, isSignedIn, onAuthRequired }: { pin: ForSalePin | SoldPin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean; isFullScreen?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void }) {
   const requireAuth = () => { if (!isSignedIn && onAuthRequired) onAuthRequired() }
   const [photoIndex, setPhotoIndex] = useState(0)
+  const [showRequestForm, setShowRequestForm] = useState(false)
   const photos = pin.photos || []
   const { isPinSaved, toggleSave } = useSaves()
   const saved = isPinSaved(pin.id)
@@ -446,23 +443,159 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isFullScreen, 
             <div className="flex-1 min-w-0"><p className="text-[15px] font-bold text-white">{agent.displayName}</p>{agent.brokerage && <p className="text-[12px] text-ghost">{agent.brokerage}</p>}</div>
             <Button variant="glass" size="sm" icon={<Phone size={14} />} disabled={isPreview} onClick={!isPreview ? requireAuth : undefined}>Contact</Button>
           </div>
-          {pin.type === 'for_sale' && (
+          {pin.type === 'for_sale' && !showRequestForm && (
             <Button
               variant="primary"
               size="md"
               fullWidth
               icon={<CalendarCheck size={15} />}
               disabled={isPreview}
-              onClick={!isPreview ? onShowingRequest : undefined}
+              onClick={!isPreview ? () => setShowRequestForm(true) : undefined}
             >
               Request a Showing
             </Button>
           )}
         </div>
 
+        {/* Inline showing request form — slides in as a second "page" within the listing */}
+        {showRequestForm && (
+          <InlineShowingForm pin={pin} agent={agent} onBack={() => setShowRequestForm(false)} />
+        )}
+
         <div className="h-8" />
       </div>
 
+    </div>
+  )
+}
+
+// ── Inline showing request form (renders inside the listing scroll area) ──
+
+function InlineShowingForm({ pin, agent, onBack }: { pin: ForSalePin | SoldPin; agent: UserDoc; onBack: () => void }) {
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+  const [time, setTime] = useState('10:00')
+  const [note, setNote] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleSubmit = async () => {
+    if (!name.trim() || !email.trim() || !phone.trim()) {
+      setError('Please fill in your name, email, and phone.')
+      return
+    }
+    setSubmitting(true)
+    setError(null)
+    try {
+      const { createShowingRequest } = await import('@/lib/firestore')
+      await createShowingRequest({
+        agentId: agent.uid,
+        pinId: pin.id,
+        pinAddress: pin.address,
+        visitorName: name.trim(),
+        visitorEmail: email.trim(),
+        visitorPhone: phone.trim(),
+        preferredDate: date,
+        preferredTime: time,
+        note: note.trim(),
+      })
+      setSubmitted(true)
+    } catch {
+      setError('Could not send your request. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (submitted) {
+    return (
+      <div className="px-5 py-10 text-center">
+        <div className="w-14 h-14 rounded-full bg-sold-green/20 flex items-center justify-center mx-auto mb-4">
+          <Check size={24} className="text-sold-green" />
+        </div>
+        <h3 className="text-[17px] font-extrabold text-white tracking-tight">Request sent</h3>
+        <p className="text-[13px] text-mist mt-2 max-w-[280px] mx-auto">
+          {agent.displayName.split(' ')[0]} will reach out within 24 hours.
+        </p>
+        <button onClick={onBack} className="text-[13px] font-semibold text-tangerine mt-5 cursor-pointer">
+          Back to listing
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="px-5 py-5 space-y-4 border-t border-border-dark">
+      <div className="flex items-center justify-between">
+        <h3 className="text-[15px] font-bold text-white">Request a Showing</h3>
+        <button onClick={onBack} className="text-[12px] font-semibold text-tangerine cursor-pointer">
+          Cancel
+        </button>
+      </div>
+
+      <div>
+        <label className="text-[10px] font-bold uppercase tracking-wider text-ghost mb-1.5 flex items-center gap-1.5">
+          <span className="text-tangerine"><UserIcon size={12} /></span> Full name
+        </label>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe"
+          className="w-full bg-slate text-white text-[13px] font-medium rounded-[10px] px-3 py-2.5 border border-border-dark outline-none focus:border-tangerine transition-colors placeholder:text-ghost" />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-wider text-ghost mb-1.5 flex items-center gap-1.5">
+            <span className="text-tangerine"><Mail size={12} /></span> Email
+          </label>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jane@example.com"
+            className="w-full bg-slate text-white text-[13px] font-medium rounded-[10px] px-3 py-2.5 border border-border-dark outline-none focus:border-tangerine transition-colors placeholder:text-ghost" />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-wider text-ghost mb-1.5 flex items-center gap-1.5">
+            <span className="text-tangerine"><Phone size={12} /></span> Phone
+          </label>
+          <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(305) 555-1234"
+            className="w-full bg-slate text-white text-[13px] font-medium rounded-[10px] px-3 py-2.5 border border-border-dark outline-none focus:border-tangerine transition-colors placeholder:text-ghost" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-wider text-ghost mb-1.5 flex items-center gap-1.5">
+            <span className="text-tangerine"><Calendar size={12} /></span> Preferred date
+          </label>
+          <input type="date" value={date} min={new Date().toISOString().split('T')[0]} onChange={(e) => setDate(e.target.value)}
+            className="w-full bg-slate text-white text-[13px] font-medium rounded-[10px] px-3 py-2.5 border border-border-dark outline-none focus:border-tangerine transition-colors" />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-wider text-ghost mb-1.5 flex items-center gap-1.5">
+            <span className="text-tangerine"><Clock size={12} /></span> Preferred time
+          </label>
+          <input type="time" value={time} onChange={(e) => setTime(e.target.value)}
+            className="w-full bg-slate text-white text-[13px] font-medium rounded-[10px] px-3 py-2.5 border border-border-dark outline-none focus:border-tangerine transition-colors" />
+        </div>
+      </div>
+
+      <div>
+        <label className="text-[10px] font-bold uppercase tracking-wider text-ghost mb-1.5 flex items-center gap-1.5">
+          <span className="text-tangerine"><MessageSquare size={12} /></span> Note (optional)
+        </label>
+        <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Pre-approved buyer, working with an agent, etc."
+          className="w-full bg-slate text-white text-[13px] font-medium rounded-[10px] px-3 py-2.5 border border-border-dark outline-none focus:border-tangerine transition-colors resize-none placeholder:text-ghost" />
+      </div>
+
+      {error && (
+        <div className="bg-live-red/10 border border-live-red/30 rounded-[10px] px-3 py-2 text-[12px] text-live-red">{error}</div>
+      )}
+
+      <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} disabled={submitting}>
+        {submitting ? 'Sending…' : 'Send request'}
+      </Button>
+      <p className="text-[10px] text-ghost text-center">
+        By submitting, you agree to be contacted by {agent.displayName}.
+      </p>
     </div>
   )
 }

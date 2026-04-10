@@ -141,13 +141,15 @@ export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick
           {renderAgentPill()}
 
           <div className="flex items-center gap-1.5">
-            <motion.button
-              whileTap={!isPreview ? { scale: 0.88 } : undefined}
-              onClick={!isPreview ? onFollow : undefined}
-              className={`${pillBg} rounded-full w-9 h-9 flex items-center justify-center cursor-pointer shadow-md border ${isFollowing ? 'text-tangerine' : pillText} ${isPreview ? 'opacity-40' : ''}`}
-            >
-              {isFollowing ? <UserCheck size={16} /> : <UserPlus size={16} />}
-            </motion.button>
+            {agentMode === 'single' && (
+              <motion.button
+                whileTap={!isPreview ? { scale: 0.88 } : undefined}
+                onClick={!isPreview ? onFollow : undefined}
+                className={`${pillBg} rounded-full w-9 h-9 flex items-center justify-center cursor-pointer shadow-md border ${isFollowing ? 'text-tangerine' : pillText} ${isPreview ? 'opacity-40' : ''}`}
+              >
+                {isFollowing ? <UserCheck size={16} /> : <UserPlus size={16} />}
+              </motion.button>
+            )}
             <motion.button
               whileTap={!isPreview ? { scale: 0.88 } : undefined}
               onClick={!isPreview ? onShare : undefined}
