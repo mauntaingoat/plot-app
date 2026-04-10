@@ -23,20 +23,32 @@ const PINS: MapPin[] = [
   { x: '90%', y: '22%', delay: 1.6, size: 34, thumbnail: 'https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=60&h=60&fit=crop' },
 ]
 
-const BUILDINGS = [
-  { top: '10%', left: '52%', w: '12%', h: '8%', delay: 0.5 },
+// Each building has a clipPath to give it shape — some plain rects, some with notches/extrusions
+// clipPath uses polygon() with percentage coords relative to the element
+const BUILDINGS: { top: string; left: string; w: string; h: string; delay: number; clip?: string }[] = [
+  // L-shape notch bottom-right
+  { top: '10%', left: '52%', w: '12%', h: '8%', delay: 0.5, clip: 'polygon(0 0, 100% 0, 100% 55%, 60% 55%, 60% 100%, 0 100%)' },
+  // Plain tall rect
   { top: '22%', left: '65%', w: '8%', h: '14%', delay: 0.6 },
-  { top: '45%', left: '70%', w: '14%', h: '10%', delay: 0.7 },
-  { top: '65%', left: '48%', w: '10%', h: '8%', delay: 0.55 },
+  // Notch top-right corner
+  { top: '45%', left: '70%', w: '14%', h: '10%', delay: 0.7, clip: 'polygon(0 0, 70% 0, 70% 35%, 100% 35%, 100% 100%, 0 100%)' },
+  // Extrusion on left side
+  { top: '65%', left: '48%', w: '10%', h: '8%', delay: 0.55, clip: 'polygon(0 20%, 30% 20%, 30% 0, 100% 0, 100% 100%, 0 100%)' },
+  // Plain square
   { top: '75%', left: '80%', w: '12%', h: '12%', delay: 0.65 },
-  { top: '15%', left: '82%', w: '8%', h: '10%', delay: 0.75 },
-  { top: '55%', left: '60%', w: '6%', h: '16%', delay: 0.6 },
-  { top: '30%', left: '88%', w: '7%', h: '8%', delay: 0.8 },
-  { top: '82%', left: '55%', w: '10%', h: '6%', delay: 0.7 },
+  // Notch bottom-left
+  { top: '15%', left: '82%', w: '8%', h: '10%', delay: 0.75, clip: 'polygon(0 0, 100% 0, 100% 100%, 40% 100%, 40% 60%, 0 60%)' },
+  // T-shape extrusion on right
+  { top: '55%', left: '60%', w: '6%', h: '16%', delay: 0.6, clip: 'polygon(0 0, 100% 0, 100% 40%, 100% 40%, 100% 65%, 100% 65%, 100% 100%, 0 100%)' },
+  // L-shape notch top-left
+  { top: '30%', left: '88%', w: '7%', h: '8%', delay: 0.8, clip: 'polygon(45% 0, 100% 0, 100% 100%, 0 100%, 0 45%, 45% 45%)' },
+  // Wide with right extrusion
+  { top: '82%', left: '55%', w: '10%', h: '6%', delay: 0.7, clip: 'polygon(0 0, 65% 0, 65% 0, 100% 0, 100% 60%, 65% 60%, 65% 100%, 0 100%)' },
+  // Plain small rect
   { top: '5%', left: '72%', w: '9%', h: '7%', delay: 0.55 },
 ]
 
-const ROAD_COLOR = 'rgb(203, 221, 240)'
+const ROAD_COLOR = 'rgb(223, 235, 248)'
 const HOME_COLOR = 'rgb(233, 217, 248)'
 const HOME_BORDER = 'rgba(200, 180, 230, 0.5)'
 
@@ -58,11 +70,13 @@ export function HeroMap() {
         {BUILDINGS.map((b, i) => (
           <motion.div
             key={`bldg-${i}`}
-            className="absolute rounded-sm"
+            className="absolute"
             style={{
               top: b.top, left: b.left, width: b.w, height: b.h,
               background: HOME_COLOR,
               border: `1px solid ${HOME_BORDER}`,
+              borderRadius: b.clip ? 0 : 2,
+              clipPath: b.clip || undefined,
             }}
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
