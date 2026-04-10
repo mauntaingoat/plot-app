@@ -96,12 +96,12 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
             >
-              <h1 className="text-[38px] md:text-[56px] lg:text-[66px] font-extrabold text-ink tracking-tight leading-[1.02] mb-4">
+              <h1 className="text-[42px] md:text-[62px] lg:text-[74px] font-extrabold text-ink tracking-tight leading-[0.98] mb-5">
                 Where listings{' '}
                 <span className="text-gradient">come alive.</span>
               </h1>
 
-              <p className="text-[15px] md:text-[18px] text-smoke leading-[1.45] mb-8 max-w-[460px]">
+              <p className="text-[16px] md:text-[20px] text-smoke leading-[1.4] mb-9 max-w-[480px]">
                 One link. A live map of your listings, stories, reels, and open houses. The modern agent's profile, built for content.
               </p>
 
@@ -132,7 +132,7 @@ export default function Home() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
-              className="relative w-full max-w-[560px] mx-auto md:mx-0 md:ml-auto"
+              className="relative w-full max-w-[620px] mx-auto md:mx-0 md:ml-auto md:-mr-6"
             >
               <Globe className="w-full" />
             </motion.div>

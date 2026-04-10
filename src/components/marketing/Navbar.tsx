@@ -51,7 +51,7 @@ export function Navbar() {
         <nav
           className={`
             flex items-center justify-between gap-2
-            h-[52px] md:h-[56px] px-2.5 md:px-3
+            h-[56px] md:h-[60px] px-3 md:px-4
             rounded-[16px]
             transition-all duration-300
             border border-tangerine/25
@@ -66,8 +66,8 @@ export function Navbar() {
         >
           {/* Logo */}
           <Link to="/" className="flex items-center gap-1.5 shrink-0 pl-2">
-            <img src="/reelst-logo.png" alt="Reelst" className="w-6 h-6 md:w-7 md:h-7" />
-            <span className="text-[16px] md:text-[17px] font-extrabold text-ink tracking-tight">Reelst</span>
+            <img src="/reelst-logo.png" alt="Reelst" className="w-7 h-7 md:w-8 md:h-8" />
+            <span className="text-[17px] md:text-[19px] font-extrabold text-ink tracking-tight">Reelst</span>
           </Link>
 
           {/* Desktop links */}
@@ -77,7 +77,7 @@ export function Navbar() {
                 key={link.to}
                 to={link.to}
                 className={`
-                  px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors
+                  px-4 py-2 rounded-full text-[14px] font-medium transition-colors
                   ${pathname === link.to
                     ? 'text-tangerine bg-tangerine-soft'
                     : 'text-graphite hover:text-ink hover:bg-black/[0.04]'
@@ -94,7 +94,7 @@ export function Navbar() {
             {userDoc ? (
               <button
                 onClick={() => navigate('/dashboard')}
-                className="h-9 px-4 rounded-full bg-gradient-to-r from-tangerine to-ember text-white text-[13px] font-bold cursor-pointer hover:brightness-110 transition-all"
+                className="h-10 px-5 rounded-[10px] bg-gradient-to-r from-tangerine to-ember text-white text-[14px] font-bold cursor-pointer hover:brightness-110 transition-all"
               >
                 Dashboard
               </button>
@@ -102,13 +102,13 @@ export function Navbar() {
               <>
                 <button
                   onClick={() => navigate('/sign-in')}
-                  className="h-9 px-3.5 rounded-full text-[13px] font-medium text-graphite hover:text-ink hover:bg-black/[0.04] transition-colors cursor-pointer"
+                  className="h-10 px-4 rounded-[10px] text-[14px] font-medium text-graphite hover:text-ink hover:bg-black/[0.04] transition-colors cursor-pointer"
                 >
                   Sign in
                 </button>
                 <button
                   onClick={() => navigate('/sign-up')}
-                  className="h-9 px-4 rounded-full bg-gradient-to-r from-tangerine to-ember text-white text-[13px] font-bold cursor-pointer hover:brightness-110 transition-all shadow-glow-tangerine"
+                  className="h-10 px-5 rounded-[10px] bg-gradient-to-r from-tangerine to-ember text-white text-[14px] font-bold cursor-pointer hover:brightness-110 transition-all shadow-glow-tangerine"
                 >
                   Get started
                 </button>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useCallback } from "react"
+import { useEffect, useRef } from "react"
 import createGlobe from "cobe"
 
 interface PinMarker {
@@ -15,7 +15,6 @@ interface GlobeProps {
   speed?: number
 }
 
-// Circular thumbnail pins — same look as the agent profile map pins
 const defaultMarkers: PinMarker[] = [
   { id: "pin-1", location: [25.76, -80.19], thumbnail: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=80&h=80&fit=crop" },
   { id: "pin-2", location: [34.05, -118.24], thumbnail: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=80&h=80&fit=crop" },
@@ -33,52 +32,12 @@ export function Globe({
   speed = 0.003,
 }: GlobeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const pointerInteracting = useRef<{ x: number; y: number } | null>(null)
-  const dragOffset = useRef({ phi: 0, theta: 0 })
-  const phiOffsetRef = useRef(0)
-  const thetaOffsetRef = useRef(0)
-  const isPausedRef = useRef(false)
-
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    pointerInteracting.current = { x: e.clientX, y: e.clientY }
-    if (canvasRef.current) canvasRef.current.style.cursor = "grabbing"
-    isPausedRef.current = true
-  }, [])
-
-  const handlePointerUp = useCallback(() => {
-    if (pointerInteracting.current !== null) {
-      phiOffsetRef.current += dragOffset.current.phi
-      thetaOffsetRef.current += dragOffset.current.theta
-      dragOffset.current = { phi: 0, theta: 0 }
-    }
-    pointerInteracting.current = null
-    if (canvasRef.current) canvasRef.current.style.cursor = "grab"
-    isPausedRef.current = false
-  }, [])
-
-  useEffect(() => {
-    const handlePointerMove = (e: PointerEvent) => {
-      if (pointerInteracting.current !== null) {
-        dragOffset.current = {
-          phi: (e.clientX - pointerInteracting.current.x) / 300,
-          theta: (e.clientY - pointerInteracting.current.y) / 1000,
-        }
-      }
-    }
-    window.addEventListener("pointermove", handlePointerMove, { passive: true })
-    window.addEventListener("pointerup", handlePointerUp, { passive: true })
-    return () => {
-      window.removeEventListener("pointermove", handlePointerMove)
-      window.removeEventListener("pointerup", handlePointerUp)
-    }
-  }, [handlePointerUp])
 
   useEffect(() => {
     if (!canvasRef.current) return
     const canvas = canvasRef.current
     let globe: ReturnType<typeof createGlobe> | null = null
     let animationId: number
-
     let phi = 0
 
     function init() {
@@ -91,32 +50,31 @@ export function Globe({
         height: width,
         phi: 0,
         theta: 0.2,
-        dark: 0,
-        diffuse: 1.2,
-        mapSamples: 16000,
-        mapBrightness: 1.2,
-        baseColor: [1, 1, 1],
-        markerColor: [1, 0.42, 0.24], // tangerine
-        glowColor: [1, 1, 1],
+        // dark: 1 inverts the color scheme — land dots become baseColor on a transparent bg
+        dark: 1,
+        diffuse: 3,
+        mapSamples: 24000,
+        mapBrightness: 6,
+        // Tangerine dots for the continents
+        baseColor: [1, 0.42, 0.24],
+        markerColor: [1, 0.42, 0.24],
+        glowColor: [1, 0.97, 0.95],
         markerElevation: 0,
         markers: markers.map((m) => ({
           location: m.location,
-          size: 0.03,
+          size: 0.04,
           id: m.id,
         })),
         arcs: [],
         arcColor: [1, 0.42, 0.24],
         arcWidth: 0.5,
         arcHeight: 0.25,
-        opacity: 0.7,
+        opacity: 0.35,
       })
 
       function animate() {
-        if (!isPausedRef.current) phi += speed
-        globe!.update({
-          phi: phi + phiOffsetRef.current + dragOffset.current.phi,
-          theta: 0.2 + thetaOffsetRef.current + dragOffset.current.theta,
-        })
+        phi += speed
+        globe!.update({ phi, theta: 0.2 })
         animationId = requestAnimationFrame(animate)
       }
       animate()
@@ -145,18 +103,17 @@ export function Globe({
     <div className={`relative aspect-square select-none ${className}`}>
       <canvas
         ref={canvasRef}
-        onPointerDown={handlePointerDown}
         style={{
           width: "100%",
           height: "100%",
-          cursor: "grab",
           opacity: 0,
           transition: "opacity 1.2s ease",
           borderRadius: "50%",
           touchAction: "none",
+          pointerEvents: "none",
         }}
       />
-      {/* Circular thumbnail pins — tangerine ring + listing photo inside */}
+      {/* Circular thumbnail pins — tangerine ring + listing photo */}
       {markers.map((m) => (
         <div
           key={m.id}
@@ -176,25 +133,24 @@ export function Globe({
           {/* Outer tangerine ring */}
           <div
             style={{
-              width: 38,
-              height: 38,
+              width: 48,
+              height: 48,
               borderRadius: "50%",
-              border: "2.5px solid #FF6B3D",
+              border: "3px solid #FF6B3D",
               background: "#fff",
-              boxShadow: "0 2px 8px rgba(255,107,61,0.3), 0 4px 16px rgba(0,0,0,0.1)",
+              boxShadow: "0 2px 10px rgba(255,107,61,0.35), 0 4px 20px rgba(0,0,0,0.1)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               overflow: "hidden",
             }}
           >
-            {/* Inner thumbnail */}
             <img
               src={m.thumbnail}
               alt=""
               style={{
-                width: 30,
-                height: 30,
+                width: 38,
+                height: 38,
                 borderRadius: "50%",
                 objectFit: "cover",
               }}

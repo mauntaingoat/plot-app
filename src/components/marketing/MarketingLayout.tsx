@@ -12,7 +12,7 @@ export function MarketingLayout({ children, noFooter }: MarketingLayoutProps) {
     <div className="min-h-screen bg-ivory flex flex-col">
       <Navbar />
       {/* Spacer for floating pill nav */}
-      <div className="h-[72px] md:h-[76px] shrink-0" />
+      <div className="h-[80px] md:h-[84px] shrink-0" />
       <main className="flex-1">
         {children}
       </main>
