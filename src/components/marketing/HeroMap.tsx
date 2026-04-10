@@ -129,10 +129,10 @@ export function HeroMap() {
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {/* Clipping + left fade for desktop */}
       <div
-        className="absolute inset-y-0 right-0 left-0 md:left-[28%]"
+        className="absolute inset-y-0 right-0 left-0 md:left-[42%]"
         style={{
-          maskImage: 'linear-gradient(to right, transparent 0%, black 12%)',
-          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 12%)',
+          maskImage: 'linear-gradient(to right, transparent 0%, black 8%)',
+          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 8%)',
           overflow: 'hidden',
         }}
       >
