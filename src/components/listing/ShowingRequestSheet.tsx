@@ -82,8 +82,18 @@ export function ShowingRequestSheet({ isOpen, onClose, pin, agent }: ShowingRequ
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 24 }}
             transition={{ duration: 0.28, ease: [0.23, 1, 0.32, 1] }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[310] w-[calc(100vw-24px)] sm:w-[calc(100vw-48px)] max-w-[460px] max-h-[92vh] bg-obsidian rounded-[22px] shadow-2xl overflow-hidden flex flex-col border border-border-dark"
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={0.3}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 100 || info.velocity.y > 500) handleClose()
+            }}
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[310] w-[calc(100vw-48px)] max-w-[420px] max-h-[88vh] bg-obsidian rounded-[22px] shadow-2xl overflow-hidden flex flex-col border border-border-dark"
           >
+            {/* Drag handle */}
+            <div className="flex justify-center pt-2 pb-0 shrink-0 cursor-grab">
+              <div className="w-9 h-1 rounded-full bg-ghost/40" />
+            </div>
             {/* Header */}
             <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-border-dark shrink-0">
               <div className="min-w-0 pr-3">
@@ -149,8 +159,8 @@ export function ShowingRequestSheet({ isOpen, onClose, pin, agent }: ShowingRequ
                     </Field>
                   </div>
 
-                  <Field icon={<Calendar size={14} />} label="Preferred date & time">
-                    <div className="grid grid-cols-2 gap-2">
+                  <Field icon={<Calendar size={14} className="text-tangerine" />} label="Preferred date & time">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <input
                         type="date"
                         value={date}
