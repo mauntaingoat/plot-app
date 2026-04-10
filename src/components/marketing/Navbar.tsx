@@ -102,13 +102,13 @@ export function Navbar() {
               <>
                 <button
                   onClick={() => navigate('/sign-in')}
-                  className="h-11 px-4.5 rounded-[10px] text-[15px] font-medium text-graphite hover:text-ink hover:bg-black/[0.04] transition-colors cursor-pointer"
+                  className="h-11 px-4.5 rounded-[10px] bg-pearl text-[15px] font-medium text-graphite hover:bg-smoke/15 transition-colors cursor-pointer"
                 >
                   Sign in
                 </button>
                 <button
                   onClick={() => navigate('/sign-up')}
-                  className="h-11 px-5.5 rounded-[10px] bg-pearl text-ink text-[15px] font-bold cursor-pointer hover:bg-smoke/15 transition-all"
+                  className="h-11 px-5.5 rounded-[10px] bg-gradient-to-r from-tangerine to-ember text-white text-[15px] font-bold cursor-pointer hover:brightness-110 transition-all shadow-glow-tangerine"
                 >
                   Get started
                 </button>

@@ -189,14 +189,14 @@ export function HeroMap() {
           transform: scale(0.8);
           transform-origin: center;
         }
-        /* Desktop: fixed left offset so grid never overlaps text area */
+        /* Desktop: anchored right, never wider than right half */
         @media (min-width: 768px) {
           .hero-map-grid {
-            left: auto;
+            left: auto !important;
             right: 0;
-            width: 55%;
-            mask-image: linear-gradient(to right, transparent 0%, black 8%);
-            -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%);
+            width: 50%;
+            mask-image: linear-gradient(to right, transparent 0%, black 10%);
+            -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%);
           }
           .hero-map-grid .map-tile-building {
             transform: scale(1);
