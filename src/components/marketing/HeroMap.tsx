@@ -53,8 +53,8 @@ const THICK_V = [18, 45, 72]
 const THIN_H = [8, 15, 32, 40, 58, 65, 85, 92]
 const THIN_V = [8, 28, 35, 55, 62, 82, 90]
 
-const ROAD_COLOR = 'rgba(255, 255, 255, 0.15)'
-const HOME_COLOR = 'rgba(255, 255, 255, 0.10)'
+const ROAD_COLOR = 'rgba(255, 107, 61, 0.12)'
+const HOME_COLOR = 'rgba(232, 82, 42, 0.08)'
 
 /**
  * Renders one complete tile of the map (grid + buildings + pins).
@@ -85,10 +85,10 @@ function MapTile({ animatePins }: { animatePins?: boolean }) {
           <line key={`tv-${i}`} x1={`${x}%`} y1="0%" x2={`${x}%`} y2="100%" stroke={ROAD_COLOR} strokeWidth="4" opacity="0.7" />
         ))}
         {THIN_H.map((y, i) => (
-          <line key={`sh-${i}`} x1="0%" y1={`${y}%`} x2="100%" y2={`${y}%`} stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
+          <line key={`sh-${i}`} x1="0%" y1={`${y}%`} x2="100%" y2={`${y}%`} stroke="var(--color-border-light)" strokeWidth="1.5" opacity="0.5" />
         ))}
         {THIN_V.map((x, i) => (
-          <line key={`sv-${i}`} x1={`${x}%`} y1="0%" x2={`${x}%`} y2="100%" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
+          <line key={`sv-${i}`} x1={`${x}%`} y1="0%" x2={`${x}%`} y2="100%" stroke="var(--color-border-light)" strokeWidth="1.5" opacity="0.5" />
         ))}
       </svg>
 
@@ -136,7 +136,7 @@ export function HeroMap() {
           overflow: 'hidden',
         }}
       >
-        <div className="absolute inset-0" />
+        <div className="absolute inset-0 bg-pearl/50" />
 
         {/*
           Scrolling container — 2x2 tile grid, animated diagonally.
@@ -173,7 +173,7 @@ export function HeroMap() {
       <div
         className="absolute inset-0"
         style={{
-          background: 'linear-gradient(to bottom, #FF6B3D 0%, transparent 6%, transparent 92%, #E8522A 100%)',
+          background: 'linear-gradient(to bottom, var(--color-ivory) 0%, transparent 6%, transparent 92%, var(--color-ivory) 100%)',
         }}
       />
 
