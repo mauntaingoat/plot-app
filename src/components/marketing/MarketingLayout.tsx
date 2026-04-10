@@ -11,8 +11,6 @@ export function MarketingLayout({ children, noFooter }: MarketingLayoutProps) {
   return (
     <div className="min-h-screen bg-ivory flex flex-col">
       <Navbar />
-      {/* Spacer for floating pill nav */}
-      <div className="h-[82px] md:h-[88px] shrink-0" />
       <main className="flex-1">
         {children}
       </main>
