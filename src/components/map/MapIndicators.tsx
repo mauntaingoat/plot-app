@@ -54,10 +54,7 @@ export function MapIndicators({ pins, onLiveTap, onOpenHouseTap }: MapIndicators
             onClick={() => onLiveTap(livePins)}
             className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/90 backdrop-blur-md border border-black/5 shadow-sm cursor-pointer hover:bg-white transition-colors"
           >
-            <div className="relative">
-              <Radio size={14} className="text-live-red" />
-              <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-live-red animate-[pulse-live_2s_ease-in-out_infinite]" />
-            </div>
+            <Radio size={14} className="text-live-red" />
             <span className="text-[12px] font-bold text-ink">
               {livePins.length} Live
             </span>
