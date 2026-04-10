@@ -92,6 +92,8 @@ function useListingSwipeToDismiss(
 
 export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSignedIn, onAuthRequired, initialTab }: ListingModalProps) {
   const [activeTab, setActiveTab] = useState<'content' | 'listing'>(initialTab || 'content')
+  // Sync initialTab when pin changes (useState ignores after first render)
+  useEffect(() => { setActiveTab(initialTab || 'content') }, [pin, initialTab])
   const [mounted, setMounted] = useState(true)
   const [visible, setVisible] = useState(false)
   const [showShowingRequest, setShowShowingRequest] = useState(false)
@@ -384,7 +386,7 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
               </div>
             </>
           )}
-          <div className="absolute top-[calc(env(safe-area-inset-top,12px)+8px)] right-16 flex items-center gap-2 z-[111]">
+          <div className={`absolute flex items-center gap-2 z-[111] ${embedded ? 'top-3 right-3' : 'top-[calc(env(safe-area-inset-top,12px)+8px)] right-16'}`}>
             <button
               onClick={!isPreview ? () => toggleSave(pin.id) : undefined}
               className={`w-9 h-9 rounded-full ${saved ? 'bg-tangerine' : 'bg-black/30'} backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''} transition-colors`}
