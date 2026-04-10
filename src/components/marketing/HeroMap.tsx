@@ -130,7 +130,7 @@ export function HeroMap() {
       <div
         className="absolute inset-0"
         style={{
-          background: 'linear-gradient(to right, var(--color-ivory) 0%, var(--color-ivory) 15%, rgba(250,250,248,0.95) 30%, rgba(250,250,248,0.6) 50%, transparent 70%)',
+          background: 'linear-gradient(to right, var(--color-ivory) 0%, var(--color-ivory) 20%, rgba(250,250,248,0.95) 38%, rgba(250,250,248,0.6) 55%, transparent 78%)',
         }}
       />
       {/* Top + bottom subtle fade */}

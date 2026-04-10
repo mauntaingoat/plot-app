@@ -105,14 +105,14 @@ export default function Home() {
 
             {/* Inline claim form */}
             <div className="flex items-center max-w-[440px] bg-white/80 backdrop-blur-sm border border-border-light rounded-[14px] p-2 focus-within:border-tangerine/50 focus-within:shadow-[0_0_20px_rgba(255,107,61,0.1)] transition-all">
-              <span className="text-[15px] font-semibold text-ink pl-4 shrink-0 select-none">reel.st/</span>
+              <span className="text-[17px] font-bold text-ink pl-4 shrink-0 select-none">reel.st/</span>
               <input
                 type="text"
                 value={heroUsername}
                 onChange={(e) => setHeroUsername(e.target.value.replace(/[^a-z0-9._-]/gi, '').toLowerCase())}
                 onKeyDown={(e) => e.key === 'Enter' && handleClaim()}
                 placeholder="yourname"
-                className="flex-1 bg-transparent text-tangerine text-[15px] font-semibold py-3 px-1 outline-none placeholder:text-tangerine/40 min-w-0"
+                className="flex-1 bg-transparent text-tangerine text-[17px] font-bold py-3.5 px-1 outline-none placeholder:text-tangerine/40 min-w-0"
               />
               <button
                 onClick={handleClaim}
