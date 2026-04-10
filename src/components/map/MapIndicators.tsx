@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Radio, CalendarClock } from 'lucide-react'
 import type { Pin, ForSalePin } from '@/lib/types'
 import { nextSession } from '@/lib/openHouse'
 
@@ -11,9 +12,10 @@ interface MapIndicatorsProps {
 
 /**
  * Floating pills showing live streams and open houses.
- * - Mobile: bottom-left of map
- * - Desktop: bottom-center of map
- * Only visible when count > 0.
+ * Styled to match AgentPill + filter pills (white glass, border-black/5).
+ * Uses same icons as dashboard insights (Radio, CalendarClock).
+ * - Mobile: bottom-left
+ * - Desktop: bottom-center
  */
 export function MapIndicators({ pins, onLiveTap, onOpenHouseTap }: MapIndicatorsProps) {
   const livePins = useMemo(
@@ -37,7 +39,8 @@ export function MapIndicators({ pins, onLiveTap, onOpenHouseTap }: MapIndicators
   if (!hasLive && !hasOH) return null
 
   return (
-    <div className="absolute z-[35] bottom-4 left-4 md:left-1/2 md:-translate-x-1/2 flex items-center gap-2"
+    <div
+      className="absolute z-[35] left-4 md:left-1/2 md:-translate-x-1/2 flex items-center gap-2"
       style={{ bottom: 'calc(env(safe-area-inset-bottom, 8px) + 16px)' }}
     >
       <AnimatePresence>
@@ -49,13 +52,13 @@ export function MapIndicators({ pins, onLiveTap, onOpenHouseTap }: MapIndicators
             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => onLiveTap(livePins)}
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-obsidian/80 backdrop-blur-xl border border-white/10 shadow-lg cursor-pointer hover:bg-obsidian/90 transition-colors"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/90 backdrop-blur-md border border-black/5 shadow-sm cursor-pointer hover:bg-white transition-colors"
           >
-            <div className="relative w-2.5 h-2.5">
-              <div className="absolute inset-0 rounded-full bg-live-red animate-[pulse-live_2s_ease-in-out_infinite]" />
-              <div className="absolute inset-0 rounded-full bg-live-red" />
+            <div className="relative">
+              <Radio size={14} className="text-live-red" />
+              <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-live-red animate-[pulse-live_2s_ease-in-out_infinite]" />
             </div>
-            <span className="text-[12px] font-bold text-white">
+            <span className="text-[12px] font-bold text-ink">
               {livePins.length} Live
             </span>
           </motion.button>
@@ -69,39 +72,15 @@ export function MapIndicators({ pins, onLiveTap, onOpenHouseTap }: MapIndicators
             transition={{ type: 'spring', damping: 20, stiffness: 300, delay: hasLive ? 0.08 : 0 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => onOpenHouseTap(openHousePins)}
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-obsidian/80 backdrop-blur-xl border border-white/10 shadow-lg cursor-pointer hover:bg-obsidian/90 transition-colors"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/90 backdrop-blur-md border border-black/5 shadow-sm cursor-pointer hover:bg-white transition-colors"
           >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              className="text-open-amber animate-[house-wobble_2s_ease-in-out_infinite]"
-            >
-              <path
-                d="M3 10.5L12 3l9 7.5V21a1 1 0 01-1 1H4a1 1 0 01-1-1V10.5z"
-                fill="currentColor"
-              />
-              <path d="M9 22V12h6v10" stroke="rgba(0,0,0,0.2)" strokeWidth="1.5" />
-              <rect x="16" y="5" width="2.5" height="5" rx="0.5" fill="currentColor" />
-            </svg>
-            <span className="text-[12px] font-bold text-white">
+            <CalendarClock size={14} className="text-open-amber" />
+            <span className="text-[12px] font-bold text-ink">
               {openHousePins.length} Open House{openHousePins.length !== 1 ? 's' : ''}
             </span>
           </motion.button>
         )}
       </AnimatePresence>
-
-      <style>{`
-        @keyframes house-wobble {
-          0%, 100% { transform: rotate(0deg); }
-          15% { transform: rotate(-3deg); }
-          30% { transform: rotate(2.5deg); }
-          45% { transform: rotate(-2deg); }
-          60% { transform: rotate(1deg); }
-          75% { transform: rotate(0deg); }
-        }
-      `}</style>
     </div>
   )
 }
