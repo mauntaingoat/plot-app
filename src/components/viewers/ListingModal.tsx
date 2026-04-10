@@ -92,8 +92,10 @@ function useListingSwipeToDismiss(
 
 export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSignedIn, onAuthRequired, initialTab }: ListingModalProps) {
   const [activeTab, setActiveTab] = useState<'content' | 'listing'>(initialTab || 'content')
-  // Sync initialTab when pin changes (useState ignores after first render)
-  useEffect(() => { setActiveTab(initialTab || 'content') }, [pin, initialTab])
+  // Always sync when initialTab prop changes
+  useEffect(() => {
+    if (initialTab) setActiveTab(initialTab)
+  }, [initialTab])
   const [mounted, setMounted] = useState(true)
   const [visible, setVisible] = useState(false)
   const [showShowingRequest, setShowShowingRequest] = useState(false)

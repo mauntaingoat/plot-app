@@ -631,7 +631,7 @@ export default function AgentProfile() {
       )}
 
       {selectedPin ? (
-        <ListingModal key={`${selectedPin.id}-${selectedPinTab || 'content'}`} pin={selectedPin} agent={agent} onClose={() => { setSelectedPin(null); setSelectedPinTab(undefined) }} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} initialTab={selectedPinTab} />
+        <ListingModal pin={selectedPin} agent={agent} onClose={() => { setSelectedPin(null); setSelectedPinTab(undefined) }} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} initialTab={selectedPinTab} />
       ) : null}
 
       {/* Indicator picker — multiple livestreams or open houses */}
