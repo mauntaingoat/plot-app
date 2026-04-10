@@ -2,12 +2,12 @@ import { motion } from 'framer-motion'
 
 /**
  * Animated SVG street map background for the hero section.
- * Roads, buildings, and pins draw/fade in on page load.
- * No interactivity — purely decorative.
+ * Grid + buildings start at ~38% from left, fade at left edge.
+ * Pins are fully opaque — no transparency on them.
  */
 
 interface MapPin {
-  x: string // percentage
+  x: string
   y: string
   delay: number
   size?: number
@@ -24,77 +24,91 @@ const PINS: MapPin[] = [
 ]
 
 const BUILDINGS = [
-  { top: '10%', left: '40%', w: '12%', h: '8%', delay: 0.5 },
-  { top: '22%', left: '55%', w: '8%', h: '14%', delay: 0.6 },
+  { top: '10%', left: '52%', w: '12%', h: '8%', delay: 0.5 },
+  { top: '22%', left: '65%', w: '8%', h: '14%', delay: 0.6 },
   { top: '45%', left: '70%', w: '14%', h: '10%', delay: 0.7 },
-  { top: '65%', left: '38%', w: '10%', h: '8%', delay: 0.55 },
+  { top: '65%', left: '48%', w: '10%', h: '8%', delay: 0.55 },
   { top: '75%', left: '80%', w: '12%', h: '12%', delay: 0.65 },
-  { top: '15%', left: '80%', w: '8%', h: '10%', delay: 0.75 },
-  { top: '55%', left: '58%', w: '6%', h: '16%', delay: 0.6 },
+  { top: '15%', left: '82%', w: '8%', h: '10%', delay: 0.75 },
+  { top: '55%', left: '60%', w: '6%', h: '16%', delay: 0.6 },
   { top: '30%', left: '88%', w: '7%', h: '8%', delay: 0.8 },
-  { top: '82%', left: '45%', w: '10%', h: '6%', delay: 0.7 },
-  { top: '5%', left: '65%', w: '9%', h: '7%', delay: 0.55 },
+  { top: '82%', left: '55%', w: '10%', h: '6%', delay: 0.7 },
+  { top: '5%', left: '72%', w: '9%', h: '7%', delay: 0.55 },
 ]
+
+// Grid starts at 38% from the left
+const GRID_LEFT = 38
 
 export function HeroMap() {
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ opacity: 0.7 }}>
-      {/* Muted map surface */}
-      <div className="absolute inset-0 bg-pearl/40" />
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
 
-      {/* SVG roads — animate pathLength on load */}
-      <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-        {/* Main horizontal roads */}
-        <motion.line x1="0%" y1="35%" x2="100%" y2="35%" stroke="var(--color-border-light)" strokeWidth="4"
-          initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1, delay: 0.2 }} />
-        <motion.line x1="0%" y1="65%" x2="100%" y2="65%" stroke="var(--color-border-light)" strokeWidth="4"
-          initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1, delay: 0.3 }} />
-        <motion.line x1="0%" y1="50%" x2="100%" y2="50%" stroke="var(--color-border-light)" strokeWidth="3"
-          initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8, delay: 0.35 }} />
+      {/* ── Grid layer (roads + buildings) — clipped to right portion with left fade ── */}
+      <div
+        className="absolute inset-y-0 right-0"
+        style={{
+          left: `${GRID_LEFT - 10}%`,
+          maskImage: `linear-gradient(to right, transparent 0%, black 12%)`,
+          WebkitMaskImage: `linear-gradient(to right, transparent 0%, black 12%)`,
+        }}
+      >
+        {/* Map surface tint */}
+        <div className="absolute inset-0 bg-pearl/50" />
 
-        {/* Main vertical roads */}
-        <motion.line x1="30%" y1="0%" x2="30%" y2="100%" stroke="var(--color-border-light)" strokeWidth="3"
-          initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8, delay: 0.4 }} />
-        <motion.line x1="55%" y1="0%" x2="55%" y2="100%" stroke="var(--color-border-light)" strokeWidth="3"
-          initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8, delay: 0.45 }} />
-        <motion.line x1="75%" y1="0%" x2="75%" y2="100%" stroke="var(--color-border-light)" strokeWidth="4"
-          initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1, delay: 0.35 }} />
+        {/* SVG roads */}
+        <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+          {/* Main horizontal roads */}
+          <motion.line x1="0%" y1="35%" x2="100%" y2="35%" stroke="var(--color-border-light)" strokeWidth="4"
+            initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1, delay: 0.2 }} />
+          <motion.line x1="0%" y1="65%" x2="100%" y2="65%" stroke="var(--color-border-light)" strokeWidth="4"
+            initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1, delay: 0.3 }} />
+          <motion.line x1="0%" y1="50%" x2="100%" y2="50%" stroke="var(--color-border-light)" strokeWidth="3"
+            initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8, delay: 0.35 }} />
 
-        {/* Secondary streets */}
-        {[15, 25, 42, 58, 72, 85, 92].map((y, i) => (
-          <motion.line key={`h-${i}`} x1="0%" y1={`${y}%`} x2="100%" y2={`${y}%`}
-            stroke="var(--color-border-light)" strokeWidth="1.5" opacity="0.5"
-            initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
-            transition={{ duration: 0.6, delay: 0.5 + i * 0.06 }} />
+          {/* Main vertical roads */}
+          <motion.line x1="20%" y1="0%" x2="20%" y2="100%" stroke="var(--color-border-light)" strokeWidth="3"
+            initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8, delay: 0.4 }} />
+          <motion.line x1="50%" y1="0%" x2="50%" y2="100%" stroke="var(--color-border-light)" strokeWidth="3"
+            initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8, delay: 0.45 }} />
+          <motion.line x1="75%" y1="0%" x2="75%" y2="100%" stroke="var(--color-border-light)" strokeWidth="4"
+            initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1, delay: 0.35 }} />
+
+          {/* Secondary streets */}
+          {[15, 25, 42, 58, 72, 85, 92].map((y, i) => (
+            <motion.line key={`h-${i}`} x1="0%" y1={`${y}%`} x2="100%" y2={`${y}%`}
+              stroke="var(--color-border-light)" strokeWidth="1.5" opacity="0.5"
+              initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
+              transition={{ duration: 0.6, delay: 0.5 + i * 0.06 }} />
+          ))}
+          {[10, 35, 42, 58, 65, 85, 95].map((x, i) => (
+            <motion.line key={`v-${i}`} x1={`${x}%`} y1="0%" x2={`${x}%`} y2="100%"
+              stroke="var(--color-border-light)" strokeWidth="1.5" opacity="0.5"
+              initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
+              transition={{ duration: 0.6, delay: 0.55 + i * 0.06 }} />
+          ))}
+        </svg>
+
+        {/* Buildings (blocks) — positions relative to the grid container */}
+        {BUILDINGS.map((b, i) => (
+          <motion.div
+            key={`bldg-${i}`}
+            className="absolute rounded-sm bg-smoke/[0.08] border border-smoke/[0.06]"
+            style={{ top: b.top, left: b.left, width: b.w, height: b.h }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, delay: b.delay }}
+          />
         ))}
-        {[18, 38, 45, 62, 68, 82, 95].map((x, i) => (
-          <motion.line key={`v-${i}`} x1={`${x}%`} y1="0%" x2={`${x}%`} y2="100%"
-            stroke="var(--color-border-light)" strokeWidth="1.5" opacity="0.5"
-            initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
-            transition={{ duration: 0.6, delay: 0.55 + i * 0.06 }} />
-        ))}
-      </svg>
+      </div>
 
-      {/* Buildings (blocks) */}
-      {BUILDINGS.map((b, i) => (
-        <motion.div
-          key={`bldg-${i}`}
-          className="absolute rounded-sm bg-smoke/[0.08] border border-smoke/[0.06]"
-          style={{ top: b.top, left: b.left, width: b.w, height: b.h }}
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4, delay: b.delay }}
-        />
-      ))}
-
-      {/* Tangerine listing pins */}
+      {/* ── Pins — fully opaque, positioned on the overall hero area ── */}
       {PINS.map((pin, i) => {
         const size = pin.size || 40
         const inner = size - 10
         return (
           <motion.div
             key={`pin-${i}`}
-            className="absolute"
+            className="absolute z-10"
             style={{ left: pin.x, top: pin.y, marginLeft: -size / 2, marginTop: -size / 2 }}
             initial={{ scale: 0, y: -20, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
@@ -123,18 +137,11 @@ export function HeroMap() {
         )
       })}
 
-      {/* Left fade — makes the text on the left readable */}
+      {/* Top + bottom edge fade into ivory */}
       <div
         className="absolute inset-0"
         style={{
-          background: 'linear-gradient(to right, var(--color-ivory) 0%, var(--color-ivory) 20%, rgba(250,250,248,0.95) 38%, rgba(250,250,248,0.6) 55%, transparent 78%)',
-        }}
-      />
-      {/* Top + bottom subtle fade */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: 'linear-gradient(to bottom, var(--color-ivory) 0%, transparent 8%, transparent 90%, var(--color-ivory) 100%)',
+          background: 'linear-gradient(to bottom, var(--color-ivory) 0%, transparent 6%, transparent 92%, var(--color-ivory) 100%)',
         }}
       />
     </div>
