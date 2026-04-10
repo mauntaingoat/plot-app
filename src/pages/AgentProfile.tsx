@@ -9,6 +9,7 @@ import { PeekDrawer } from '@/components/map/PeekDrawer'
 import { ContentFeed } from '@/components/map/ContentFeed'
 import { PinCard } from '@/components/dashboard/PinCard'
 import { ListingModal } from '@/components/viewers/ListingModal'
+import { MapIndicators } from '@/components/map/MapIndicators'
 import { Avatar } from '@/components/ui/Avatar'
 import { AgentDetailSheet, type AgentMode } from '@/components/sheets/AgentDetailSheet'
 import { AuthSheet } from '@/components/sheets/AuthSheet'
@@ -405,6 +406,13 @@ export default function AgentProfile() {
             onBack={() => navigate('/dashboard')}
           />
 
+          {/* ── Live / Open House indicators ── */}
+          <MapIndicators
+            pins={filteredPins}
+            onLiveTap={(livePins) => { if (livePins[0]) setSelectedPin(livePins[0]) }}
+            onOpenHouseTap={(ohPins) => { if (ohPins[0]) setSelectedPin(ohPins[0]) }}
+          />
+
           {/* ── Pill + buttons inside map, near top ── */}
           <AgentPill
             agent={agent}
@@ -526,6 +534,11 @@ export default function AgentProfile() {
               className="absolute inset-0"
               showBackButton={isPreview}
               onBack={() => navigate('/dashboard')}
+            />
+            <MapIndicators
+              pins={filteredPins}
+              onLiveTap={(livePins) => { if (livePins[0]) setSelectedPin(livePins[0]) }}
+              onOpenHouseTap={(ohPins) => { if (ohPins[0]) setSelectedPin(ohPins[0]) }}
             />
             <PeekDrawer
               collapsedContent={
