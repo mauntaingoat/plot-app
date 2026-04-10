@@ -168,7 +168,7 @@ export function HeroMap() {
       <div
         className="absolute inset-0"
         style={{
-          background: 'linear-gradient(to bottom, var(--color-ivory) 0%, transparent 6%, transparent 92%, var(--color-ivory) 100%)',
+          background: 'linear-gradient(to bottom, transparent 0%, transparent 92%, var(--color-ivory) 100%)',
         }}
       />
 
