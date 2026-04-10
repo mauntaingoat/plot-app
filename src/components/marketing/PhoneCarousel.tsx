@@ -1,8 +1,9 @@
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect } from 'react'
 
 /**
- * 3D rotating phone carousel — two videos (Map + Content) on opposite
- * sides of a Y-axis rotation. Fast spin to switch, slow pause to watch.
+ * 3D rotating phone carousel — Linktree-style continuous rotation.
+ * Two videos on opposite faces. Slow/paused when facing viewer (tilted),
+ * fast spin through the edge to the next face. Smooth CSS animation.
  */
 
 const VIDEOS = [
@@ -10,90 +11,86 @@ const VIDEOS = [
   '/marketing/Content.MOV',
 ]
 
-const PAUSE_DURATION = 2500 // ms to watch each video
-const SPIN_DURATION = 600   // ms for the fast rotation
+// Total cycle: 8s
+// 0-30%: rest at front face (tilted 15deg) — 2.4s viewing
+// 30-50%: fast spin 180deg through edge — 1.6s
+// 50-80%: rest at back face (tilted 195deg) — 2.4s viewing
+// 80-100%: fast spin 180deg back — 1.6s
 
 export function PhoneCarousel({ className = '' }: { className?: string }) {
-  const [rotation, setRotation] = useState(0)
-  const [isSpinning, setIsSpinning] = useState(false)
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
-
-  // Which face is showing (0 = Map, 1 = Content)
-  const activeFace = Math.round(rotation / 180) % 2 === 0 ? 0 : 1
 
   useEffect(() => {
-    function cycle() {
-      // Start spin
-      setIsSpinning(true)
-      setRotation((prev) => prev + 180)
-
-      // After spin completes, pause to watch
-      timerRef.current = setTimeout(() => {
-        setIsSpinning(false)
-        // After watching, spin again
-        timerRef.current = setTimeout(cycle, PAUSE_DURATION)
-      }, SPIN_DURATION)
-    }
-
-    // Initial pause before first spin
-    timerRef.current = setTimeout(cycle, PAUSE_DURATION)
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-    }
-  }, [])
-
-  // Set different start times on mount
-  useEffect(() => {
+    // Different start times
     const v0 = videoRefs.current[0]
     const v1 = videoRefs.current[1]
-    if (v0) v0.currentTime = 0
-    if (v1) v1.currentTime = 3 // start Content video at 3s
+    if (v0) { v0.currentTime = 0; v0.play().catch(() => {}) }
+    if (v1) { v1.currentTime = 3 }
   }, [])
 
-  // Play/pause videos based on which face is visible
+  // Auto-play/pause based on which face is visible
   useEffect(() => {
-    videoRefs.current.forEach((v, i) => {
-      if (!v) return
-      if (i === activeFace && !isSpinning) {
-        v.play().catch(() => {})
-      } else {
-        v.pause()
-      }
-    })
-  }, [activeFace, isSpinning])
+    const el = document.querySelector('.phone-spinner') as HTMLElement
+    if (!el) return
 
-  // Resting tilt — angled slightly when paused
-  const tiltX = isSpinning ? 0 : 5
-  const tiltZ = isSpinning ? 0 : -2
+    // Watch the rotation and play/pause accordingly
+    const interval = setInterval(() => {
+      const style = getComputedStyle(el)
+      const transform = style.transform
+      // Parse the Y rotation from the matrix3d
+      if (transform && transform !== 'none') {
+        const match = transform.match(/matrix3d\((.+)\)/)
+        if (match) {
+          const values = match[1].split(',').map(Number)
+          // cos(Y) is at index 0, sin(Y) is at index 8
+          const cosY = values[0]
+          // If front face is roughly facing us (cosY > 0), play video 0
+          // If back face is roughly facing us (cosY < 0), play video 1
+          const v0 = videoRefs.current[0]
+          const v1 = videoRefs.current[1]
+          if (cosY > 0.5) {
+            v0?.play().catch(() => {})
+            v1?.pause()
+          } else if (cosY < -0.5) {
+            v1?.play().catch(() => {})
+            v0?.pause()
+          } else {
+            // Edge-on — pause both
+            v0?.pause()
+            v1?.pause()
+          }
+        }
+      }
+    }, 200)
+
+    return () => clearInterval(interval)
+  }, [])
 
   return (
-    <div className={`flex items-center justify-center ${className}`} style={{ perspective: 1400 }}>
+    <div className={`flex items-center justify-center ${className}`} style={{ perspective: 1200 }}>
       <div
+        className="phone-spinner"
         style={{
-          width: 300,
-          height: 620,
+          width: 290,
+          height: 600,
           position: 'relative',
           transformStyle: 'preserve-3d',
-          transform: `rotateY(${rotation}deg) rotateX(${tiltX}deg) rotateZ(${tiltZ}deg)`,
-          transition: isSpinning
-            ? `transform ${SPIN_DURATION}ms cubic-bezier(0.4, 0, 0.2, 1)`
-            : `transform 0.8s cubic-bezier(0.25, 0.1, 0.25, 1)`,
+          animation: 'phoneRotate 8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite',
         }}
       >
         {/* Face 1 — Map video (front) */}
         <div
-          className="absolute inset-0 rounded-[22px] overflow-hidden shadow-2xl bg-midnight"
+          className="absolute inset-0 rounded-[24px] overflow-hidden bg-midnight"
           style={{
             backfaceVisibility: 'hidden',
-            transform: 'rotateY(0deg)',
+            transform: 'rotateY(0deg) translateZ(1px)',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3), 0 8px 20px rgba(0,0,0,0.2)',
           }}
         >
           <video
             ref={(el) => { videoRefs.current[0] = el }}
             src={VIDEOS[0]}
-            className="w-full h-full object-contain bg-black"
+            className="w-full h-full object-cover"
             muted
             loop
             playsInline
@@ -101,18 +98,19 @@ export function PhoneCarousel({ className = '' }: { className?: string }) {
           />
         </div>
 
-        {/* Face 2 — Content video (back, rotated 180deg) */}
+        {/* Face 2 — Content video (back) */}
         <div
-          className="absolute inset-0 rounded-[22px] overflow-hidden shadow-2xl bg-midnight"
+          className="absolute inset-0 rounded-[24px] overflow-hidden bg-midnight"
           style={{
             backfaceVisibility: 'hidden',
-            transform: 'rotateY(180deg)',
+            transform: 'rotateY(180deg) translateZ(1px)',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3), 0 8px 20px rgba(0,0,0,0.2)',
           }}
         >
           <video
             ref={(el) => { videoRefs.current[1] = el }}
             src={VIDEOS[1]}
-            className="w-full h-full object-contain bg-black"
+            className="w-full h-full object-cover"
             muted
             loop
             playsInline
@@ -120,6 +118,21 @@ export function PhoneCarousel({ className = '' }: { className?: string }) {
           />
         </div>
       </div>
+
+      <style>{`
+        @keyframes phoneRotate {
+          /* Front face — resting, tilted */
+          0% { transform: rotateY(15deg) rotateX(3deg) rotateZ(-1deg); }
+          28% { transform: rotateY(15deg) rotateX(3deg) rotateZ(-1deg); }
+          /* Fast spin through to back face */
+          50% { transform: rotateY(195deg) rotateX(3deg) rotateZ(1deg); }
+          /* Back face — resting, tilted */
+          52% { transform: rotateY(195deg) rotateX(3deg) rotateZ(1deg); }
+          78% { transform: rotateY(195deg) rotateX(3deg) rotateZ(1deg); }
+          /* Fast spin back to front */
+          100% { transform: rotateY(375deg) rotateX(3deg) rotateZ(-1deg); }
+        }
+      `}</style>
     </div>
   )
 }
