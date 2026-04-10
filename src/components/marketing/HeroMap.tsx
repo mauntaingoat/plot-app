@@ -87,7 +87,7 @@ export function HeroMap() {
             transition={{ duration: 0.4, delay: b.delay }}
           >
             <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full">
-              <path d={b.path} fill={HOME_COLOR} stroke={HOME_BORDER} strokeWidth="1.5" />
+              <path d={b.path} fill={HOME_COLOR} />
             </svg>
           </motion.div>
         ))}
