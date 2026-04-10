@@ -101,7 +101,7 @@ export default function Home() {
         </div>
 
         {/* Content — centered on mobile, left-aligned on desktop */}
-        <div className="relative z-10 hero-content-pad pt-16 md:pt-32 pb-8 md:pb-28">
+        <div className="relative z-10 hero-content-pad pt-28 md:pt-40 pb-12 md:pb-36">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
