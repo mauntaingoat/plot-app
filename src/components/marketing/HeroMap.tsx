@@ -164,9 +164,15 @@ export function HeroMap() {
         </div>
       </div>
 
-      {/* Top + bottom edge fade */}
+      {/* Top (mobile only) + bottom edge fade */}
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 md:hidden"
+        style={{
+          background: 'linear-gradient(to bottom, var(--color-ivory) 0%, transparent 15%, transparent 92%, var(--color-ivory) 100%)',
+        }}
+      />
+      <div
+        className="absolute inset-0 hidden md:block"
         style={{
           background: 'linear-gradient(to bottom, transparent 0%, transparent 92%, var(--color-ivory) 100%)',
         }}
