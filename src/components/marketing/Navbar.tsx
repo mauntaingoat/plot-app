@@ -14,6 +14,7 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
   const [hidden, setHidden] = useState(false)
   const lastScrollY = useRef(0)
   const { pathname } = useLocation()
@@ -24,6 +25,7 @@ export function Navbar() {
   useEffect(() => {
     const handleScroll = () => {
       const currentY = window.scrollY
+      setScrolled(currentY > 20)
       if (currentY < 20) setHidden(false)
       else if (currentY > lastScrollY.current + 10) setHidden(true)
       else if (currentY < lastScrollY.current - 10) setHidden(false)
@@ -37,71 +39,128 @@ export function Navbar() {
 
   return (
     <>
-      {/* Pure CSS transition for show/hide — runs on compositor thread */}
-      <nav
-        className="fixed top-0 left-0 right-0 z-[70] bg-ivory/80 backdrop-blur-xl border-b border-border-light will-change-transform"
+      {/* ── Floating pill nav ── */}
+      <div
+        className="fixed top-0 left-0 right-0 z-[70] flex justify-center will-change-transform"
         style={{
-          transform: hidden ? 'translateY(-100%)' : 'translateY(0)',
-          transition: 'transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1)',
+          paddingTop: '12px',
+          transform: hidden ? 'translateY(-120%)' : 'translateY(0)',
+          transition: 'transform 0.35s cubic-bezier(0.25, 0.1, 0.25, 1)',
         }}
       >
-        <div className="max-w-[1200px] mx-auto px-5 md:px-8 flex items-center justify-between h-14 md:h-16">
-          <Link to="/" className="flex items-center gap-1.5 shrink-0">
-            <img src="/reelst-logo.png" alt="Reelst" className="w-7 h-7 md:w-8 md:h-8" />
-            <span className="text-[18px] md:text-[20px] font-extrabold text-ink tracking-tight">Reelst</span>
+        <nav
+          className={`
+            flex items-center justify-between gap-2
+            h-12 md:h-[52px] px-2.5 md:px-3
+            rounded-full
+            transition-all duration-300
+            ${scrolled
+              ? 'bg-white/85 backdrop-blur-2xl shadow-lg border border-black/[0.06]'
+              : 'bg-white/60 backdrop-blur-xl border border-black/[0.04]'
+            }
+          `}
+          style={{
+            width: 'min(calc(100vw - 24px), 820px)',
+          }}
+        >
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-1.5 shrink-0 pl-2">
+            <img src="/reelst-logo.png" alt="Reelst" className="w-6 h-6 md:w-7 md:h-7" />
+            <span className="text-[16px] md:text-[17px] font-extrabold text-ink tracking-tight">Reelst</span>
           </Link>
 
-          <div className="hidden md:flex items-center gap-1">
+          {/* Desktop links */}
+          <div className="hidden md:flex items-center gap-0.5">
             {NAV_LINKS.map((link) => (
-              <Link key={link.to} to={link.to}
-                className={`px-4 py-2 rounded-xl text-[14px] font-medium transition-colors ${pathname === link.to ? 'text-tangerine bg-tangerine-soft' : 'text-graphite hover:text-ink hover:bg-cream'}`}>
+              <Link
+                key={link.to}
+                to={link.to}
+                className={`
+                  px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors
+                  ${pathname === link.to
+                    ? 'text-tangerine bg-tangerine-soft'
+                    : 'text-graphite hover:text-ink hover:bg-black/[0.04]'
+                  }
+                `}
+              >
                 {link.label}
               </Link>
             ))}
           </div>
 
-          <div className="hidden md:flex items-center gap-3">
+          {/* Desktop CTAs */}
+          <div className="hidden md:flex items-center gap-1.5 pr-0.5">
             {userDoc ? (
-              <Button variant="primary" size="sm" onClick={() => navigate('/dashboard')}>Dashboard</Button>
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="h-9 px-4 rounded-full bg-gradient-to-r from-tangerine to-ember text-white text-[13px] font-bold cursor-pointer hover:brightness-110 transition-all"
+              >
+                Dashboard
+              </button>
             ) : (
               <>
-                <Button variant="ghost" size="sm" onClick={() => navigate('/sign-in')}>Sign in</Button>
-                <Button variant="primary" size="sm" onClick={() => navigate('/sign-up')}>Get started</Button>
+                <button
+                  onClick={() => navigate('/sign-in')}
+                  className="h-9 px-3.5 rounded-full text-[13px] font-medium text-graphite hover:text-ink hover:bg-black/[0.04] transition-colors cursor-pointer"
+                >
+                  Sign in
+                </button>
+                <button
+                  onClick={() => navigate('/sign-up')}
+                  className="h-9 px-4 rounded-full bg-gradient-to-r from-tangerine to-ember text-white text-[13px] font-bold cursor-pointer hover:brightness-110 transition-all shadow-glow-tangerine"
+                >
+                  Get started
+                </button>
               </>
             )}
           </div>
 
-          <button onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden w-9 h-9 flex items-center justify-center rounded-xl text-ink hover:bg-cream">
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+          {/* Mobile hamburger */}
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="md:hidden w-9 h-9 flex items-center justify-center rounded-full text-ink hover:bg-black/[0.04] transition-colors"
+          >
+            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
-        </div>
-      </nav>
+        </nav>
+      </div>
 
-      {/* Mobile menu — CSS transition */}
+      {/* ── Mobile dropdown (slides from under the pill) ── */}
       <div
-        className="fixed top-14 left-0 right-0 z-[65] bg-ivory border-b border-border-light shadow-lg md:hidden will-change-transform"
+        className="fixed top-[72px] left-3 right-3 z-[65] bg-white/95 backdrop-blur-2xl border border-black/[0.06] rounded-[20px] shadow-xl md:hidden will-change-transform"
         style={{
-          transform: mobileOpen ? 'translateY(0)' : 'translateY(-110%)',
+          transform: mobileOpen ? 'translateY(0) scale(1)' : 'translateY(-20px) scale(0.97)',
           opacity: mobileOpen ? 1 : 0,
-          transition: 'transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.2s ease',
+          transition: 'transform 0.25s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.2s ease',
           pointerEvents: mobileOpen ? 'auto' : 'none',
         }}
       >
-        <div className="px-5 py-4 space-y-1">
+        <div className="px-4 py-4 space-y-1">
           {NAV_LINKS.map((link) => (
-            <Link key={link.to} to={link.to} onClick={() => setMobileOpen(false)}
-              className={`block px-4 py-3 rounded-xl text-[15px] font-medium ${pathname === link.to ? 'text-tangerine bg-tangerine-soft' : 'text-graphite'}`}>
+            <Link
+              key={link.to}
+              to={link.to}
+              onClick={() => setMobileOpen(false)}
+              className={`block px-4 py-3 rounded-xl text-[15px] font-medium ${
+                pathname === link.to ? 'text-tangerine bg-tangerine-soft' : 'text-graphite'
+              }`}
+            >
               {link.label}
             </Link>
           ))}
-          <div className="pt-3 flex gap-3">
+          <div className="pt-3 flex gap-2">
             {userDoc ? (
-              <Button variant="primary" size="lg" fullWidth onClick={() => { navigate('/dashboard'); setMobileOpen(false) }}>Dashboard</Button>
+              <Button variant="primary" size="lg" fullWidth onClick={() => { navigate('/dashboard'); setMobileOpen(false) }}>
+                Dashboard
+              </Button>
             ) : (
               <>
-                <Button variant="secondary" size="lg" className="flex-1" onClick={() => { setMobileOpen(false); if (isMobile) openAuth('login'); else navigate('/sign-in') }}>Sign in</Button>
-                <Button variant="primary" size="lg" className="flex-1" onClick={() => { setMobileOpen(false); if (isMobile) openAuth('signup'); else navigate('/sign-up') }}>Get started</Button>
+                <Button variant="secondary" size="lg" className="flex-1" onClick={() => { setMobileOpen(false); if (isMobile) openAuth('login'); else navigate('/sign-in') }}>
+                  Sign in
+                </Button>
+                <Button variant="primary" size="lg" className="flex-1" onClick={() => { setMobileOpen(false); if (isMobile) openAuth('signup'); else navigate('/sign-up') }}>
+                  Get started
+                </Button>
               </>
             )}
           </div>

@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Timestamp } from 'firebase/firestore'
 import { ArrowRight, ArrowLeft, AtSign, MapPin, Eye, Check, X, Loader2, Mail, Lock, Shield, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -25,12 +25,21 @@ const US_STATES = [
 
 export default function SignUp() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { setUserDoc } = useAuthStore()
   const { available, checking, check } = useUsername()
 
-  const [step, setStep] = useState<Step>('role')
-  const [role, setRole] = useState<'agent' | 'consumer' | null>(null)
-  const [username, setUsernameVal] = useState('')
+  // Pre-fill username from URL param (from claim form on Home/Footer)
+  const prefillUsername = searchParams.get('username')?.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24) || ''
+
+  const [step, setStep] = useState<Step>(prefillUsername ? 'username' : 'role')
+  const [role, setRole] = useState<'agent' | 'consumer' | null>(prefillUsername ? 'agent' : null)
+  const [username, setUsernameVal] = useState(prefillUsername)
+
+  // Check pre-filled username availability on mount
+  useEffect(() => {
+    if (prefillUsername) check(prefillUsername)
+  }, []) // eslint-disable-line
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -205,6 +214,9 @@ export default function SignUp() {
               {!checking && available === false && <p className="text-[12px] text-live-red -mt-3">Taken. Try another.</p>}
               <Button variant="primary" size="xl" fullWidth onClick={() => setStep('license')} disabled={!available || checking || username.length < 3}>Continue</Button>
               <p className="text-[11px] text-ash">3-24 characters. Letters, numbers, underscores.</p>
+              <p className="text-[13px] text-smoke pt-2">
+                Not an agent? <button onClick={() => { setRole('consumer'); setStep('account') }} className="text-tangerine font-semibold cursor-pointer">I'm looking for homes</button>
+              </p>
             </motion.div>
           )}
 
