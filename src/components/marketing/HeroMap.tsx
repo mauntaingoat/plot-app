@@ -193,9 +193,9 @@ export function HeroMap() {
         @media (min-width: 768px) {
           .hero-map-grid {
             left: 42% !important;
-            right: auto !important;
-            width: 800px !important;
-            min-width: 800px !important;
+            right: 0 !important;
+            width: auto !important;
+            min-width: 800px;
             mask-image: linear-gradient(to right, transparent 0%, black 8%);
             -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%);
           }
