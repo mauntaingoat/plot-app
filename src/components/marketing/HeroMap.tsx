@@ -189,10 +189,12 @@ export function HeroMap() {
           transform: scale(0.8);
           transform-origin: center;
         }
-        /* Desktop: push right + fade left edge */
+        /* Desktop: fixed left offset so grid never overlaps text area */
         @media (min-width: 768px) {
           .hero-map-grid {
-            left: 42%;
+            left: auto;
+            right: 0;
+            width: 55%;
             mask-image: linear-gradient(to right, transparent 0%, black 8%);
             -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%);
           }

@@ -108,7 +108,7 @@ export function Navbar() {
                 </button>
                 <button
                   onClick={() => navigate('/sign-up')}
-                  className="h-11 px-5.5 rounded-[10px] bg-gradient-to-r from-tangerine to-ember text-white text-[15px] font-bold cursor-pointer hover:brightness-110 transition-all shadow-glow-tangerine"
+                  className="h-11 px-5.5 rounded-[10px] bg-pearl text-ink text-[15px] font-bold cursor-pointer hover:bg-smoke/15 transition-all"
                 >
                   Get started
                 </button>
