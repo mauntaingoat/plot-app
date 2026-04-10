@@ -54,8 +54,9 @@ export function Navbar() {
             h-[58px] md:h-[64px] px-3.5 md:px-5
             rounded-[16px]
             transition-all duration-300
+            shadow-lg
             ${scrolled
-              ? 'bg-white/95 backdrop-blur-2xl shadow-lg'
+              ? 'bg-white/95 backdrop-blur-2xl'
               : 'bg-white/85 backdrop-blur-xl'
             }
           `}

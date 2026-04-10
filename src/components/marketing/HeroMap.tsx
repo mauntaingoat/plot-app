@@ -144,7 +144,7 @@ export function HeroMap() {
           because the 2x2 duplication makes it tileable.
         */}
         <div
-          className="absolute"
+          className="absolute map-scroll-container"
           style={{
             width: '200%',
             height: '200%',
@@ -179,13 +179,12 @@ export function HeroMap() {
 
       <style>{`
         @keyframes mapDrift {
-          0% {
-            transform: translate(0, 0);
-          }
-          100% {
-            transform: translate(50%, 50%);
-          }
+          0% { transform: translate(0, 0) scale(var(--map-scale, 1)); }
+          100% { transform: translate(50%, 50%) scale(var(--map-scale, 1)); }
         }
+        .map-scroll-container { --map-scale: 0.55; }
+        @media (min-width: 640px) { .map-scroll-container { --map-scale: 0.7; } }
+        @media (min-width: 768px) { .map-scroll-container { --map-scale: 1; } }
       `}</style>
     </div>
   )
