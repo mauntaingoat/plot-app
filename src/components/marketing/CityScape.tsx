@@ -101,22 +101,30 @@ export function CityScape() {
           vNormal = normal;
           vPosition = position;
 
-          // Lower amplitude for a gentler, neighborhood-like surface
-          float noiseFreq = 1.0;
-          float noiseAmp = 0.35;
+          // Grid-aligned coordinates for urban feel
+          float gridX = floor(position.x * 2.5) / 2.5;
+          float gridY = floor(position.y * 2.5) / 2.5;
 
-          float displacement = snoise(vec3(
-            position.x * noiseFreq,
-            position.y * noiseFreq - time * 0.15,
-            0.0
-          )) * noiseAmp;
+          // Base noise at grid scale — determines which blocks are "buildings"
+          float blockNoise = snoise(vec3(gridX * 0.8, gridY * 0.8 - time * 0.1, 0.0));
 
-          // Sharper detail layer — gives blocky, building-like ridges
-          displacement += snoise(vec3(
-            position.x * noiseFreq * 3.0,
-            position.y * noiseFreq * 3.0 - time * 0.15,
-            0.0
-          )) * (noiseAmp * 0.25);
+          // Quantize into building heights (flat tops)
+          float buildingHeight = floor(max(blockNoise, 0.0) * 5.0) / 5.0;
+          buildingHeight *= 0.4; // scale down
+
+          // Smooth transition at edges of each block (slight bevel)
+          float edgeX = fract(position.x * 2.5);
+          float edgeY = fract(position.y * 2.5);
+          float edgeMask = smoothstep(0.0, 0.08, edgeX) * smoothstep(0.0, 0.08, 1.0 - edgeX)
+                         * smoothstep(0.0, 0.08, edgeY) * smoothstep(0.0, 0.08, 1.0 - edgeY);
+
+          // Streets are flat (where blockNoise < 0)
+          float isBuilding = smoothstep(-0.05, 0.05, blockNoise);
+
+          float displacement = buildingHeight * edgeMask * isBuilding;
+
+          // Subtle large-scale undulation for natural variation
+          displacement += snoise(vec3(position.x * 0.3, position.y * 0.3 - time * 0.08, 0.0)) * 0.06;
 
           vElevation = displacement;
           vec3 newPosition = position + normal * displacement;
