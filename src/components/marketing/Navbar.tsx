@@ -54,10 +54,9 @@ export function Navbar() {
             h-[58px] md:h-[64px] px-3.5 md:px-5
             rounded-[16px]
             transition-all duration-300
-            border-[1.5px] border-tangerine/30
             ${scrolled
-              ? 'bg-ivory/90 backdrop-blur-2xl shadow-lg'
-              : 'bg-ivory/70 backdrop-blur-xl'
+              ? 'bg-white/95 backdrop-blur-2xl shadow-lg'
+              : 'bg-white/85 backdrop-blur-xl'
             }
           `}
           style={{
