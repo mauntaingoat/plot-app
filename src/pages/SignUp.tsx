@@ -157,10 +157,10 @@ export default function SignUp() {
           <span className="text-[20px] font-extrabold text-ink tracking-tight">Reelst</span>
         </Link>
 
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" custom={direction}>
           {/* ── Role ── */}
           {step === 'role' && (
-            <motion.div key="role" initial={{ opacity: 0, x: 30 * direction }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 * direction }} className="space-y-6">
+            <motion.div key="role" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 30 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -30 * d }) }} initial="enter" animate="center" exit="exit" className="space-y-6">
               <div>
                 <h1 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Get started with Reelst</h1>
                 <p className="text-[15px] text-smoke">How do you want to use Reelst?</p>
@@ -196,7 +196,7 @@ export default function SignUp() {
 
           {/* ── Username ── */}
           {step === 'username' && (
-            <motion.div key="username" initial={{ opacity: 0, x: 30 * direction }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 * direction }} className="space-y-6">
+            <motion.div key="username" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 30 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -30 * d }) }} initial="enter" animate="center" exit="exit" className="space-y-6">
               <button onClick={() => setStep('role')} className="flex items-center gap-1 text-[13px] text-smoke font-medium mb-2"><ArrowLeft size={14} /> Back</button>
               <div className="w-14 h-14 rounded-[16px] bg-gradient-to-br from-tangerine to-ember flex items-center justify-center mb-2">
                 <AtSign size={26} className="text-white" />
@@ -229,7 +229,7 @@ export default function SignUp() {
 
           {/* ── License Verification (Agent only) ── */}
           {step === 'license' && (
-            <motion.div key="license" initial={{ opacity: 0, x: 30 * direction }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 * direction }} className="space-y-6">
+            <motion.div key="license" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 30 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -30 * d }) }} initial="enter" animate="center" exit="exit" className="space-y-6">
               <button onClick={() => setStep('username')} className="flex items-center gap-1 text-[13px] text-smoke font-medium mb-2 cursor-pointer"><ArrowLeft size={14} /> Back</button>
               <div className="w-14 h-14 rounded-[16px] bg-tangerine/10 flex items-center justify-center mb-2">
                 <Shield size={26} className="text-tangerine" />
@@ -304,7 +304,7 @@ export default function SignUp() {
 
           {/* ── Account ── */}
           {step === 'account' && (
-            <motion.div key="account" initial={{ opacity: 0, x: 30 * direction }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 * direction }} className="space-y-6">
+            <motion.div key="account" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 30 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -30 * d }) }} initial="enter" animate="center" exit="exit" className="space-y-6">
               <button onClick={() => setStep(role === 'agent' ? 'license' : 'role')} className="flex items-center gap-1 text-[13px] text-smoke font-medium mb-2 cursor-pointer"><ArrowLeft size={14} /> Back</button>
               <div>
                 <h1 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Create your account</h1>

@@ -268,10 +268,10 @@ export default function PinCreate() {
       </div>
 
       <div className="max-w-2xl mx-auto px-5 py-6">
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" custom={direction}>
           {/* ═══ STEP 1: TYPE ═══ */}
           {step === 'type' && (
-            <motion.div key="type" initial={{ opacity: 0, x: 20 * direction }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 * direction }}>
+            <motion.div key="type" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit">
               <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">What are you adding?</h2>
               <p className="text-[14px] text-smoke mb-6">Choose the type of pin for your map.</p>
               <div className="space-y-3">
@@ -301,7 +301,7 @@ export default function PinCreate() {
 
           {/* ═══ STEP 2: ADDRESS ═══ */}
           {step === 'address' && (
-            <motion.div key="address" initial={{ opacity: 0, x: 20 * direction }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 * direction }}>
+            <motion.div key="address" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit">
               <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">
                 {pinType === 'neighborhood' ? 'Which neighborhood?' : 'Where is it?'}
               </h2>
@@ -343,7 +343,7 @@ export default function PinCreate() {
 
           {/* ═══ STEP 3: DETAILS ═══ */}
           {step === 'details' && (
-            <motion.div key="details" initial={{ opacity: 0, x: 20 * direction }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 * direction }}>
+            <motion.div key="details" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit">
               <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">Add details</h2>
               <p className="text-[14px] text-smoke mb-6">{address}</p>
 
@@ -413,7 +413,7 @@ export default function PinCreate() {
 
           {/* ═══ STEP 4: CONTENT ═══ */}
           {step === 'content' && (
-            <motion.div key="content" initial={{ opacity: 0, x: 20 * direction }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 * direction }}>
+            <motion.div key="content" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit">
               <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">Add content</h2>
               <p className="text-[14px] text-smoke mb-4">
                 Attach reels, stories, or video notes to this {pinType === 'neighborhood' ? 'neighborhood' : 'listing'}.
