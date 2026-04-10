@@ -53,7 +53,7 @@ export function TabBar({ tabs, active, onChange, centerAction, dark }: TabBarPro
     <div
       className={`
         fixed bottom-0 left-0 right-0 z-[80]
-        flex items-end justify-around
+        flex items-center justify-around
         pb-[env(safe-area-inset-bottom,8px)]
         border-t
         ${dark
@@ -65,21 +65,19 @@ export function TabBar({ tabs, active, onChange, centerAction, dark }: TabBarPro
       {leftTabs.map(renderTab)}
 
       {centerAction && (
-        <div className="relative flex items-end justify-center" style={{ width: 52 }}>
-          <motion.button
-            whileTap={{ scale: 0.88 }}
-            whileHover={{ scale: 1.05 }}
-            onClick={centerAction.onClick}
-            className="
-              absolute bottom-1/2 w-[52px] h-[52px] rounded-[16px]
-              bg-gradient-to-br from-tangerine to-ember
-              text-white shadow-glow-tangerine
-              flex items-center justify-center cursor-pointer
-            "
-          >
-            {centerAction.icon}
-          </motion.button>
-        </div>
+        <motion.button
+          whileTap={{ scale: 0.88 }}
+          whileHover={{ scale: 1.05 }}
+          onClick={centerAction.onClick}
+          className="
+            w-[52px] h-[52px] rounded-[16px]
+            bg-gradient-to-br from-tangerine to-ember
+            text-white shadow-glow-tangerine
+            flex items-center justify-center cursor-pointer
+          "
+        >
+          {centerAction.icon}
+        </motion.button>
       )}
 
       {rightTabs.map(renderTab)}
