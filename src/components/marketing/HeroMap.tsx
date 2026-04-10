@@ -53,8 +53,8 @@ const THICK_V = [18, 45, 72]
 const THIN_H = [8, 15, 32, 40, 58, 65, 85, 92]
 const THIN_V = [8, 28, 35, 55, 62, 82, 90]
 
-const ROAD_COLOR = 'rgb(223, 235, 248)'
-const HOME_COLOR = 'rgb(233, 217, 248)'
+const ROAD_COLOR = 'rgba(255, 107, 61, 0.12)'
+const HOME_COLOR = 'rgba(232, 82, 42, 0.08)'
 
 /**
  * Renders one complete tile of the map (grid + buildings + pins).
