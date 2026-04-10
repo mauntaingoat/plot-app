@@ -3,32 +3,28 @@
 import { useEffect, useRef, useCallback } from "react"
 import createGlobe from "cobe"
 
-interface LabelMarker {
+interface PinMarker {
   id: string
   location: [number, number]
-  text: string
-  color: string
-  rotate: number
+  thumbnail: string
 }
 
 interface GlobeProps {
-  markers?: LabelMarker[]
+  markers?: PinMarker[]
   className?: string
   speed?: number
 }
 
-// Real estate pin labels — styled like the pins on an agent profile
-const defaultMarkers: LabelMarker[] = [
-  { id: "pin-1", location: [25.76, -80.19], text: "$1.35M · Brickell", color: "#3B82F6", rotate: -5 },
-  { id: "pin-2", location: [34.05, -118.24], text: "SOLD $2.1M", color: "#34C759", rotate: 4 },
-  { id: "pin-3", location: [40.71, -74.01], text: "Open House Sat", color: "#FFAA00", rotate: -3 },
-  { id: "pin-4", location: [37.77, -122.42], text: "$890K · SoMa", color: "#3B82F6", rotate: 6 },
-  { id: "pin-5", location: [51.51, -0.13], text: "SOLD $4.5M", color: "#34C759", rotate: -4 },
-  { id: "pin-6", location: [-33.87, 151.21], text: "$975K · Bondi", color: "#3B82F6", rotate: 5 },
-  { id: "pin-7", location: [48.86, 2.35], text: "Open House Sun", color: "#FFAA00", rotate: -6 },
-  { id: "pin-8", location: [35.68, 139.69], text: "SOLD $1.8M", color: "#34C759", rotate: 3 },
-  { id: "pin-9", location: [29.76, -95.37], text: "$650K · Heights", color: "#3B82F6", rotate: -4 },
-  { id: "pin-10", location: [41.88, -87.63], text: "Open House Fri", color: "#FFAA00", rotate: 5 },
+// Circular thumbnail pins — same look as the agent profile map pins
+const defaultMarkers: PinMarker[] = [
+  { id: "pin-1", location: [25.76, -80.19], thumbnail: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=80&h=80&fit=crop" },
+  { id: "pin-2", location: [34.05, -118.24], thumbnail: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=80&h=80&fit=crop" },
+  { id: "pin-3", location: [40.71, -74.01], thumbnail: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=80&h=80&fit=crop" },
+  { id: "pin-4", location: [37.77, -122.42], thumbnail: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=80&h=80&fit=crop" },
+  { id: "pin-5", location: [51.51, -0.13], thumbnail: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=80&h=80&fit=crop" },
+  { id: "pin-6", location: [-33.87, 151.21], thumbnail: "https://images.unsplash.com/photo-1567496898669-ee935f5f647a?w=80&h=80&fit=crop" },
+  { id: "pin-7", location: [48.86, 2.35], thumbnail: "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=80&h=80&fit=crop" },
+  { id: "pin-8", location: [35.68, 139.69], thumbnail: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=80&h=80&fit=crop" },
 ]
 
 export function Globe({
@@ -96,12 +92,12 @@ export function Globe({
         phi: 0,
         theta: 0.2,
         dark: 0,
-        diffuse: 1.5,
+        diffuse: 1.2,
         mapSamples: 16000,
-        mapBrightness: 9,
+        mapBrightness: 1.2,
         baseColor: [1, 1, 1],
         markerColor: [1, 0.42, 0.24], // tangerine
-        glowColor: [0.98, 0.97, 0.96],
+        glowColor: [1, 1, 1],
         markerElevation: 0,
         markers: markers.map((m) => ({
           location: m.location,
@@ -160,6 +156,7 @@ export function Globe({
           touchAction: "none",
         }}
       />
+      {/* Circular thumbnail pins — tangerine ring + listing photo inside */}
       {markers.map((m) => (
         <div
           key={m.id}
@@ -169,42 +166,40 @@ export function Globe({
             positionAnchor: `--cobe-${m.id}`,
             bottom: "anchor(top)",
             left: "anchor(center)",
-            translate: "-50% 0",
-            marginBottom: -10,
-            padding: "0.35rem 0.6rem 0.3rem",
-            background: m.color,
-            color: "#fff",
-            fontFamily: "var(--font-mono), ui-monospace, monospace",
-            fontSize: "0.72rem",
-            fontWeight: 700,
-            letterSpacing: "0.02em",
-            whiteSpace: "nowrap" as const,
-            transform: `rotate(${m.rotate}deg)`,
-            borderRadius: 5,
-            boxShadow:
-              "0 1px 3px rgba(0,0,0,0.2), 0 3px 8px rgba(0,0,0,0.1), inset 0 -1px 0 rgba(0,0,0,0.15)",
-            textShadow: "0 1px 1px rgba(0,0,0,0.25)",
+            translate: "-50% 50%",
             pointerEvents: "none" as const,
-            overflow: "hidden",
             opacity: `var(--cobe-visible-${m.id}, 0)`,
-            filter: `blur(calc((1 - var(--cobe-visible-${m.id}, 0)) * 8px))`,
-            transition: "opacity 0.3s, filter 0.3s",
+            filter: `blur(calc((1 - var(--cobe-visible-${m.id}, 0)) * 6px))`,
+            transition: "opacity 0.4s ease, filter 0.4s ease",
           }}
         >
-          <span
+          {/* Outer tangerine ring */}
+          <div
             style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              height: "50%",
-              background:
-                "linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.1) 60%, transparent 100%)",
-              borderRadius: "5px 5px 50% 50%",
-              pointerEvents: "none" as const,
+              width: 38,
+              height: 38,
+              borderRadius: "50%",
+              border: "2.5px solid #FF6B3D",
+              background: "#fff",
+              boxShadow: "0 2px 8px rgba(255,107,61,0.3), 0 4px 16px rgba(0,0,0,0.1)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
             }}
-          />
-          {m.text}
+          >
+            {/* Inner thumbnail */}
+            <img
+              src={m.thumbnail}
+              alt=""
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: "50%",
+                objectFit: "cover",
+              }}
+            />
+          </div>
         </div>
       ))}
     </div>
