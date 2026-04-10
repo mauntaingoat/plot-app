@@ -43,11 +43,10 @@ export function HeroMap() {
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
 
-      {/* ── Grid layer (roads + buildings) — clipped to right portion with left fade ── */}
+      {/* ── Grid layer (roads + buildings) — clipped to right portion on desktop, full width on mobile ── */}
       <div
-        className="absolute inset-y-0 right-0"
+        className="absolute inset-y-0 right-0 left-0 md:left-[28%]"
         style={{
-          left: `${GRID_LEFT - 10}%`,
           maskImage: `linear-gradient(to right, transparent 0%, black 12%)`,
           WebkitMaskImage: `linear-gradient(to right, transparent 0%, black 12%)`,
         }}

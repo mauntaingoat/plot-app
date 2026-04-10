@@ -82,48 +82,55 @@ export default function Home() {
       {/* ════════════════════════════════════════════════════════════
           SECTION 1 — HERO: Full-bleed animated map bg + left-aligned CTA
           ════════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden min-h-[520px] md:min-h-[620px]">
-        {/* Animated map background — covers entire hero, fades left */}
-        <HeroMap />
+      <section className="relative overflow-hidden">
+        {/* Animated map background — desktop: right side, mobile: below content */}
+        <div className="hidden md:block">
+          <HeroMap />
+        </div>
 
-        {/* Content — left-aligned, sits above the map */}
-        <div className="relative z-10 max-w-[1200px] mx-auto px-5 md:px-8 pt-12 md:pt-24 pb-16 md:pb-28">
+        {/* Content — centered on mobile, left-aligned on desktop */}
+        <div className="relative z-10 max-w-[1200px] mx-auto px-6 sm:px-8 md:px-8 pt-10 md:pt-24 pb-8 md:pb-28">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-            className="max-w-[540px]"
+            className="max-w-[560px] text-center md:text-left mx-auto md:mx-0"
           >
-            <h1 className="text-[42px] md:text-[62px] lg:text-[74px] font-extrabold text-ink tracking-tight leading-[0.98] mb-5">
+            <h1 className="text-[44px] sm:text-[52px] md:text-[66px] lg:text-[78px] font-extrabold text-ink tracking-tight leading-[0.97] mb-5">
               Where listings{' '}
               <span className="text-gradient">come alive.</span>
             </h1>
 
-            <p className="text-[16px] md:text-[20px] text-smoke leading-[1.4] mb-9 max-w-[480px]">
+            <p className="text-[17px] sm:text-[19px] md:text-[21px] text-smoke leading-[1.4] mb-9 max-w-[500px] mx-auto md:mx-0">
               One link. A live map of your listings, stories, reels, and open houses. The modern agent's profile, built for content.
             </p>
 
             {/* Inline claim form */}
-            <div className="flex items-center max-w-[440px] bg-white/80 backdrop-blur-sm border border-border-light rounded-[14px] p-2 focus-within:border-tangerine/50 focus-within:shadow-[0_0_20px_rgba(255,107,61,0.1)] transition-all">
-              <span className="text-[17px] font-bold text-ink pl-4 shrink-0 select-none">reel.st/</span>
+            <div className="flex items-center max-w-[460px] mx-auto md:mx-0 bg-white/80 backdrop-blur-sm border border-border-light rounded-[14px] p-2 focus-within:border-tangerine/50 focus-within:shadow-[0_0_20px_rgba(255,107,61,0.1)] transition-all">
+              <span className="text-[17px] md:text-[18px] font-bold text-ink pl-4 shrink-0 select-none">reel.st/</span>
               <input
                 type="text"
                 value={heroUsername}
                 onChange={(e) => setHeroUsername(e.target.value.replace(/[^a-z0-9._-]/gi, '').toLowerCase())}
                 onKeyDown={(e) => e.key === 'Enter' && handleClaim()}
                 placeholder="yourname"
-                className="flex-1 bg-transparent text-tangerine text-[17px] font-bold py-3.5 px-1 outline-none placeholder:text-tangerine/40 min-w-0"
+                className="flex-1 bg-transparent text-tangerine text-[17px] md:text-[18px] font-bold py-3.5 px-1 outline-none placeholder:text-tangerine/40 min-w-0"
               />
               <button
                 onClick={handleClaim}
-                className="shrink-0 h-11 px-6 rounded-[10px] bg-gradient-to-r from-tangerine to-ember text-white text-[14px] font-bold hover:brightness-110 transition-all flex items-center gap-1.5 cursor-pointer shadow-glow-tangerine"
+                className="shrink-0 h-12 px-6 rounded-[10px] bg-gradient-to-r from-tangerine to-ember text-white text-[15px] font-bold hover:brightness-110 transition-all flex items-center gap-2 cursor-pointer shadow-glow-tangerine"
               >
-                Claim it <ArrowRight size={15} />
+                Claim it <ArrowRight size={16} />
               </button>
             </div>
 
             <p className="text-[12px] text-ash mt-3">Free forever. No credit card required.</p>
           </motion.div>
+        </div>
+
+        {/* Mobile: map below the CTA */}
+        <div className="md:hidden relative w-full h-[280px] sm:h-[320px] mt-2">
+          <HeroMap />
         </div>
       </section>
 
@@ -131,7 +138,7 @@ export default function Home() {
           SECTION 2 — ARCHITECTURE: Video + text (Linktree-style split)
           ════════════════════════════════════════════════════════════ */}
       <section className="below-fold bg-obsidian">
-        <div className="max-w-[1200px] mx-auto px-5 md:px-8 py-20 md:py-28">
+        <div className="max-w-[1200px] mx-auto px-6 sm:px-8 md:px-8 py-20 md:py-28">
           <div className="reveal grid md:grid-cols-2 gap-8 md:gap-16 items-center">
             {/* Left — video / animated preview */}
             <div className="relative rounded-[20px] overflow-hidden bg-midnight border border-border-dark aspect-[9/16] max-h-[620px] md:max-h-[720px] mx-auto max-w-[360px] md:max-w-[380px] shadow-2xl">
@@ -185,7 +192,7 @@ export default function Home() {
           SECTION 3 — PLATFORM SYNC: Mascot + flowing social icons
           ════════════════════════════════════════════════════════════ */}
       <section className="below-fold">
-        <div className="max-w-[1200px] mx-auto px-5 md:px-8 py-20 md:py-28">
+        <div className="max-w-[1200px] mx-auto px-6 sm:px-8 md:px-8 py-20 md:py-28">
           <div className="reveal text-center mb-12">
             <span className="text-[11px] font-bold text-tangerine uppercase tracking-[0.15em] mb-3 block">Connected platforms</span>
             <h2 className="text-[28px] md:text-[40px] font-extrabold text-ink tracking-tight leading-tight mb-3">
@@ -231,7 +238,7 @@ export default function Home() {
           SECTION 4 — FEATURES: Toggle tabs + product screenshots
           ════════════════════════════════════════════════════════════ */}
       <section className="below-fold bg-cream/50 border-y border-border-light">
-        <div className="max-w-[1200px] mx-auto px-5 md:px-8 py-20 md:py-28">
+        <div className="max-w-[1200px] mx-auto px-6 sm:px-8 md:px-8 py-20 md:py-28">
           <div className="reveal text-center mb-12">
             <span className="text-[11px] font-bold text-tangerine uppercase tracking-[0.15em] mb-3 block">Features</span>
             <h2 className="text-[28px] md:text-[40px] font-extrabold text-ink tracking-tight mb-3">
@@ -312,7 +319,7 @@ export default function Home() {
       {/* ════════════════════════════════════════════════════════════
           SECTION 5 — FAQ
           ════════════════════════════════════════════════════════════ */}
-      <section className="below-fold max-w-[720px] mx-auto px-5 md:px-8 py-20 md:py-28">
+      <section className="below-fold max-w-[720px] mx-auto px-6 sm:px-8 md:px-8 py-20 md:py-28">
         <div className="reveal text-center mb-10">
           <h2 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-3">
             Frequently asked questions

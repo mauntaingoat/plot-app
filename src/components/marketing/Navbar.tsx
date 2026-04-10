@@ -61,7 +61,7 @@ export function Navbar() {
             }
           `}
           style={{
-            width: 'min(calc(100vw - 24px), 820px)',
+            width: 'min(calc(100vw - 32px), 820px)',
           }}
         >
           {/* Logo */}
@@ -116,19 +116,29 @@ export function Navbar() {
             )}
           </div>
 
-          {/* Mobile hamburger */}
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden w-9 h-9 flex items-center justify-center rounded-full text-ink hover:bg-black/[0.04] transition-colors"
-          >
-            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
-          </button>
+          {/* Mobile: CTA + hamburger */}
+          <div className="md:hidden flex items-center gap-1.5">
+            {!userDoc && (
+              <button
+                onClick={() => navigate('/sign-up')}
+                className="h-9 px-4 rounded-[9px] bg-gradient-to-r from-tangerine to-ember text-white text-[13px] font-bold cursor-pointer hover:brightness-110 transition-all"
+              >
+                Get started
+              </button>
+            )}
+            <button
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="w-9 h-9 flex items-center justify-center rounded-full text-ink hover:bg-black/[0.04] transition-colors"
+            >
+              {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
+          </div>
         </nav>
       </div>
 
       {/* ── Mobile dropdown (slides from under the pill) ── */}
       <div
-        className="fixed top-[72px] left-3 right-3 z-[65] bg-white/95 backdrop-blur-2xl border border-black/[0.06] rounded-[20px] shadow-xl md:hidden will-change-transform"
+        className="fixed top-[78px] left-4 right-4 z-[65] bg-white/95 backdrop-blur-2xl border border-black/[0.06] rounded-[20px] shadow-xl md:hidden will-change-transform"
         style={{
           transform: mobileOpen ? 'translateY(0) scale(1)' : 'translateY(-20px) scale(0.97)',
           opacity: mobileOpen ? 1 : 0,
