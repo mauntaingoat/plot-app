@@ -1,210 +1,455 @@
-import { useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, MapPin, Play, BarChart3, Users, Globe } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
-import { Avatar } from '@/components/ui/Avatar'
+import { ArrowRight, Play, BarChart3, Radio, Bell, CalendarDays, ChevronDown } from 'lucide-react'
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { SEOHead } from '@/components/marketing/SEOHead'
+import { Globe } from '@/components/marketing/Globe'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthModalStore } from '@/stores/authModalStore'
 import { useScrollReveal } from '@/hooks/useScrollReveal'
-import { MOCK_AGENTS } from '@/lib/mock'
 
+// Social platform icons for the flowing animation
+const SOCIAL_ICONS = [
+  { name: 'Instagram', color: '#E4405F', path: 'M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0z' },
+  { name: 'TikTok', color: '#000000', path: 'M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z' },
+  { name: 'YouTube', color: '#FF0000', path: 'M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z' },
+  { name: 'Facebook', color: '#1877F2', path: 'M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z' },
+  { name: 'Twitter', color: '#1DA1F2', path: 'M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z' },
+]
+
+// Feature toggle data
 const FEATURES = [
-  { icon: MapPin, title: 'Map Pins', desc: 'Every listing, open house, and story — pinned to a real address.' },
-  { icon: Play, title: 'Reels & Stories', desc: 'Full-screen video content that auto-plays as homebuyers scroll your map.' },
-  { icon: BarChart3, title: 'Agent Analytics', desc: 'Views, taps, saves, followers — know what\'s working.' },
-  { icon: Users, title: 'Audience Growth', desc: 'Followers, connected platforms, one link to rule them all.' },
+  {
+    id: 'live',
+    label: 'Live Streaming',
+    icon: Radio,
+    color: '#FF3B30',
+    title: 'Go live from any listing',
+    desc: 'Stream open houses and walkthroughs directly from your pin. Followers get notified instantly. Recordings auto-save as reels.',
+  },
+  {
+    id: 'openhouse',
+    label: 'Open Houses',
+    icon: CalendarDays,
+    color: '#FFAA00',
+    title: 'Schedule and share open houses',
+    desc: 'Add sessions with one-click calendar export. Visitors RSVP directly from the listing. Recurring weekly support built in.',
+  },
+  {
+    id: 'notifications',
+    label: 'Notifications',
+    icon: Bell,
+    color: '#3B82F6',
+    title: 'Never miss a lead',
+    desc: 'Push notifications for new followers, showing requests, and saved listings. Real-time inbox in your dashboard.',
+  },
+  {
+    id: 'analytics',
+    label: 'Analytics',
+    icon: BarChart3,
+    color: '#34C759',
+    title: 'Know what\'s working',
+    desc: 'Per-pin views, taps, saves. Content conversion rates. Geographic heatmaps. Follower growth trends. All in one dashboard.',
+  },
+]
+
+// FAQ data
+const FAQ_ITEMS = [
+  { q: 'Is Reelst free?', a: 'Yes. The free plan includes 5 active pins, 3 content items per pin, and 60-second video uploads. Upgrade to Pro ($19/mo) or Studio ($39/mo) for more.' },
+  { q: 'What\'s the difference between Reelst and Linktree?', a: 'Linktree is a list of links. Reelst is a live, interactive map. Every pin is tied to a real address with content, analytics, and lead capture built in.' },
+  { q: 'Can I import content from Instagram or TikTok?', a: 'Connected platforms are coming soon. You\'ll be able to sync reels and stories from Instagram, TikTok, YouTube, and Facebook directly into your map pins.' },
+  { q: 'Do homebuyers need an account to view my map?', a: 'No. Your Reelst is a public page — anyone with the link can browse your map, watch reels, and view listings. They only need an account to follow you or save pins.' },
+  { q: 'How do showing requests work?', a: 'Visitors fill out a quick form (name, email, phone, preferred date). You get a push notification + it appears in your dashboard inbox. No third-party tools needed.' },
 ]
 
 export default function Home() {
   const navigate = useNavigate()
   const { userDoc } = useAuthStore()
   const { open: openAuth } = useAuthModalStore()
-  const agents = MOCK_AGENTS
+  const [heroUsername, setHeroUsername] = useState('')
+  const [activeFeature, setActiveFeature] = useState('live')
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
 
-  // Initialize scroll reveals for below-fold content
   useScrollReveal()
 
-  function handleClaimClick() {
-    if (isMobile) openAuth('signup')
-    else navigate('/sign-up')
+  function handleClaim() {
+    if (heroUsername.trim()) {
+      navigate(`/sign-up?username=${encodeURIComponent(heroUsername.trim())}`)
+    } else if (isMobile) {
+      openAuth('signup')
+    } else {
+      navigate('/sign-up')
+    }
   }
 
   useEffect(() => {
     if (userDoc?.role === 'agent' && userDoc.onboardingComplete) navigate('/dashboard', { replace: true })
   }, [userDoc, navigate])
 
+  const currentFeature = FEATURES.find((f) => f.id === activeFeature) || FEATURES[0]
+
   return (
     <MarketingLayout>
       <SEOHead path="/" />
 
-      {/* ════════ HERO — above fold, uses Framer for initial load only ════════ */}
+      {/* ════════════════════════════════════════════════════════════
+          SECTION 1 — HERO: Claim form + rotating globe
+          ════════════════════════════════════════════════════════════ */}
       <section className="relative overflow-hidden">
+        {/* Subtle bg glow */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute -top-32 -right-32 w-[500px] h-[500px] md:w-[800px] md:h-[800px] bg-tangerine/6 rounded-full blur-[100px]" />
-          <div className="absolute bottom-0 -left-32 w-[400px] h-[400px] bg-ember/4 rounded-full blur-[80px]" />
+          <div className="absolute -top-32 right-0 w-[600px] h-[600px] bg-tangerine/5 rounded-full blur-[120px]" />
         </div>
 
-        <div className="relative max-w-[1200px] mx-auto px-5 md:px-8 pt-12 md:pt-24 pb-16 md:pb-28">
-          <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
-            {/* Hero copy — Framer for initial page load (above fold) */}
+        <div className="relative max-w-[1200px] mx-auto px-5 md:px-8 pt-10 md:pt-20 pb-12 md:pb-24">
+          <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+            {/* Left — copy + claim form */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
             >
-              <h1 className="text-[36px] md:text-[56px] lg:text-[64px] font-extrabold text-ink tracking-tight leading-[1.05] mb-5">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-tangerine-soft border border-tangerine/15 mb-5">
+                <span className="w-1.5 h-1.5 rounded-full bg-tangerine animate-pulse" />
+                <span className="text-[11px] font-bold text-ember uppercase tracking-wide">Now in beta</span>
+              </div>
+
+              <h1 className="text-[34px] md:text-[52px] lg:text-[60px] font-extrabold text-ink tracking-tight leading-[1.06] mb-4">
                 Where listings{' '}
                 <span className="text-gradient">come alive.</span>
               </h1>
-              <p className="text-[13px] text-smoke/70 font-medium tracking-wide mb-3">ree·list — because the agents here are the realest you'll find.</p>
-              <p className="text-[16px] md:text-[19px] text-smoke leading-relaxed mb-8 max-w-[480px]">
+
+              <p className="text-[15px] md:text-[18px] text-smoke leading-relaxed mb-8 max-w-[460px]">
                 One link. A live map of your listings, stories, reels, and open houses. The modern agent's profile, built for content.
               </p>
-              <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                <Button variant="primary" size="xl" onClick={handleClaimClick} iconRight={<ArrowRight size={18} />}>
-                  Claim your Reelst
-                </Button>
-                <Button variant="secondary" size="xl" onClick={() => navigate('/explore')} icon={<Globe size={18} />}>
-                  Explore agents
-                </Button>
+
+              {/* Inline claim form */}
+              <div className="flex items-center max-w-[420px] bg-cream border border-border-light rounded-full p-1.5 focus-within:border-tangerine/50 focus-within:shadow-[0_0_20px_rgba(255,107,61,0.1)] transition-all">
+                <span className="text-[14px] font-semibold text-smoke pl-4 shrink-0 select-none">reel.st/</span>
+                <input
+                  type="text"
+                  value={heroUsername}
+                  onChange={(e) => setHeroUsername(e.target.value.replace(/[^a-z0-9._-]/gi, '').toLowerCase())}
+                  onKeyDown={(e) => e.key === 'Enter' && handleClaim()}
+                  placeholder="yourname"
+                  className="flex-1 bg-transparent text-ink text-[14px] font-medium py-2.5 px-1 outline-none placeholder:text-ash min-w-0"
+                />
+                <button
+                  onClick={handleClaim}
+                  className="shrink-0 h-10 px-5 rounded-full bg-gradient-to-r from-tangerine to-ember text-white text-[13px] font-bold hover:brightness-110 transition-all flex items-center gap-1.5 cursor-pointer shadow-glow-tangerine"
+                >
+                  Claim it <ArrowRight size={14} />
+                </button>
               </div>
-              <p className="text-[13px] text-ash">Free forever. No credit card required.</p>
+
+              <p className="text-[12px] text-ash mt-3">Free forever. No credit card required.</p>
             </motion.div>
 
-            {/* Hero visual — Framer for initial load */}
+            {/* Right — rotating globe */}
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.15 }}
-              className="relative"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
+              className="relative max-w-[500px] mx-auto md:mx-0 md:ml-auto"
             >
-              <div className="bg-obsidian rounded-[24px] overflow-hidden shadow-2xl border border-border-dark aspect-[9/16] max-h-[520px] md:max-h-[600px] relative mx-auto max-w-[320px] md:max-w-[340px]">
-                <div className="absolute inset-0 bg-gradient-to-br from-[#0C1E35] via-[#0F2847] to-[#0A1628]">
-                  {[
-                    { x: 20, y: 15, color: '#3B82F6', s: 12 }, { x: 55, y: 25, color: '#FF6B3D', s: 16 },
-                    { x: 75, y: 18, color: '#34C759', s: 12 }, { x: 15, y: 45, color: '#FF3B30', s: 14 },
-                    { x: 60, y: 55, color: '#FFAA00', s: 12 }, { x: 40, y: 70, color: '#A855F7', s: 14 },
-                    { x: 80, y: 42, color: '#3B82F6', s: 12 }, { x: 35, y: 35, color: '#34C759', s: 10 },
-                  ].map((pin, i) => (
-                    <div key={i} className="absolute rounded-full animate-[fadeIn_0.3s_ease_forwards]"
-                      style={{ left: `${pin.x}%`, top: `${pin.y}%`, width: pin.s, height: pin.s, background: pin.color, boxShadow: `0 0 14px ${pin.color}50`, animationDelay: `${0.4 + i * 0.05}s`, opacity: 0 }} />
-                  ))}
-                  <div className="absolute top-4 left-4 right-4">
-                    <div className="bg-white/10 backdrop-blur-sm rounded-full flex items-center gap-2 pl-1.5 pr-3 py-1.5">
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-tangerine to-ember" />
-                      <div className="flex-1"><div className="h-2.5 w-20 bg-white/20 rounded-full" /><div className="h-2 w-14 bg-white/10 rounded-full mt-1" /></div>
-                    </div>
-                  </div>
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent pt-16 pb-4 px-4">
-                    <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-3">
-                      <div className="flex gap-2"><div className="w-16 h-16 rounded-xl bg-white/10" /><div className="flex-1"><div className="h-3 w-24 bg-white/20 rounded-full" /><div className="h-2 w-16 bg-white/10 rounded-full mt-2" /><div className="h-2 w-20 bg-white/10 rounded-full mt-1" /></div></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {/* Floating badges — CSS animation, no Framer */}
-              <div className="absolute -left-4 md:-left-12 top-1/4 bg-white rounded-2xl shadow-xl p-3 border border-border-light animate-[fadeIn_0.4s_ease_0.8s_forwards]" style={{ opacity: 0 }}>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-sold-green/15 flex items-center justify-center"><span className="text-sold-green text-[14px] font-bold">$</span></div>
-                  <div><p className="text-[11px] font-bold text-ink">SOLD $1.2M</p><p className="text-[9px] text-smoke">Coral Gables</p></div>
-                </div>
-              </div>
-              <div className="absolute -right-4 md:-right-8 top-2/3 bg-white rounded-2xl shadow-xl p-3 border border-border-light animate-[fadeIn_0.4s_ease_1s_forwards]" style={{ opacity: 0 }}>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-live-red/15 flex items-center justify-center"><Play size={12} className="text-live-red" /></div>
-                  <div><p className="text-[11px] font-bold text-ink">LIVE NOW</p><p className="text-[9px] text-smoke">23 watching</p></div>
-                </div>
-              </div>
+              <Globe className="w-full" />
             </motion.div>
           </div>
         </div>
       </section>
 
-      {/* ════════ FEATURES — CSS scroll reveal (GPU compositor) ════════ */}
-      <section className="below-fold max-w-[1200px] mx-auto px-5 md:px-8 py-20 md:py-28">
-        <div className="reveal text-center mb-14">
-          <h2 className="text-[28px] md:text-[40px] font-extrabold text-ink tracking-tight mb-3">Everything an agent needs. One link.</h2>
-          <p className="text-[15px] md:text-[17px] text-smoke max-w-[520px] mx-auto">Pin listings to real addresses. Post stories and reels. Go live from open houses. All on your map.</p>
-        </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          {FEATURES.map((feature, i) => {
-            const Icon = feature.icon
-            return (
-              <div key={i} className="reveal bg-cream rounded-[20px] p-6 md:p-7 group hover:bg-tangerine-soft transition-colors duration-300" data-delay={i + 1}>
-                <div className="w-12 h-12 rounded-[14px] bg-tangerine/10 flex items-center justify-center mb-4 group-hover:bg-tangerine/20 transition-colors"><Icon size={22} className="text-tangerine" /></div>
-                <h3 className="text-[16px] md:text-[17px] font-bold text-ink mb-1.5">{feature.title}</h3>
-                <p className="text-[13px] md:text-[14px] text-smoke leading-relaxed">{feature.desc}</p>
-              </div>
-            )
-          })}
-        </div>
-        <div className="reveal text-center mt-10" data-delay="5">
-          <Button variant="secondary" size="lg" onClick={() => navigate('/for-agents')} iconRight={<ArrowRight size={16} />}>See all features</Button>
-        </div>
-      </section>
-
-      {/* ════════ HOW IT WORKS — CSS scroll reveal ════════ */}
-      <section className="below-fold bg-cream/50 border-y border-border-light">
+      {/* ════════════════════════════════════════════════════════════
+          SECTION 2 — ARCHITECTURE: Video + text (Linktree-style split)
+          ════════════════════════════════════════════════════════════ */}
+      <section className="below-fold bg-obsidian">
         <div className="max-w-[1200px] mx-auto px-5 md:px-8 py-20 md:py-28">
-          <div className="reveal text-center mb-14">
-            <h2 className="text-[28px] md:text-[40px] font-extrabold text-ink tracking-tight mb-3">Three steps to your Reelst</h2>
-            <p className="text-[15px] md:text-[17px] text-smoke">Set up in under 2 minutes.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6 md:gap-8">
-            {[
-              { step: '01', title: 'Claim your link', desc: 'Pick a username. Your Reelst lives at reel.st/you. Share it everywhere.' },
-              { step: '02', title: 'Drop pins', desc: 'Add listings, stories, reels, open houses. Each pinned to a real address.' },
-              { step: '03', title: 'Grow your audience', desc: 'Homebuyers follow you, save listings, and discover your expertise.' },
-            ].map((item, i) => (
-              <div key={i} className="reveal bg-white rounded-[20px] p-6 md:p-8 shadow-sm border border-border-light" data-delay={i + 1}>
-                <span className="text-[48px] md:text-[56px] font-extrabold text-tangerine/15 leading-none font-mono block mb-3">{item.step}</span>
-                <h3 className="text-[18px] md:text-[20px] font-bold text-ink mb-2">{item.title}</h3>
-                <p className="text-[14px] md:text-[15px] text-smoke leading-relaxed">{item.desc}</p>
+          <div className="reveal grid md:grid-cols-2 gap-8 md:gap-16 items-center">
+            {/* Left — video / animated preview */}
+            <div className="relative rounded-[20px] overflow-hidden bg-midnight border border-border-dark aspect-[9/16] max-h-[540px] md:max-h-[600px] mx-auto max-w-[320px] md:max-w-[340px] shadow-2xl">
+              {/* Placeholder — swap for real video/recording later */}
+              <div className="absolute inset-0 bg-gradient-to-br from-[#0C1E35] via-[#0F2847] to-[#0A1628] flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center mx-auto mb-4 border border-white/15">
+                    <Play size={28} className="text-white ml-1" />
+                  </div>
+                  <p className="text-[13px] font-semibold text-mist">Product demo</p>
+                  <p className="text-[11px] text-ghost mt-1">Coming soon</p>
+                </div>
               </div>
-            ))}
+              {/* Decorative map pins on the placeholder */}
+              {[
+                { x: 22, y: 20, color: '#3B82F6' },
+                { x: 65, y: 30, color: '#FF6B3D' },
+                { x: 40, y: 55, color: '#34C759' },
+                { x: 75, y: 65, color: '#FFAA00' },
+              ].map((p, i) => (
+                <div key={i} className="absolute w-3 h-3 rounded-full animate-[pulse-live_3s_ease-in-out_infinite]"
+                  style={{ left: `${p.x}%`, top: `${p.y}%`, background: p.color, boxShadow: `0 0 12px ${p.color}60`, animationDelay: `${i * 0.7}s` }} />
+              ))}
+            </div>
+
+            {/* Right — copy */}
+            <div>
+              <span className="text-[11px] font-bold text-tangerine uppercase tracking-[0.15em] mb-3 block">How it works</span>
+              <h2 className="text-[28px] md:text-[40px] font-extrabold text-white tracking-tight leading-tight mb-4">
+                Your listings, pinned to the real world.
+              </h2>
+              <p className="text-[15px] md:text-[17px] text-mist leading-relaxed mb-6">
+                Every pin lives on a real address. Tap a pin to see the listing details, swipe through reels and stories, view open house dates, or request a showing — all without leaving the map.
+              </p>
+              <ul className="space-y-3">
+                {['Pin listings to real addresses on an interactive map', 'Attach reels, stories, and photos to each pin', 'Visitors tap, swipe, save, and follow — all from one link'].map((item, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-tangerine/20 flex items-center justify-center shrink-0 mt-0.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-tangerine" />
+                    </div>
+                    <span className="text-[14px] text-mist leading-snug">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ════════ FEATURED AGENTS — CSS scroll reveal ════════ */}
-      <section className="below-fold max-w-[1200px] mx-auto px-5 md:px-8 py-20 md:py-28">
-        <div className="reveal flex items-end justify-between mb-8">
-          <div>
-            <h2 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Featured agents</h2>
-            <p className="text-[15px] text-smoke">See how top agents use Reelst.</p>
+      {/* ════════════════════════════════════════════════════════════
+          SECTION 3 — PLATFORM SYNC: Mascot + flowing social icons
+          ════════════════════════════════════════════════════════════ */}
+      <section className="below-fold">
+        <div className="max-w-[1200px] mx-auto px-5 md:px-8 py-20 md:py-28">
+          <div className="reveal text-center mb-12">
+            <span className="text-[11px] font-bold text-tangerine uppercase tracking-[0.15em] mb-3 block">Connected platforms</span>
+            <h2 className="text-[28px] md:text-[40px] font-extrabold text-ink tracking-tight leading-tight mb-3">
+              Your content already exists.<br className="hidden md:block" />
+              <span className="text-gradient">Bring it to your map.</span>
+            </h2>
+            <p className="text-[15px] md:text-[17px] text-smoke max-w-[540px] mx-auto leading-relaxed">
+              Connect Instagram, TikTok, YouTube, and more. Your existing reels and posts flow directly into your listing pins.
+            </p>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => navigate('/explore')} className="hidden md:flex">View all</Button>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-          {agents.map((agent, i) => (
-            <div key={agent.uid} className="reveal-scale cursor-pointer" data-delay={i + 1} onClick={() => navigate(`/${agent.username}`)}>
-              <div className="bg-cream rounded-[20px] p-5 md:p-6 flex flex-col items-center gap-3 text-center hover:shadow-md transition-shadow active:scale-[0.97] transition-transform">
-                <Avatar src={agent.photoURL} name={agent.displayName} size={64} ring="story" />
-                <div><p className="text-[15px] md:text-[16px] font-bold text-ink">{agent.displayName}</p><p className="text-[12px] text-tangerine font-medium">@{agent.username}</p></div>
-                <p className="text-[12px] text-smoke line-clamp-2">{agent.bio}</p>
-                <p className="text-[11px] text-ash">{agent.followerCount.toLocaleString()} followers</p>
+
+          <div className="reveal grid md:grid-cols-2 gap-8 md:gap-12 items-center max-w-[900px] mx-auto" data-delay="2">
+            {/* Left — mascot placeholder + sign */}
+            <div className="relative flex items-end justify-center min-h-[320px] md:min-h-[400px]">
+              {/* Open house sign placeholder */}
+              <div className="relative">
+                {/* Sign post */}
+                <div className="w-2 h-40 bg-gradient-to-b from-graphite to-smoke mx-auto rounded-full" />
+                {/* Sign board */}
+                <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-48 bg-white rounded-xl shadow-xl border border-border-light p-4 text-center">
+                  <img src="/reelst-logo.png" alt="" className="w-6 h-6 mx-auto mb-2" />
+                  <p className="text-[12px] font-bold text-ink mb-1">OPEN HOUSE</p>
+                  <p className="text-[10px] text-tangerine font-semibold">reel.st/yourname</p>
+                  <div className="w-12 h-12 bg-cream rounded-lg mx-auto mt-2 flex items-center justify-center">
+                    <div className="w-8 h-8 bg-ink/10 rounded" />
+                  </div>
+                  <p className="text-[8px] text-ash mt-1">Scan QR</p>
+                </div>
+                {/* Mascot placeholder */}
+                <div className="absolute -bottom-4 -left-16 w-24 h-32 bg-cream rounded-2xl border-2 border-dashed border-tangerine/30 flex items-center justify-center">
+                  <span className="text-[10px] text-tangerine font-bold text-center px-2">Your mascot here</span>
+                </div>
               </div>
             </div>
+
+            {/* Right — flowing social icons */}
+            <div className="relative min-h-[320px] flex items-center">
+              <FlowingIcons />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════════════════
+          SECTION 4 — FEATURES: Toggle tabs + product screenshots
+          ════════════════════════════════════════════════════════════ */}
+      <section className="below-fold bg-cream/50 border-y border-border-light">
+        <div className="max-w-[1200px] mx-auto px-5 md:px-8 py-20 md:py-28">
+          <div className="reveal text-center mb-12">
+            <span className="text-[11px] font-bold text-tangerine uppercase tracking-[0.15em] mb-3 block">Features</span>
+            <h2 className="text-[28px] md:text-[40px] font-extrabold text-ink tracking-tight mb-3">
+              Everything you need. Nothing you don't.
+            </h2>
+          </div>
+
+          <div className="reveal grid md:grid-cols-[280px_1fr] gap-8 md:gap-12 items-start" data-delay="2">
+            {/* Left — toggle buttons */}
+            <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-2 md:pb-0 -mx-5 px-5 md:mx-0 md:px-0">
+              {FEATURES.map((feature) => {
+                const Icon = feature.icon
+                const isActive = activeFeature === feature.id
+                return (
+                  <button
+                    key={feature.id}
+                    onClick={() => setActiveFeature(feature.id)}
+                    className={`
+                      shrink-0 flex items-center gap-3 px-4 py-3.5 rounded-[14px] text-left cursor-pointer transition-all duration-200
+                      ${isActive
+                        ? 'bg-white shadow-md border border-border-light'
+                        : 'bg-transparent hover:bg-white/50'
+                      }
+                    `}
+                  >
+                    <div
+                      className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 transition-colors"
+                      style={{ background: isActive ? `${feature.color}18` : 'transparent' }}
+                    >
+                      <Icon size={18} style={{ color: isActive ? feature.color : '#9CA3AF' }} />
+                    </div>
+                    <span className={`text-[14px] font-semibold whitespace-nowrap ${isActive ? 'text-ink' : 'text-smoke'}`}>
+                      {feature.label}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Right — product screenshot + info */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentFeature.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+              >
+                {/* Product screenshot placeholder */}
+                <div className="rounded-[18px] overflow-hidden bg-white border border-border-light shadow-sm mb-6">
+                  <div
+                    className="aspect-[16/10] flex items-center justify-center"
+                    style={{ background: `linear-gradient(135deg, ${currentFeature.color}08, ${currentFeature.color}15)` }}
+                  >
+                    <div className="text-center">
+                      <div
+                        className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center"
+                        style={{ background: `${currentFeature.color}20` }}
+                      >
+                        <currentFeature.icon size={28} style={{ color: currentFeature.color }} />
+                      </div>
+                      <p className="text-[13px] font-semibold text-smoke">Product screenshot</p>
+                      <p className="text-[11px] text-ash mt-1">Placeholder — swap in real image</p>
+                    </div>
+                  </div>
+                </div>
+
+                <h3 className="text-[22px] md:text-[26px] font-extrabold text-ink tracking-tight mb-2">
+                  {currentFeature.title}
+                </h3>
+                <p className="text-[14px] md:text-[16px] text-smoke leading-relaxed max-w-[520px]">
+                  {currentFeature.desc}
+                </p>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════════════════
+          SECTION 5 — FAQ
+          ════════════════════════════════════════════════════════════ */}
+      <section className="below-fold max-w-[720px] mx-auto px-5 md:px-8 py-20 md:py-28">
+        <div className="reveal text-center mb-10">
+          <h2 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-3">
+            Frequently asked questions
+          </h2>
+        </div>
+        <div className="reveal space-y-2" data-delay="1">
+          {FAQ_ITEMS.map((item, i) => (
+            <FAQItem key={i} question={item.q} answer={item.a} />
           ))}
         </div>
       </section>
-
-      {/* ════════ BOTTOM CTA ════════ */}
-      <section className="below-fold max-w-[1200px] mx-auto px-5 md:px-8 pb-20 md:pb-28">
-        <div className="reveal bg-gradient-to-br from-midnight to-obsidian rounded-[28px] p-8 md:p-16 text-center relative overflow-hidden">
-          <div className="absolute inset-0 pointer-events-none"><div className="absolute top-0 right-0 w-[300px] h-[300px] bg-tangerine/8 rounded-full blur-[80px]" /></div>
-          <div className="relative">
-            <img src="/reelst-logo.png" alt="" className="w-14 h-14 md:w-16 md:h-16 mx-auto mb-6" />
-            <h2 className="text-[24px] md:text-[40px] font-extrabold text-white tracking-tight mb-3">Ready to go live?</h2>
-            <p className="text-[15px] md:text-[17px] text-mist mb-8 max-w-[440px] mx-auto">Join agents who are turning their Instagram bio into a live, interactive map.</p>
-            <Button variant="primary" size="xl" onClick={handleClaimClick} iconRight={<ArrowRight size={18} />}>Claim your Reelst — free</Button>
-          </div>
-        </div>
-      </section>
     </MarketingLayout>
+  )
+}
+
+// ── FAQ accordion item ──
+
+function FAQItem({ question, answer }: { question: string; answer: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="bg-cream rounded-[14px] border border-border-light overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-5 py-4 text-left cursor-pointer"
+      >
+        <span className="text-[15px] font-semibold text-ink pr-4">{question}</span>
+        <ChevronDown
+          size={18}
+          className={`text-smoke shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="px-5 pb-4">
+              <p className="text-[14px] text-smoke leading-relaxed">{answer}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// ── Flowing social icons animation ──
+
+function FlowingIcons() {
+  return (
+    <div className="relative w-full h-[300px]">
+      {SOCIAL_ICONS.map((icon, i) => {
+        const delay = i * 1.2
+        const startY = 30 + (i % 3) * 30
+        return (
+          <div
+            key={icon.name}
+            className="absolute"
+            style={{
+              animation: `flowToSign 4s ease-in-out ${delay}s infinite`,
+              left: '100%',
+              top: `${startY}%`,
+            }}
+          >
+            <div
+              className="w-11 h-11 rounded-[12px] shadow-lg flex items-center justify-center"
+              style={{ background: icon.color }}
+            >
+              <svg viewBox="0 0 24 24" className="w-5 h-5" fill="white">
+                <path d={icon.path} />
+              </svg>
+            </div>
+          </div>
+        )
+      })}
+
+      {/* Arrow/flow line */}
+      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-px bg-gradient-to-l from-tangerine/30 via-tangerine/10 to-transparent" />
+
+      <style>{`
+        @keyframes flowToSign {
+          0% { transform: translateX(0) scale(1); opacity: 0; }
+          10% { opacity: 1; }
+          70% { transform: translateX(-280px) scale(0.7); opacity: 1; }
+          85% { transform: translateX(-320px) scale(0.3); opacity: 0.5; }
+          100% { transform: translateX(-340px) scale(0); opacity: 0; }
+        }
+        @media (min-width: 768px) {
+          @keyframes flowToSign {
+            0% { transform: translateX(0) scale(1); opacity: 0; }
+            10% { opacity: 1; }
+            70% { transform: translateX(-350px) scale(0.7); opacity: 1; }
+            85% { transform: translateX(-400px) scale(0.3); opacity: 0.5; }
+            100% { transform: translateX(-440px) scale(0); opacity: 0; }
+          }
+        }
+      `}</style>
+    </div>
   )
 }
