@@ -15,15 +15,12 @@ interface MapPin {
 }
 
 const PINS: MapPin[] = [
-  { x: '35%', y: '28%', delay: 0.8, thumbnail: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=60&h=60&fit=crop' },
   { x: '62%', y: '18%', delay: 1.0, size: 40, thumbnail: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=60&h=60&fit=crop' },
   { x: '78%', y: '42%', delay: 1.2, size: 44, thumbnail: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=60&h=60&fit=crop' },
-  { x: '48%', y: '55%', delay: 1.4, thumbnail: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=60&h=60&fit=crop' },
   { x: '85%', y: '68%', delay: 1.1, size: 38, thumbnail: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=60&h=60&fit=crop' },
   { x: '55%', y: '78%', delay: 1.5, thumbnail: 'https://images.unsplash.com/photo-1567496898669-ee935f5f647a?w=60&h=60&fit=crop' },
   { x: '72%', y: '85%', delay: 1.3, size: 36, thumbnail: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=60&h=60&fit=crop' },
   { x: '90%', y: '22%', delay: 1.6, size: 34, thumbnail: 'https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=60&h=60&fit=crop' },
-  { x: '42%', y: '40%', delay: 0.9, size: 42, thumbnail: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=60&h=60&fit=crop' },
 ]
 
 const BUILDINGS = [
@@ -41,9 +38,9 @@ const BUILDINGS = [
 
 export function HeroMap() {
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+    <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ opacity: 0.7 }}>
       {/* Muted map surface */}
-      <div className="absolute inset-0 bg-pearl/60" />
+      <div className="absolute inset-0 bg-pearl/40" />
 
       {/* SVG roads — animate pathLength on load */}
       <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
