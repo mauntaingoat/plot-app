@@ -168,16 +168,23 @@ function InlineShowingForm({ pin, agent, onBack }: { pin: ForSalePin | SoldPin; 
           <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(305) 555-1234" className={inputCls} />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-[10px] font-bold uppercase tracking-wider text-ghost mb-1.5 flex items-center gap-1.5"><span className="text-tangerine"><Calendar size={12} /></span> Date</label>
-          <input type="date" value={date} min={new Date().toISOString().split('T')[0]} onChange={(e) => setDate(e.target.value)} className={inputCls} />
+          <input type="date" value={date} min={new Date().toISOString().split('T')[0]} onChange={(e) => setDate(e.target.value)} className={`${inputCls} hide-native-picker`} />
         </div>
         <div>
           <label className="text-[10px] font-bold uppercase tracking-wider text-ghost mb-1.5 flex items-center gap-1.5"><span className="text-tangerine"><Clock size={12} /></span> Time</label>
-          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={inputCls} />
+          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={`${inputCls} hide-native-picker`} />
         </div>
       </div>
+      <style>{`
+        .hide-native-picker::-webkit-calendar-picker-indicator {
+          filter: invert(1) brightness(0.5);
+          opacity: 0.4;
+          cursor: pointer;
+        }
+      `}</style>
       <div>
         <label className="text-[10px] font-bold uppercase tracking-wider text-ghost mb-1.5 flex items-center gap-1.5"><span className="text-tangerine"><MessageSquare size={12} /></span> Note (optional)</label>
         <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Pre-approved buyer, etc." className={`${inputCls} resize-none`} />
