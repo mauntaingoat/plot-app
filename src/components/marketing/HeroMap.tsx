@@ -23,29 +23,39 @@ const PINS: MapPin[] = [
   { x: '90%', y: '22%', delay: 1.6, size: 34, thumbnail: 'https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=60&h=60&fit=crop' },
 ]
 
-// Each building has a clipPath to give it shape — some plain rects, some with notches/extrusions
-// clipPath uses polygon() with percentage coords relative to the element
-const BUILDINGS: { top: string; left: string; w: string; h: string; delay: number; clip?: string }[] = [
-  // L-shape notch bottom-right
-  { top: '10%', left: '52%', w: '12%', h: '8%', delay: 0.5, clip: 'polygon(0 0, 100% 0, 100% 55%, 60% 55%, 60% 100%, 0 100%)' },
-  // Plain tall rect
-  { top: '22%', left: '65%', w: '8%', h: '14%', delay: 0.6 },
-  // Notch top-right corner
-  { top: '45%', left: '70%', w: '14%', h: '10%', delay: 0.7, clip: 'polygon(0 0, 70% 0, 70% 35%, 100% 35%, 100% 100%, 0 100%)' },
-  // Extrusion on left side
-  { top: '65%', left: '48%', w: '10%', h: '8%', delay: 0.55, clip: 'polygon(0 20%, 30% 20%, 30% 0, 100% 0, 100% 100%, 0 100%)' },
-  // Plain square
-  { top: '75%', left: '80%', w: '12%', h: '12%', delay: 0.65 },
-  // Notch bottom-left
-  { top: '15%', left: '82%', w: '8%', h: '10%', delay: 0.75, clip: 'polygon(0 0, 100% 0, 100% 100%, 40% 100%, 40% 60%, 0 60%)' },
-  // T-shape extrusion on right
-  { top: '55%', left: '60%', w: '6%', h: '16%', delay: 0.6, clip: 'polygon(0 0, 100% 0, 100% 40%, 100% 40%, 100% 65%, 100% 65%, 100% 100%, 0 100%)' },
-  // L-shape notch top-left
-  { top: '30%', left: '88%', w: '7%', h: '8%', delay: 0.8, clip: 'polygon(45% 0, 100% 0, 100% 100%, 0 100%, 0 45%, 45% 45%)' },
-  // Wide with right extrusion
-  { top: '82%', left: '55%', w: '10%', h: '6%', delay: 0.7, clip: 'polygon(0 0, 65% 0, 65% 0, 100% 0, 100% 60%, 65% 60%, 65% 100%, 0 100%)' },
-  // Plain small rect
-  { top: '5%', left: '72%', w: '9%', h: '7%', delay: 0.55 },
+// Each building uses an SVG path for shape. r=4 rounded corners via quadratic curves.
+// Paths are drawn in a 100x100 viewBox.
+const BUILDINGS: { top: string; left: string; w: string; h: string; delay: number; path: string }[] = [
+  // L-shape notch bottom-right (rounded)
+  { top: '10%', left: '52%', w: '12%', h: '8%', delay: 0.5,
+    path: 'M4,0 H96 Q100,0 100,4 V51 Q100,55 96,55 H64 Q60,55 60,59 V96 Q60,100 56,100 H4 Q0,100 0,96 V4 Q0,0 4,0Z' },
+  // Plain tall rect (rounded)
+  { top: '22%', left: '65%', w: '8%', h: '14%', delay: 0.6,
+    path: 'M4,0 H96 Q100,0 100,4 V96 Q100,100 96,100 H4 Q0,100 0,96 V4 Q0,0 4,0Z' },
+  // Notch top-right (rounded)
+  { top: '45%', left: '70%', w: '14%', h: '10%', delay: 0.7,
+    path: 'M4,0 H66 Q70,0 70,4 V31 Q70,35 74,35 H96 Q100,35 100,39 V96 Q100,100 96,100 H4 Q0,100 0,96 V4 Q0,0 4,0Z' },
+  // Extrusion top-left (rounded)
+  { top: '65%', left: '48%', w: '10%', h: '8%', delay: 0.55,
+    path: 'M30,0 H96 Q100,0 100,4 V96 Q100,100 96,100 H4 Q0,100 0,96 V24 Q0,20 4,20 H26 Q30,20 30,16 V4 Q30,0 34,0Z' },
+  // Plain square (rounded)
+  { top: '75%', left: '80%', w: '12%', h: '12%', delay: 0.65,
+    path: 'M4,0 H96 Q100,0 100,4 V96 Q100,100 96,100 H4 Q0,100 0,96 V4 Q0,0 4,0Z' },
+  // Notch bottom-left (rounded)
+  { top: '15%', left: '82%', w: '8%', h: '10%', delay: 0.75,
+    path: 'M4,0 H96 Q100,0 100,4 V96 Q100,100 96,100 H44 Q40,100 40,96 V64 Q40,60 36,60 H4 Q0,60 0,56 V4 Q0,0 4,0Z' },
+  // Plain narrow (rounded)
+  { top: '55%', left: '60%', w: '6%', h: '16%', delay: 0.6,
+    path: 'M4,0 H96 Q100,0 100,4 V96 Q100,100 96,100 H4 Q0,100 0,96 V4 Q0,0 4,0Z' },
+  // L-shape notch top-left (rounded)
+  { top: '30%', left: '88%', w: '7%', h: '8%', delay: 0.8,
+    path: 'M49,0 H96 Q100,0 100,4 V96 Q100,100 96,100 H4 Q0,100 0,96 V49 Q0,45 4,45 H45 Q49,45 49,41 V4 Q49,0 53,0Z' },
+  // Wide with step (rounded)
+  { top: '82%', left: '55%', w: '10%', h: '6%', delay: 0.7,
+    path: 'M4,0 H96 Q100,0 100,4 V56 Q100,60 96,60 H69 Q65,60 65,64 V96 Q65,100 61,100 H4 Q0,100 0,96 V4 Q0,0 4,0Z' },
+  // Plain small (rounded)
+  { top: '5%', left: '72%', w: '9%', h: '7%', delay: 0.55,
+    path: 'M4,0 H96 Q100,0 100,4 V96 Q100,100 96,100 H4 Q0,100 0,96 V4 Q0,0 4,0Z' },
 ]
 
 const ROAD_COLOR = 'rgb(223, 235, 248)'
@@ -66,38 +76,36 @@ export function HeroMap() {
       >
         <div className="absolute inset-0 bg-pearl/50" />
 
-        {/* Buildings — rendered first so grid lines sit on top */}
+        {/* Buildings — SVG shapes with rounded corners, rendered before roads */}
         {BUILDINGS.map((b, i) => (
           <motion.div
             key={`bldg-${i}`}
             className="absolute"
-            style={{
-              top: b.top, left: b.left, width: b.w, height: b.h,
-              background: HOME_COLOR,
-              border: `1px solid ${HOME_BORDER}`,
-              borderRadius: b.clip ? 0 : 2,
-              clipPath: b.clip || undefined,
-            }}
+            style={{ top: b.top, left: b.left, width: b.w, height: b.h }}
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4, delay: b.delay }}
-          />
+          >
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full">
+              <path d={b.path} fill={HOME_COLOR} stroke={HOME_BORDER} strokeWidth="1.5" />
+            </svg>
+          </motion.div>
         ))}
 
         {/* SVG roads — rendered AFTER buildings so lines sit on top */}
         <svg className="absolute inset-0 w-full h-full" style={{ zIndex: 1 }} preserveAspectRatio="none">
-          {/* Thick main roads */}
-          <motion.line x1="0%" y1="28%" x2="100%" y2="28%" stroke={ROAD_COLOR} strokeWidth="5"
+          {/* Thick main roads — with opacity */}
+          <motion.line x1="0%" y1="28%" x2="100%" y2="28%" stroke={ROAD_COLOR} strokeWidth="5" opacity="0.7"
             initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1, delay: 0.2 }} />
-          <motion.line x1="0%" y1="55%" x2="100%" y2="55%" stroke={ROAD_COLOR} strokeWidth="5"
+          <motion.line x1="0%" y1="55%" x2="100%" y2="55%" stroke={ROAD_COLOR} strokeWidth="5" opacity="0.7"
             initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1, delay: 0.3 }} />
-          <motion.line x1="0%" y1="80%" x2="100%" y2="80%" stroke={ROAD_COLOR} strokeWidth="5"
+          <motion.line x1="0%" y1="80%" x2="100%" y2="80%" stroke={ROAD_COLOR} strokeWidth="5" opacity="0.7"
             initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1, delay: 0.35 }} />
-          <motion.line x1="25%" y1="0%" x2="25%" y2="100%" stroke={ROAD_COLOR} strokeWidth="4"
+          <motion.line x1="25%" y1="0%" x2="25%" y2="100%" stroke={ROAD_COLOR} strokeWidth="4" opacity="0.7"
             initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8, delay: 0.4 }} />
-          <motion.line x1="55%" y1="0%" x2="55%" y2="100%" stroke={ROAD_COLOR} strokeWidth="4"
+          <motion.line x1="55%" y1="0%" x2="55%" y2="100%" stroke={ROAD_COLOR} strokeWidth="4" opacity="0.7"
             initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8, delay: 0.45 }} />
-          <motion.line x1="78%" y1="0%" x2="78%" y2="100%" stroke={ROAD_COLOR} strokeWidth="5"
+          <motion.line x1="78%" y1="0%" x2="78%" y2="100%" stroke={ROAD_COLOR} strokeWidth="5" opacity="0.7"
             initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1, delay: 0.35 }} />
 
           {/* Thin secondary streets */}
