@@ -96,6 +96,21 @@ service cloud.firestore {
       allow update, delete: if false; // admin-only via Cloud Functions
     }
 
+    // ── DMCA TAKEDOWN REQUESTS ──
+    // Anyone can submit a DMCA request (copyright holders may not have accounts)
+    match /dmca_requests/{reqId} {
+      allow create: if true;
+      allow read, update, delete: if false; // admin-only
+    }
+
+    // ── LICENSE DISPUTES ──
+    // Signed-in users can create disputes; only their own are readable
+    match /disputes/{disputeId} {
+      allow create: if isSignedIn() || true; // allow during signup (pre-auth)
+      allow read: if isSignedIn() && (resource.data.claimantUid == request.auth.uid || resource.data.existingUid == request.auth.uid);
+      allow update, delete: if false;
+    }
+
     // ── DEFAULT DENY ──
     // Anything not matched above is rejected
     match /{document=**} {

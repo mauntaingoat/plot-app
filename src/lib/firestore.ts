@@ -5,7 +5,7 @@ import {
   type DocumentData, type Unsubscribe,
 } from 'firebase/firestore'
 import { db, firebaseConfigured } from '@/config/firebase'
-import type { UserDoc, Pin, ContentItem, Coordinates, PinType, ShowingRequest, ContentReport, ReportReason } from '@/lib/types'
+import type { UserDoc, Pin, ContentItem, Coordinates, PinType, ShowingRequest, ContentReport, ReportReason, LicenseDispute, DmcaRequest } from '@/lib/types'
 
 // ══════════════════════════════════════════
 // USERS
@@ -154,7 +154,8 @@ export async function getAgentPins(agentId: string): Promise<Pin[]> {
     collection(db, 'pins'),
     where('agentId', '==', agentId),
     where('enabled', '==', true),
-    orderBy('createdAt', 'desc')
+    orderBy('createdAt', 'desc'),
+    limit(100)
   )
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Pin)
@@ -166,7 +167,8 @@ export function subscribeToAgentPins(agentId: string, callback: (pins: Pin[]) =>
     collection(db, 'pins'),
     where('agentId', '==', agentId),
     where('enabled', '==', true),
-    orderBy('createdAt', 'desc')
+    orderBy('createdAt', 'desc'),
+    limit(100)
   )
   return onSnapshot(q, (snap) => {
     callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Pin))
@@ -206,7 +208,7 @@ export async function isFollowing(followerUid: string, agentUid: string): Promis
 
 export async function getFollowers(agentUid: string): Promise<string[]> {
   if (!db) return []
-  const q = query(collection(db, 'follows'), where('followedUid', '==', agentUid))
+  const q = query(collection(db, 'follows'), where('followedUid', '==', agentUid), limit(500))
   const snap = await getDocs(q)
   return snap.docs.map((d) => d.data().followerUid)
 }
@@ -237,7 +239,7 @@ export async function unsavePin(userId: string, pinId: string, contentId?: strin
 
 export async function getUserSaves(userId: string): Promise<{ pinId: string; contentId?: string }[]> {
   if (!db) return []
-  const q = query(collection(db, 'saves'), where('userId', '==', userId))
+  const q = query(collection(db, 'saves'), where('userId', '==', userId), limit(200))
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ pinId: d.data().pinId, contentId: d.data().contentId }))
 }
@@ -303,6 +305,7 @@ export async function listShowingRequests(agentId: string): Promise<ShowingReque
     collection(db, 'showing_requests'),
     where('agentId', '==', agentId),
     orderBy('createdAt', 'desc'),
+    limit(100),
   )
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as ShowingRequest))
@@ -416,8 +419,8 @@ export async function listReports(status?: string): Promise<ContentReport[]> {
     return status ? list.filter((r: ContentReport) => r.status === status) : list
   }
   const q = status
-    ? query(collection(db, 'reports'), where('status', '==', status), orderBy('createdAt', 'desc'))
-    : query(collection(db, 'reports'), orderBy('createdAt', 'desc'))
+    ? query(collection(db, 'reports'), where('status', '==', status), orderBy('createdAt', 'desc'), limit(100))
+    : query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(100))
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as ContentReport))
 }
@@ -430,4 +433,83 @@ export async function updateReportStatus(reportId: string, status: ContentReport
     return
   }
   await updateDoc(doc(db, 'reports', reportId), { status })
+}
+
+// ══════════════════════════════════════════
+// LICENSE DISPUTES
+// ══════════════════════════════════════════
+
+export async function createDispute(
+  data: Omit<LicenseDispute, 'id' | 'createdAt' | 'status'>,
+): Promise<string> {
+  if (!db) {
+    const id = `dispute_${Date.now()}`
+    const list = JSON.parse(localStorage.getItem('reelst_disputes') || '[]')
+    list.push({ ...data, id, status: 'pending', createdAt: { toMillis: () => Date.now() } })
+    localStorage.setItem('reelst_disputes', JSON.stringify(list))
+    return id
+  }
+  const ref = await addDoc(collection(db, 'disputes'), {
+    ...data,
+    status: 'pending',
+    createdAt: serverTimestamp(),
+  })
+  return ref.id
+}
+
+// ══════════════════════════════════════════
+// GEO-SCOPED PIN LISTENERS
+// ══════════════════════════════════════════
+
+/**
+ * Subscribe to pins within a geohash range (viewport-scoped).
+ * Uses geohash prefix queries for efficient reads.
+ * Returns unsubscribe function.
+ */
+export function subscribeToGeoPins(
+  geohashPrefix: string,
+  callback: (pins: Pin[]) => void,
+): Unsubscribe | null {
+  if (!db) return null
+  const q = query(
+    collection(db, 'pins'),
+    where('geohash', '>=', geohashPrefix),
+    where('geohash', '<=', geohashPrefix + '\uf8ff'),
+    where('enabled', '==', true),
+    limit(200),
+  )
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Pin)))
+  })
+}
+
+export async function listDisputes(): Promise<LicenseDispute[]> {
+  if (!db) {
+    return JSON.parse(localStorage.getItem('reelst_disputes') || '[]')
+  }
+  const q = query(collection(db, 'disputes'), orderBy('createdAt', 'desc'), limit(50))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as LicenseDispute))
+}
+
+// ══════════════════════════════════════════
+// DMCA TAKEDOWN REQUESTS
+// ══════════════════════════════════════════
+
+export async function createDmcaRequest(
+  data: Omit<DmcaRequest, 'id' | 'createdAt' | 'status'>,
+): Promise<string> {
+  if (!db) {
+    const id = `dmca_${Date.now()}`
+    const list = JSON.parse(localStorage.getItem('reelst_dmca') || '[]')
+    list.push({ ...data, id, status: 'pending', createdAt: { toMillis: () => Date.now() } })
+    localStorage.setItem('reelst_dmca', JSON.stringify(list))
+    return id
+  }
+  const ref = await addDoc(collection(db, 'dmca_requests'), {
+    ...data,
+    status: 'pending',
+    createdAt: serverTimestamp(),
+  })
+  return ref.id
 }

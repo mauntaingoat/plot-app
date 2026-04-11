@@ -256,8 +256,28 @@ export default function SignUp() {
                     <div>
                       <p className="text-[13px] font-semibold text-ink">This license is already registered</p>
                       <p className="text-[12px] text-smoke mt-0.5">
-                        An account with this license exists{duplicateLicense.username ? ` (@${duplicateLicense.username})` : ''}. If this is you, <Link to="/sign-in" className="text-tangerine font-semibold">sign in instead</Link>. If you believe this is an error, contact hello@reelst.co.
+                        An account with this license exists{duplicateLicense.username ? ` (@${duplicateLicense.username})` : ''}. If this is you, <Link to="/sign-in" className="text-tangerine font-semibold">sign in instead</Link>.
                       </p>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const { createDispute } = await import('@/lib/firestore')
+                          await createDispute({
+                            claimantUid: '',
+                            claimantName: licenseName,
+                            claimantEmail: email,
+                            existingUid: (duplicateLicense as any).uid || '',
+                            licenseNumber,
+                            licenseState,
+                            licenseName,
+                            evidence: 'Dispute submitted during signup — claimant believes they are the rightful license holder.',
+                          })
+                          alert('Dispute submitted. We'll review and contact you at ' + (email || 'your email') + '.')
+                        }}
+                        className="text-[12px] font-semibold text-tangerine mt-2 cursor-pointer hover:underline"
+                      >
+                        This is my license — file a dispute
+                      </button>
                     </div>
                   </div>
                 )}

@@ -47,6 +47,8 @@ export interface UserDoc {
   setupPercent: number
   fcmTokens?: string[] // device tokens for web push
   notificationPrefs?: NotificationPrefs
+  suspended?: boolean // admin can suspend an agent
+  suspendedReason?: string
 }
 
 // ── Pin types — only 2 listing types + neighborhood ──
@@ -124,6 +126,41 @@ export interface ContentReport {
   reason: ReportReason
   detail: string // free-text detail
   status: ReportStatus
+  createdAt: Timestamp
+}
+
+// ── DMCA takedown requests ──
+
+export type DmcaStatus = 'pending' | 'actioned' | 'counter_filed' | 'dismissed'
+
+export interface DmcaRequest {
+  id: string
+  claimantName: string
+  claimantEmail: string
+  targetPinId: string
+  targetContentId?: string
+  originalWorkUrl: string // URL to the original copyrighted work
+  description: string
+  swornStatement: boolean // "I swear under penalty of perjury..."
+  status: DmcaStatus
+  createdAt: Timestamp
+}
+
+// ── License disputes ──
+
+export type DisputeStatus = 'pending' | 'resolved_for_claimant' | 'resolved_for_existing' | 'dismissed'
+
+export interface LicenseDispute {
+  id: string
+  claimantUid: string
+  claimantName: string
+  claimantEmail: string
+  existingUid: string // the user who currently holds the license
+  licenseNumber: string
+  licenseState: string
+  licenseName: string // name on the license per the claimant
+  evidence: string // free-text explanation
+  status: DisputeStatus
   createdAt: Timestamp
 }
 

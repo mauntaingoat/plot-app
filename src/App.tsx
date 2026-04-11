@@ -6,6 +6,7 @@ import { SimpleLoadingScreen } from '@/components/ui/LoadingScreen'
 import { AuthSheet } from '@/components/sheets/AuthSheet'
 import { useAuthModalStore } from '@/stores/authModalStore'
 import { NotificationToasts } from '@/components/notifications/NotificationToasts'
+import { OfflineBanner } from '@/components/ui/OfflineBanner'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -74,6 +75,7 @@ function AppRoutes() {
       </Routes>
       <GlobalAuthModal />
       <NotificationToasts />
+      <OfflineBanner />
     </>
   )
 }

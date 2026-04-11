@@ -98,8 +98,8 @@ export function useFollowingList(): { followingIds: string[]; loaded: boolean } 
     // Firestore — query follows where followerUid == userDoc.uid
     import('@/config/firebase').then(({ db }) => {
       if (!db) { setLoaded(true); return }
-      import('firebase/firestore').then(({ collection, query, where, getDocs }) => {
-        const q = query(collection(db, 'follows'), where('followerUid', '==', userDoc.uid))
+      import('firebase/firestore').then(({ collection, query, where, getDocs, limit }) => {
+        const q = query(collection(db, 'follows'), where('followerUid', '==', userDoc.uid), limit(200))
         getDocs(q).then((snap) => {
           setFollowingIds(snap.docs.map((d) => d.data().followedUid as string))
           setLoaded(true)
