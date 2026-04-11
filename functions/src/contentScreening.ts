@@ -57,9 +57,9 @@ export const onPinContentChange = onDocumentWritten(
           const safe = result.safeSearchAnnotation
           if (!safe) continue
 
-          if (FLAG_THRESHOLD.includes(safe.adult || '') ||
-              FLAG_THRESHOLD.includes(safe.violence || '') ||
-              FLAG_THRESHOLD.includes(safe.racy || '')) {
+          if (FLAG_THRESHOLD.includes(String(safe.adult || '')) ||
+              FLAG_THRESHOLD.includes(String(safe.violence || '')) ||
+              FLAG_THRESHOLD.includes(String(safe.racy || ''))) {
             flagged = true
             flagReason = `SafeSearch: adult=${safe.adult}, violence=${safe.violence}, racy=${safe.racy}`
             break
