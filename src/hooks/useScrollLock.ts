@@ -2,15 +2,17 @@ import { useEffect } from 'react'
 
 /**
  * Locks body scroll when `locked` is true.
- * Used by modals and bottom sheets to prevent background scrolling.
+ * Explicitly restores when locked becomes false or component unmounts.
  */
 export function useScrollLock(locked: boolean) {
   useEffect(() => {
-    if (!locked) return
-    const original = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    if (locked) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
     return () => {
-      document.body.style.overflow = original
+      document.body.style.overflow = ''
     }
   }, [locked])
 }
