@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, useMotionValue, animate, useDragControls } from 'framer-motion'
-import { X, Bed, Bath, Maximize, MapPin, Eye, Bookmark, Share2, Phone, ChevronLeft, ChevronRight, CalendarCheck, Calendar, Clock, MessageSquare, User as UserIcon, Check, Mail } from 'lucide-react'
+import { X, Bed, Bath, Maximize, MapPin, Eye, Bookmark, Share2, Phone, ChevronLeft, ChevronRight, CalendarCheck, Calendar, Clock, MessageSquare, User as UserIcon, Check, Mail, Flag } from 'lucide-react'
+import { ReportSheet } from '@/components/moderation/ReportSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -362,6 +363,7 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isFullScreen, 
   const requireAuth = () => { if (!isSignedIn && onAuthRequired) onAuthRequired() }
   const [photoIndex, setPhotoIndex] = useState(0)
   const [showRequestForm, setShowRequestForm] = useState(false)
+  const [showReport, setShowReport] = useState(false)
   const photos = pin.photos || []
   const { isPinSaved, toggleSave } = useSaves()
   const saved = isPinSaved(pin.id)
@@ -457,14 +459,29 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isFullScreen, 
           )}
         </div>
 
-        {/* Inline showing request form — slides in as a second "page" within the listing */}
+        {/* Inline showing request form */}
         {showRequestForm && (
           <InlineShowingForm pin={pin} agent={agent} onBack={() => setShowRequestForm(false)} />
         )}
 
+        {/* Report link */}
+        <button
+          onClick={() => setShowReport(true)}
+          className="flex items-center gap-1.5 text-[12px] text-ghost hover:text-mist cursor-pointer transition-colors mx-auto"
+        >
+          <Flag size={11} /> Report this listing
+        </button>
+
         <div className="h-8" />
       </div>
 
+      <ReportSheet
+        isOpen={showReport}
+        onClose={() => setShowReport(false)}
+        targetType="pin"
+        targetId={pin.id}
+        targetOwnerId={pin.agentId}
+      />
     </div>
   )
 }

@@ -12,6 +12,7 @@ import { PIN_CONFIG, type PinType, type ContentItem } from '@/lib/types'
 import { Timestamp } from 'firebase/firestore'
 import { getTierLimits, canUploadVideo, hasFeature, type Tier } from '@/lib/tiers'
 import { PaywallPrompt } from '@/components/dashboard/PaywallPrompt'
+import { generateVideoThumbnail } from '@/lib/videoThumbnail'
 
 const PIN_OPTIONS: { type: PinType; label: string; desc: string; icon: typeof Home; color: string }[] = [
   { type: 'for_sale', label: 'For Sale Listing', desc: 'Active listing with MLS data, photos, and content', icon: Home, color: '#3B82F6' },
@@ -206,7 +207,18 @@ export default function PinCreate() {
           let thumbnailUrl = ''
           if (item.file) {
             mediaUrl = await uploadFile({ path: pinMediaPath(pinId, `content-${Date.now()}-${item.file.name}`), file: item.file, onProgress: setUploadProgress })
-            thumbnailUrl = mediaUrl // Use same for now
+            // For videos, extract a real thumbnail from the first frame
+            if (item.file.type.startsWith('video/')) {
+              try {
+                const thumbBlob = await generateVideoThumbnail(item.file)
+                const thumbFile = new File([thumbBlob], `thumb-${Date.now()}.jpg`, { type: 'image/jpeg' })
+                thumbnailUrl = await uploadFile({ path: pinMediaPath(pinId, `thumb-${Date.now()}.jpg`), file: thumbFile })
+              } catch {
+                thumbnailUrl = mediaUrl // fallback if thumbnail generation fails
+              }
+            } else {
+              thumbnailUrl = mediaUrl
+            }
           }
           contentArray.push({
             id: `content-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,

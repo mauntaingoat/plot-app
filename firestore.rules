@@ -87,6 +87,15 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
+    // ── REPORTS (content moderation) ──
+    // Any signed-in user can create a report
+    // Only the reporter can read their own reports
+    match /reports/{reportId} {
+      allow create: if isSignedIn() && request.resource.data.reporterUid == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.reporterUid == request.auth.uid;
+      allow update, delete: if false; // admin-only via Cloud Functions
+    }
+
     // ── DEFAULT DENY ──
     // Anything not matched above is rejected
     match /{document=**} {

@@ -110,6 +110,23 @@ export interface ShowingRequest {
   createdAt: Timestamp
 }
 
+// ── Content reports (moderation) ──
+
+export type ReportReason = 'spam' | 'inappropriate' | 'fake_listing' | 'harassment' | 'copyright' | 'other'
+export type ReportStatus = 'pending' | 'reviewed' | 'actioned' | 'dismissed'
+
+export interface ContentReport {
+  id: string
+  reporterUid: string // who reported
+  targetType: 'pin' | 'content' | 'agent' // what was reported
+  targetId: string // pin id, content id, or agent uid
+  targetOwnerId: string // the agent who owns the reported content
+  reason: ReportReason
+  detail: string // free-text detail
+  status: ReportStatus
+  createdAt: Timestamp
+}
+
 // ── Pin (listing or neighborhood) ──
 
 export type PinStatus = 'active' | 'archived'

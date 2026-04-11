@@ -5,7 +5,7 @@ import {
   type DocumentData, type Unsubscribe,
 } from 'firebase/firestore'
 import { db, firebaseConfigured } from '@/config/firebase'
-import type { UserDoc, Pin, ContentItem, Coordinates, PinType, ShowingRequest } from '@/lib/types'
+import type { UserDoc, Pin, ContentItem, Coordinates, PinType, ShowingRequest, ContentReport, ReportReason } from '@/lib/types'
 
 // ══════════════════════════════════════════
 // USERS
@@ -386,4 +386,48 @@ export function calculateSetupPercent(user: Partial<UserDoc>, pinCount: number):
   if (user.displayName && user.displayName.length > 0) percent += 10
   if (pinCount >= 3) percent += 10
   return percent
+}
+
+// ══════════════════════════════════════════
+// CONTENT REPORTS (moderation)
+// ══════════════════════════════════════════
+
+export async function createReport(
+  data: Omit<ContentReport, 'id' | 'createdAt' | 'status'>,
+): Promise<string> {
+  if (!db) {
+    const id = `report_${Date.now()}`
+    const list = JSON.parse(localStorage.getItem('reelst_reports') || '[]')
+    list.push({ ...data, id, status: 'pending', createdAt: { toMillis: () => Date.now() } })
+    localStorage.setItem('reelst_reports', JSON.stringify(list))
+    return id
+  }
+  const ref = await addDoc(collection(db, 'reports'), {
+    ...data,
+    status: 'pending',
+    createdAt: serverTimestamp(),
+  })
+  return ref.id
+}
+
+export async function listReports(status?: string): Promise<ContentReport[]> {
+  if (!db) {
+    const list = JSON.parse(localStorage.getItem('reelst_reports') || '[]')
+    return status ? list.filter((r: ContentReport) => r.status === status) : list
+  }
+  const q = status
+    ? query(collection(db, 'reports'), where('status', '==', status), orderBy('createdAt', 'desc'))
+    : query(collection(db, 'reports'), orderBy('createdAt', 'desc'))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as ContentReport))
+}
+
+export async function updateReportStatus(reportId: string, status: ContentReport['status']) {
+  if (!db) {
+    const list = JSON.parse(localStorage.getItem('reelst_reports') || '[]')
+    const updated = list.map((r: ContentReport) => (r.id === reportId ? { ...r, status } : r))
+    localStorage.setItem('reelst_reports', JSON.stringify(updated))
+    return
+  }
+  await updateDoc(doc(db, 'reports', reportId), { status })
 }
