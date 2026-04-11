@@ -22,6 +22,7 @@ import { PinBreakdown, ContentConversion, GeoHeatmap, TimeOfDay, FollowerGrowth,
 import { SavedMapInsights, CustomBranding } from '@/components/dashboard/StudioFeatures'
 import { QRCodeModal } from '@/components/dashboard/QRCodeModal'
 import { OpenHouseEditor } from '@/components/dashboard/OpenHouseEditor'
+import { PinEditModal } from '@/components/dashboard/PinEditModal'
 import { ShowingInbox } from '@/components/dashboard/ShowingInbox'
 import { NotificationSettings } from '@/components/dashboard/NotificationSettings'
 import { canActivatePin, hasFeature, type Tier } from '@/lib/tiers'
@@ -58,6 +59,7 @@ export default function Dashboard() {
   const [paywall, setPaywall] = useState<{ open: boolean; reason: string; upgradeTo?: Tier }>({ open: false, reason: '' })
   const [qrPin, setQrPin] = useState<Pin | null>(null)
   const [openHousePin, setOpenHousePin] = useState<ForSalePin | null>(null)
+  const [editPin, setEditPin] = useState<Pin | null>(null)
   const isDesktop = useIsDesktop()
 
   // Use real userDoc if signed in, otherwise fall back to Carolina (mock) for demo
@@ -217,7 +219,7 @@ export default function Dashboard() {
                       dark={false}
                       onToggle={(enabled) => handleTogglePin(pin.id, enabled)}
                       onMore={() => setShowPinActions(showPinActions?.id === pin.id ? null : pin)}
-                      onClick={() => setShowPinActions(pin)}
+                      onClick={() => setEditPin(pin)}
                     />
 
                     {/* Desktop popover menu — anchored to the card */}
@@ -232,7 +234,7 @@ export default function Dashboard() {
                         >
                           <div className="py-1.5">
                             {[
-                              { icon: Edit3, label: 'Edit Details', color: 'text-mist', onClick: () => { navigate(`/dashboard/pin/${pin.id}/edit`); setShowPinActions(null) } },
+                              { icon: Edit3, label: 'Edit Details', color: 'text-mist', onClick: () => { setEditPin(pin); setShowPinActions(null) } },
                               { icon: Film, label: 'Add Content', color: 'text-tangerine', onClick: () => { navigate(`/dashboard/pin/${pin.id}/edit?tab=content`); setShowPinActions(null) } },
                               { icon: QrCode, label: 'Get QR Code', color: 'text-tangerine', onClick: () => { setQrPin(pin); setShowPinActions(null) } },
                               ...(pin.type === 'for_sale' ? [{ icon: CalendarDays, label: 'Open House', color: 'text-open-amber', onClick: () => { setOpenHousePin(pin as ForSalePin); setShowPinActions(null) } }] : []),
@@ -458,7 +460,7 @@ export default function Dashboard() {
       {/* Pin actions — mobile only (desktop uses inline popover) */}
       <DarkBottomSheet isOpen={!isDesktop && !!showPinActions} onClose={() => setShowPinActions(null)} title={showPinActions?.address}>
         <div className="px-5 pb-8 space-y-2">
-          <motion.button whileTap={{ scale: 0.97 }} onClick={() => { navigate(`/dashboard/pin/${showPinActions?.id}/edit`); setShowPinActions(null) }}
+          <motion.button whileTap={{ scale: 0.97 }} onClick={() => { setEditPin(showPinActions); setShowPinActions(null) }}
             className="w-full flex items-center gap-3 p-3.5 rounded-[14px] bg-slate text-left">
             <Edit3 size={18} className="text-mist" />
             <span className="text-[15px] font-medium text-white">Edit Details</span>
@@ -499,15 +501,41 @@ export default function Dashboard() {
         </div>
       </DarkBottomSheet>
 
-      <DarkBottomSheet isOpen={!!showDeleteConfirm} onClose={() => setShowDeleteConfirm(null)} title="Archive this pin?">
-        <div className="px-5 pb-8 space-y-4">
-          <p className="text-[14px] text-mist">This will remove the pin from your map. The data is kept and can be restored later.</p>
-          <div className="flex gap-3">
-            <Button variant="glass" size="lg" fullWidth onClick={() => setShowDeleteConfirm(null)}>Cancel</Button>
-            <Button variant="danger" size="lg" fullWidth onClick={() => showDeleteConfirm && handleDeletePin(showDeleteConfirm.id)}>Archive</Button>
+      {/* Delete confirm — modal on desktop, bottom sheet on mobile */}
+      {isDesktop ? (
+        <AnimatePresence>
+          {showDeleteConfirm && (
+            <>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[200] bg-black/50" onClick={() => setShowDeleteConfirm(null)} />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 20 }}
+                transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[210] w-[calc(100vw-48px)] max-w-[380px] bg-obsidian rounded-[22px] shadow-2xl border border-border-dark p-6 space-y-4"
+              >
+                <h2 className="text-[16px] font-extrabold text-white tracking-tight">Archive this pin?</h2>
+                <p className="text-[14px] text-mist">This will remove the pin from your map. The data is kept and can be restored later.</p>
+                <div className="flex gap-3">
+                  <Button variant="glass" size="lg" fullWidth onClick={() => setShowDeleteConfirm(null)}>Cancel</Button>
+                  <Button variant="danger" size="lg" fullWidth onClick={() => showDeleteConfirm && handleDeletePin(showDeleteConfirm.id)}>Archive</Button>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      ) : (
+        <DarkBottomSheet isOpen={!!showDeleteConfirm} onClose={() => setShowDeleteConfirm(null)} title="Archive this pin?">
+          <div className="px-5 pb-8 space-y-4">
+            <p className="text-[14px] text-mist">This will remove the pin from your map. The data is kept and can be restored later.</p>
+            <div className="flex gap-3">
+              <Button variant="glass" size="lg" fullWidth onClick={() => setShowDeleteConfirm(null)}>Cancel</Button>
+              <Button variant="danger" size="lg" fullWidth onClick={() => showDeleteConfirm && handleDeletePin(showDeleteConfirm.id)}>Archive</Button>
+            </div>
           </div>
-        </div>
-      </DarkBottomSheet>
+        </DarkBottomSheet>
+      )}
 
       {/* Platform connect — modal on desktop, bottom sheet on mobile */}
       {isDesktop ? (
@@ -535,6 +563,22 @@ export default function Dashboard() {
         onClose={() => setOpenHousePin(null)}
         pin={openHousePin}
         onSave={handleSaveOpenHouse}
+      />
+
+      <PinEditModal
+        isOpen={!!editPin}
+        onClose={() => setEditPin(null)}
+        pin={editPin}
+        isDesktop={isDesktop}
+        onEditDetails={() => { if (editPin) { navigate(`/dashboard/pin/${editPin.id}/edit`); setEditPin(null) } }}
+        onAddContent={() => { if (editPin) { navigate(`/dashboard/pin/${editPin.id}/edit?tab=content`); setEditPin(null) } }}
+        onArchiveContent={(contentId) => {
+          if (!editPin) return
+          const updated = { ...editPin, content: editPin.content.filter((c) => c.id !== contentId) }
+          setPins((prev) => prev.map((p) => p.id === editPin.id ? updated as Pin : p))
+          setEditPin(updated as Pin)
+          import('@/lib/firestore').then(({ updatePin }) => updatePin(editPin.id, { content: updated.content } as any)).catch(() => {})
+        }}
       />
     </>
   )
