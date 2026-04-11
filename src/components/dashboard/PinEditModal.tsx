@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useScrollLock } from '@/hooks/useScrollLock'
 import { X, Edit3, Trash2, GripVertical, Play, Image, Radio, MapPin, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
@@ -124,6 +125,7 @@ function PinEditContent({ pin, onEditDetails, onAddContent, onArchiveContent, on
 }
 
 export function PinEditModal({ isOpen, onClose, pin, isDesktop, onEditDetails, onAddContent, onArchiveContent }: PinEditModalProps) {
+  useScrollLock(isOpen)
   if (!pin) return null
 
   // Desktop: centered modal

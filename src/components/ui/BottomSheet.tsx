@@ -1,5 +1,6 @@
 import { type ReactNode, useCallback, useRef, useState, useEffect } from 'react'
 import { X } from 'lucide-react'
+import { useScrollLock } from '@/hooks/useScrollLock'
 
 interface BottomSheetProps {
   isOpen: boolean
@@ -152,6 +153,7 @@ export function BottomSheet({ isOpen, onClose, children, title, fullHeight, clas
 
 // ── Dark Bottom Sheet ──
 export function DarkBottomSheet({ isOpen, onClose, children, title, fullHeight, className = '', zIndex = 90 }: BottomSheetProps) {
+  useScrollLock(isOpen)
   const [mounted, setMounted] = useState(false)
   const [visible, setVisible] = useState(false)
   const closingRef = useRef(false)

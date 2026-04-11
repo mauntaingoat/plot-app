@@ -27,7 +27,10 @@ export default function PinCreate() {
   const { userDoc } = useAuthStore()
   const { results, search, clear } = useGeocoding()
 
-  const [step, _setStep] = useState<Step>('type')
+  // Check if we're in "add content" mode (skip to content step, no back)
+  const isAddContentMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab') === 'content'
+
+  const [step, _setStep] = useState<Step>(isAddContentMode ? 'content' : 'type')
   const [direction, setDirection] = useState(1) // 1 = forward, -1 = back
   const STEP_ORDER: Step[] = ['type', 'address', 'details', 'content', 'publishing']
   const goTo = (next: Step) => {
@@ -426,10 +429,14 @@ export default function PinCreate() {
           {/* ═══ STEP 4: CONTENT ═══ */}
           {step === 'content' && (
             <motion.div key="content" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit">
-              <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">Add content</h2>
+              <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">
+                {isAddContentMode ? 'Add Content' : 'Add content'}
+              </h2>
               <p className="text-[14px] text-smoke mb-4">
-                Attach reels, stories, or video notes to this {pinType === 'neighborhood' ? 'neighborhood' : 'listing'}.
-                {pinType !== 'neighborhood' && ' You can skip and add later.'}
+                {isAddContentMode
+                  ? 'Add reels, stories, or photos to this listing.'
+                  : <>Attach reels, stories, or video notes to this {pinType === 'neighborhood' ? 'neighborhood' : 'listing'}.{pinType !== 'neighborhood' && ' You can skip and add later.'}</>
+                }
               </p>
               {pinType === 'neighborhood' && (
                 <div className="bg-tangerine-soft rounded-[12px] px-4 py-3 mb-4">
@@ -547,9 +554,11 @@ export default function PinCreate() {
               )}
 
               <div className="flex gap-3">
-                <Button variant="secondary" size="xl" onClick={() => setStep('details')} className="flex-1">Back</Button>
-                <Button variant="primary" size="xl" onClick={handlePublish} loading={saving} className="flex-[2]">
-                  {contentItems.length > 0 ? 'Publish Pin' : 'Publish without content'}
+                {!isAddContentMode && (
+                  <Button variant="secondary" size="xl" onClick={() => setStep('details')} className="flex-1">Back</Button>
+                )}
+                <Button variant="primary" size="xl" onClick={isAddContentMode ? () => navigate(-1) : handlePublish} loading={saving} className={isAddContentMode ? 'flex-1' : 'flex-[2]'}>
+                  {isAddContentMode ? 'Done' : contentItems.length > 0 ? 'Publish Pin' : 'Publish without content'}
                 </Button>
               </div>
             </motion.div>
