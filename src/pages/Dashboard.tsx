@@ -208,17 +208,50 @@ export default function Dashboard() {
                 <Button variant="primary" size="lg" icon={<Plus size={18} />} onClick={() => navigate('/dashboard/pin/new')}>Create Pin</Button>
               </motion.div>
             ) : (
-              <div className={isDesktop ? 'grid grid-cols-2 gap-4' : 'space-y-3'}>
+              <div className={isDesktop ? 'grid grid-cols-2 gap-4' : 'grid grid-cols-1 sm:grid-cols-2 gap-3'}>
                 {pins.map((pin) => (
-                  <div key={pin.id}>
+                  <div key={pin.id} className="relative">
                     <PinCard
                       pin={pin}
                       variant="manage"
                       dark={false}
                       onToggle={(enabled) => handleTogglePin(pin.id, enabled)}
-                      onMore={() => setShowPinActions(pin)}
-                      onClick={() => navigate(`/dashboard/pin/${pin.id}/edit`)}
+                      onMore={() => setShowPinActions(showPinActions?.id === pin.id ? null : pin)}
+                      onClick={() => setShowPinActions(pin)}
                     />
+
+                    {/* Desktop popover menu — anchored to the card */}
+                    {isDesktop && showPinActions?.id === pin.id && (
+                      <>
+                        <div className="fixed inset-0 z-[49]" onClick={() => setShowPinActions(null)} />
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          transition={{ duration: 0.15, ease: [0.23, 1, 0.32, 1] }}
+                          className="absolute top-2 right-2 z-[50] w-[220px] bg-obsidian rounded-[16px] shadow-2xl border border-border-dark overflow-hidden"
+                        >
+                          <div className="py-1.5">
+                            {[
+                              { icon: Edit3, label: 'Edit Details', color: 'text-mist', onClick: () => { navigate(`/dashboard/pin/${pin.id}/edit`); setShowPinActions(null) } },
+                              { icon: Film, label: 'Add Content', color: 'text-tangerine', onClick: () => { navigate(`/dashboard/pin/${pin.id}/edit?tab=content`); setShowPinActions(null) } },
+                              { icon: QrCode, label: 'Get QR Code', color: 'text-tangerine', onClick: () => { setQrPin(pin); setShowPinActions(null) } },
+                              ...(pin.type === 'for_sale' ? [{ icon: CalendarDays, label: 'Open House', color: 'text-open-amber', onClick: () => { setOpenHousePin(pin as ForSalePin); setShowPinActions(null) } }] : []),
+                              { icon: EyeOff, label: pin.enabled ? 'Hide from Map' : 'Show on Map', color: 'text-mist', onClick: () => { handleTogglePin(pin.id, !pin.enabled); setShowPinActions(null) } },
+                              { icon: Trash2, label: 'Archive', color: 'text-live-red', onClick: () => { setShowDeleteConfirm(pin); setShowPinActions(null) } },
+                            ].map((item, i) => (
+                              <button
+                                key={i}
+                                onClick={item.onClick}
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left cursor-pointer hover:bg-white/5 transition-colors"
+                              >
+                                <item.icon size={15} className={item.color} />
+                                <span className={`text-[13px] font-medium ${item.color === 'text-live-red' ? 'text-live-red' : 'text-white'}`}>{item.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </motion.div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
@@ -422,7 +455,8 @@ export default function Dashboard() {
     <>
       <SetupChecklist isOpen={showSetup} onClose={() => setShowSetup(false)} user={activeUser} pinCount={pins.length} />
 
-      <DarkBottomSheet isOpen={!!showPinActions} onClose={() => setShowPinActions(null)} title={showPinActions?.address}>
+      {/* Pin actions — mobile only (desktop uses inline popover) */}
+      <DarkBottomSheet isOpen={!isDesktop && !!showPinActions} onClose={() => setShowPinActions(null)} title={showPinActions?.address}>
         <div className="px-5 pb-8 space-y-2">
           <motion.button whileTap={{ scale: 0.97 }} onClick={() => { navigate(`/dashboard/pin/${showPinActions?.id}/edit`); setShowPinActions(null) }}
             className="w-full flex items-center gap-3 p-3.5 rounded-[14px] bg-slate text-left">
