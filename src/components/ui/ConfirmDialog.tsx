@@ -79,12 +79,18 @@ export function ConfirmDialog({
               </div>
             </motion.div>
           ) : (
-            /* Mobile: bottom sheet */
+            /* Mobile: bottom sheet with swipe-to-dismiss */
             <motion.div
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+              drag="y"
+              dragConstraints={{ top: 0 }}
+              dragElastic={0.2}
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 80 || info.velocity.y > 400) onClose()
+              }}
               className="fixed bottom-0 left-0 right-0 z-[410] bg-obsidian rounded-t-[22px] shadow-2xl border-t border-border-dark"
               style={{ paddingBottom: 'env(safe-area-inset-bottom, 8px)' }}
             >
