@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useScrollLock } from '@/hooks/useScrollLock'
-import { X, Edit3, Trash2, GripVertical, Play, Image, Radio, MapPin, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react'
+import { X, Edit3, Trash2, GripVertical, Play, Image, Radio, MapPin, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
@@ -102,16 +102,22 @@ function PinEditContent({ pin, onEditDetails, onAddContent, onArchiveContent, on
               }
               return (
                 <div key={item.id} className="flex items-center gap-2 bg-slate rounded-[14px] p-3">
-                  {/* Reorder buttons */}
-                  <div className="flex flex-col gap-0.5 shrink-0">
-                    <button onClick={moveUp} disabled={idx === 0}
-                      className="w-5 h-5 rounded flex items-center justify-center text-ghost hover:text-white disabled:opacity-20 cursor-pointer transition-colors">
-                      <ChevronUp size={12} />
-                    </button>
-                    <button onClick={moveDown} disabled={idx === content.length - 1}
-                      className="w-5 h-5 rounded flex items-center justify-center text-ghost hover:text-white disabled:opacity-20 cursor-pointer transition-colors">
-                      <ChevronDown size={12} />
-                    </button>
+                  {/* Drag handle — tap to reorder */}
+                  <div
+                    className="flex flex-col items-center gap-1 shrink-0 cursor-grab active:cursor-grabbing px-0.5 py-2 -my-1 rounded-lg hover:bg-white/5 transition-colors"
+                    onPointerDown={(e) => {
+                      const startY = e.clientY
+                      const onMove = (me: PointerEvent) => {
+                        const dy = me.clientY - startY
+                        if (dy < -30) { moveUp(); startY !== undefined && (e as any)._done = true }
+                        if (dy > 30) { moveDown(); (e as any)._done = true }
+                      }
+                      const onUp = () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp) }
+                      window.addEventListener('pointermove', onMove)
+                      window.addEventListener('pointerup', onUp)
+                    }}
+                  >
+                    <GripVertical size={14} className="text-ghost" />
                   </div>
 
                   {/* Thumbnail */}
