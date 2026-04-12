@@ -1,7 +1,8 @@
 import { useState, useRef, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, Play, Image, Film, MapPin, Plus, Eye, Bookmark, MoreHorizontal, Edit3, Trash2, Images, X } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Upload, Play, Image, Film, MapPin, Plus, Eye, Bookmark, MoreHorizontal, Edit3, Trash2, Images, ChevronDown, Edit } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
 import type { Pin, ContentItem } from '@/lib/types'
 
@@ -16,7 +17,8 @@ interface ContentLibraryProps {
 export function ContentLibrary({ pins, onUploadContent, onAssignContent, onArchiveContent, isDesktop }: ContentLibraryProps) {
   const [filter, setFilter] = useState<'all' | 'reel' | 'photo'>('all')
   const [archiveTarget, setArchiveTarget] = useState<{ contentId: string; pinId: string } | null>(null)
-  const [activeMenu, setActiveMenu] = useState<string | null>(null) // content id with open menu
+  const [activeMenu, setActiveMenu] = useState<string | null>(null)
+  const [mobileMenuContent, setMobileMenuContent] = useState<{ content: ContentItem; pin: Pin } | null>(null)
   const photoRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLInputElement>(null)
 
@@ -43,7 +45,7 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, onArchi
       <input ref={photoRef} type="file" accept="image/*" multiple onChange={(e) => { const f = Array.from(e.target.files || []); if (f.length) onUploadContent(f, 'photo'); e.target.value = '' }} className="hidden" />
       <input ref={videoRef} type="file" accept="video/*" onChange={(e) => { const f = Array.from(e.target.files || []); if (f.length) onUploadContent(f.slice(0, 1), 'reel'); e.target.value = '' }} className="hidden" />
 
-      {/* Header — filters + upload */}
+      {/* Header */}
       <div className="flex items-center gap-2 flex-wrap">
         {([
           { id: 'all' as const, label: 'All' },
@@ -63,7 +65,7 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, onArchi
 
       <p className="text-[11px] text-ash">{filtered.length} item{filtered.length !== 1 ? 's' : ''}</p>
 
-      {/* Grid — matches My Reelst layout */}
+      {/* Grid — 1-col mobile, 2-col desktop */}
       {filtered.length === 0 ? (
         <div className="bg-cream rounded-[18px] p-8 text-center">
           <div className="w-12 h-12 rounded-full bg-pearl mx-auto mb-3 flex items-center justify-center">
@@ -73,107 +75,119 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, onArchi
           <p className="text-[12px] text-smoke mb-4">Upload photos and videos to your library.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3">
+        <div className={isDesktop ? 'grid grid-cols-2 gap-4' : 'space-y-3'}>
           {filtered.map(({ content, pin }) => {
             const isVideo = content.type === 'reel' || content.type === 'live' || content.type === 'video_note'
             const thumb = content.thumbnailUrl || content.mediaUrl || ''
-            const isLinked = true // all content is linked to a pin currently
+            const isLinked = true
             const menuOpen = activeMenu === content.id
 
             return (
               <div key={content.id} className="relative">
-                {/* Card — matches PinCard structure */}
-                <div className={`rounded-[18px] overflow-hidden bg-warm-white shadow-sm ${isLinked ? 'border-2 border-tangerine/30' : 'border border-border-light'}`}>
-                  {/* Image area */}
-                  <div className="relative aspect-[16/10] overflow-hidden bg-pearl">
+                <div className={`rounded-[18px] overflow-hidden bg-warm-white shadow-sm ${isLinked ? 'border-2 border-tangerine/25' : 'border border-border-light'}`}>
+                  {/* Image — taller aspect for portrait content */}
+                  <div className="relative aspect-[9/11] overflow-hidden bg-pearl">
                     {thumb ? (
-                      <ProgressiveImage src={thumb} alt="" className="absolute inset-0 w-full h-full" />
+                      <>
+                        {/* Blurred bg for non-portrait */}
+                        <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-105 opacity-30" />
+                        <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-contain"
+                          onLoad={(e) => { const img = e.currentTarget; if (img.naturalHeight > img.naturalWidth * 1.2) img.style.objectFit = 'cover' }} />
+                      </>
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        {isVideo ? <Play size={24} className="text-smoke" /> : <Image size={24} className="text-smoke" />}
+                        {isVideo ? <Play size={28} className="text-smoke" /> : <Image size={28} className="text-smoke" />}
                       </div>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
 
                     {/* Type pill */}
-                    <div className="absolute top-2.5 left-2.5">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/95 backdrop-blur-sm text-[10px] font-bold text-ink shadow-sm">
-                        {isVideo ? <><Play size={8} fill="currentColor" /> Video</> : <><Image size={8} /> Photo</>}
+                    <div className="absolute top-3 left-3">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-sm text-[11px] font-bold text-ink shadow-sm">
+                        {isVideo ? <><Play size={9} fill="currentColor" /> Video</> : <><Image size={9} /> Photo</>}
                       </span>
                     </div>
                   </div>
 
-                  {/* Info — inside the card, matching PinCard */}
-                  <div className="p-3 space-y-1.5">
-                    {/* Listing assignment — tappable dropdown */}
-                    <div className="flex items-start justify-between gap-1.5">
+                  {/* Info section — matches PinCard */}
+                  <div className="p-3.5 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <select
-                          value={pin.id}
-                          onChange={(e) => onAssignContent(content.id, pin.id, e.target.value)}
-                          className="flex items-center gap-1 text-[12px] font-medium text-graphite bg-transparent border-none outline-none cursor-pointer p-0 w-full truncate appearance-none"
-                          style={{ backgroundImage: 'none' }}
-                        >
-                          {pins.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              📍 {p.address.split(',')[0]}{!p.enabled ? ' (hidden)' : ''}
-                            </option>
-                          ))}
-                        </select>
+                        {/* Listing assignment — styled as a tappable row */}
+                        <div className="relative">
+                          <div className="flex items-center gap-1.5">
+                            <MapPin size={12} className="text-tangerine shrink-0" />
+                            <select
+                              value={pin.id}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                if (val === '__unlink__') return // TODO: handle unlink
+                                onAssignContent(content.id, pin.id, val)
+                              }}
+                              className="text-[13px] font-medium text-graphite bg-transparent border-none outline-none cursor-pointer p-0 pr-4 truncate appearance-none flex-1 min-w-0"
+                            >
+                              <option value="__unlink__">Unlinked</option>
+                              {pins.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.address.split(',')[0]}{!p.enabled ? ' (hidden)' : ''}
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown size={11} className="text-ash shrink-0 -ml-2" />
+                          </div>
+                        </div>
+
+                        {content.caption && (
+                          <p className="text-[12px] text-smoke line-clamp-2 mt-1">{content.caption}</p>
+                        )}
                       </div>
 
                       {/* Three-dot menu */}
                       <motion.button
                         whileTap={{ scale: 0.85 }}
-                        onClick={(e) => { e.stopPropagation(); setActiveMenu(menuOpen ? null : content.id) }}
-                        className="p-1 rounded-lg text-ash hover:text-smoke hover:bg-cream cursor-pointer shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (isDesktop) {
+                            setActiveMenu(menuOpen ? null : content.id)
+                          } else {
+                            setMobileMenuContent({ content, pin })
+                          }
+                        }}
+                        className="p-1.5 rounded-lg text-ash hover:text-smoke hover:bg-cream cursor-pointer shrink-0"
                       >
-                        <MoreHorizontal size={16} />
+                        <MoreHorizontal size={18} />
                       </motion.button>
                     </div>
 
-                    {/* Caption preview */}
-                    {content.caption && (
-                      <p className="text-[11px] text-smoke line-clamp-1">{content.caption}</p>
-                    )}
-
-                    {/* Stats row */}
-                    <div className="flex items-center gap-3 pt-0.5">
-                      <span className="flex items-center gap-1 text-[10px] font-medium text-smoke">
-                        <Eye size={10} /> {content.views.toLocaleString()}
+                    {/* Stats */}
+                    <div className="flex items-center gap-3 pt-1">
+                      <span className="flex items-center gap-1 text-[11px] font-medium text-smoke">
+                        <Eye size={12} /> {content.views.toLocaleString()}
                       </span>
-                      <span className="flex items-center gap-1 text-[10px] font-medium text-smoke">
-                        <Bookmark size={10} /> {content.saves.toLocaleString()}
+                      <span className="flex items-center gap-1 text-[11px] font-medium text-smoke">
+                        <Bookmark size={12} /> {content.saves.toLocaleString()}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Popover menu — desktop: anchored, mobile: anchored */}
-                {menuOpen && (
+                {/* Desktop popover — anchored to 3-dot */}
+                {isDesktop && menuOpen && (
                   <>
                     <div className="fixed inset-0 z-[49]" onClick={() => setActiveMenu(null)} />
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95, y: -4 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       transition={{ duration: 0.12 }}
-                      className="absolute top-2 right-2 z-[50] w-[180px] bg-obsidian rounded-[14px] shadow-2xl border border-border-dark overflow-hidden"
+                      className="absolute top-2 right-2 z-[50] w-[190px] bg-obsidian rounded-[14px] shadow-2xl border border-border-dark overflow-hidden"
                     >
-                      <div className="py-1">
-                        <button onClick={() => { setActiveMenu(null) }}
-                          className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left text-[12px] font-medium text-white hover:bg-white/5 cursor-pointer transition-colors">
-                          <Edit3 size={13} className="text-mist" /> Edit Caption
-                        </button>
+                      <div className="py-1.5">
+                        <MenuButton icon={<Edit size={14} className="text-mist" />} label="Edit" onClick={() => setActiveMenu(null)} />
+                        <MenuButton icon={<Edit3 size={14} className="text-mist" />} label="Edit Caption" onClick={() => setActiveMenu(null)} />
                         {content.type === 'photo' && (
-                          <button onClick={() => { setActiveMenu(null) }}
-                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left text-[12px] font-medium text-white hover:bg-white/5 cursor-pointer transition-colors">
-                            <Images size={13} className="text-tangerine" /> Add to Carousel
-                          </button>
+                          <MenuButton icon={<Images size={14} className="text-tangerine" />} label="Add to Carousel" onClick={() => setActiveMenu(null)} />
                         )}
-                        <button onClick={() => { setArchiveTarget({ contentId: content.id, pinId: pin.id }); setActiveMenu(null) }}
-                          className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left text-[12px] font-medium text-live-red hover:bg-live-red/5 cursor-pointer transition-colors">
-                          <Trash2 size={13} /> Archive
-                        </button>
+                        <MenuButton icon={<Trash2 size={14} className="text-live-red" />} label="Archive" danger onClick={() => { setArchiveTarget({ contentId: content.id, pinId: pin.id }); setActiveMenu(null) }} />
                       </div>
                     </motion.div>
                   </>
@@ -183,6 +197,32 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, onArchi
           })}
         </div>
       )}
+
+      {/* Mobile bottom sheet menu */}
+      <DarkBottomSheet
+        isOpen={!!mobileMenuContent}
+        onClose={() => setMobileMenuContent(null)}
+        title={mobileMenuContent?.content.caption || 'Content'}
+      >
+        <div className="px-5 pb-8 space-y-2">
+          <MobileMenuButton icon={<Edit size={18} className="text-mist" />} label="Edit" onClick={() => setMobileMenuContent(null)} />
+          <MobileMenuButton icon={<Edit3 size={18} className="text-mist" />} label="Edit Caption" onClick={() => setMobileMenuContent(null)} />
+          {mobileMenuContent?.content.type === 'photo' && (
+            <MobileMenuButton icon={<Images size={18} className="text-tangerine" />} label="Add to Carousel" onClick={() => setMobileMenuContent(null)} />
+          )}
+          <MobileMenuButton
+            icon={<Trash2 size={18} className="text-live-red" />}
+            label="Archive"
+            danger
+            onClick={() => {
+              if (mobileMenuContent) {
+                setArchiveTarget({ contentId: mobileMenuContent.content.id, pinId: mobileMenuContent.pin.id })
+                setMobileMenuContent(null)
+              }
+            }}
+          />
+        </div>
+      </DarkBottomSheet>
 
       <ConfirmDialog
         isOpen={!!archiveTarget}
@@ -201,6 +241,29 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, onArchi
   )
 }
 
+// ── Shared components ──
+
+function MenuButton({ icon, label, onClick, danger }: { icon: React.ReactNode; label: string; onClick: () => void; danger?: boolean }) {
+  return (
+    <button onClick={onClick}
+      className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-[13px] font-medium cursor-pointer transition-colors ${
+        danger ? 'text-live-red hover:bg-live-red/5' : 'text-white hover:bg-white/5'
+      }`}>
+      {icon} {label}
+    </button>
+  )
+}
+
+function MobileMenuButton({ icon, label, onClick, danger }: { icon: React.ReactNode; label: string; onClick: () => void; danger?: boolean }) {
+  return (
+    <motion.button whileTap={{ scale: 0.97 }} onClick={onClick}
+      className={`w-full flex items-center gap-3 p-3.5 rounded-[14px] text-left ${danger ? 'bg-live-red/10' : 'bg-slate'}`}>
+      {icon}
+      <span className={`text-[15px] font-medium ${danger ? 'text-live-red' : 'text-white'}`}>{label}</span>
+    </motion.button>
+  )
+}
+
 function UploadButton({ onPhoto, onVideo }: { onPhoto: () => void; onVideo: () => void }) {
   const [open, setOpen] = useState(false)
   return (
@@ -212,12 +275,8 @@ function UploadButton({ onPhoto, onVideo }: { onPhoto: () => void; onVideo: () =
       {open && (
         <>
           <div className="fixed inset-0 z-[40]" onClick={() => setOpen(false)} />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -4 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.12 }}
-            className="absolute right-0 top-full mt-1.5 z-[50] bg-white rounded-[12px] shadow-xl border border-border-light overflow-hidden min-w-[140px]"
-          >
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.12 }}
+            className="absolute right-0 top-full mt-1.5 z-[50] bg-white rounded-[12px] shadow-xl border border-border-light overflow-hidden min-w-[140px]">
             <button onClick={() => { onPhoto(); setOpen(false) }}
               className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left text-[12px] font-medium text-ink hover:bg-cream cursor-pointer transition-colors">
               <Image size={14} className="text-smoke" /> Photos
