@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react'
-import { Upload, Play, Image, Film, MapPin } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { motion } from 'framer-motion'
+import { Upload, Play, Image, Film, MapPin, Plus, Eye } from 'lucide-react'
 import type { Pin, ContentItem } from '@/lib/types'
 
 interface ContentLibraryProps {
@@ -33,39 +33,14 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, isDeskt
     return allContent
   }, [allContent, filter])
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    if (files.length > 0) onUploadContent(files, 'photo')
-    e.target.value = ''
-  }
-
-  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    if (files.length > 0) onUploadContent(files.slice(0, 1), 'reel')
-    e.target.value = ''
-  }
-
   return (
-    <div className={isDesktop ? 'space-y-5' : 'px-5 py-5 space-y-5'}>
-      {/* Upload buttons */}
-      <div className="flex items-center gap-3">
-        <input ref={photoRef} type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" />
-        <input ref={videoRef} type="file" accept="video/*" onChange={handleVideoUpload} className="hidden" />
+    <div className={isDesktop ? 'space-y-4' : 'px-5 py-5 space-y-4'}>
+      <input ref={photoRef} type="file" accept="image/*" multiple onChange={(e) => { const f = Array.from(e.target.files || []); if (f.length) onUploadContent(f, 'photo'); e.target.value = '' }} className="hidden" />
+      <input ref={videoRef} type="file" accept="video/*" onChange={(e) => { const f = Array.from(e.target.files || []); if (f.length) onUploadContent(f.slice(0, 1), 'reel'); e.target.value = '' }} className="hidden" />
 
-        <Button variant="secondary" size="sm" icon={<Image size={14} />} onClick={() => photoRef.current?.click()}>
-          Upload Photos
-        </Button>
-        <Button variant="secondary" size="sm" icon={<Film size={14} />} onClick={() => videoRef.current?.click()}>
-          Upload Video
-        </Button>
-
-        <div className="ml-auto text-[12px] text-smoke">
-          {allContent.length} item{allContent.length !== 1 ? 's' : ''}
-        </div>
-      </div>
-
-      {/* Filter pills */}
-      <div className="flex gap-2">
+      {/* Header row — filters + upload + count */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {/* Filter pills — compact */}
         {([
           { id: 'all' as const, label: 'All' },
           { id: 'reel' as const, label: 'Videos' },
@@ -74,77 +49,92 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, isDeskt
           <button
             key={f.id}
             onClick={() => setFilter(f.id)}
-            className={`px-3.5 py-1.5 rounded-full text-[12px] font-bold cursor-pointer transition-colors ${
-              filter === f.id ? 'bg-ink text-warm-white' : 'bg-cream text-graphite hover:bg-pearl'
+            className={`px-3 py-1 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${
+              filter === f.id ? 'bg-ink text-warm-white' : 'bg-cream text-smoke hover:bg-pearl'
             }`}
           >
             {f.label}
           </button>
         ))}
+
+        <div className="flex-1" />
+
+        {/* Upload actions — small icon buttons */}
+        <motion.button whileTap={{ scale: 0.95 }} onClick={() => photoRef.current?.click()}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cream text-[11px] font-semibold text-graphite hover:bg-pearl cursor-pointer transition-colors">
+          <Image size={12} /> Photos
+        </motion.button>
+        <motion.button whileTap={{ scale: 0.95 }} onClick={() => videoRef.current?.click()}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-tangerine text-[11px] font-bold text-white hover:brightness-110 cursor-pointer transition-all">
+          <Film size={12} /> Video
+        </motion.button>
       </div>
 
-      {/* Content grid */}
+      {/* Item count */}
+      <p className="text-[11px] text-ash">{filtered.length} item{filtered.length !== 1 ? 's' : ''}</p>
+
+      {/* Grid */}
       {filtered.length === 0 ? (
-        <div className="bg-cream rounded-[20px] p-8 text-center">
-          <div className="w-14 h-14 rounded-full bg-pearl mx-auto mb-3 flex items-center justify-center">
-            <Upload size={22} className="text-smoke" />
+        <div className="bg-cream rounded-[18px] p-8 text-center">
+          <div className="w-12 h-12 rounded-full bg-pearl mx-auto mb-3 flex items-center justify-center">
+            <Upload size={18} className="text-smoke" />
           </div>
-          <h3 className="text-[16px] font-bold text-ink mb-1">No content yet</h3>
-          <p className="text-[13px] text-smoke mb-4">Upload photos and videos to build your content library.</p>
+          <h3 className="text-[15px] font-bold text-ink mb-1">No content yet</h3>
+          <p className="text-[12px] text-smoke mb-4">Upload photos and videos to your library.</p>
           <div className="flex items-center justify-center gap-2">
-            <Button variant="primary" size="sm" icon={<Image size={14} />} onClick={() => photoRef.current?.click()}>
+            <motion.button whileTap={{ scale: 0.95 }} onClick={() => photoRef.current?.click()}
+              className="px-4 py-2 rounded-[10px] bg-cream border border-border-light text-[12px] font-semibold text-ink cursor-pointer hover:bg-pearl transition-colors">
               Upload Photos
-            </Button>
-            <Button variant="secondary" size="sm" icon={<Film size={14} />} onClick={() => videoRef.current?.click()}>
+            </motion.button>
+            <motion.button whileTap={{ scale: 0.95 }} onClick={() => videoRef.current?.click()}
+              className="px-4 py-2 rounded-[10px] bg-gradient-to-r from-tangerine to-ember text-white text-[12px] font-bold cursor-pointer hover:brightness-110 transition-all">
               Upload Video
-            </Button>
+            </motion.button>
           </div>
         </div>
       ) : (
-        <div className={`grid ${isDesktop ? 'grid-cols-3 lg:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'} gap-4`}>
+        <div className={`grid gap-3 ${isDesktop ? 'grid-cols-3 lg:grid-cols-4' : 'grid-cols-2'}`}>
           {filtered.map(({ content, pin }) => {
             const isVideo = content.type === 'reel' || content.type === 'live' || content.type === 'video_note'
             const thumb = content.thumbnailUrl || content.mediaUrl || ''
             return (
-              <div key={content.id}>
+              <motion.div key={content.id} whileTap={{ scale: 0.98 }} className="group">
                 {/* Thumbnail */}
-                <div className="aspect-[3/4] rounded-[14px] overflow-hidden bg-cream border border-border-light relative">
+                <div className="aspect-[4/5] rounded-[14px] overflow-hidden bg-pearl relative">
                   {thumb ? (
                     <img src={thumb} alt="" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-pearl">
-                      {isVideo ? <Play size={24} className="text-smoke" /> : <Image size={24} className="text-smoke" />}
+                    <div className="w-full h-full flex items-center justify-center">
+                      {isVideo ? <Play size={22} className="text-smoke" /> : <Image size={22} className="text-smoke" />}
                     </div>
                   )}
 
-                  {/* Video badge */}
                   {isVideo && (
                     <div className="absolute top-2 left-2">
-                      <span className="bg-black/50 backdrop-blur-sm rounded-md px-1.5 py-0.5 text-[9px] font-bold text-white flex items-center gap-1">
-                        <Play size={8} fill="white" /> Video
+                      <span className="bg-black/60 backdrop-blur-sm rounded-full px-2 py-0.5 text-[9px] font-bold text-white flex items-center gap-1">
+                        <Play size={7} fill="white" /> Video
                       </span>
                     </div>
                   )}
                 </div>
 
-                {/* Info below thumbnail */}
-                <div className="mt-2 space-y-1.5">
-                  {/* Linked listing */}
-                  <div className="flex items-center gap-1.5">
-                    <MapPin size={10} className="text-tangerine shrink-0" />
-                    <span className="text-[11px] font-medium text-graphite truncate">
-                      {pin.address.split(',')[0]}
-                    </span>
+                {/* Info below */}
+                <div className="mt-2 space-y-1">
+                  <div className="flex items-center gap-1">
+                    <MapPin size={9} className="text-tangerine shrink-0" />
+                    <span className="text-[11px] font-medium text-ink truncate">{pin.address.split(',')[0]}</span>
                   </div>
 
-                  {/* Views */}
-                  <p className="text-[10px] text-smoke">{content.views.toLocaleString()} views</p>
+                  <div className="flex items-center gap-2 text-[10px] text-smoke">
+                    <Eye size={9} /> {content.views.toLocaleString()}
+                  </div>
 
-                  {/* Assign to pin dropdown */}
+                  {/* Pin assign */}
                   <select
                     value={pin.id}
                     onChange={(e) => onAssignContent(content.id, pin.id, e.target.value)}
-                    className="w-full text-[11px] font-medium text-ink bg-cream border border-border-light rounded-[8px] px-2 py-1.5 outline-none focus:border-tangerine cursor-pointer"
+                    className="w-full text-[10px] font-medium text-graphite bg-cream rounded-[6px] px-2 py-1 border-none outline-none focus:ring-1 focus:ring-tangerine cursor-pointer appearance-none"
+                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center', paddingRight: '20px' }}
                   >
                     {pins.map((p) => (
                       <option key={p.id} value={p.id}>
@@ -153,7 +143,7 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, isDeskt
                     ))}
                   </select>
                 </div>
-              </div>
+              </motion.div>
             )
           })}
         </div>
