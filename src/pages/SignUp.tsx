@@ -272,7 +272,7 @@ export default function SignUp() {
                             licenseName,
                             evidence: 'Dispute submitted during signup — claimant believes they are the rightful license holder.',
                           })
-                          alert('Dispute submitted. We'll review and contact you at ' + (email || 'your email') + '.')
+                          alert('Dispute submitted. We will review and contact you at ' + (email || 'your email') + '.')
                         }}
                         className="text-[12px] font-semibold text-tangerine mt-2 cursor-pointer hover:underline"
                       >
