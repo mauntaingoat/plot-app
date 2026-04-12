@@ -1,28 +1,20 @@
 import { useState, useRef, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, Play, Image, Film, Search, Link2, MapPin, X, Check } from 'lucide-react'
+import { Upload, Play, Image, Film, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import type { Pin, ContentItem } from '@/lib/types'
 
 interface ContentLibraryProps {
   pins: Pin[]
   onUploadContent: (files: File[], type: 'reel' | 'photo') => void
-  onAssignContent: (contentId: string, pinId: string) => void
+  onAssignContent: (contentId: string, fromPinId: string, toPinId: string) => void
   isDesktop: boolean
 }
 
-/**
- * Content Library tab — central database of all agent media.
- * Upload photos/videos here, then assign to pins.
- * Shows which pin each content item belongs to.
- */
 export function ContentLibrary({ pins, onUploadContent, onAssignContent, isDesktop }: ContentLibraryProps) {
-  const [filter, setFilter] = useState<'all' | 'reel' | 'photo' | 'unassigned'>('all')
-  const [assigningContent, setAssigningContent] = useState<{ contentId: string; pinId: string } | null>(null)
+  const [filter, setFilter] = useState<'all' | 'reel' | 'photo'>('all')
   const photoRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLInputElement>(null)
 
-  // Flatten all content from all pins with pin reference
   const allContent = useMemo(() => {
     const items: { content: ContentItem; pin: Pin }[] = []
     for (const pin of pins) {
@@ -38,7 +30,7 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, isDeskt
     if (filter === 'all') return allContent
     if (filter === 'reel') return allContent.filter((i) => i.content.type === 'reel' || i.content.type === 'live' || i.content.type === 'video_note')
     if (filter === 'photo') return allContent.filter((i) => i.content.type === 'photo')
-    return allContent // unassigned would need a separate field — for now show all
+    return allContent
   }, [allContent, filter])
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,7 +41,7 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, isDeskt
 
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
-    if (files.length > 0) onUploadContent(files.slice(0, 1), 'reel') // single video only
+    if (files.length > 0) onUploadContent(files.slice(0, 1), 'reel')
     e.target.value = ''
   }
 
@@ -64,7 +56,7 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, isDeskt
           Upload Photos
         </Button>
         <Button variant="secondary" size="sm" icon={<Film size={14} />} onClick={() => videoRef.current?.click()}>
-          Upload Reel
+          Upload Video
         </Button>
 
         <div className="ml-auto text-[12px] text-smoke">
@@ -75,10 +67,10 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, isDeskt
       {/* Filter pills */}
       <div className="flex gap-2">
         {([
-          { id: 'all', label: 'All' },
-          { id: 'reel', label: 'Reels' },
-          { id: 'photo', label: 'Photos' },
-        ] as const).map((f) => (
+          { id: 'all' as const, label: 'All' },
+          { id: 'reel' as const, label: 'Videos' },
+          { id: 'photo' as const, label: 'Photos' },
+        ]).map((f) => (
           <button
             key={f.id}
             onClick={() => setFilter(f.id)}
@@ -98,30 +90,30 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, isDeskt
             <Upload size={22} className="text-smoke" />
           </div>
           <h3 className="text-[16px] font-bold text-ink mb-1">No content yet</h3>
-          <p className="text-[13px] text-smoke mb-4">Upload photos and reels to build your content library.</p>
+          <p className="text-[13px] text-smoke mb-4">Upload photos and videos to build your content library.</p>
           <div className="flex items-center justify-center gap-2">
             <Button variant="primary" size="sm" icon={<Image size={14} />} onClick={() => photoRef.current?.click()}>
               Upload Photos
             </Button>
             <Button variant="secondary" size="sm" icon={<Film size={14} />} onClick={() => videoRef.current?.click()}>
-              Upload Reel
+              Upload Video
             </Button>
           </div>
         </div>
       ) : (
-        <div className={`grid ${isDesktop ? 'grid-cols-4' : 'grid-cols-3'} gap-2`}>
+        <div className={`grid ${isDesktop ? 'grid-cols-3 lg:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'} gap-4`}>
           {filtered.map(({ content, pin }) => {
             const isVideo = content.type === 'reel' || content.type === 'live' || content.type === 'video_note'
             const thumb = content.thumbnailUrl || content.mediaUrl || ''
             return (
-              <div key={content.id} className="relative group">
+              <div key={content.id}>
                 {/* Thumbnail */}
-                <div className="aspect-[3/4] rounded-[12px] overflow-hidden bg-cream border border-border-light">
+                <div className="aspect-[3/4] rounded-[14px] overflow-hidden bg-cream border border-border-light relative">
                   {thumb ? (
                     <img src={thumb} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-pearl">
-                      {isVideo ? <Play size={20} className="text-smoke" /> : <Image size={20} className="text-smoke" />}
+                      {isVideo ? <Play size={24} className="text-smoke" /> : <Image size={24} className="text-smoke" />}
                     </div>
                   )}
 
@@ -129,24 +121,38 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, isDeskt
                   {isVideo && (
                     <div className="absolute top-2 left-2">
                       <span className="bg-black/50 backdrop-blur-sm rounded-md px-1.5 py-0.5 text-[9px] font-bold text-white flex items-center gap-1">
-                        <Play size={8} fill="white" /> Reel
+                        <Play size={8} fill="white" /> Video
                       </span>
                     </div>
                   )}
-
-                  {/* Pin badge — which listing this belongs to */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 pt-6">
-                    <div className="flex items-center gap-1">
-                      <MapPin size={9} className="text-white/70 shrink-0" />
-                      <span className="text-[9px] text-white/80 font-medium truncate">
-                        {pin.address.split(',')[0]}
-                      </span>
-                    </div>
-                  </div>
                 </div>
 
-                {/* Views */}
-                <p className="text-[10px] text-smoke mt-1">{content.views.toLocaleString()} views</p>
+                {/* Info below thumbnail */}
+                <div className="mt-2 space-y-1.5">
+                  {/* Linked listing */}
+                  <div className="flex items-center gap-1.5">
+                    <MapPin size={10} className="text-tangerine shrink-0" />
+                    <span className="text-[11px] font-medium text-graphite truncate">
+                      {pin.address.split(',')[0]}
+                    </span>
+                  </div>
+
+                  {/* Views */}
+                  <p className="text-[10px] text-smoke">{content.views.toLocaleString()} views</p>
+
+                  {/* Assign to pin dropdown */}
+                  <select
+                    value={pin.id}
+                    onChange={(e) => onAssignContent(content.id, pin.id, e.target.value)}
+                    className="w-full text-[11px] font-medium text-ink bg-cream border border-border-light rounded-[8px] px-2 py-1.5 outline-none focus:border-tangerine cursor-pointer"
+                  >
+                    {pins.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.address.split(',')[0]}{!p.enabled ? ' (hidden)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             )
           })}

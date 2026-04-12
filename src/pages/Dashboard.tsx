@@ -317,8 +317,23 @@ export default function Dashboard() {
               // TODO: upload files to Storage, create content items
               console.log('Upload', files.length, type, 'files')
             }}
-            onAssignContent={(contentId, pinId) => {
-              console.log('Assign', contentId, 'to', pinId)
+            onAssignContent={(contentId, fromPinId, toPinId) => {
+              if (fromPinId === toPinId) return
+              // Move content from one pin to another
+              const fromPin = pins.find((p) => p.id === fromPinId)
+              const toPin = pins.find((p) => p.id === toPinId)
+              if (!fromPin || !toPin) return
+              const contentItem = fromPin.content.find((c) => c.id === contentId)
+              if (!contentItem) return
+              setPins((prev) => prev.map((p) => {
+                if (p.id === fromPinId) return { ...p, content: p.content.filter((c) => c.id !== contentId) } as Pin
+                if (p.id === toPinId) return { ...p, content: [...p.content, contentItem] } as Pin
+                return p
+              }))
+              import('@/lib/firestore').then(({ updatePin }) => {
+                updatePin(fromPinId, { content: fromPin.content.filter((c) => c.id !== contentId) } as any).catch(() => {})
+                updatePin(toPinId, { content: [...toPin.content, contentItem] } as any).catch(() => {})
+              })
             }}
           />
         )}
