@@ -2,7 +2,7 @@
   "name": "reelst-functions",
   "private": true,
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "lib/index.js",
   "scripts": {
@@ -15,8 +15,8 @@
   },
   "dependencies": {
     "@google-cloud/vision": "^5.3.5",
-    "firebase-admin": "^12.6.0",
-    "firebase-functions": "^6.1.0"
+    "firebase-admin": "^13.8.0",
+    "firebase-functions": "^7.2.5"
   },
   "devDependencies": {
     "typescript": "^5.6.3"
