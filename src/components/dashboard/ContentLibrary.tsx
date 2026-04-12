@@ -59,15 +59,8 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, isDeskt
 
         <div className="flex-1" />
 
-        {/* Upload actions — small icon buttons */}
-        <motion.button whileTap={{ scale: 0.95 }} onClick={() => photoRef.current?.click()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cream text-[11px] font-semibold text-graphite hover:bg-pearl cursor-pointer transition-colors">
-          <Image size={12} /> Photos
-        </motion.button>
-        <motion.button whileTap={{ scale: 0.95 }} onClick={() => videoRef.current?.click()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-tangerine text-[11px] font-bold text-white hover:brightness-110 cursor-pointer transition-all">
-          <Film size={12} /> Video
-        </motion.button>
+        {/* Upload — single pill with dropdown */}
+        <UploadButton onPhoto={() => photoRef.current?.click()} onVideo={() => videoRef.current?.click()} />
       </div>
 
       {/* Item count */}
@@ -147,6 +140,41 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, isDeskt
             )
           })}
         </div>
+      )}
+    </div>
+  )
+}
+
+function UploadButton({ onPhoto, onVideo }: { onPhoto: () => void; onVideo: () => void }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative">
+      <motion.button
+        whileTap={{ scale: 0.95 }}
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-tangerine text-[11px] font-bold text-white hover:brightness-110 cursor-pointer transition-all"
+      >
+        <Plus size={12} /> Upload
+      </motion.button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-[40]" onClick={() => setOpen(false)} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.12 }}
+            className="absolute right-0 top-full mt-1.5 z-[50] bg-white rounded-[12px] shadow-xl border border-border-light overflow-hidden min-w-[140px]"
+          >
+            <button onClick={() => { onPhoto(); setOpen(false) }}
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left text-[12px] font-medium text-ink hover:bg-cream cursor-pointer transition-colors">
+              <Image size={14} className="text-smoke" /> Photos
+            </button>
+            <button onClick={() => { onVideo(); setOpen(false) }}
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left text-[12px] font-medium text-ink hover:bg-cream cursor-pointer transition-colors">
+              <Film size={14} className="text-tangerine" /> Video
+            </button>
+          </motion.div>
+        </>
       )}
     </div>
   )
