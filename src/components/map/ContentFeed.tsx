@@ -135,7 +135,7 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
           <>
             {thumbnailUrl && <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-105 opacity-30" />}
             <video ref={videoRef} src={content.mediaUrl} className="relative w-full h-full object-contain" loop playsInline muted preload="auto"
-              onLoadedMetadata={(e) => { const v = e.currentTarget; if (v.videoHeight > v.videoWidth) v.style.objectFit = 'cover' }} />
+              onLoadedMetadata={(e) => { const v = e.currentTarget; if (v.videoHeight > v.videoWidth * 1.2) v.style.objectFit = 'cover' }} />
           </>
         ) : isVideo && content.mediaUrl ? (
           <>
@@ -145,7 +145,7 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
           <>
             <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-105 opacity-30" loading="lazy" />
             <img src={thumbnailUrl} alt="" className="relative w-full h-full object-contain" loading="lazy"
-              onLoad={(e) => { const img = e.currentTarget; if (img.naturalHeight > img.naturalWidth) img.style.objectFit = 'cover' }} />
+              onLoad={(e) => { const img = e.currentTarget; if (img.naturalHeight > img.naturalWidth * 1.2) img.style.objectFit = 'cover' }} />
           </>
         ) : null}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/30" />
