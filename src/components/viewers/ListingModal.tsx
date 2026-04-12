@@ -294,19 +294,20 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
       <div className="absolute inset-0 bg-charcoal overflow-hidden">
         {isVideo && content.mediaUrl && isNearViewport ? (
           <>
-            {/* Blurred bg uses thumbnail image instead of a second video element */}
-            {thumbnailUrl && <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-y-110 opacity-50" />}
-            <video ref={videoRef} src={content.mediaUrl} className="relative w-full h-full object-cover" loop playsInline muted preload="auto" />
+            {/* Blurred magnified bg — always fills the frame */}
+            {thumbnailUrl && <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-3xl scale-110 opacity-40" />}
+            {/* Actual content — object-contain so it's never cropped/stretched */}
+            <video ref={videoRef} src={content.mediaUrl} className="relative w-full h-full object-contain" loop playsInline muted preload="auto" />
           </>
         ) : isVideo && content.mediaUrl && !isNearViewport ? (
           <>
-            {/* Not near viewport yet — show thumbnail placeholder */}
-            {thumbnailUrl && <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />}
+            {thumbnailUrl && <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-3xl scale-110 opacity-40" loading="lazy" />}
+            {thumbnailUrl && <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-contain" loading="lazy" />}
           </>
         ) : thumbnailUrl ? (
           <>
-            <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-y-110 opacity-50" loading="lazy" />
-            <img src={thumbnailUrl} alt="" className="relative w-full h-full object-cover" loading="lazy" />
+            <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-3xl scale-110 opacity-40" loading="lazy" />
+            <img src={thumbnailUrl} alt="" className="relative w-full h-full object-contain" loading="lazy" />
           </>
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-slate"><p className="text-ghost">{content.type}</p></div>

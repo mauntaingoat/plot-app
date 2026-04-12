@@ -311,6 +311,30 @@ export default function SignUp() {
                     const result = await checkLicenseDuplicate(licenseNumber, licenseState)
                     if (result.exists) { setDuplicateLicense(result); setLoading(false); return }
                     setDuplicateLicense(null)
+
+                    // Verify license against state database (FL, CA supported)
+                    if (firebaseConfigured) {
+                      try {
+                        const { getFunctions, httpsCallable } = await import('firebase/functions')
+                        const { app } = await import('@/config/firebase')
+                        if (app) {
+                          const functions = getFunctions(app, 'us-central1')
+                          const verify = httpsCallable(functions, 'verifyLicense')
+                          const verifyResult = await verify({ licenseNumber, licenseState, licenseName }) as any
+                          const data = verifyResult.data
+                          if (data && data.valid === false && data.reason) {
+                            setError(data.reason)
+                            setLoading(false)
+                            return
+                          }
+                          // If valid or unsupported state, proceed
+                        }
+                      } catch (e) {
+                        // Don't block signup if verification service is down
+                        console.warn('License verification unavailable:', e)
+                      }
+                    }
+
                     setDisplayName(licenseName)
                     setStep('account')
                   } catch { setError('Could not verify license. Try again.') }
