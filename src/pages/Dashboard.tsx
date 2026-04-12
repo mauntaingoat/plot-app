@@ -25,6 +25,7 @@ import { OpenHouseEditor } from '@/components/dashboard/OpenHouseEditor'
 import { PinEditModal } from '@/components/dashboard/PinEditModal'
 import { ShowingInbox } from '@/components/dashboard/ShowingInbox'
 import { NotificationSettings } from '@/components/dashboard/NotificationSettings'
+import { ContentLibrary } from '@/components/dashboard/ContentLibrary'
 import { canActivatePin, hasFeature, type Tier } from '@/lib/tiers'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { Input } from '@/components/ui/Input'
@@ -34,7 +35,7 @@ import { MOCK_PINS_CAROLINA, MOCK_CURRENT_USER, MOCK_AGENTS } from '@/lib/mock'
 import { PLATFORM_LIST, PLATFORM_LOGOS } from '@/components/icons/PlatformLogos'
 import { PIN_CONFIG, type Pin, type Platform, type ForSalePin, type OpenHouse } from '@/lib/types'
 
-type DashTab = 'plot' | 'insights' | 'inbox' | 'audience' | 'settings'
+type DashTab = 'plot' | 'insights' | 'inbox' | 'content' | 'settings'
 
 function useIsDesktop() {
   const [isDesktop, setIsDesktop] = useState(typeof window !== 'undefined' && window.innerWidth >= 1024)
@@ -307,53 +308,19 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ═══ AUDIENCE ═══ */}
-        {activeTab === 'audience' && (
-          <div className={isDesktop ? 'space-y-6' : 'px-5 py-5 space-y-6'}>
-            {/* What connected platforms do — info card */}
-            <div className="bg-tangerine-soft rounded-[16px] p-4">
-              <p className="text-[13px] font-bold text-ink mb-2">Connected platforms do two things:</p>
-              <ul className="space-y-1.5">
-                <li className="text-[12px] text-graphite flex items-start gap-2">
-                  <span className="text-tangerine font-bold mt-0.5">1.</span>
-                  <span>Show up on your profile pill so visitors can click into your other channels.</span>
-                </li>
-                <li className="text-[12px] text-graphite flex items-start gap-2">
-                  <span className="text-tangerine font-bold mt-0.5">2.</span>
-                  <span>Let you import content from those channels when creating or updating a listing pin.</span>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-[16px] font-bold text-ink">Your Channels</h3>
-                <Button variant="secondary" size="sm" icon={<Plus size={14} />} onClick={() => setShowAddPlatform(true)}>Add</Button>
-              </div>
-              {activeUser.platforms.length === 0 ? (
-                <div className="bg-cream rounded-[16px] p-5 text-center">
-                  <p className="text-[14px] text-smoke mb-3">Connect platforms to bring your existing content into Reelst.</p>
-                  <Button variant="primary" size="sm" onClick={() => setShowAddPlatform(true)}>Connect Platform</Button>
-                </div>
-              ) : (
-                <div className={isDesktop ? 'grid grid-cols-2 gap-2' : 'space-y-2'}>
-                  {activeUser.platforms.map((p) => {
-                    const Logo = PLATFORM_LOGOS[p.id]
-                    return (
-                      <div key={p.id} className="flex items-center gap-3 bg-cream rounded-[14px] p-3">
-                        {Logo ? <Logo size={28} /> : <div className="w-7 h-7 rounded-lg bg-pearl" />}
-                        <div className="flex-1">
-                          <p className="text-[14px] font-semibold text-ink capitalize">{PLATFORM_LIST.find((pl) => pl.id === p.id)?.name || p.id}</p>
-                          <p className="text-[12px] text-smoke">@{p.username}</p>
-                        </div>
-                        <ChevronRight size={16} className="text-ash" />
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
+        {/* ═══ CONTENT LIBRARY ═══ */}
+        {activeTab === 'content' && (
+          <ContentLibrary
+            pins={pins}
+            isDesktop={isDesktop}
+            onUploadContent={(files, type) => {
+              // TODO: upload files to Storage, create content items
+              console.log('Upload', files.length, type, 'files')
+            }}
+            onAssignContent={(contentId, pinId) => {
+              console.log('Assign', contentId, 'to', pinId)
+            }}
+          />
         )}
 
         {/* ═══ SETTINGS ═══ */}
@@ -579,6 +546,14 @@ export default function Dashboard() {
           setEditPin(updated as Pin)
           import('@/lib/firestore').then(({ updatePin }) => updatePin(editPin.id, { content: updated.content } as any)).catch(() => {})
         }}
+        onReorderContent={(contentIds) => {
+          if (!editPin) return
+          const reordered = contentIds.map((id) => editPin.content.find((c) => c.id === id)!).filter(Boolean)
+          const updated = { ...editPin, content: reordered }
+          setPins((prev) => prev.map((p) => p.id === editPin.id ? updated as Pin : p))
+          setEditPin(updated as Pin)
+          import('@/lib/firestore').then(({ updatePin }) => updatePin(editPin.id, { content: reordered } as any)).catch(() => {})
+        }}
       />
     </>
   )
@@ -591,7 +566,7 @@ export default function Dashboard() {
       { id: 'plot', label: 'My Reelst', icon: MapPin },
       { id: 'insights', label: 'Insights', icon: BarChart3 },
       { id: 'inbox', label: 'Inbox', icon: Inbox },
-      { id: 'audience', label: 'Connected', icon: Link2 },
+      { id: 'content', label: 'Content', icon: Film },
       { id: 'settings', label: 'Settings', icon: Settings },
     ]
 
@@ -682,7 +657,7 @@ export default function Dashboard() {
           {/* Top bar */}
           <div className="shrink-0 flex items-center justify-between px-8 h-[64px] border-b border-border-light bg-ivory">
             <h1 className="text-[20px] font-bold text-ink tracking-tight">
-              {activeTab === 'plot' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'inbox' ? 'Inbox' : activeTab === 'audience' ? 'Connected' : 'Settings'}
+              {activeTab === 'plot' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'inbox' ? 'Inbox' : activeTab === 'content' ? 'Content' : 'Settings'}
             </h1>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 bg-warm-white border border-border-light rounded-full pl-4 pr-1.5 py-1.5">
@@ -751,7 +726,7 @@ export default function Dashboard() {
             <Avatar src={activeUser.photoURL} name={activeUser.displayName || 'Agent'} size={36} />
             <div>
               <p className="text-[16px] font-bold text-ink tracking-tight">
-                {activeTab === 'plot' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'inbox' ? 'Inbox' : activeTab === 'audience' ? 'Connected' : 'Settings'}
+                {activeTab === 'plot' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'inbox' ? 'Inbox' : activeTab === 'content' ? 'Content' : 'Settings'}
               </p>
               <p className="text-[12px] text-smoke">@{activeUser.username || 'you'}</p>
             </div>
@@ -775,7 +750,7 @@ export default function Dashboard() {
         tabs={[
           { id: 'plot', label: 'My Reelst', icon: <MapPin size={20} /> },
           { id: 'insights', label: 'Insights', icon: <BarChart3 size={20} /> },
-          { id: 'inbox', label: 'Inbox', icon: <Inbox size={20} /> },
+          { id: 'content', label: 'Content', icon: <Film size={20} /> },
           { id: 'settings', label: 'More', icon: <Settings size={20} /> },
         ]}
         active={activeTab}

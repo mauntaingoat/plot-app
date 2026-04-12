@@ -494,7 +494,8 @@ export default function PinCreate() {
                   </p>
 
                   <input ref={fileRef} type="file"
-                    accept={newContentType === 'photo' ? 'image/*' : 'image/*,video/*'}
+                    accept={newContentType === 'photo' ? 'image/*' : 'video/*'}
+                    multiple={newContentType === 'photo'}
                     onChange={handleMediaFile} className="hidden" />
 
                   {newPreview ? (

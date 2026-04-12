@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useScrollLock } from '@/hooks/useScrollLock'
-import { X, Edit3, Trash2, GripVertical, Play, Image, Radio, MapPin, ChevronRight } from 'lucide-react'
+import { X, Edit3, Trash2, GripVertical, Play, Image, Radio, MapPin, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
@@ -13,9 +13,10 @@ interface PinEditModalProps {
   onClose: () => void
   pin: Pin | null
   isDesktop: boolean
-  onEditDetails?: () => void // navigate to PinCreate edit mode
-  onAddContent?: () => void // navigate to add content flow
+  onEditDetails?: () => void
+  onAddContent?: () => void
   onArchiveContent?: (contentId: string) => void
+  onReorderContent?: (contentIds: string[]) => void
 }
 
 const CONTENT_ICONS: Record<string, typeof Play> = {
@@ -25,11 +26,12 @@ const CONTENT_ICONS: Record<string, typeof Play> = {
   photo: Image,
 }
 
-function PinEditContent({ pin, onEditDetails, onAddContent, onArchiveContent, onClose }: {
+function PinEditContent({ pin, onEditDetails, onAddContent, onArchiveContent, onReorderContent, onClose }: {
   pin: Pin
   onEditDetails?: () => void
   onAddContent?: () => void
   onArchiveContent?: (contentId: string) => void
+  onReorderContent?: (contentIds: string[]) => void
   onClose: () => void
 }) {
   const config = PIN_CONFIG[pin.type]
@@ -84,10 +86,34 @@ function PinEditContent({ pin, onEditDetails, onAddContent, onArchiveContent, on
           </div>
         ) : (
           <div className="space-y-2">
-            {content.map((item) => {
+            {content.map((item, idx) => {
               const Icon = CONTENT_ICONS[item.type] || Image
+              const moveUp = () => {
+                if (idx === 0) return
+                const ids = content.map((c) => c.id)
+                ;[ids[idx - 1], ids[idx]] = [ids[idx], ids[idx - 1]]
+                onReorderContent?.(ids)
+              }
+              const moveDown = () => {
+                if (idx === content.length - 1) return
+                const ids = content.map((c) => c.id)
+                ;[ids[idx], ids[idx + 1]] = [ids[idx + 1], ids[idx]]
+                onReorderContent?.(ids)
+              }
               return (
-                <div key={item.id} className="flex items-center gap-3 bg-slate rounded-[14px] p-3">
+                <div key={item.id} className="flex items-center gap-2 bg-slate rounded-[14px] p-3">
+                  {/* Reorder buttons */}
+                  <div className="flex flex-col gap-0.5 shrink-0">
+                    <button onClick={moveUp} disabled={idx === 0}
+                      className="w-5 h-5 rounded flex items-center justify-center text-ghost hover:text-white disabled:opacity-20 cursor-pointer transition-colors">
+                      <ChevronUp size={12} />
+                    </button>
+                    <button onClick={moveDown} disabled={idx === content.length - 1}
+                      className="w-5 h-5 rounded flex items-center justify-center text-ghost hover:text-white disabled:opacity-20 cursor-pointer transition-colors">
+                      <ChevronDown size={12} />
+                    </button>
+                  </div>
+
                   {/* Thumbnail */}
                   {item.thumbnailUrl ? (
                     <img src={item.thumbnailUrl} alt="" className="w-14 h-14 rounded-[10px] object-cover shrink-0" />
@@ -124,7 +150,7 @@ function PinEditContent({ pin, onEditDetails, onAddContent, onArchiveContent, on
   )
 }
 
-export function PinEditModal({ isOpen, onClose, pin, isDesktop, onEditDetails, onAddContent, onArchiveContent }: PinEditModalProps) {
+export function PinEditModal({ isOpen, onClose, pin, isDesktop, onEditDetails, onAddContent, onArchiveContent, onReorderContent }: PinEditModalProps) {
   useScrollLock(isOpen)
   if (!pin) return null
 
@@ -155,6 +181,7 @@ export function PinEditModal({ isOpen, onClose, pin, isDesktop, onEditDetails, o
                   onEditDetails={onEditDetails}
                   onAddContent={onAddContent}
                   onArchiveContent={onArchiveContent}
+                  onReorderContent={onReorderContent}
                   onClose={onClose}
                 />
               </div>
