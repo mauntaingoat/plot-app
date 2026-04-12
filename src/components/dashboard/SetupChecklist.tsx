@@ -87,7 +87,7 @@ export function SetupChecklist({ isOpen, onClose, user, pinCount }: SetupCheckli
         {isOpen && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[200] bg-black/50" onClick={onClose} />
+              className="fixed inset-0 z-[200] bg-black/50" onClick={(e) => { e.stopPropagation(); onClose() }} />
             <motion.div
               initial={{ opacity: 0, scale: 0.96, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}

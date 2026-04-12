@@ -52,7 +52,7 @@ export function ConfirmDialog({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[400] bg-black/50"
-            onClick={onClose}
+            onClick={(e) => { e.stopPropagation(); onClose() }}
           />
 
           {isDesktop ? (
