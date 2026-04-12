@@ -12,14 +12,14 @@ const RING_PAD = 6
 const TANGERINE = '#FF6B3D'
 
 const RING_COLORS: Record<PinType, string> = {
-  for_sale: '#3B82F6', sold: '#34C759', neighborhood: '#FF6B3D',
+  for_sale: '#3B82F6', sold: '#34C759', spotlight: '#FF6B3D',
 }
 
 // Gradient companion colors for animated pins (shifted hue)
 const RING_GRADIENT_COLORS: Record<PinType, string> = {
   for_sale: '#8B5CF6',  // blue → purple
   sold: '#6EE7B7',      // green → pale mint
-  neighborhood: '#E8522A', // tangerine → ember
+  spotlight: '#E8522A', // tangerine → ember
 }
 
 interface MapCanvasProps {
@@ -65,7 +65,7 @@ function pinsToGeoJSON(pins: Pin[]) {
 
       const price = 'price' in pin ? pin.price : 'soldPrice' in pin ? pin.soldPrice : 0
       const priceK = price >= 1_000_000 ? `$${(price / 1_000_000).toFixed(1)}M` : price >= 1_000 ? `$${(price / 1_000).toFixed(0)}K` : price > 0 ? `$${price}` : ''
-      // Label: price for for_sale, SOLD for sold, neighborhood name for neighborhood
+      // Label: price for for_sale, SOLD for sold, name for spotlight
       const label = pin.type === 'sold' ? 'SOLD'
         : pin.type === 'spotlight' ? ('name' in pin ? pin.name : '')
         : priceK || ''

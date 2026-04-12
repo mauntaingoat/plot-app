@@ -206,7 +206,7 @@ export default function Dashboard() {
                   <MapPin size={28} className="text-tangerine" />
                 </div>
                 <h3 className="text-[18px] font-bold text-ink mb-1">Drop your first pin</h3>
-                <p className="text-[14px] text-smoke mb-5">Add a listing, story, or open house to your map.</p>
+                <p className="text-[14px] text-smoke mb-5">Add a listing, spotlight, or open house to your map.</p>
                 <Button variant="primary" size="lg" icon={<Plus size={18} />} onClick={() => navigate('/dashboard/pin/new')}>Create Pin</Button>
               </motion.div>
             ) : (
