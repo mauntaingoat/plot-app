@@ -106,11 +106,13 @@ function PinEditContent({ pin, onEditDetails, onAddContent, onArchiveContent, on
                   <div
                     className="flex flex-col items-center gap-1 shrink-0 cursor-grab active:cursor-grabbing px-0.5 py-2 -my-1 rounded-lg hover:bg-white/5 transition-colors"
                     onPointerDown={(e) => {
+                      let done = false
                       const startY = e.clientY
                       const onMove = (me: PointerEvent) => {
+                        if (done) return
                         const dy = me.clientY - startY
-                        if (dy < -30) { moveUp(); startY !== undefined && (e as any)._done = true }
-                        if (dy > 30) { moveDown(); (e as any)._done = true }
+                        if (dy < -30) { moveUp(); done = true }
+                        if (dy > 30) { moveDown(); done = true }
                       }
                       const onUp = () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp) }
                       window.addEventListener('pointermove', onMove)
