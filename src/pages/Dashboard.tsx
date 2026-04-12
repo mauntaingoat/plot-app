@@ -317,6 +317,13 @@ export default function Dashboard() {
               // TODO: upload files to Storage, create content items
               console.log('Upload', files.length, type, 'files')
             }}
+            onArchiveContent={(contentId, pinId) => {
+              const pin = pins.find((p) => p.id === pinId)
+              if (!pin) return
+              const updated = { ...pin, content: pin.content.filter((c) => c.id !== contentId) }
+              setPins((prev) => prev.map((p) => p.id === pinId ? updated as Pin : p))
+              import('@/lib/firestore').then(({ updatePin }) => updatePin(pinId, { content: updated.content } as any)).catch(() => {})
+            }}
             onAssignContent={(contentId, fromPinId, toPinId) => {
               if (fromPinId === toPinId) return
               // Move content from one pin to another
@@ -361,6 +368,22 @@ export default function Dashboard() {
                 <ChevronRight size={16} className="text-ash" />
               </motion.button>
             ))}
+
+            {/* Inbox — quick access on mobile (it's a full tab on desktop) */}
+            {!isDesktop && (
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setActiveTab('inbox')}
+                className="w-full flex items-center gap-3.5 bg-cream rounded-[14px] p-4 text-left cursor-pointer mb-2"
+              >
+                <div className="w-10 h-10 rounded-[12px] bg-tangerine/10 flex items-center justify-center"><Inbox size={18} className="text-tangerine" /></div>
+                <div className="flex-1">
+                  <span className="text-[15px] font-medium text-ink block">Inbox</span>
+                  <span className="text-[12px] text-smoke">Showing requests</span>
+                </div>
+                <ChevronRight size={16} className="text-ash" />
+              </motion.button>
+            )}
 
             <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Notifications</p>
             <NotificationSettings />

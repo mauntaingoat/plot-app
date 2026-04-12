@@ -1,17 +1,20 @@
 import { useState, useRef, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Upload, Play, Image, Film, MapPin, Plus, Eye } from 'lucide-react'
+import { Upload, Play, Image, Film, MapPin, Plus, Eye, Trash2 } from 'lucide-react'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import type { Pin, ContentItem } from '@/lib/types'
 
 interface ContentLibraryProps {
   pins: Pin[]
   onUploadContent: (files: File[], type: 'reel' | 'photo') => void
   onAssignContent: (contentId: string, fromPinId: string, toPinId: string) => void
+  onArchiveContent: (contentId: string, pinId: string) => void
   isDesktop: boolean
 }
 
-export function ContentLibrary({ pins, onUploadContent, onAssignContent, isDesktop }: ContentLibraryProps) {
+export function ContentLibrary({ pins, onUploadContent, onAssignContent, onArchiveContent, isDesktop }: ContentLibraryProps) {
   const [filter, setFilter] = useState<'all' | 'reel' | 'photo'>('all')
+  const [archiveTarget, setArchiveTarget] = useState<{ contentId: string; pinId: string } | null>(null)
   const photoRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLInputElement>(null)
 
@@ -122,25 +125,47 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, isDeskt
                     <Eye size={9} /> {content.views.toLocaleString()}
                   </div>
 
-                  {/* Pin assign */}
-                  <select
-                    value={pin.id}
-                    onChange={(e) => onAssignContent(content.id, pin.id, e.target.value)}
-                    className="w-full text-[10px] font-medium text-graphite bg-cream rounded-[6px] px-2 py-1 border-none outline-none focus:ring-1 focus:ring-tangerine cursor-pointer appearance-none"
-                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center', paddingRight: '20px' }}
-                  >
-                    {pins.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.address.split(',')[0]}{!p.enabled ? ' (hidden)' : ''}
-                      </option>
-                    ))}
-                  </select>
+                  {/* Pin assign + archive */}
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={pin.id}
+                      onChange={(e) => onAssignContent(content.id, pin.id, e.target.value)}
+                      className="flex-1 text-[10px] font-medium text-graphite bg-cream rounded-[6px] px-2 py-1 border-none outline-none focus:ring-1 focus:ring-tangerine cursor-pointer appearance-none min-w-0"
+                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center', paddingRight: '20px' }}
+                    >
+                      {pins.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.address.split(',')[0]}{!p.enabled ? ' (hidden)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => setArchiveTarget({ contentId: content.id, pinId: pin.id })}
+                      className="w-6 h-6 rounded-[5px] bg-cream flex items-center justify-center text-ash hover:text-live-red hover:bg-live-red/10 cursor-pointer transition-colors shrink-0"
+                      title="Archive"
+                    >
+                      <Trash2 size={10} />
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             )
           })}
         </div>
       )}
+      <ConfirmDialog
+        isOpen={!!archiveTarget}
+        onClose={() => setArchiveTarget(null)}
+        onConfirm={() => {
+          if (archiveTarget) {
+            onArchiveContent(archiveTarget.contentId, archiveTarget.pinId)
+            setArchiveTarget(null)
+          }
+        }}
+        title="Archive this content?"
+        message="This will remove the content from the listing. The file is kept and can be restored later."
+        confirmLabel="Archive"
+      />
     </div>
   )
 }
