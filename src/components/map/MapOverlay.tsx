@@ -29,7 +29,7 @@ interface MapOverlayProps {
 const FILTER_OPTIONS: { value: PinType; label: string }[] = [
   { value: 'for_sale', label: 'For Sale' },
   { value: 'sold', label: 'Sold' },
-  { value: 'neighborhood', label: 'Neighborhoods' },
+  { value: 'spotlight', label: 'Spotlights' },
 ]
 
 export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick, onFilterChange, isFollowing, viewMode = 'map', onToggleView, isPreview, agentMode = 'single', enabledAgentCount = 0, hideHeader, centerFilters, onFitToPins }: MapOverlayProps) {

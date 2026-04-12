@@ -33,7 +33,7 @@ function PinEditContent({ pin, onEditDetails, onAddContent, onArchiveContent, on
   onClose: () => void
 }) {
   const config = PIN_CONFIG[pin.type]
-  const fp = pin.type !== 'neighborhood' ? (pin as ForSalePin) : null
+  const fp = pin.type !== 'spotlight' ? (pin as ForSalePin) : null
   const content = pin.content || []
 
   return (

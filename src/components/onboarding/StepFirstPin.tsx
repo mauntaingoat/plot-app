@@ -8,12 +8,12 @@ import { useOnboardingStore } from '@/stores/onboardingStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useGeocoding } from '@/hooks/useGeocoding'
 import { createPin } from '@/lib/firestore'
-import type { PinType, ForSalePin, SoldPin, NeighborhoodPin } from '@/lib/types'
+import type { PinType, ForSalePin, SoldPin, SpotlightPin } from '@/lib/types'
 
 const PIN_OPTIONS: { type: PinType; label: string; desc: string; icon: typeof Home; color: string }[] = [
   { type: 'for_sale', label: 'For Sale', desc: 'Active listing', icon: Home, color: '#3B82F6' },
   { type: 'sold', label: 'Sold', desc: 'Closed sale', icon: DollarSign, color: '#34C759' },
-  { type: 'neighborhood', label: 'Neighborhood', desc: 'Area content', icon: TreePine, color: '#FF6B3D' },
+  { type: 'spotlight', label: 'Spotlight', desc: 'Highlight a location', icon: TreePine, color: '#FF6B3D' },
 ]
 
 export function StepFirstPin() {
@@ -78,13 +78,13 @@ export function StepFirstPin() {
           description: '', daysOnMarket: 0,
         } as Omit<SoldPin, 'id'>)
       } else {
-        const name = selectedAddress.name.split(',')[0] || 'My Neighborhood'
+        const name = selectedAddress.name.split(',')[0] || 'My Spotlight'
         await createPin({
           ...base,
-          type: 'neighborhood',
+          type: 'spotlight',
           name,
           description: '',
-        } as Omit<NeighborhoodPin, 'id'>)
+        } as Omit<SpotlightPin, 'id'>)
       }
     } catch (e) {
       console.warn('Pin creation during onboarding failed:', e)
@@ -100,7 +100,7 @@ export function StepFirstPin() {
         Drop your first pin
       </h1>
       <p className="text-[15px] text-smoke text-center mb-8">
-        Add a listing or neighborhood. You can add content to it later.
+        Add a listing or spotlight. You can add content to it later.
       </p>
 
       {/* Pin type selector */}
@@ -135,7 +135,7 @@ export function StepFirstPin() {
           <div className="relative">
             <Input
               label="Address"
-              placeholder={selectedType === 'neighborhood' ? 'Search for a neighborhood...' : 'Search for an address...'}
+              placeholder={selectedType === 'spotlight' ? 'Search for a location...' : 'Search for an address...'}
               value={address}
               onChange={(e) => handleSearch(e.target.value)}
               icon={<Search size={16} />}

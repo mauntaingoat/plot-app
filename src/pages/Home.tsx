@@ -50,7 +50,7 @@ const FEATURES = [
 const FAQ_ITEMS = [
   { q: 'Is Reelst free?', a: 'Yes. The free plan includes 5 active pins and 3 content items per pin. Upgrade to Pro ($19/mo) or Studio ($39/mo) for higher limits, analytics, and live streaming.' },
   { q: 'What makes Reelst different?', a: 'Reelst is a live, interactive map — not a list of links. Every pin is tied to a real address with content, analytics, and lead capture built in. One link replaces your bio, website, and listing page.' },
-  { q: 'Can I import content from Instagram or TikTok?', a: 'Connected platforms are coming soon. You\'ll be able to sync reels and stories from Instagram, TikTok, YouTube, and Facebook directly into your map pins.' },
+  { q: 'Can I import content from Instagram or TikTok?', a: 'Connected platforms are coming soon. You\'ll be able to sync reels and photos from Instagram, TikTok, YouTube, and Facebook directly into your map pins.' },
   { q: 'Do homebuyers need an account to view my map?', a: 'No. Your Reelst is a public page — anyone with the link can browse your map, watch reels, and view listings. They only need an account to follow you or save pins.' },
   { q: 'How do showing requests work?', a: 'Visitors fill out a quick form (name, email, phone, preferred date). You get a push notification + it appears in your dashboard inbox. No third-party tools needed.' },
 ]
@@ -115,7 +115,7 @@ export default function Home() {
             </h1>
 
             <p className="text-graphite leading-[1.4] mb-9 max-w-[500px] mx-auto md:mx-0" style={{ fontSize: 'clamp(1.06rem, 1.5vw, 1.4rem)' }}>
-              One link. A live map of your listings, stories, reels, and open houses. The modern agent's profile, built for content.
+              One link. A live map of your listings, reels, and open houses. The modern agent's profile, built for content.
             </p>
 
             {/* Inline claim form */}
@@ -164,10 +164,10 @@ export default function Home() {
                 Your listings, pinned to the real world.
               </h2>
               <p className="text-[15px] md:text-[17px] text-mist leading-relaxed mb-6">
-                Every pin lives on a real address. Tap a pin to see the listing details, swipe through reels and stories, view open house dates, or request a showing — all without leaving the map.
+                Every pin lives on a real address. Tap a pin to see the listing details, swipe through reels and photos, view open house dates, or request a showing — all without leaving the map.
               </p>
               <ul className="space-y-3">
-                {['Pin listings to real addresses on an interactive map', 'Attach reels, stories, and photos to each pin', 'Visitors tap, swipe, save, and follow — all from one link'].map((item, i) => (
+                {['Pin listings to real addresses on an interactive map', 'Attach reels and photos to each pin', 'Visitors tap, swipe, save, and follow — all from one link'].map((item, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <div className="w-5 h-5 rounded-full bg-tangerine/20 flex items-center justify-center shrink-0 mt-0.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-tangerine" />

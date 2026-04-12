@@ -86,7 +86,6 @@ export function ContentConversion({ pins }: ContentConversionProps) {
   const stats = useMemo(() => {
     const byType: Record<string, { count: number; views: number; saves: number }> = {
       reel: { count: 0, views: 0, saves: 0 },
-      story: { count: 0, views: 0, saves: 0 },
       live: { count: 0, views: 0, saves: 0 },
       photo: { count: 0, views: 0, saves: 0 },
     }
@@ -123,7 +122,6 @@ export function ContentConversion({ pins }: ContentConversionProps) {
 
   const TYPE_META: Record<string, { label: string; icon: typeof Film; color: string }> = {
     reel: { label: 'Reels', icon: Film, color: '#FF6B3D' },
-    story: { label: 'Stories', icon: Image, color: '#A855F7' },
     live: { label: 'Live Streams', icon: Radio, color: '#FF3B30' },
     photo: { label: 'Photos', icon: Image, color: '#34C759' },
     open_house: { label: 'Open Houses', icon: CalendarClock, color: '#FFAA00' },

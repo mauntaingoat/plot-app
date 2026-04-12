@@ -8,7 +8,7 @@ interface GeocodingResult {
   text: string
 }
 
-type SearchType = 'address' | 'neighborhood'
+type SearchType = 'address' | 'spotlight'
 
 export function useGeocoding() {
   const [results, setResults] = useState<GeocodingResult[]>([])
@@ -33,7 +33,7 @@ export function useGeocoding() {
       try {
         // For neighborhoods: search places, neighborhoods, localities
         // For addresses: search specific addresses
-        const types = searchType === 'neighborhood'
+        const types = searchType === 'spotlight'
           ? 'neighborhood,locality,place,district'
           : 'address'
 

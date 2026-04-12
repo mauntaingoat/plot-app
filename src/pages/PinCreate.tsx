@@ -17,7 +17,7 @@ import { generateVideoThumbnail } from '@/lib/videoThumbnail'
 const PIN_OPTIONS: { type: PinType; label: string; desc: string; icon: typeof Home; color: string }[] = [
   { type: 'for_sale', label: 'For Sale Listing', desc: 'Active listing with MLS data, photos, and content', icon: Home, color: '#3B82F6' },
   { type: 'sold', label: 'Sold Listing', desc: 'Closed sale — showcase your track record', icon: BadgeCheck, color: '#34C759' },
-  { type: 'neighborhood', label: 'Neighborhood', desc: 'Neighborhood content — tours, market updates, local tips', icon: Compass, color: '#FF6B3D' },
+  { type: 'spotlight', label: 'Spotlight', desc: 'Highlight a neighborhood, building, or local favorite', icon: Compass, color: '#FF6B3D' },
 ]
 
 type Step = 'type' | 'address' | 'details' | 'content' | 'publishing'
@@ -62,7 +62,7 @@ export default function PinCreate() {
   // Content items (added during creation)
   const [contentItems, setContentItems] = useState<{ type: string; caption: string; file: File | null; preview: string | null; publishAt: string | null }[]>([])
   const [showAddContent, setShowAddContent] = useState(false)
-  const [newContentType, setNewContentType] = useState<'reel' | 'story' | 'photo'>('reel')
+  const [newContentType, setNewContentType] = useState<'reel' | 'photo'>('reel')
   const [newCaption, setNewCaption] = useState('')
   const [newFile, setNewFile] = useState<File | null>(null)
   const [newPreview, setNewPreview] = useState<string | null>(null)
@@ -74,7 +74,7 @@ export default function PinCreate() {
 
   const handleAddressSearch = (val: string) => {
     setAddress(val); setCoords(null)
-    search(val, pinType === 'neighborhood' ? 'neighborhood' : 'address')
+    search(val, pinType === 'spotlight' ? 'place' : 'address')
   }
 
   const selectAddress = (result: { placeName: string; center: [number, number] }) => {
@@ -140,8 +140,8 @@ export default function PinCreate() {
   const handlePublish = async () => {
     if (!pinType || !coords) return
     // Neighborhood pins must have at least one content item
-    if (pinType === 'neighborhood' && contentItems.length === 0) {
-      alert('Neighborhood pins require at least one piece of content (reel, story, or video note).')
+    if (pinType === 'spotlight' && contentItems.length === 0) {
+      alert('Neighborhood pins require at least one piece of content (reel, photo, or video note).')
       return
     }
     const agentId = userDoc?.uid || 'demo-agent'
@@ -181,7 +181,7 @@ export default function PinCreate() {
           homeType, yearBuilt: yearBuilt ? Number(yearBuilt) : null,
           description, daysOnMarket: 0, heroPhotoUrl: '', photos: [],
         })
-      } else if (pinType === 'neighborhood') {
+      } else if (pinType === 'spotlight') {
         Object.assign(pinData, {
           name: neighborhoodName || address.split(',')[0],
           description, heroPhotoUrl: '',
@@ -318,7 +318,7 @@ export default function PinCreate() {
           {step === 'address' && (
             <motion.div key="address" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit">
               <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">
-                {pinType === 'neighborhood' ? 'Which neighborhood?' : 'Where is it?'}
+                {pinType === 'spotlight' ? 'What location?' : 'Where is it?'}
               </h2>
               <p className="text-[14px] text-smoke mb-6">Search for the address or location.</p>
 
@@ -414,7 +414,7 @@ export default function PinCreate() {
 
                 <div>
                   <label className="text-[11px] font-medium text-smoke uppercase tracking-wider mb-1 block">Description</label>
-                  <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={pinType === 'neighborhood' ? 'What makes this neighborhood special?' : 'Describe this property...'}
+                  <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={pinType === 'spotlight' ? 'What makes this place special?' : 'Describe this property...'}
                     rows={3} className="w-full rounded-[14px] bg-cream border border-border-light px-4 py-3 text-[14px] text-ink resize-none placeholder:text-ash outline-none focus:border-tangerine/40" />
                 </div>
               </div>
@@ -434,13 +434,13 @@ export default function PinCreate() {
               </h2>
               <p className="text-[14px] text-smoke mb-4">
                 {isAddContentMode
-                  ? 'Add reels, stories, or photos to this listing.'
-                  : <>Attach reels, stories, or video notes to this {pinType === 'neighborhood' ? 'neighborhood' : 'listing'}.{pinType !== 'neighborhood' && ' You can skip and add later.'}</>
+                  ? 'Add reels, photos, or video notes to this listing.'
+                  : <>Attach reels, photos, or video notes to this {pinType === 'spotlight' ? 'spotlight' : 'listing'}.{pinType !== 'spotlight' && ' You can skip and add later.'}</>
                 }
               </p>
-              {pinType === 'neighborhood' && (
+              {pinType === 'spotlight' && (
                 <div className="bg-tangerine-soft rounded-[12px] px-4 py-3 mb-4">
-                  <p className="text-[12px] text-ember font-medium">Neighborhood pins require at least one content item. Tip: include a reel or video note — stories disappear after 24 hours.</p>
+                  <p className="text-[12px] text-ember font-medium">Spotlight pins require at least one piece of content.</p>
                 </div>
               )}
 
@@ -481,7 +481,7 @@ export default function PinCreate() {
               {showAddContent ? (
                 <div className="bg-cream rounded-[18px] p-4 mb-6 space-y-3">
                   <div className="flex gap-2">
-                    {(['reel', 'story', 'photo'] as const).map((t) => (
+                    {(['reel', 'photo'] as const).map((t) => (
                       <button key={t} onClick={() => setNewContentType(t)}
                         className={`flex-1 py-2 rounded-[10px] text-[11px] font-semibold transition-all ${newContentType === t ? 'bg-tangerine text-white' : 'bg-pearl text-smoke'}`}>
                         {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -490,7 +490,6 @@ export default function PinCreate() {
                   </div>
                   <p className="text-[10px] text-ash">
                     {newContentType === 'reel' && 'Reels are permanent vertical videos showcasing the property.'}
-                    {newContentType === 'story' && 'Stories disappear after 24 hours. Great for open house announcements, quick updates.'}
                     {newContentType === 'photo' && 'Upload professional photos to showcase the property. Great for photo carousels.'}
                   </p>
 
@@ -548,7 +547,7 @@ export default function PinCreate() {
                   </div>
                   <div>
                     <p className="text-[14px] font-semibold text-tangerine">Add content</p>
-                    <p className="text-[11px] text-smoke">Reel, story, or video note</p>
+                    <p className="text-[11px] text-smoke">Reel, photo, or video note</p>
                   </div>
                 </motion.button>
               )}

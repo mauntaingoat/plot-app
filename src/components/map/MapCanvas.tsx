@@ -67,7 +67,7 @@ function pinsToGeoJSON(pins: Pin[]) {
       const priceK = price >= 1_000_000 ? `$${(price / 1_000_000).toFixed(1)}M` : price >= 1_000 ? `$${(price / 1_000).toFixed(0)}K` : price > 0 ? `$${price}` : ''
       // Label: price for for_sale, SOLD for sold, neighborhood name for neighborhood
       const label = pin.type === 'sold' ? 'SOLD'
-        : pin.type === 'neighborhood' ? ('name' in pin ? pin.name : '')
+        : pin.type === 'spotlight' ? ('name' in pin ? pin.name : '')
         : priceK || ''
       // Check for live or open house indicators
       const isLive = pin.type === 'for_sale' && 'isLive' in pin && pin.isLive
@@ -537,7 +537,7 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
 
       // Per-pin label pill (price/status/neighborhood name in type-colored pill)
       const label = pin.type === 'sold' ? 'SOLD'
-        : pin.type === 'neighborhood' && 'name' in pin ? pin.name
+        : pin.type === 'spotlight' && 'name' in pin ? pin.name
         : ('price' in pin ? formatPrice(pin.price) : 'soldPrice' in pin ? formatPrice(pin.soldPrice) : '')
       if (label) {
         const labelId = `label-${pin.id}`

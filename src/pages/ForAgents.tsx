@@ -8,7 +8,7 @@ import { useScrollReveal } from '@/hooks/useScrollReveal'
 
 const FEATURES = [
   { icon: MapPin, title: 'Listing Pins', desc: 'Every active listing pinned to its exact address. Price, photos, specs — all visible on your map.', color: '#3B82F6' },
-  { icon: Play, title: 'Reels & Stories', desc: 'Post vertical video content tied to addresses. Stories vanish in 24 hours. Reels stay forever.', color: '#A855F7' },
+  { icon: Play, title: 'Reels & Photos', desc: 'Post vertical video content and photo carousels tied to real addresses. Every piece of content pinned to a location.', color: '#A855F7' },
   { icon: Radio, title: 'Go Live', desc: 'Broadcast open houses and walkthroughs live from any address. Viewers see you on the map in real-time.', color: '#FF3B30' },
   { icon: Home, title: 'Open Houses', desc: 'Pulsating pins with date, time, and price. Automatically expire when the event ends.', color: '#FFAA00' },
   { icon: BadgeCheck, title: 'Sold Pins', desc: 'Showcase your track record. Every sale stays on your map as social proof.', color: '#34C759' },
@@ -21,7 +21,7 @@ const COMPARISON = [
   { feature: 'Link in bio', traditional: true, reeltor: true },
   { feature: 'Interactive map', traditional: false, reeltor: true },
   { feature: 'Listings on real addresses', traditional: false, reeltor: true },
-  { feature: 'Stories & Reels', traditional: false, reeltor: true },
+  { feature: 'Reels Stories & Reels Photos', traditional: false, reeltor: true },
   { feature: 'Live streaming', traditional: false, reeltor: true },
   { feature: 'Follower analytics', traditional: false, reeltor: true },
   { feature: 'One tap to contact', traditional: true, reeltor: true },
@@ -33,7 +33,7 @@ export default function ForAgents() {
 
   return (
     <MarketingLayout>
-      <SEOHead title="For Agents" description="The modern real estate agent's profile. Map pins, reels, stories, live streams, analytics — all in one link." path="/for-agents" />
+      <SEOHead title="For Agents" description="The modern real estate agent's profile. Map pins, reels, live streams, analytics — all in one link." path="/for-agents" />
 
       {/* Hero — above fold, Framer for initial load */}
       <section className="relative overflow-hidden">

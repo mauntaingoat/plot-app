@@ -64,11 +64,6 @@ export function useSaves() {
   }, [saves])
 
   const toggleSave = useCallback(async (pinId: string, contentId?: string, contentType?: ContentItem['type']) => {
-    // Stories are ephemeral — don't allow saving them
-    if (contentType === 'story') {
-      console.warn('Stories cannot be saved (ephemeral content)')
-      return false
-    }
 
     // If not signed in, prompt for auth
     if (!userDoc && firebaseConfigured) {

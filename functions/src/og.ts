@@ -56,7 +56,7 @@ function escapeHtml(str: string): string {
 
 function buildAgentHTML(agent: any, url: string): string {
   const title = `${agent.displayName} on Reelst`
-  const desc = agent.bio || `${agent.displayName} — interactive map of listings, stories, and reels.`
+  const desc = agent.bio || `${agent.displayName} — interactive map of listings, reels, and spotlights.`
   const image = agent.photoURL || 'https://reel.st/icons/og-image.png'
   const followers = agent.followerCount || 0
 

@@ -51,11 +51,11 @@ export interface UserDoc {
   suspendedReason?: string
 }
 
-// ── Pin types — only 2 listing types + neighborhood ──
+// ── Pin types — 2 listing types + spotlight ──
 
-export type PinType = 'for_sale' | 'sold' | 'neighborhood'
+export type PinType = 'for_sale' | 'sold' | 'spotlight'
 export type ListingStatus = 'active' | 'pending' | 'contingent' | 'closed'
-export type ContentType = 'reel' | 'story' | 'live' | 'video_note' | 'photo'
+export type ContentType = 'reel' | 'live' | 'video_note' | 'photo'
 export type HomeType = 'single_family' | 'condo' | 'townhouse' | 'multi_family' | 'land' | 'commercial' | 'other'
 
 export interface Coordinates {
@@ -226,15 +226,15 @@ export interface SoldPin extends PinBase {
   mlsNumber?: string
 }
 
-// Neighborhood content zone
-export interface NeighborhoodPin extends PinBase {
-  type: 'neighborhood'
-  name: string // e.g. "Brickell", "Coral Gables"
+// Spotlight — neighborhood, building, local favorite
+export interface SpotlightPin extends PinBase {
+  type: 'spotlight'
+  name: string // e.g. "Brickell", "Coral Gables", "Paramount Tower"
   description: string
   heroPhotoUrl?: string
 }
 
-export type Pin = ForSalePin | SoldPin | NeighborhoodPin
+export type Pin = ForSalePin | SoldPin | SpotlightPin
 
 // ── Social ──
 
@@ -273,8 +273,8 @@ export const PIN_CONFIG: Record<PinType, {
     color: '#34C759',
     bgColor: 'rgba(52, 199, 89, 0.12)',
   },
-  neighborhood: {
-    label: 'Neighborhood',
+  spotlight: {
+    label: 'Spotlight',
     color: '#FF6B3D',
     bgColor: 'rgba(255, 107, 61, 0.12)',
   },

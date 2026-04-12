@@ -1,5 +1,5 @@
 import { Timestamp } from 'firebase/firestore'
-import type { UserDoc, Pin, ForSalePin, SoldPin, NeighborhoodPin, ContentItem } from '@/lib/types'
+import type { UserDoc, Pin, ForSalePin, SoldPin, SpotlightPin, ContentItem } from '@/lib/types'
 
 const now = Timestamp.now()
 const hours = (h: number) => Timestamp.fromMillis(Date.now() + h * 3600_000)
@@ -82,7 +82,7 @@ export const MOCK_PINS_CAROLINA: Pin[] = [
     isLive: false,
     content: makeContent([
       { type: 'reel', caption: 'Walk through this stunning Brickell waterfront condo with me.', thumbnailUrl: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400&h=700&fit=crop', duration: 45, views: 12400, saves: 342 },
-      { type: 'story', caption: 'Just listed! Open house this Saturday 2-5 PM.', thumbnailUrl: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400&h=700&fit=crop', views: 2800, saves: 56 },
+      { type: 'photo', caption: 'Just listed! Open house this Saturday 2-5 PM.', thumbnailUrl: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400&h=700&fit=crop', views: 2800, saves: 56 },
       { type: 'video_note', caption: 'Why I love this unit — the light in the morning is unreal.', views: 890, saves: 23 },
     ]),
   } as ForSalePin,
@@ -111,7 +111,7 @@ export const MOCK_PINS_CAROLINA: Pin[] = [
     description: 'Charming Mediterranean home. Updated kitchen, lush tropical landscaping.',
     status: 'active', daysOnMarket: 3, openHouse: null, isLive: false,
     content: makeContent([
-      { type: 'story', caption: 'New listing in Coral Gables. DM me for early access.', thumbnailUrl: 'https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=400&h=700&fit=crop', views: 1560, saves: 45 },
+      { type: 'photo', caption: 'New listing in Coral Gables. DM me for early access.', thumbnailUrl: 'https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=400&h=700&fit=crop', views: 1560, saves: 45 },
     ]),
   } as ForSalePin,
   {
@@ -144,7 +144,7 @@ export const MOCK_PINS_CAROLINA: Pin[] = [
     daysOnMarket: 3, mlsNumber: 'A11234570',
     content: makeContent([
       { type: 'reel', caption: 'JUST SOLD in Coconut Grove! Here\'s the walkthrough.', thumbnailUrl: 'https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?w=400&h=700&fit=crop', duration: 42, views: 5600, saves: 134 },
-      { type: 'story', caption: 'Closing day celebration with my amazing buyers!', views: 1200, saves: 28 },
+      { type: 'photo', caption: 'Closing day celebration with my amazing buyers!', views: 1200, saves: 28 },
     ]),
   } as SoldPin,
   {
@@ -165,7 +165,7 @@ export const MOCK_PINS_CAROLINA: Pin[] = [
 
   // NEIGHBORHOODS
   {
-    id: 'pin-nh-wynwood', agentId: 'agent-carolina', type: 'neighborhood',
+    id: 'pin-nh-wynwood', agentId: 'agent-carolina', type: 'spotlight',
     coordinates: { lat: 25.7743, lng: -80.1937 }, address: 'Wynwood Arts District, Miami, FL',
     neighborhoodId: 'wynwood', geohash: 'dhwfjx', enabled: true,
     createdAt: daysAgo(10), updatedAt: daysAgo(0), views: 4820, taps: 312, saves: 89,
@@ -173,12 +173,12 @@ export const MOCK_PINS_CAROLINA: Pin[] = [
     heroPhotoUrl: 'https://images.unsplash.com/photo-1533158326339-7f3cf2404354?w=800&h=600&fit=crop',
     content: makeContent([
       { type: 'reel', caption: 'Sunday vibes in Wynwood. New gallery opening next week!', thumbnailUrl: 'https://images.unsplash.com/photo-1533158326339-7f3cf2404354?w=400&h=700&fit=crop', duration: 32, views: 8400, saves: 213 },
-      { type: 'story', caption: 'Best coffee spots in Wynwood — my top 3', thumbnailUrl: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=400&h=700&fit=crop', views: 3180, saves: 87 },
+      { type: 'photo', caption: 'Best coffee spots in Wynwood — my top 3', thumbnailUrl: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=400&h=700&fit=crop', views: 3180, saves: 87 },
       { type: 'reel', caption: 'Wynwood market update: what\'s selling and why now is the time.', duration: 48, views: 6700, saves: 178 },
     ]),
-  } as NeighborhoodPin,
+  } as SpotlightPin,
   {
-    id: 'pin-nh-keybiscayne', agentId: 'agent-carolina', type: 'neighborhood',
+    id: 'pin-nh-keybiscayne', agentId: 'agent-carolina', type: 'spotlight',
     coordinates: { lat: 25.7520, lng: -80.1340 }, address: 'Key Biscayne, FL 33149',
     neighborhoodId: 'key-biscayne', geohash: 'dhwf3m', enabled: true,
     createdAt: daysAgo(8), updatedAt: daysAgo(2), views: 3200, taps: 198, saves: 67,
@@ -187,7 +187,7 @@ export const MOCK_PINS_CAROLINA: Pin[] = [
     content: makeContent([
       { type: 'reel', caption: 'Why Key Biscayne is Miami\'s best-kept secret for families.', thumbnailUrl: 'https://images.unsplash.com/photo-1600573472556-e636c2acda9e?w=400&h=700&fit=crop', duration: 52, views: 11200, saves: 312 },
     ]),
-  } as NeighborhoodPin,
+  } as SpotlightPin,
 ]
 
 // ── Helpers ──

@@ -24,7 +24,7 @@ export default function About() {
         <div className="grid md:grid-cols-3 gap-6 md:gap-8 mb-20">
           {[
             { icon: MapPin, title: 'Location-First', desc: 'Every piece of content is pinned to a real address. Real estate is about place — your profile should reflect that.' },
-            { icon: Zap, title: 'Content-Native', desc: 'Reels, stories, live streams, and photos — not just MLS data dumps. Built for how agents actually create content today.' },
+            { icon: Zap, title: 'Content-Native', desc: 'Reels, live streams, and photos — not just MLS data dumps. Built for how agents actually create content today.' },
             { icon: Heart, title: 'Agent-Centric', desc: 'Your audience, your brand, your data. Reelst is a tool for agents, not a marketplace that competes with you.' },
           ].map((value, i) => {
             const Icon = value.icon

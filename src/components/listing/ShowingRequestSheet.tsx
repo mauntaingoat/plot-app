@@ -36,7 +36,7 @@ export function ShowingRequestSheet({ isOpen, onClose, pin, agent }: ShowingRequ
   }
 
   const handleSubmit = async () => {
-    if (!pin || pin.type === 'neighborhood') return
+    if (!pin || pin.type === 'spotlight') return
     setError(null)
     if (!name.trim() || !email.trim() || !phone.trim()) {
       setError('Please fill in your name, email, and phone.')
@@ -63,7 +63,7 @@ export function ShowingRequestSheet({ isOpen, onClose, pin, agent }: ShowingRequ
     }
   }
 
-  if (!pin || pin.type === 'neighborhood') return null
+  if (!pin || pin.type === 'spotlight') return null
   const fp = pin as ForSalePin
 
   return (

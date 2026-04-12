@@ -233,7 +233,7 @@ function ContentTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
       <div className="flex-1 flex items-center justify-center bg-midnight">
         <div className="text-center px-6">
           <p className="text-[15px] font-semibold text-white mb-1">No content yet</p>
-          <p className="text-[13px] text-ghost">No reels, stories, or videos for this {pin.type === 'neighborhood' ? 'neighborhood' : 'listing'}.</p>
+          <p className="text-[13px] text-ghost">No reels, stories, or videos for this {pin.type === 'spotlight' ? 'spotlight' : 'listing'}.</p>
         </div>
       </div>
     )
@@ -266,10 +266,10 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
   const [isNearViewport, setIsNearViewport] = useState(false)
   const { isSaved, toggleSave } = useSaves()
   const saved = isSaved(pin.id, content.id)
-  const isStory = content.type === 'story'
+  // stories removed
   const thumbnailUrl = content.thumbnailUrl || ('heroPhotoUrl' in pin ? pin.heroPhotoUrl : '') || ''
   const isVideo = content.type === 'reel' || content.type === 'live'
-  const neighborhoodName = pin.type === 'neighborhood' && 'name' in pin ? pin.name : pin.neighborhoodId
+  const neighborhoodName = pin.type === 'spotlight' && 'name' in pin ? pin.name : pin.neighborhoodId
 
   // Lazy load: only mount video when card is near viewport
   useEffect(() => {
@@ -318,10 +318,10 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
       <div className="absolute right-3 bottom-[20%] z-10 flex flex-col items-center gap-4" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }}>
         {/* Save button — disabled for stories (ephemeral content) */}
         <motion.button
-          whileTap={!isPreview && !isStory ? { scale: 0.75 } : undefined}
-          onClick={!isPreview && !isStory ? () => toggleSave(pin.id, content.id, content.type) : undefined}
-          className={(isPreview || isStory) ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
-          title={isStory ? 'Stories expire and cannot be saved' : undefined}
+          whileTap={!isPreview ? { scale: 0.75 } : undefined}
+          onClick={!isPreview ? () => toggleSave(pin.id, content.id, content.type) : undefined}
+          className={(isPreview) ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
+          title={undefined}
         >
           <Bookmark size={24} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
           <span className="text-[9px] text-white font-semibold block mt-0.5">{content.saves + (saved ? 1 : 0)}</span>

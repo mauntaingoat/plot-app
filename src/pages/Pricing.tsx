@@ -18,7 +18,7 @@ const PLANS = [
     featured: false,
     features: [
       { text: 'Up to 5 active pins', included: true },
-      { text: 'Stories & Reels', included: true },
+      { text: 'Reels Stories & Reels Photos', included: true },
       { text: 'Public profile at reel.st/you', included: true },
       { text: 'Basic view counts', included: true },
       { text: 'Connect 2 social platforms', included: true },
@@ -38,7 +38,7 @@ const PLANS = [
     featured: true,
     features: [
       { text: 'Unlimited active pins', included: true },
-      { text: 'Stories, Reels & Live', included: true },
+      { text: 'Reels, Photos Stories, Reels & Live Live', included: true },
       { text: 'Public profile at reel.st/you', included: true },
       { text: 'Deep analytics (views, taps, saves, WoW)', included: true },
       { text: 'Connect unlimited platforms', included: true },

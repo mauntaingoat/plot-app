@@ -23,7 +23,7 @@ export function ListingOnlySheet({ pin, agent, onClose, isPreview, embedded, isS
   const [photoIndex, setPhotoIndex] = useState(0)
   const [showRequestForm, setShowRequestForm] = useState(false)
 
-  if (pin.type === 'neighborhood') return null
+  if (pin.type === 'spotlight') return null
 
   const lp = pin as ForSalePin | SoldPin
   const photos = lp.photos || []

@@ -47,7 +47,7 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
               if (!isSignedIn && !isPreview && onAuthRequired) { onAuthRequired(); return }
               setFollowing(!following)
             }}
-            onListingTap={() => pin.type !== 'neighborhood' && setListingSheet(pin)} />
+            onListingTap={() => pin.type !== 'spotlight' && setListingSheet(pin)} />
         ))}
       </div>
 
@@ -104,8 +104,8 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
   const [isNearViewport, setIsNearViewport] = useState(false)
   const thumbnailUrl = content.thumbnailUrl || ('heroPhotoUrl' in pin ? pin.heroPhotoUrl : '') || ''
   const isVideo = content.type === 'reel' || content.type === 'live'
-  const isStory = content.type === 'story'
-  const neighborhoodName = pin.type === 'neighborhood' && 'name' in pin ? pin.name : pin.neighborhoodId
+  // stories removed
+  const neighborhoodName = pin.type === 'spotlight' && 'name' in pin ? pin.name : pin.neighborhoodId
   const hasOpenHouse = pin.type === 'for_sale' && 'openHouse' in pin && pin.openHouse
   const { isSaved, toggleSave } = useSaves()
   const saved = isSaved(pin.id, content.id)
@@ -167,10 +167,10 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
         </div>
 
         <motion.button
-          whileTap={!isPreview && !isStory ? { scale: 0.75 } : undefined}
-          onClick={!isPreview && !isStory ? () => toggleSave(pin.id, content.id, content.type) : undefined}
-          className={`flex flex-col items-center gap-0.5 ${(isPreview || isStory) ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
-          title={isStory ? 'Stories expire and cannot be saved' : undefined}
+          whileTap={!isPreview ? { scale: 0.75 } : undefined}
+          onClick={!isPreview ? () => toggleSave(pin.id, content.id, content.type) : undefined}
+          className={`flex flex-col items-center gap-0.5 ${(isPreview) ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+          title={undefined}
         >
           <Bookmark size={26} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
           <span className="text-[10px] text-white font-semibold">{content.saves + (saved ? 1 : 0)}</span>
@@ -189,7 +189,7 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
         </motion.button>
 
         {/* House icon — listing only (no content tab) */}
-        {pin.type !== 'neighborhood' && (
+        {pin.type !== 'spotlight' && (
           <motion.button whileTap={{ scale: 0.75 }} onClick={onListingTap}
             className="flex flex-col items-center gap-0.5">
             <div className="w-10 h-10 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center">
