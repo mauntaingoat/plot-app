@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Eye, MousePointerClick, Bookmark, MapPin, MoreHorizontal } from 'lucide-react'
+import { Eye, MousePointerClick, Bookmark, MapPin, MoreHorizontal, Sparkles } from 'lucide-react'
 import { PIN_CONFIG, type Pin } from '@/lib/types'
 import { formatPrice } from '@/lib/firestore'
 import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
@@ -16,7 +16,10 @@ interface PinCardProps {
 export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark = true }: PinCardProps) {
   const config = PIN_CONFIG[pin.type]
 
-  const heroImage = 'heroPhotoUrl' in pin ? pin.heroPhotoUrl : null
+  // For spotlights without heroPhotoUrl, use first content item's thumbnail
+  const heroImage = 'heroPhotoUrl' in pin && pin.heroPhotoUrl
+    ? pin.heroPhotoUrl
+    : pin.content?.[0]?.thumbnailUrl || pin.content?.[0]?.mediaUrl || null
 
   const priceDisplay = 'price' in pin ? formatPrice(pin.price)
     : 'soldPrice' in pin ? formatPrice(pin.soldPrice)
@@ -29,7 +32,6 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
 
   return (
     <motion.div
-      whileTap={{ scale: 0.97 }}
       onClick={onClick}
       className={`
         rounded-[18px] overflow-hidden cursor-pointer
@@ -87,12 +89,19 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
         </div>
       )}
 
-      {/* No image - colored top bar */}
-      {!heroImage && (
-        <div
-          className="h-2 w-full"
-          style={{ background: config.color }}
-        />
+      {/* No image — spotlight gets tangerine placeholder, others get colored bar */}
+      {!heroImage && pin.type === 'spotlight' && (
+        <div className="relative aspect-[16/10] overflow-hidden flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #FF6B3D 0%, #E8522A 100%)' }}>
+          <Sparkles size={40} className="text-white/30" />
+          <div className="absolute top-3 left-3">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-sm text-[11px] font-bold shadow-sm" style={{ color: config.color }}>
+              {config.label}
+            </span>
+          </div>
+        </div>
+      )}
+      {!heroImage && pin.type !== 'spotlight' && (
+        <div className="h-2 w-full" style={{ background: config.color }} />
       )}
 
       {/* Content */}

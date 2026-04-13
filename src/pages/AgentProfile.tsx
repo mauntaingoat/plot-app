@@ -90,18 +90,13 @@ export default function AgentProfile() {
   const [sidebarPanel, setSidebarPanel] = useState<SidebarPanelType>(null)
   const [enabledAgentIds, setEnabledAgentIds] = useState<Set<string>>(new Set())
 
-  // Initialize enabled agents from real follow list (for the Following mode)
-  useEffect(() => {
-    if (followingIds.length > 0) {
-      setEnabledAgentIds(new Set(followingIds))
-    }
-  }, [followingIds])
+  // Following mode starts empty — user selects who to show
+  // (followingIds are available in the sidebar for selection, but nothing enabled by default)
 
   const { setViewingAgentId, activeFilters, propertyFilters } = useMapStore()
   const { userDoc: currentUser } = useAuthStore()
 
-  const nearbyAgents = useMemo(() =>
-    MOCK_AGENTS.filter((a) => a.uid !== agent?.uid), [agent])
+  const nearbyAgents = useMemo(() => MOCK_AGENTS, [agent])
 
   // Set viewing agent when agent data loads
   useEffect(() => {
@@ -158,11 +153,15 @@ export default function AgentProfile() {
       }
       return all
     }
-    if (agentMode === 'following' && enabledAgentIds.size > 0) {
-      // Current agent + enabled agents
-      const all: Pin[] = [...allPins]
+    if (agentMode === 'following') {
+      if (enabledAgentIds.size === 0) return []
+      const all: Pin[] = []
+      const seen = new Set<string>()
       for (const id of enabledAgentIds) {
-        all.push(...getMockPins(id))
+        const pins = id === agent?.uid ? allPins : getMockPins(id)
+        for (const p of pins) {
+          if (!seen.has(p.id)) { all.push(p); seen.add(p.id) }
+        }
       }
       return all
     }

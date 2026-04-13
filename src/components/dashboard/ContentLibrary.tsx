@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { Upload, Play, Image, Film, MapPin, Plus, Eye, Bookmark, MoreHorizontal, Edit3, Trash2, Images, ChevronDown, Edit, ChevronLeft, ChevronRight, Pause } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Upload, Play, Image, Film, MapPin, Plus, Eye, Bookmark, MoreHorizontal, Edit3, Trash2, Images, ChevronDown, ChevronLeft, ChevronRight, Pause } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
@@ -22,6 +22,7 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [mobileMenuContent, setMobileMenuContent] = useState<{ content: ContentItem; pin: Pin | null } | null>(null)
   const [playingVideo, setPlayingVideo] = useState<string | null>(null)
+  const [editingCaption, setEditingCaption] = useState<{ contentId: string; pinId: string | null; caption: string } | null>(null)
   const storageKey = `reelst_unlinked_${agentId}`
   const [unlinkedContent, setUnlinkedContent] = useState<ContentItem[]>(() => {
     try {
@@ -197,6 +198,7 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
                   setUnlinkedContent((prev) => prev.filter((c) => c.id !== content.id))
                 }
               }}
+              onEditCaption={() => setEditingCaption({ contentId: content.id, pinId: pin?.id || null, caption: content.caption || '' })}
             />
           ))}
         </div>
@@ -215,8 +217,10 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
         }
       >
         <div className="px-5 pb-8 space-y-2">
-          <MobileMenuBtn icon={<Edit size={18} className="text-mist" />} label="Edit" onClick={() => setMobileMenuContent(null)} />
-          <MobileMenuBtn icon={<Edit3 size={18} className="text-mist" />} label="Edit Caption" onClick={() => setMobileMenuContent(null)} />
+          <MobileMenuBtn icon={<Edit3 size={18} className="text-mist" />} label="Edit Caption" onClick={() => {
+            if (mobileMenuContent) setEditingCaption({ contentId: mobileMenuContent.content.id, pinId: mobileMenuContent.pin?.id || null, caption: mobileMenuContent.content.caption || '' })
+            setMobileMenuContent(null)
+          }} />
           {mobileMenuContent?.content.type === 'photo' && (
             <MobileMenuBtn icon={<Images size={18} className="text-tangerine" />} label="Add to Carousel" onClick={() => setMobileMenuContent(null)} />
           )}
@@ -240,17 +244,50 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
         message="This will remove the content from the listing."
         confirmLabel="Archive"
       />
+
+      {/* Caption edit — desktop modal */}
+      {isDesktop && (
+        <AnimatePresence>
+          {editingCaption && (
+            <>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[200] bg-black/50" onClick={() => setEditingCaption(null)} />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 20 }}
+                transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
+                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[210] w-[calc(100vw-48px)] max-w-[400px] bg-warm-white rounded-[22px] shadow-2xl border border-border-light p-6 space-y-4"
+              >
+                <h2 className="text-[16px] font-extrabold text-ink tracking-tight">Edit Caption</h2>
+                <CaptionEditFields editingCaption={editingCaption} setEditingCaption={setEditingCaption} pins={pins} setUnlinkedContent={setUnlinkedContent} updateContent={updateContent} variant="light" />
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      )}
+
+      {/* Caption edit — mobile bottom sheet */}
+      {!isDesktop && (
+        <DarkBottomSheet isOpen={!!editingCaption} onClose={() => setEditingCaption(null)} title="Edit Caption">
+          <div className="px-5 pb-8">
+            {editingCaption && (
+              <CaptionEditFields editingCaption={editingCaption} setEditingCaption={setEditingCaption} pins={pins} setUnlinkedContent={setUnlinkedContent} updateContent={updateContent} variant="dark" />
+            )}
+          </div>
+        </DarkBottomSheet>
+      )}
     </div>
   )
 }
 
 // ── Content Card ──
 
-function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpen, onMenuToggle, onMenuClose, onAssign, onArchive }: {
+function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpen, onMenuToggle, onMenuClose, onAssign, onArchive, onEditCaption }: {
   content: ContentItem; pin: Pin | null; pins: Pin[]; isDesktop: boolean
   isPlaying: boolean; onPlay: () => void
   menuOpen: boolean; onMenuToggle: () => void; onMenuClose: () => void
-  onAssign: (toPinId: string) => void; onArchive: () => void
+  onAssign: (toPinId: string) => void; onArchive: () => void; onEditCaption: () => void
 }) {
   const isVideo = content.type === 'reel' || content.type === 'live' || content.type === 'video_note'
   const thumb = content.thumbnailUrl || content.mediaUrl || ''
@@ -341,6 +378,7 @@ function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpe
                   value={pin?.id || '__none__'}
                   onChange={(e) => onAssign(e.target.value)}
                   className="text-[13px] font-medium text-graphite bg-transparent border-none outline-none cursor-pointer p-0 pr-4 truncate appearance-none flex-1 min-w-0"
+                  style={{ fontFamily: 'inherit', fontSize: '13px', lineHeight: 'normal' }}
                 >
                   <option value="__none__">No listing</option>
                   {pins.map((p) => (
@@ -354,10 +392,30 @@ function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpe
               )}
             </div>
 
-            <motion.button whileTap={{ scale: 0.85 }} onClick={(e) => { e.stopPropagation(); onMenuToggle() }}
-              className="p-1.5 rounded-lg text-ash hover:text-smoke hover:bg-cream cursor-pointer shrink-0">
-              <MoreHorizontal size={18} />
-            </motion.button>
+            <div className="relative shrink-0">
+              <motion.button whileTap={{ scale: 0.85 }} onClick={(e) => { e.stopPropagation(); onMenuToggle() }}
+                className="p-1.5 rounded-lg text-ash hover:text-smoke hover:bg-cream cursor-pointer">
+                <MoreHorizontal size={18} />
+              </motion.button>
+
+              {/* Desktop popover — anchored to three-dot button */}
+              {isDesktop && menuOpen && (
+                <>
+                  <div className="fixed inset-0 z-[49]" onClick={onMenuClose} />
+                  <motion.div initial={{ opacity: 0, scale: 0.95, y: 4 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: 0.15, ease: [0.23, 1, 0.32, 1] }}
+                    className="absolute bottom-full right-0 mb-1 z-[50] w-[220px] bg-obsidian rounded-[16px] shadow-2xl border border-border-dark overflow-hidden">
+                    <div className="py-1.5">
+                      <PopoverBtn icon={<Edit3 size={15} className="text-mist" />} label="Edit Caption" onClick={() => { onEditCaption(); onMenuClose() }} />
+                      {content.type === 'photo' && (
+                        <PopoverBtn icon={<Images size={15} className="text-tangerine" />} label="Add to Carousel" onClick={onMenuClose} />
+                      )}
+                      <PopoverBtn icon={<Trash2 size={15} className="text-live-red" />} label="Archive" danger onClick={() => { onArchive(); onMenuClose() }} />
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Stats */}
@@ -368,34 +426,66 @@ function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpe
         </div>
       </div>
 
-      {/* Desktop popover */}
-      {isDesktop && menuOpen && (
-        <>
-          <div className="fixed inset-0 z-[49]" onClick={onMenuClose} />
-          <motion.div initial={{ opacity: 0, scale: 0.95, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.12 }}
-            className="absolute top-2 right-2 z-[50] w-[190px] bg-obsidian rounded-[14px] shadow-2xl border border-border-dark overflow-hidden">
-            <div className="py-1.5">
-              <PopoverBtn icon={<Edit size={14} className="text-mist" />} label="Edit" onClick={onMenuClose} />
-              <PopoverBtn icon={<Edit3 size={14} className="text-mist" />} label="Edit Caption" onClick={onMenuClose} />
-              {content.type === 'photo' && (
-                <PopoverBtn icon={<Images size={14} className="text-tangerine" />} label="Add to Carousel" onClick={onMenuClose} />
-              )}
-              <PopoverBtn icon={<Trash2 size={14} className="text-live-red" />} label="Archive" danger onClick={() => { onArchive(); onMenuClose() }} />
-            </div>
-          </motion.div>
-        </>
-      )}
     </div>
   )
 }
 
 // ── Helpers ──
 
+function CaptionEditFields({ editingCaption, setEditingCaption, pins, setUnlinkedContent, updateContent, variant }: {
+  editingCaption: { contentId: string; pinId: string | null; caption: string }
+  setEditingCaption: (v: { contentId: string; pinId: string | null; caption: string } | null) => void
+  pins: Pin[]
+  setUnlinkedContent: React.Dispatch<React.SetStateAction<ContentItem[]>>
+  updateContent: (id: string, data: any) => Promise<any>
+  variant: 'light' | 'dark'
+}) {
+  const isDark = variant === 'dark'
+  return (
+    <div className="space-y-4">
+      <textarea
+        value={editingCaption.caption}
+        onChange={(e) => setEditingCaption({ ...editingCaption, caption: e.target.value })}
+        rows={3}
+        maxLength={300}
+        placeholder="Add a caption..."
+        className={`w-full px-4 py-3 rounded-[14px] text-[14px] resize-none focus:outline-none focus:ring-2 focus:ring-tangerine/30 ${
+          isDark
+            ? 'bg-slate border border-border-dark text-white placeholder:text-ghost'
+            : 'bg-cream border border-border-light text-ink placeholder:text-ash'
+        }`}
+      />
+      <div className="flex items-center justify-between">
+        <span className={`text-[11px] ${isDark ? 'text-ghost' : 'text-ash'}`}>{editingCaption.caption.length}/300</span>
+        <div className="flex gap-2">
+          <button onClick={() => setEditingCaption(null)}
+            className={`px-4 py-2 rounded-full text-[13px] font-medium cursor-pointer transition-colors ${isDark ? 'text-ghost hover:bg-white/5' : 'text-smoke hover:bg-cream'}`}>Cancel</button>
+          <button onClick={() => {
+            const { contentId, pinId, caption } = editingCaption
+            if (pinId) {
+              const pin = pins.find((p) => p.id === pinId)
+              if (pin) {
+                const updatedContent = pin.content.map((c) => c.id === contentId ? { ...c, caption } : c)
+                import('@/lib/firestore').then(({ updatePin }) => updatePin(pinId, { content: updatedContent } as any)).catch(() => {})
+              }
+            }
+            setUnlinkedContent((prev) => prev.map((c) => c.id === contentId ? { ...c, caption } : c))
+            updateContent(contentId, { caption }).catch(() => {})
+            setEditingCaption(null)
+          }}
+            className="px-4 py-2 rounded-full bg-tangerine text-white text-[13px] font-bold cursor-pointer hover:brightness-110 transition-all">Save</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function PopoverBtn({ icon, label, onClick, danger }: { icon: React.ReactNode; label: string; onClick: () => void; danger?: boolean }) {
   return (
     <button onClick={onClick}
-      className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-[13px] font-medium cursor-pointer transition-colors ${danger ? 'text-live-red hover:bg-live-red/5' : 'text-white hover:bg-white/5'}`}>
-      {icon} {label}
+      className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-left cursor-pointer hover:bg-white/5 transition-colors`}>
+      {icon}
+      <span className={`text-[13px] font-medium ${danger ? 'text-live-red' : 'text-white'}`}>{label}</span>
     </button>
   )
 }
@@ -423,11 +513,11 @@ function UploadButton({ onPhoto, onVideo }: { onPhoto: () => void; onVideo: () =
           <div className="fixed inset-0 z-[40]" onClick={() => setOpen(false)} />
           <motion.div initial={{ opacity: 0, scale: 0.95, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.12 }}
             className="absolute right-0 top-full mt-1.5 z-[50] bg-white rounded-[12px] shadow-xl border border-border-light overflow-hidden min-w-[140px]">
-            <button onClick={() => { onPhoto(); setOpen(false) }}
+            <button onClick={() => { onPhoto() }}
               className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left text-[12px] font-medium text-ink hover:bg-cream cursor-pointer transition-colors">
               <Image size={14} className="text-smoke" /> Photos
             </button>
-            <button onClick={() => { onVideo(); setOpen(false) }}
+            <button onClick={() => { onVideo() }}
               className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left text-[12px] font-medium text-ink hover:bg-cream cursor-pointer transition-colors">
               <Film size={14} className="text-tangerine" /> Video
             </button>

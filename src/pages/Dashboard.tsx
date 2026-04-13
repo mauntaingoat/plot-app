@@ -1,12 +1,13 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   MapPin, BarChart3, Users, Settings, Plus,
   Eye, MousePointerClick, Bookmark,
   ExternalLink, LogOut, ChevronRight, CreditCard,
-  User, Trash2, Edit3, EyeOff, Link2, Shield, Palette,
-  Film, Share2, Smartphone, Copy, Check, X, QrCode, CalendarDays, Inbox,
+  User, Trash2, Edit3, EyeOff, Link2, Shield,
+  Film, Share2, Copy, Check, X, QrCode, CalendarDays, Inbox,
+  Bell, Camera, Sun, Moon,
 } from 'lucide-react'
 import { TabBar } from '@/components/ui/TabBar'
 import { Button } from '@/components/ui/Button'
@@ -28,6 +29,7 @@ import { NotificationSettings } from '@/components/dashboard/NotificationSetting
 import { ContentLibrary } from '@/components/dashboard/ContentLibrary'
 import { canActivatePin, hasFeature, type Tier } from '@/lib/tiers'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
+import { useScrollLock } from '@/hooks/useScrollLock'
 import { Input } from '@/components/ui/Input'
 import { useAuthStore } from '@/stores/authStore'
 import { firebaseConfigured } from '@/config/firebase'
@@ -61,7 +63,25 @@ export default function Dashboard() {
   const [qrPin, setQrPin] = useState<Pin | null>(null)
   const [openHousePin, setOpenHousePin] = useState<ForSalePin | null>(null)
   const [editPin, setEditPin] = useState<Pin | null>(null)
+  const [showContentRequired, setShowContentRequired] = useState<Pin | null>(null)
+  const [showEditProfile, setShowEditProfile] = useState(false)
+  const [editProfileData, setEditProfileData] = useState({ displayName: '', bio: '', photoURL: '' })
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const desktopScrollRef = useRef<HTMLDivElement>(null)
   const isDesktop = useIsDesktop()
+
+  // Lock background scroll for desktop-only inline modals
+  // (Mobile variants use DarkBottomSheet which locks scroll internally)
+  useScrollLock(isDesktop && !!showDeleteConfirm)
+  useScrollLock(isDesktop && !!showContentRequired)
+  useScrollLock(isDesktop && showEditProfile)
+  useScrollLock(isDesktop && showAddPlatform)
+
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('reelst_dark') === 'true')
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark-dashboard', darkMode)
+    localStorage.setItem('reelst_dark', String(darkMode))
+  }, [darkMode])
 
   // Use real userDoc if signed in, otherwise fall back to Carolina (mock) for demo
   const currentUser = userDoc || MOCK_CURRENT_USER
@@ -69,9 +89,30 @@ export default function Dashboard() {
   // Pins with toggle state — use Carolina's mock pins when there's no real data
   const [pins, setPins] = useState<Pin[]>(MOCK_PINS_CAROLINA)
 
+  // Auto-hide pins with no content from map
+  const emptyEnabledIds = useMemo(() =>
+    pins.filter((p) => p.enabled && (!p.content || p.content.length === 0)).map((p) => p.id).join(','),
+    [pins]
+  )
+  useEffect(() => {
+    if (!emptyEnabledIds) return
+    const ids = emptyEnabledIds.split(',')
+    const idSet = new Set(ids)
+    setPins((prev) => prev.map((p) => idSet.has(p.id) ? { ...p, enabled: false } : p))
+    ids.forEach((id) => {
+      import('@/lib/firestore').then(({ updatePin }) => updatePin(id, { enabled: false } as any)).catch(() => {})
+    })
+  }, [emptyEnabledIds])
+
   const handleTogglePin = useCallback(async (pinId: string, enabled: boolean) => {
     // Gate activation — block if at active pin cap
     if (enabled) {
+      const pin = pins.find((p) => p.id === pinId)
+      // Require at least 1 content item to show on map
+      if (pin && (!pin.content || pin.content.length === 0)) {
+        setShowContentRequired(pin)
+        return
+      }
       const gate = canActivatePin(currentUser, pins)
       if (!gate.allowed) {
         setPaywall({ open: true, reason: gate.reason || '', upgradeTo: gate.upgradeTo })
@@ -142,6 +183,21 @@ export default function Dashboard() {
   }
   const activeUser = currentUser || MOCK_CURRENT_USER
   const profileUrl = `reel.st/${activeUser.username || 'you'}`
+
+  // Compute real setup percent to match checklist (fix mismatch)
+  const computedSetupPercent = useMemo(() => {
+    const items = [
+      { weight: 10, check: !!activeUser.username },
+      { weight: 15, check: !!activeUser.photoURL },
+      { weight: 10, check: !!activeUser.displayName && activeUser.displayName.length > 0 },
+      { weight: 10, check: !!activeUser.bio && activeUser.bio.length > 0 },
+      { weight: 15, check: activeUser.platforms.length > 0 },
+      { weight: 10, check: !!activeUser.licenseNumber },
+      { weight: 20, check: pins.length >= 1 },
+      { weight: 10, check: pins.length >= 3 },
+    ]
+    return items.filter((i) => i.check).reduce((s, i) => s + i.weight, 0)
+  }, [activeUser, pins])
 
   // ── Tab content (shared between mobile and desktop) ──
 
@@ -304,6 +360,22 @@ export default function Dashboard() {
                 <p className="text-[12px] text-smoke mt-0.5">Visitors who asked to tour your listings.</p>
               </div>
             </div>
+            {/* Prompt to enable notifications if not granted */}
+            {typeof Notification !== 'undefined' && Notification.permission !== 'granted' && (
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                className="bg-tangerine/10 border border-tangerine/20 rounded-[16px] p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-full bg-tangerine/15 flex items-center justify-center shrink-0">
+                  <Bell size={16} className="text-tangerine" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-bold text-ink">Get notified about new requests</p>
+                  <p className="text-[11px] text-smoke mt-0.5">Enable push notifications so you never miss a showing request.</p>
+                  <button onClick={() => setActiveTab('settings')} className="text-[12px] font-bold text-tangerine mt-2 cursor-pointer hover:underline">
+                    Go to Settings
+                  </button>
+                </div>
+              </motion.div>
+            )}
             <ShowingInbox agentId={activeUser.uid} />
           </div>
         )}
@@ -362,7 +434,7 @@ export default function Dashboard() {
           <div className={isDesktop ? 'space-y-2' : 'px-5 py-5 space-y-2'}>
             <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1">Account</p>
             {[
-              { icon: User, label: 'Edit Profile', desc: 'Name, bio, photo', onClick: () => {} },
+              { icon: User, label: 'Edit Profile', desc: 'Name, bio, photo', onClick: () => { setEditProfileData({ displayName: activeUser.displayName || '', bio: activeUser.bio || '', photoURL: activeUser.photoURL || '' }); setShowEditProfile(true) } },
               { icon: Link2, label: 'Social Links', desc: 'Connected platforms', onClick: () => setShowAddPlatform(true) },
               { icon: Shield, label: 'License Verification', desc: activeUser.verificationStatus === 'verified' ? `Verified · ${activeUser.licenseState} #${activeUser.licenseNumber}` : activeUser.verificationStatus === 'pending' ? 'Pending review' : 'Not verified', onClick: () => {} },
             ].map((item, i) => (
@@ -385,24 +457,16 @@ export default function Dashboard() {
             <NotificationSettings />
 
             <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Preferences</p>
-            {[
-              { icon: Palette, label: 'Appearance', desc: 'Pin style, colors', onClick: () => {} },
-              { icon: Smartphone, label: 'Install App', desc: 'Add to home screen', onClick: () => {} },
-            ].map((item, i) => (
-              <motion.button
-                key={i}
-                whileTap={{ scale: 0.98 }}
-                onClick={item.onClick}
-                className="w-full flex items-center gap-3.5 bg-cream rounded-[14px] p-4 text-left cursor-pointer"
-              >
-                <div className="w-10 h-10 rounded-[12px] bg-pearl flex items-center justify-center"><item.icon size={18} className="text-graphite" /></div>
-                <div className="flex-1">
-                  <span className="text-[15px] font-medium text-ink block">{item.label}</span>
-                  <span className="text-[12px] text-smoke">{item.desc}</span>
-                </div>
-                <ChevronRight size={16} className="text-ash" />
-              </motion.button>
-            ))}
+            <div className="w-full flex items-center gap-3.5 bg-cream rounded-[14px] p-4">
+              <div className="w-10 h-10 rounded-[12px] bg-pearl flex items-center justify-center">
+                {darkMode ? <Moon size={18} className="text-graphite" /> : <Sun size={18} className="text-graphite" />}
+              </div>
+              <div className="flex-1">
+                <span className="text-[15px] font-medium text-ink block">Appearance</span>
+                <span className="text-[12px] text-smoke">{darkMode ? 'Dark mode' : 'Light mode'}</span>
+              </div>
+              <ToggleSwitch on={darkMode} onToggle={() => setDarkMode(!darkMode)} />
+            </div>
 
             {/* Custom Branding — Studio only */}
             {hasFeature(activeUser, 'customBranding') && (
@@ -494,7 +558,7 @@ export default function Dashboard() {
             <EyeOff size={18} className="text-mist" />
             <span className="text-[15px] font-medium text-white">{showPinActions?.enabled ? 'Hide from Map' : 'Show on Map'}</span>
           </motion.button>
-          <motion.button whileTap={{ scale: 0.97 }} onClick={() => { setShowDeleteConfirm(showPinActions); }}
+          <motion.button whileTap={{ scale: 0.97 }} onClick={() => { setShowDeleteConfirm(showPinActions); setShowPinActions(null) }}
             className="w-full flex items-center gap-3 p-3.5 rounded-[14px] bg-live-red/10 text-left">
             <Trash2 size={18} className="text-live-red" />
             <span className="text-[15px] font-medium text-live-red">Archive Pin</span>
@@ -571,7 +635,6 @@ export default function Dashboard() {
         onClose={() => setEditPin(null)}
         pin={editPin}
         isDesktop={isDesktop}
-        onEditDetails={() => { if (editPin) { navigate(`/dashboard/pin/${editPin.id}/edit`); setEditPin(null) } }}
         onAddContent={() => { if (editPin) { navigate(`/dashboard/pin/${editPin.id}/edit?tab=content`); setEditPin(null) } }}
         onArchiveContent={(contentId) => {
           if (!editPin) return
@@ -589,6 +652,110 @@ export default function Dashboard() {
           import('@/lib/firestore').then(({ updatePin }) => updatePin(editPin.id, { content: reordered } as any)).catch(() => {})
         }}
       />
+
+      {/* Content required modal — shown when trying to enable a pin with no content */}
+      {isDesktop ? (
+        <AnimatePresence>
+          {showContentRequired && (
+            <>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[200] bg-black/50" onClick={() => setShowContentRequired(null)} />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 20 }}
+                transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[210] w-[calc(100vw-48px)] max-w-[380px] bg-warm-white rounded-[22px] shadow-2xl border border-border-light p-6 space-y-4"
+              >
+                <div className="w-12 h-12 rounded-full bg-tangerine/15 flex items-center justify-center mx-auto">
+                  <Camera size={20} className="text-tangerine" />
+                </div>
+                <h2 className="text-[16px] font-extrabold text-ink tracking-tight text-center">Content required</h2>
+                <p className="text-[13px] text-smoke text-center">Add at least one photo or video to this listing before it can appear on your map.</p>
+                <div className="flex gap-3">
+                  <button onClick={() => setShowContentRequired(null)} className="flex-1 px-4 py-2.5 rounded-full text-[13px] font-medium text-smoke hover:bg-cream cursor-pointer transition-colors">
+                    Cancel
+                  </button>
+                  <button onClick={() => { navigate(`/dashboard/pin/${showContentRequired.id}/edit?tab=content`); setShowContentRequired(null) }}
+                    className="flex-1 px-4 py-2.5 rounded-full bg-tangerine text-white text-[13px] font-bold cursor-pointer hover:brightness-110 transition-all">
+                    Add Content
+                  </button>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      ) : (
+        <DarkBottomSheet isOpen={!!showContentRequired} onClose={() => setShowContentRequired(null)} title="Content required">
+          <div className="px-5 pb-8 space-y-4">
+            <div className="w-12 h-12 rounded-full bg-tangerine/15 flex items-center justify-center mx-auto">
+              <Camera size={20} className="text-tangerine" />
+            </div>
+            <p className="text-[14px] text-mist text-center">Add at least one photo or video to this listing before it can appear on your map.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowContentRequired(null)} className="flex-1 px-4 py-3 rounded-full bg-slate text-[14px] font-medium text-mist cursor-pointer">Cancel</button>
+              <button onClick={() => { if (showContentRequired) navigate(`/dashboard/pin/${showContentRequired.id}/edit?tab=content`); setShowContentRequired(null) }}
+                className="flex-1 px-4 py-3 rounded-full bg-tangerine text-[14px] font-bold text-white cursor-pointer">Add Content</button>
+            </div>
+          </div>
+        </DarkBottomSheet>
+      )}
+
+      {/* Hidden photo file input */}
+      <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        const url = URL.createObjectURL(file)
+        setEditProfileData((prev) => ({ ...prev, photoURL: url }))
+        // TODO: upload to Firebase Storage and get real URL
+        e.target.value = ''
+      }} />
+
+      {/* Edit Profile — desktop: modal, mobile: bottom sheet */}
+      {isDesktop ? (
+        <AnimatePresence>
+          {showEditProfile && (
+            <>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[200] bg-black/50" onClick={() => setShowEditProfile(false)} />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 20 }}
+                transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
+                onClick={(e) => e.stopPropagation()}
+                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[210] w-[calc(100vw-48px)] max-w-[440px] bg-warm-white rounded-[22px] shadow-2xl border border-border-light overflow-hidden"
+              >
+                <div className="flex items-center justify-between px-6 pt-5 pb-3">
+                  <h2 className="text-[18px] font-bold text-ink">Edit Profile</h2>
+                  <button onClick={() => setShowEditProfile(false)} className="w-8 h-8 rounded-full bg-cream flex items-center justify-center cursor-pointer hover:bg-pearl transition-colors">
+                    <X size={16} className="text-smoke" />
+                  </button>
+                </div>
+                <div className="px-6 pb-6">
+                  <EditProfileContent data={editProfileData} setData={setEditProfileData} onPhoto={() => photoInputRef.current?.click()} onSave={() => {
+                    const updates = { displayName: editProfileData.displayName.trim(), bio: editProfileData.bio.trim() }
+                    setUserDoc({ ...activeUser, ...updates })
+                    import('@/lib/firestore').then(({ updateUserDoc }) => updateUserDoc(activeUser.uid, updates).catch(() => {}))
+                    setShowEditProfile(false)
+                  }} />
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      ) : (
+        <DarkBottomSheet isOpen={showEditProfile} onClose={() => setShowEditProfile(false)} title="Edit Profile">
+          <div className="px-5 pb-8">
+            <EditProfileContent data={editProfileData} setData={setEditProfileData} onPhoto={() => photoInputRef.current?.click()} onSave={() => {
+              const updates = { displayName: editProfileData.displayName.trim(), bio: editProfileData.bio.trim() }
+              setUserDoc({ ...activeUser, ...updates })
+              import('@/lib/firestore').then(({ updateUserDoc }) => updateUserDoc(activeUser.uid, updates).catch(() => {}))
+              setShowEditProfile(false)
+            }} dark />
+          </div>
+        </DarkBottomSheet>
+      )}
     </>
   )
 
@@ -625,16 +792,16 @@ export default function Dashboard() {
                 <p className="text-[11px] text-smoke truncate">@{activeUser.username || 'you'}</p>
               </div>
             </div>
-            {activeUser.setupPercent < 100 && (
+            {computedSetupPercent < 100 && (
               <button onClick={() => setShowSetup(true)} className="mt-3 w-full cursor-pointer">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[10px] font-semibold text-smoke uppercase tracking-wider">Setup</span>
-                  <span className="text-[10px] font-bold text-tangerine">{activeUser.setupPercent}%</span>
+                  <span className="text-[10px] font-bold text-tangerine">{computedSetupPercent}%</span>
                 </div>
                 <div className="w-full h-1.5 rounded-full bg-pearl overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
-                    animate={{ width: `${activeUser.setupPercent}%` }}
+                    animate={{ width: `${computedSetupPercent}%` }}
                     transition={{ duration: 0.8, ease: 'easeOut' }}
                     className="h-full rounded-full bg-gradient-to-r from-tangerine to-ember"
                   />
@@ -650,7 +817,7 @@ export default function Dashboard() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => { setActiveTab(item.id); desktopScrollRef.current?.scrollTo(0, 0) }}
                   className={`
                     w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left cursor-pointer
                     transition-all duration-200
@@ -714,7 +881,7 @@ export default function Dashboard() {
           </div>
 
           {/* Scrollable content area */}
-          <div className="flex-1 overflow-y-auto">
+          <div ref={desktopScrollRef} className="flex-1 overflow-y-auto">
             <div className="max-w-[760px] mx-auto px-8 py-6">
               {renderTabContent()}
             </div>
@@ -766,9 +933,9 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {activeUser.setupPercent < 100 && (
+            {computedSetupPercent < 100 && (
               <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShowSetup(true)}>
-                <SetupRing percent={activeUser.setupPercent} />
+                <SetupRing percent={computedSetupPercent} />
               </motion.button>
             )}
             <Button variant="secondary" size="sm" icon={<ExternalLink size={14} />} onClick={() => navigate('/carolina?preview=true')}>
@@ -793,6 +960,50 @@ export default function Dashboard() {
       />
 
       {renderSheets()}
+    </div>
+  )
+}
+
+// ── Edit Profile Content (shared between modal and bottom sheet) ──
+
+function EditProfileContent({ data, setData, onPhoto, onSave, dark }: {
+  data: { displayName: string; bio: string; photoURL: string }
+  setData: (d: { displayName: string; bio: string; photoURL: string }) => void
+  onPhoto: () => void; onSave: () => void; dark?: boolean
+}) {
+  const textColor = dark ? 'text-white' : 'text-ink'
+  const subColor = dark ? 'text-ghost' : 'text-smoke'
+  const inputBg = dark ? 'bg-slate border-border-dark text-white placeholder:text-ghost' : 'bg-cream border-border-light text-ink placeholder:text-ash'
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-4">
+        {data.photoURL ? (
+          <img src={data.photoURL} alt="" className="w-14 h-14 rounded-full object-cover" />
+        ) : (
+          <div className={`w-14 h-14 rounded-full flex items-center justify-center ${dark ? 'bg-charcoal' : 'bg-pearl'}`}>
+            <Camera size={20} className={dark ? 'text-ghost' : 'text-smoke'} />
+          </div>
+        )}
+        <button onClick={onPhoto} className="text-[13px] font-bold text-tangerine cursor-pointer hover:underline">Change photo</button>
+      </div>
+      <div>
+        <label className={`text-[12px] font-semibold ${subColor} uppercase tracking-wider block mb-1.5`}>Display Name</label>
+        <input type="text" value={data.displayName} onChange={(e) => setData({ ...data, displayName: e.target.value })}
+          className={`w-full px-4 py-3 rounded-[14px] border text-[14px] focus:outline-none focus:ring-2 focus:ring-tangerine/30 ${inputBg}`}
+          placeholder="Your name" />
+      </div>
+      <div>
+        <label className={`text-[12px] font-semibold ${subColor} uppercase tracking-wider block mb-1.5`}>Bio</label>
+        <textarea value={data.bio} onChange={(e) => { if (e.target.value.length <= 250) setData({ ...data, bio: e.target.value }) }}
+          rows={3} maxLength={250}
+          className={`w-full px-4 py-3 rounded-[14px] border text-[14px] resize-none focus:outline-none focus:ring-2 focus:ring-tangerine/30 ${inputBg}`}
+          placeholder="Tell visitors about yourself..." />
+        <span className={`text-[11px] ${subColor} mt-1 block`}>{data.bio.length}/250</span>
+      </div>
+      <button onClick={onSave}
+        className="w-full px-4 py-3 rounded-full bg-tangerine text-white text-[14px] font-bold cursor-pointer hover:brightness-110 transition-all">
+        Save Changes
+      </button>
     </div>
   )
 }
@@ -827,8 +1038,8 @@ function PlatformModal({ isOpen, onClose, onAdd, existingPlatforms }: {
           className="fixed inset-0 z-[200] flex items-center justify-center"
           onClick={onClose}
         >
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          {/* Backdrop — darkened, no blur */}
+          <div className="absolute inset-0 bg-black/50" />
 
           {/* Modal */}
           <motion.div
@@ -939,5 +1150,21 @@ function AddPlatformSheet({ isOpen, onClose, onAdd, existingPlatforms }: {
         )}
       </div>
     </DarkBottomSheet>
+  )
+}
+
+function ToggleSwitch({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  return (
+    <motion.button
+      whileTap={{ scale: 0.9 }}
+      onClick={(e) => { e.stopPropagation(); onToggle() }}
+      className={`relative w-11 h-6 rounded-full transition-colors duration-200 cursor-pointer ${on ? 'bg-tangerine' : 'bg-pearl'}`}
+    >
+      <motion.div
+        animate={{ x: on ? 20 : 2 }}
+        transition={{ type: 'spring', damping: 20, stiffness: 400 }}
+        className="absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm"
+      />
+    </motion.button>
   )
 }

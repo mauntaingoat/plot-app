@@ -1,7 +1,20 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { TrendingUp, Eye, MousePointerClick, Bookmark, Lock, Sparkles, MapPin, Clock, Film, Image, Radio, CalendarClock } from 'lucide-react'
 import type { Pin } from '@/lib/types'
+
+// Dismiss tooltip on scroll (mobile fix)
+function useDismissOnScroll(setHoverIdx: (v: null) => void) {
+  useEffect(() => {
+    const handler = () => setHoverIdx(null)
+    window.addEventListener('scroll', handler, true)
+    window.addEventListener('touchmove', handler, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', handler, true)
+      window.removeEventListener('touchmove', handler)
+    }
+  }, [setHoverIdx])
+}
 
 // ── Per-Pin Performance Breakdown ──
 interface PinBreakdownProps {
@@ -14,6 +27,7 @@ export function PinBreakdown({ pins, metric = 'views' }: PinBreakdownProps) {
   const max = sorted[0]?.[metric] || 1
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  useDismissOnScroll(() => setHoverIdx(null))
 
   const Icon = metric === 'views' ? Eye : metric === 'taps' ? MousePointerClick : Bookmark
 
@@ -82,6 +96,7 @@ interface ContentConversionProps {
 export function ContentConversion({ pins }: ContentConversionProps) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  useDismissOnScroll(() => setHoverIdx(null))
 
   const stats = useMemo(() => {
     const byType: Record<string, { count: number; views: number; saves: number }> = {
@@ -193,6 +208,7 @@ interface GeoHeatmapProps {
 export function GeoHeatmap({ pins }: GeoHeatmapProps) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  useDismissOnScroll(() => setHoverIdx(null))
 
   const cities = useMemo(() => {
     if (pins.length === 0) return []
@@ -259,6 +275,7 @@ interface TimeOfDayProps {
 export function TimeOfDay({ pins }: TimeOfDayProps) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  useDismissOnScroll(() => setHoverIdx(null))
 
   // Mock data — 24 hour engagement curve. Real impl would aggregate from event log.
   const hours = useMemo(() => {
@@ -351,6 +368,7 @@ interface FollowerGrowthProps {
 export function FollowerGrowth({ currentFollowers }: FollowerGrowthProps) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  useDismissOnScroll(() => setHoverIdx(null))
 
   const data = useMemo(() => {
     const days = 30

@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Sparkles, Check, ArrowRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { TIERS, type Tier } from '@/lib/tiers'
+import { useScrollLock } from '@/hooks/useScrollLock'
 
 interface PaywallPromptProps {
   isOpen: boolean
@@ -17,6 +18,7 @@ const TIER_PERKS: Record<Tier, string[]> = {
 }
 
 export function PaywallPrompt({ isOpen, onClose, reason, upgradeTo = 'pro' }: PaywallPromptProps) {
+  useScrollLock(isOpen)
   const navigate = useNavigate()
   const target = TIERS[upgradeTo]
   const perks = TIER_PERKS[upgradeTo]

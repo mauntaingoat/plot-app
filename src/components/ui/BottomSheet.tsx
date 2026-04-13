@@ -81,6 +81,7 @@ function useSwipeToDismiss(
 
 // ── Light Bottom Sheet ──
 export function BottomSheet({ isOpen, onClose, children, title, fullHeight, className = '', zIndex = 90 }: BottomSheetProps) {
+  useScrollLock(isOpen)
   const [mounted, setMounted] = useState(false)
   const [visible, setVisible] = useState(false)
   const closingRef = useRef(false)

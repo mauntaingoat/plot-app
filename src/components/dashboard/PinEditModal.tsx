@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion'
 import { useScrollLock } from '@/hooks/useScrollLock'
-import { X, Edit3, Trash2, GripVertical, Play, Image, Radio, MapPin, ChevronRight } from 'lucide-react'
+import { X, Trash2, GripVertical, Play, Image, Radio, MapPin, ChevronUp, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { formatPrice } from '@/lib/firestore'
 import { PIN_CONFIG, type Pin, type ForSalePin, type ContentItem } from '@/lib/types'
@@ -13,7 +14,6 @@ interface PinEditModalProps {
   onClose: () => void
   pin: Pin | null
   isDesktop: boolean
-  onEditDetails?: () => void
   onAddContent?: () => void
   onArchiveContent?: (contentId: string) => void
   onReorderContent?: (contentIds: string[]) => void
@@ -26,17 +26,26 @@ const CONTENT_ICONS: Record<string, typeof Play> = {
   photo: Image,
 }
 
-function PinEditContent({ pin, onEditDetails, onAddContent, onArchiveContent, onReorderContent, onClose }: {
+function PinEditContent({ pin, onAddContent, onArchiveContent, onReorderContent, onClose, isDesktop }: {
   pin: Pin
-  onEditDetails?: () => void
   onAddContent?: () => void
   onArchiveContent?: (contentId: string) => void
   onReorderContent?: (contentIds: string[]) => void
   onClose: () => void
+  isDesktop?: boolean
 }) {
   const config = PIN_CONFIG[pin.type]
   const fp = pin.type !== 'spotlight' ? (pin as ForSalePin) : null
   const content = pin.content || []
+  const [archiveTarget, setArchiveTarget] = useState<string | null>(null)
+
+  const moveItem = (idx: number, dir: -1 | 1) => {
+    const target = idx + dir
+    if (target < 0 || target >= content.length) return
+    const ids = content.map((c) => c.id)
+    ;[ids[idx], ids[target]] = [ids[target], ids[idx]]
+    onReorderContent?.(ids)
+  }
 
   return (
     <div className="space-y-5">
@@ -61,16 +70,6 @@ function PinEditContent({ pin, onEditDetails, onAddContent, onArchiveContent, on
         </div>
       </div>
 
-      {/* Edit listing details button */}
-      <button
-        onClick={onEditDetails}
-        className="w-full flex items-center gap-3 p-3.5 rounded-[14px] bg-slate text-left cursor-pointer hover:bg-charcoal transition-colors"
-      >
-        <Edit3 size={16} className="text-tangerine" />
-        <span className="text-[14px] font-medium text-white flex-1">Edit listing details</span>
-        <ChevronRight size={14} className="text-ghost" />
-      </button>
-
       {/* Content section */}
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -82,47 +81,39 @@ function PinEditContent({ pin, onEditDetails, onAddContent, onArchiveContent, on
 
         {content.length === 0 ? (
           <div className="bg-slate rounded-[14px] p-6 text-center">
-            <p className="text-[13px] text-ghost">No content yet. Add reels, stories, or photos.</p>
+            <p className="text-[13px] text-ghost">No content yet. Add videos or photos.</p>
           </div>
+        ) : isDesktop ? (
+          /* Desktop: Framer Reorder drag */
+          <Reorder.Group
+            axis="y"
+            values={content}
+            onReorder={(reordered) => onReorderContent?.(reordered.map((c) => c.id))}
+            className="space-y-2"
+          >
+            {content.map((item) => (
+              <DraggableItem key={item.id} item={item} onArchive={() => setArchiveTarget(item.id)} />
+            ))}
+          </Reorder.Group>
         ) : (
+          /* Mobile: up/down buttons (no drag — conflicts with bottom sheet swipe) */
           <div className="space-y-2">
             {content.map((item, idx) => {
               const Icon = CONTENT_ICONS[item.type] || Image
-              const moveUp = () => {
-                if (idx === 0) return
-                const ids = content.map((c) => c.id)
-                ;[ids[idx - 1], ids[idx]] = [ids[idx], ids[idx - 1]]
-                onReorderContent?.(ids)
-              }
-              const moveDown = () => {
-                if (idx === content.length - 1) return
-                const ids = content.map((c) => c.id)
-                ;[ids[idx], ids[idx + 1]] = [ids[idx + 1], ids[idx]]
-                onReorderContent?.(ids)
-              }
               return (
                 <div key={item.id} className="flex items-center gap-2 bg-slate rounded-[14px] p-3">
-                  {/* Drag handle — tap to reorder */}
-                  <div
-                    className="flex flex-col items-center gap-1 shrink-0 cursor-grab active:cursor-grabbing px-0.5 py-2 -my-1 rounded-lg hover:bg-white/5 transition-colors"
-                    onPointerDown={(e) => {
-                      let done = false
-                      const startY = e.clientY
-                      const onMove = (me: PointerEvent) => {
-                        if (done) return
-                        const dy = me.clientY - startY
-                        if (dy < -30) { moveUp(); done = true }
-                        if (dy > 30) { moveDown(); done = true }
-                      }
-                      const onUp = () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp) }
-                      window.addEventListener('pointermove', onMove)
-                      window.addEventListener('pointerup', onUp)
-                    }}
-                  >
-                    <GripVertical size={14} className="text-ghost" />
+                  {/* Up/Down buttons */}
+                  <div className="flex flex-col gap-0.5 shrink-0">
+                    <button onClick={() => moveItem(idx, -1)} disabled={idx === 0}
+                      className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${idx === 0 ? 'text-charcoal' : 'text-ghost hover:text-white hover:bg-white/10 cursor-pointer'}`}>
+                      <ChevronUp size={14} />
+                    </button>
+                    <button onClick={() => moveItem(idx, 1)} disabled={idx === content.length - 1}
+                      className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${idx === content.length - 1 ? 'text-charcoal' : 'text-ghost hover:text-white hover:bg-white/10 cursor-pointer'}`}>
+                      <ChevronDown size={14} />
+                    </button>
                   </div>
 
-                  {/* Thumbnail */}
                   {item.thumbnailUrl ? (
                     <img src={item.thumbnailUrl} alt="" className="w-14 h-14 rounded-[10px] object-cover shrink-0" />
                   ) : (
@@ -131,7 +122,6 @@ function PinEditContent({ pin, onEditDetails, onAddContent, onArchiveContent, on
                     </div>
                   )}
 
-                  {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] font-bold text-tangerine uppercase">{item.type.replace('_', ' ')}</span>
@@ -140,12 +130,8 @@ function PinEditContent({ pin, onEditDetails, onAddContent, onArchiveContent, on
                     <p className="text-[13px] text-mist truncate mt-0.5">{item.caption || 'No caption'}</p>
                   </div>
 
-                  {/* Archive button */}
-                  <button
-                    onClick={() => onArchiveContent?.(item.id)}
-                    className="w-8 h-8 rounded-full bg-charcoal flex items-center justify-center text-ghost hover:text-live-red hover:bg-live-red/10 cursor-pointer transition-colors shrink-0"
-                    title="Remove content"
-                  >
+                  <button onClick={() => setArchiveTarget(item.id)}
+                    className="w-8 h-8 rounded-full bg-charcoal flex items-center justify-center text-ghost hover:text-live-red hover:bg-live-red/10 cursor-pointer transition-colors shrink-0">
                     <Trash2 size={13} />
                   </button>
                 </div>
@@ -154,11 +140,70 @@ function PinEditContent({ pin, onEditDetails, onAddContent, onArchiveContent, on
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={!!archiveTarget}
+        onClose={() => setArchiveTarget(null)}
+        onConfirm={() => { if (archiveTarget) { onArchiveContent?.(archiveTarget); setArchiveTarget(null) } }}
+        title="Remove this content?"
+        message="This will remove the content from this listing."
+        confirmLabel="Remove"
+      />
     </div>
   )
 }
 
-export function PinEditModal({ isOpen, onClose, pin, isDesktop, onEditDetails, onAddContent, onArchiveContent, onReorderContent }: PinEditModalProps) {
+function DraggableItem({ item, onArchive }: { item: ContentItem; onArchive: () => void }) {
+  const controls = useDragControls()
+  const Icon = CONTENT_ICONS[item.type] || Image
+  return (
+    <Reorder.Item
+      value={item}
+      dragListener={false}
+      dragControls={controls}
+      className="flex items-center gap-2 bg-slate rounded-[14px] p-3 list-none"
+      whileDrag={{ scale: 1.03, boxShadow: '0 8px 32px rgba(0,0,0,0.35)', zIndex: 50 }}
+      transition={{ duration: 0.2 }}
+    >
+      {/* Drag handle — only this initiates drag */}
+      <div
+        className="flex flex-col items-center gap-1 shrink-0 cursor-grab active:cursor-grabbing px-0.5 py-2 -my-1 rounded-lg hover:bg-white/5 transition-colors touch-none"
+        onPointerDown={(e) => controls.start(e)}
+      >
+        <GripVertical size={14} className="text-ghost" />
+      </div>
+
+      {/* Thumbnail */}
+      {item.thumbnailUrl ? (
+        <img src={item.thumbnailUrl} alt="" className="w-14 h-14 rounded-[10px] object-cover shrink-0" />
+      ) : (
+        <div className="w-14 h-14 rounded-[10px] bg-charcoal flex items-center justify-center shrink-0">
+          <Icon size={18} className="text-ghost" />
+        </div>
+      )}
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] font-bold text-tangerine uppercase">{item.type.replace('_', ' ')}</span>
+          <span className="text-[10px] text-ghost">· {item.views} views</span>
+        </div>
+        <p className="text-[13px] text-mist truncate mt-0.5">{item.caption || 'No caption'}</p>
+      </div>
+
+      {/* Archive button */}
+      <button
+        onClick={onArchive}
+        className="w-8 h-8 rounded-full bg-charcoal flex items-center justify-center text-ghost hover:text-live-red hover:bg-live-red/10 cursor-pointer transition-colors shrink-0"
+        title="Remove content"
+      >
+        <Trash2 size={13} />
+      </button>
+    </Reorder.Item>
+  )
+}
+
+export function PinEditModal({ isOpen, onClose, pin, isDesktop, onAddContent, onArchiveContent, onReorderContent }: PinEditModalProps) {
   useScrollLock(isOpen)
   if (!pin) return null
 
@@ -186,11 +231,11 @@ export function PinEditModal({ isOpen, onClose, pin, isDesktop, onEditDetails, o
               <div className="flex-1 overflow-y-auto px-6 py-5">
                 <PinEditContent
                   pin={pin}
-                  onEditDetails={onEditDetails}
                   onAddContent={onAddContent}
                   onArchiveContent={onArchiveContent}
                   onReorderContent={onReorderContent}
                   onClose={onClose}
+                  isDesktop
                 />
               </div>
             </motion.div>
@@ -206,9 +251,9 @@ export function PinEditModal({ isOpen, onClose, pin, isDesktop, onEditDetails, o
       <div className="px-5 pb-8">
         <PinEditContent
           pin={pin}
-          onEditDetails={onEditDetails}
           onAddContent={onAddContent}
           onArchiveContent={onArchiveContent}
+          onReorderContent={onReorderContent}
           onClose={onClose}
         />
       </div>

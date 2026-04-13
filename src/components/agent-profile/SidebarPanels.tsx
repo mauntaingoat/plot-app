@@ -77,7 +77,7 @@ export function SidebarPanels({
               {sidebarPanel === 'selectAgent' && (
                 <div className="space-y-4">
                   <p className="text-[13px] text-white/40 mb-2">Pick an agent to view their Reelst</p>
-                  {[agent, ...nearbyAgents].map((a) => (
+                  {[agent, ...nearbyAgents.filter((a) => a.uid !== agent.uid)].map((a) => (
                     <button key={a.uid} onClick={() => { onSelectAgent(a); setSidebarPanel(null) }}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer ${a.uid === agent.uid ? 'bg-tangerine/15 border border-tangerine/20' : 'bg-white/5 hover:bg-white/8'}`}>
                       <Avatar src={a.photoURL} name={a.displayName} size={36} ring={a.uid === agent.uid ? 'story' : 'none'} />
