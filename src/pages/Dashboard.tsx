@@ -33,7 +33,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { firebaseConfigured } from '@/config/firebase'
 import { MOCK_PINS_CAROLINA, MOCK_CURRENT_USER, MOCK_AGENTS } from '@/lib/mock'
 import { PLATFORM_LIST, PLATFORM_LOGOS } from '@/components/icons/PlatformLogos'
-import { PIN_CONFIG, type Pin, type Platform, type ForSalePin, type OpenHouse } from '@/lib/types'
+import { PIN_CONFIG, type Pin, type Platform, type ForSalePin, type OpenHouse, type ContentItem } from '@/lib/types'
 
 type DashTab = 'plot' | 'insights' | 'inbox' | 'content' | 'settings'
 
@@ -325,22 +325,33 @@ export default function Dashboard() {
               setPins((prev) => prev.map((p) => p.id === pinId ? updated as Pin : p))
               import('@/lib/firestore').then(({ updatePin }) => updatePin(pinId, { content: updated.content } as any)).catch(() => {})
             }}
-            onAssignContent={(contentId, fromPinId, toPinId) => {
+            onAssignContent={(contentId, fromPinId, toPinId, contentItem) => {
               if (fromPinId === toPinId) return
+              const toPin = pins.find((p) => p.id === toPinId)
+
+              if (!fromPinId && contentItem) {
+                // Re-linking unlinked content — ContentLibrary already handled Firestore update
+                // Update local pins state to reflect the content on the target pin
+                if (!toPin) return
+                setPins((prev) => prev.map((p) =>
+                  p.id === toPinId ? { ...p, content: [...p.content, contentItem] } as Pin : p
+                ))
+                return
+              }
+
               // Move content from one pin to another
               const fromPin = pins.find((p) => p.id === fromPinId)
-              const toPin = pins.find((p) => p.id === toPinId)
               if (!fromPin || !toPin) return
-              const contentItem = fromPin.content.find((c) => c.id === contentId)
-              if (!contentItem) return
+              const movedItem = fromPin.content.find((c) => c.id === contentId)
+              if (!movedItem) return
               setPins((prev) => prev.map((p) => {
                 if (p.id === fromPinId) return { ...p, content: p.content.filter((c) => c.id !== contentId) } as Pin
-                if (p.id === toPinId) return { ...p, content: [...p.content, contentItem] } as Pin
+                if (p.id === toPinId) return { ...p, content: [...p.content, movedItem] } as Pin
                 return p
               }))
               import('@/lib/firestore').then(({ updatePin }) => {
                 updatePin(fromPinId, { content: fromPin.content.filter((c) => c.id !== contentId) } as any).catch(() => {})
-                updatePin(toPinId, { content: [...toPin.content, contentItem] } as any).catch(() => {})
+                updatePin(toPinId, { content: [...toPin.content, movedItem] } as any).catch(() => {})
               })
             }}
           />

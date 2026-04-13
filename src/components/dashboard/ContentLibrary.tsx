@@ -4,14 +4,14 @@ import { Upload, Play, Image, Film, MapPin, Plus, Eye, Bookmark, MoreHorizontal,
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
-import { getAgentContent, linkContentToPin, archiveContent as archiveContentDoc } from '@/lib/firestore'
+import { getAgentContent, createContent, updateContent, linkContentToPin, archiveContent as archiveContentDoc } from '@/lib/firestore'
 import type { Pin, ContentItem, ContentDoc } from '@/lib/types'
 
 interface ContentLibraryProps {
   pins: Pin[]
   agentId: string
   onUploadContent: (files: File[], type: 'reel' | 'photo') => void
-  onAssignContent: (contentId: string, fromPinId: string, toPinId: string) => void
+  onAssignContent: (contentId: string, fromPinId: string, toPinId: string, contentItem?: ContentItem) => void
   onArchiveContent: (contentId: string, pinId: string) => void
   isDesktop: boolean
 }
@@ -22,9 +22,19 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [mobileMenuContent, setMobileMenuContent] = useState<{ content: ContentItem; pin: Pin | null } | null>(null)
   const [playingVideo, setPlayingVideo] = useState<string | null>(null)
-  const [unlinkedContent, setUnlinkedContent] = useState<ContentItem[]>([])
+  const storageKey = `reelst_unlinked_${agentId}`
+  const [unlinkedContent, setUnlinkedContent] = useState<ContentItem[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(storageKey) || '[]')
+    } catch { return [] }
+  })
   const photoRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLInputElement>(null)
+
+  // Sync unlinked content to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify(unlinkedContent))
+  }, [unlinkedContent, storageKey])
 
   // Build content→pin lookup (updates when pins change, but doesn't affect order)
   const contentPinMap = useMemo(() => {
@@ -135,30 +145,57 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
               onMenuClose={() => setActiveMenu(null)}
               onAssign={(toPinId) => {
                 if (toPinId === '__none__') {
-                  // Unlink — move to local unlinked state + remove from pin
-                  setUnlinkedContent((prev) => [...prev, content])
+                  // Unlink — move to unlinked state + remove from pin
                   if (pin) onArchiveContent(content.id, pin.id)
-                  // Also save to standalone collection
-                  import('@/lib/firestore').then(({ createContent }) => {
-                    createContent({
-                      agentId: agentId,
-                      pinId: null,
-                      type: content.type,
-                      mediaUrl: content.mediaUrl,
-                      mediaUrls: content.mediaUrls,
-                      thumbnailUrl: content.thumbnailUrl,
-                      caption: content.caption,
-                      duration: content.duration,
-                      publishAt: content.publishAt,
-                    })
+                  // Check if content doc already exists in content collection, else create
+                  getAgentContent(agentId).then((docs) => {
+                    const existing = docs.find((d) => d.id === content.id)
+                    if (existing) {
+                      updateContent(content.id, { pinId: null })
+                    } else {
+                      createContent({
+                        agentId,
+                        pinId: null,
+                        type: content.type,
+                        mediaUrl: content.mediaUrl,
+                        mediaUrls: content.mediaUrls,
+                        thumbnailUrl: content.thumbnailUrl,
+                        caption: content.caption,
+                        duration: content.duration,
+                        publishAt: content.publishAt,
+                      })
+                    }
                   }).catch(() => {})
+                  setUnlinkedContent((prev) => {
+                    if (prev.some((c) => c.id === content.id)) return prev
+                    return [...prev, content]
+                  })
                   return
                 } else if (pin) {
+                  // Move from one pin to another
                   onAssignContent(content.id, pin.id, toPinId)
+                } else {
+                  // Re-link unlinked content to a pin
+                  const targetPin = pins.find((p) => p.id === toPinId)
+                  if (targetPin) {
+                    const updatedPinContent = [...(targetPin.content || []), content]
+                    import('@/lib/firestore').then(({ updatePin }) => {
+                      updatePin(toPinId, { content: updatedPinContent } as any).catch(() => {})
+                    })
+                    // Update content doc pinId
+                    updateContent(content.id, { pinId: toPinId }).catch(() => {})
+                    setUnlinkedContent((prev) => prev.filter((c) => c.id !== content.id))
+                    onAssignContent(content.id, '', toPinId, content)
+                  }
                 }
               }}
               onArchive={() => {
-                if (pin) setArchiveTarget({ contentId: content.id, pinId: pin.id })
+                if (pin) {
+                  setArchiveTarget({ contentId: content.id, pinId: pin.id })
+                } else {
+                  // Archive unlinked content — just remove from local state
+                  setUnlinkedContent((prev) => prev.filter((c) => c.id !== content.id))
+                }
               }}
             />
           ))}
