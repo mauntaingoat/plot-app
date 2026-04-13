@@ -26,28 +26,54 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
   const photoRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLInputElement>(null)
 
-  // Merge content from pins + unlinked — keyed by content ID for stable order
-  const allContent = useMemo(() => {
-    const items: { content: ContentItem; pin: Pin | null }[] = []
-    // Build a map of content ID → pin for quick lookup
-    const seen = new Set<string>()
+  // Build content→pin lookup (updates when pins change, but doesn't affect order)
+  const contentPinMap = useMemo(() => {
+    const map = new Map<string, Pin | null>()
     for (const pin of pins) {
       for (const c of pin.content || []) {
-        if (!seen.has(c.id)) {
-          items.push({ content: c, pin })
-          seen.add(c.id)
-        }
+        map.set(c.id, pin)
       }
     }
     for (const c of unlinkedContent) {
-      if (!seen.has(c.id)) {
-        items.push({ content: c, pin: null })
-        seen.add(c.id)
+      if (!map.has(c.id)) map.set(c.id, null)
+    }
+    return map
+  }, [pins, unlinkedContent])
+
+  // Stable ordered list — only adds new items, never re-sorts existing ones
+  const orderRef = useRef<string[]>([])
+  const allContent = useMemo(() => {
+    // Collect all content items
+    const allItems: ContentItem[] = []
+    const seen = new Set<string>()
+    for (const pin of pins) {
+      for (const c of pin.content || []) {
+        if (!seen.has(c.id)) { allItems.push(c); seen.add(c.id) }
       }
     }
-    items.sort((a, b) => b.content.createdAt.toMillis() - a.content.createdAt.toMillis())
-    return items
-  }, [pins, unlinkedContent])
+    for (const c of unlinkedContent) {
+      if (!seen.has(c.id)) { allItems.push(c); seen.add(c.id) }
+    }
+
+    // Add any new IDs to the stable order (at the top)
+    const existingIds = new Set(orderRef.current)
+    const newIds = allItems.filter((c) => !existingIds.has(c.id)).map((c) => c.id)
+    if (newIds.length > 0) {
+      orderRef.current = [...newIds, ...orderRef.current]
+    }
+    // Remove deleted IDs
+    orderRef.current = orderRef.current.filter((id) => seen.has(id))
+
+    // Build final list in stable order
+    const itemMap = new Map(allItems.map((c) => [c.id, c]))
+    return orderRef.current
+      .map((id) => {
+        const content = itemMap.get(id)
+        if (!content) return null
+        return { content, pin: contentPinMap.get(id) ?? null }
+      })
+      .filter(Boolean) as { content: ContentItem; pin: Pin | null }[]
+  }, [pins, unlinkedContent, contentPinMap])
 
   const filtered = useMemo(() => {
     if (filter === 'all') return allContent
