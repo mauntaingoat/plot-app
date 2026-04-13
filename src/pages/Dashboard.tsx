@@ -370,22 +370,6 @@ export default function Dashboard() {
               </motion.button>
             ))}
 
-            {/* Inbox — quick access on mobile (it's a full tab on desktop) */}
-            {!isDesktop && (
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setActiveTab('inbox')}
-                className="w-full flex items-center gap-3.5 bg-cream rounded-[14px] p-4 text-left cursor-pointer mb-2"
-              >
-                <div className="w-10 h-10 rounded-[12px] bg-tangerine/10 flex items-center justify-center"><Inbox size={18} className="text-tangerine" /></div>
-                <div className="flex-1">
-                  <span className="text-[15px] font-medium text-ink block">Inbox</span>
-                  <span className="text-[12px] text-smoke">Showing requests</span>
-                </div>
-                <ChevronRight size={16} className="text-ash" />
-              </motion.button>
-            )}
-
             <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Notifications</p>
             <NotificationSettings />
 
@@ -789,12 +773,12 @@ export default function Dashboard() {
         tabs={[
           { id: 'plot', label: 'My Reelst', icon: <MapPin size={20} /> },
           { id: 'insights', label: 'Insights', icon: <BarChart3 size={20} /> },
+          { id: 'inbox', label: 'Inbox', icon: <Inbox size={20} /> },
           { id: 'content', label: 'Content', icon: <Film size={20} /> },
           { id: 'settings', label: 'More', icon: <Settings size={20} /> },
         ]}
         active={activeTab}
         onChange={(id) => { setActiveTab(id as DashTab); window.scrollTo(0, 0) }}
-        centerAction={{ icon: <Plus size={24} />, onClick: () => navigate('/dashboard/pin/new') }}
       />
 
       {renderSheets()}

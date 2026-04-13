@@ -97,8 +97,24 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
               onMenuClose={() => setActiveMenu(null)}
               onAssign={(toPinId) => {
                 if (toPinId === '__none__') {
-                  // Unlink — keep in library, remove from pin
-                  if (pin) onArchiveContent(content.id, pin.id)
+                  // Unlink — save to standalone collection, then remove from pin
+                  if (pin) {
+                    import('@/lib/firestore').then(({ createContent }) => {
+                      createContent({
+                        agentId: agentId,
+                        pinId: null,
+                        type: content.type,
+                        mediaUrl: content.mediaUrl,
+                        mediaUrls: content.mediaUrls,
+                        thumbnailUrl: content.thumbnailUrl,
+                        caption: content.caption,
+                        duration: content.duration,
+                        publishAt: content.publishAt,
+                      })
+                    }).catch(() => {})
+                    // Keep in pin array for now — TODO: fully migrate to content collection
+                  }
+                  return
                 } else if (pin) {
                   onAssignContent(content.id, pin.id, toPinId)
                 }
