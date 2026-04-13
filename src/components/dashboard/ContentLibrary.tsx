@@ -22,20 +22,32 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [mobileMenuContent, setMobileMenuContent] = useState<{ content: ContentItem; pin: Pin | null } | null>(null)
   const [playingVideo, setPlayingVideo] = useState<string | null>(null)
+  const [unlinkedContent, setUnlinkedContent] = useState<ContentItem[]>([])
   const photoRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLInputElement>(null)
 
-  // Merge content from pins (existing) — in future also from content collection
+  // Merge content from pins + unlinked — keyed by content ID for stable order
   const allContent = useMemo(() => {
     const items: { content: ContentItem; pin: Pin | null }[] = []
+    // Build a map of content ID → pin for quick lookup
+    const seen = new Set<string>()
     for (const pin of pins) {
       for (const c of pin.content || []) {
-        items.push({ content: c, pin })
+        if (!seen.has(c.id)) {
+          items.push({ content: c, pin })
+          seen.add(c.id)
+        }
+      }
+    }
+    for (const c of unlinkedContent) {
+      if (!seen.has(c.id)) {
+        items.push({ content: c, pin: null })
+        seen.add(c.id)
       }
     }
     items.sort((a, b) => b.content.createdAt.toMillis() - a.content.createdAt.toMillis())
     return items
-  }, [pins])
+  }, [pins, unlinkedContent])
 
   const filtered = useMemo(() => {
     if (filter === 'all') return allContent
@@ -97,23 +109,23 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
               onMenuClose={() => setActiveMenu(null)}
               onAssign={(toPinId) => {
                 if (toPinId === '__none__') {
-                  // Unlink — save to standalone collection, then remove from pin
-                  if (pin) {
-                    import('@/lib/firestore').then(({ createContent }) => {
-                      createContent({
-                        agentId: agentId,
-                        pinId: null,
-                        type: content.type,
-                        mediaUrl: content.mediaUrl,
-                        mediaUrls: content.mediaUrls,
-                        thumbnailUrl: content.thumbnailUrl,
-                        caption: content.caption,
-                        duration: content.duration,
-                        publishAt: content.publishAt,
-                      })
-                    }).catch(() => {})
-                    // Keep in pin array for now — TODO: fully migrate to content collection
-                  }
+                  // Unlink — move to local unlinked state + remove from pin
+                  setUnlinkedContent((prev) => [...prev, content])
+                  if (pin) onArchiveContent(content.id, pin.id)
+                  // Also save to standalone collection
+                  import('@/lib/firestore').then(({ createContent }) => {
+                    createContent({
+                      agentId: agentId,
+                      pinId: null,
+                      type: content.type,
+                      mediaUrl: content.mediaUrl,
+                      mediaUrls: content.mediaUrls,
+                      thumbnailUrl: content.thumbnailUrl,
+                      caption: content.caption,
+                      duration: content.duration,
+                      publishAt: content.publishAt,
+                    })
+                  }).catch(() => {})
                   return
                 } else if (pin) {
                   onAssignContent(content.id, pin.id, toPinId)
