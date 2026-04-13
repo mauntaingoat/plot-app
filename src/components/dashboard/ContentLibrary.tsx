@@ -75,7 +75,7 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, onArchi
           <p className="text-[12px] text-smoke mb-4">Upload photos and videos to your library.</p>
         </div>
       ) : (
-        <div className={isDesktop ? 'grid grid-cols-2 gap-4' : 'space-y-3'}>
+        <div className="grid grid-cols-2 gap-3">
           {filtered.map(({ content, pin }) => {
             const isVideo = content.type === 'reel' || content.type === 'live' || content.type === 'video_note'
             const thumb = content.thumbnailUrl || content.mediaUrl || ''
@@ -89,10 +89,16 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, onArchi
                   <div className="relative aspect-[9/11] overflow-hidden bg-pearl">
                     {thumb ? (
                       <>
-                        {/* Blurred bg for non-portrait */}
-                        <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-105 opacity-30" />
-                        <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-contain"
-                          onLoad={(e) => { const img = e.currentTarget; if (img.naturalHeight > img.naturalWidth * 1.2) img.style.objectFit = 'cover' }} />
+                        {/* Blurred bg — always visible, fills frame */}
+                        <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-25" loading="lazy" />
+                        {/* Foreground — contain by default, cover if portrait */}
+                        <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-contain" loading="lazy"
+                          onLoad={(e) => {
+                            const img = e.currentTarget
+                            if (img.naturalHeight > img.naturalWidth * 1.2) {
+                              img.style.objectFit = 'cover'
+                            }
+                          }} />
                       </>
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center">
@@ -121,12 +127,15 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, onArchi
                               value={pin.id}
                               onChange={(e) => {
                                 const val = e.target.value
-                                if (val === '__unlink__') return // TODO: handle unlink
+                                if (val === '__none__') {
+                                  onArchiveContent(content.id, pin.id)
+                                  return
+                                }
                                 onAssignContent(content.id, pin.id, val)
                               }}
                               className="text-[13px] font-medium text-graphite bg-transparent border-none outline-none cursor-pointer p-0 pr-4 truncate appearance-none flex-1 min-w-0"
                             >
-                              <option value="__unlink__">Unlinked</option>
+                              <option value="__none__">No listing</option>
                               {pins.map((p) => (
                                 <option key={p.id} value={p.id}>
                                   {p.address.split(',')[0]}{!p.enabled ? ' (hidden)' : ''}
