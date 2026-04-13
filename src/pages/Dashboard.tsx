@@ -312,6 +312,7 @@ export default function Dashboard() {
         {activeTab === 'content' && (
           <ContentLibrary
             pins={pins}
+            agentId={activeUser.uid}
             isDesktop={isDesktop}
             onUploadContent={(files, type) => {
               // TODO: upload files to Storage, create content items

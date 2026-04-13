@@ -63,12 +63,13 @@ export interface Coordinates {
   lng: number
 }
 
-// ── Content item (lives inside a pin) ──
+// ── Content item (lives inside a pin AND in the content collection) ──
 
 export interface ContentItem {
   id: string
   type: ContentType
   mediaUrl: string
+  mediaUrls?: string[] // for photo carousels — multiple images in one content item
   thumbnailUrl?: string
   caption: string
   duration?: number // seconds, for reels/videos
@@ -76,6 +77,13 @@ export interface ContentItem {
   views: number
   saves: number
   publishAt?: Timestamp | null // if set + in the future, content is hidden from the public until then
+}
+
+// ── Standalone content document (content collection) ──
+
+export interface ContentDoc extends ContentItem {
+  agentId: string
+  pinId: string | null // null = unlinked, not assigned to any pin
 }
 
 // ── Open house schedule ──

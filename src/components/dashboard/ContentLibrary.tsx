@@ -1,29 +1,33 @@
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Upload, Play, Image, Film, MapPin, Plus, Eye, Bookmark, MoreHorizontal, Edit3, Trash2, Images, ChevronDown, Edit } from 'lucide-react'
+import { Upload, Play, Image, Film, MapPin, Plus, Eye, Bookmark, MoreHorizontal, Edit3, Trash2, Images, ChevronDown, Edit, ChevronLeft, ChevronRight, Pause } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
-import type { Pin, ContentItem } from '@/lib/types'
+import { getAgentContent, linkContentToPin, archiveContent as archiveContentDoc } from '@/lib/firestore'
+import type { Pin, ContentItem, ContentDoc } from '@/lib/types'
 
 interface ContentLibraryProps {
   pins: Pin[]
+  agentId: string
   onUploadContent: (files: File[], type: 'reel' | 'photo') => void
   onAssignContent: (contentId: string, fromPinId: string, toPinId: string) => void
   onArchiveContent: (contentId: string, pinId: string) => void
   isDesktop: boolean
 }
 
-export function ContentLibrary({ pins, onUploadContent, onAssignContent, onArchiveContent, isDesktop }: ContentLibraryProps) {
+export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent, onArchiveContent, isDesktop }: ContentLibraryProps) {
   const [filter, setFilter] = useState<'all' | 'reel' | 'photo'>('all')
   const [archiveTarget, setArchiveTarget] = useState<{ contentId: string; pinId: string } | null>(null)
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
-  const [mobileMenuContent, setMobileMenuContent] = useState<{ content: ContentItem; pin: Pin } | null>(null)
+  const [mobileMenuContent, setMobileMenuContent] = useState<{ content: ContentItem; pin: Pin | null } | null>(null)
+  const [playingVideo, setPlayingVideo] = useState<string | null>(null)
   const photoRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLInputElement>(null)
 
+  // Merge content from pins (existing) — in future also from content collection
   const allContent = useMemo(() => {
-    const items: { content: ContentItem; pin: Pin }[] = []
+    const items: { content: ContentItem; pin: Pin | null }[] = []
     for (const pin of pins) {
       for (const c of pin.content || []) {
         items.push({ content: c, pin })
@@ -65,7 +69,7 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, onArchi
 
       <p className="text-[11px] text-ash">{filtered.length} item{filtered.length !== 1 ? 's' : ''}</p>
 
-      {/* Grid — 1-col mobile, 2-col desktop */}
+      {/* Grid */}
       {filtered.length === 0 ? (
         <div className="bg-cream rounded-[18px] p-8 text-center">
           <div className="w-12 h-12 rounded-full bg-pearl mx-auto mb-3 flex items-center justify-center">
@@ -76,134 +80,34 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, onArchi
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3">
-          {filtered.map(({ content, pin }) => {
-            const isVideo = content.type === 'reel' || content.type === 'live' || content.type === 'video_note'
-            const thumb = content.thumbnailUrl || content.mediaUrl || ''
-            const isLinked = true
-            const menuOpen = activeMenu === content.id
-
-            return (
-              <div key={content.id} className="relative">
-                <div className={`rounded-[18px] overflow-hidden bg-warm-white shadow-sm ${isLinked ? 'border-2 border-tangerine/25' : 'border border-border-light'}`}>
-                  {/* Image — taller aspect for portrait content */}
-                  <div className="relative aspect-[9/11] overflow-hidden bg-pearl">
-                    {thumb ? (
-                      <>
-                        {/* Blurred bg — always visible, fills frame */}
-                        <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-25" loading="lazy" />
-                        {/* Foreground — contain by default, cover if portrait */}
-                        <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-contain" loading="lazy"
-                          onLoad={(e) => {
-                            const img = e.currentTarget
-                            if (img.naturalHeight > img.naturalWidth * 1.2) {
-                              img.style.objectFit = 'cover'
-                            }
-                          }} />
-                      </>
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        {isVideo ? <Play size={28} className="text-smoke" /> : <Image size={28} className="text-smoke" />}
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-
-                    {/* Type pill */}
-                    <div className="absolute top-3 left-3">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-sm text-[11px] font-bold text-ink shadow-sm">
-                        {isVideo ? <><Play size={9} fill="currentColor" /> Video</> : <><Image size={9} /> Photo</>}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Info section — matches PinCard */}
-                  <div className="p-3.5 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        {/* Listing assignment — styled as a tappable row */}
-                        <div className="relative">
-                          <div className="flex items-center gap-1.5">
-                            <MapPin size={12} className="text-tangerine shrink-0" />
-                            <select
-                              value={pin.id}
-                              onChange={(e) => {
-                                const val = e.target.value
-                                if (val === '__none__') {
-                                  onArchiveContent(content.id, pin.id)
-                                  return
-                                }
-                                onAssignContent(content.id, pin.id, val)
-                              }}
-                              className="text-[13px] font-medium text-graphite bg-transparent border-none outline-none cursor-pointer p-0 pr-4 truncate appearance-none flex-1 min-w-0"
-                            >
-                              <option value="__none__">No listing</option>
-                              {pins.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  {p.address.split(',')[0]}{!p.enabled ? ' (hidden)' : ''}
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown size={11} className="text-ash shrink-0 -ml-2" />
-                          </div>
-                        </div>
-
-                        {content.caption && (
-                          <p className="text-[12px] text-smoke line-clamp-2 mt-1">{content.caption}</p>
-                        )}
-                      </div>
-
-                      {/* Three-dot menu */}
-                      <motion.button
-                        whileTap={{ scale: 0.85 }}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (isDesktop) {
-                            setActiveMenu(menuOpen ? null : content.id)
-                          } else {
-                            setMobileMenuContent({ content, pin })
-                          }
-                        }}
-                        className="p-1.5 rounded-lg text-ash hover:text-smoke hover:bg-cream cursor-pointer shrink-0"
-                      >
-                        <MoreHorizontal size={18} />
-                      </motion.button>
-                    </div>
-
-                    {/* Stats */}
-                    <div className="flex items-center gap-3 pt-1">
-                      <span className="flex items-center gap-1 text-[11px] font-medium text-smoke">
-                        <Eye size={12} /> {content.views.toLocaleString()}
-                      </span>
-                      <span className="flex items-center gap-1 text-[11px] font-medium text-smoke">
-                        <Bookmark size={12} /> {content.saves.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Desktop popover — anchored to 3-dot */}
-                {isDesktop && menuOpen && (
-                  <>
-                    <div className="fixed inset-0 z-[49]" onClick={() => setActiveMenu(null)} />
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      transition={{ duration: 0.12 }}
-                      className="absolute top-2 right-2 z-[50] w-[190px] bg-obsidian rounded-[14px] shadow-2xl border border-border-dark overflow-hidden"
-                    >
-                      <div className="py-1.5">
-                        <MenuButton icon={<Edit size={14} className="text-mist" />} label="Edit" onClick={() => setActiveMenu(null)} />
-                        <MenuButton icon={<Edit3 size={14} className="text-mist" />} label="Edit Caption" onClick={() => setActiveMenu(null)} />
-                        {content.type === 'photo' && (
-                          <MenuButton icon={<Images size={14} className="text-tangerine" />} label="Add to Carousel" onClick={() => setActiveMenu(null)} />
-                        )}
-                        <MenuButton icon={<Trash2 size={14} className="text-live-red" />} label="Archive" danger onClick={() => { setArchiveTarget({ contentId: content.id, pinId: pin.id }); setActiveMenu(null) }} />
-                      </div>
-                    </motion.div>
-                  </>
-                )}
-              </div>
-            )
-          })}
+          {filtered.map(({ content, pin }) => (
+            <ContentCard
+              key={content.id}
+              content={content}
+              pin={pin}
+              pins={pins}
+              isDesktop={isDesktop}
+              isPlaying={playingVideo === content.id}
+              onPlay={() => setPlayingVideo(playingVideo === content.id ? null : content.id)}
+              menuOpen={activeMenu === content.id}
+              onMenuToggle={() => {
+                if (isDesktop) setActiveMenu(activeMenu === content.id ? null : content.id)
+                else setMobileMenuContent({ content, pin })
+              }}
+              onMenuClose={() => setActiveMenu(null)}
+              onAssign={(toPinId) => {
+                if (toPinId === '__none__') {
+                  // Unlink — keep in library, remove from pin
+                  if (pin) onArchiveContent(content.id, pin.id)
+                } else if (pin) {
+                  onAssignContent(content.id, pin.id, toPinId)
+                }
+              }}
+              onArchive={() => {
+                if (pin) setArchiveTarget({ contentId: content.id, pinId: pin.id })
+              }}
+            />
+          ))}
         </div>
       )}
 
@@ -211,23 +115,27 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, onArchi
       <DarkBottomSheet
         isOpen={!!mobileMenuContent}
         onClose={() => setMobileMenuContent(null)}
-        title={mobileMenuContent?.content.caption || 'Content'}
+        title={
+          mobileMenuContent?.content.caption
+            ? (mobileMenuContent.content.caption.length > 40
+                ? mobileMenuContent.content.caption.slice(0, 40) + '…'
+                : mobileMenuContent.content.caption)
+            : (mobileMenuContent?.content.type === 'reel' ? 'Video' : 'Photo')
+        }
       >
         <div className="px-5 pb-8 space-y-2">
-          <MobileMenuButton icon={<Edit size={18} className="text-mist" />} label="Edit" onClick={() => setMobileMenuContent(null)} />
-          <MobileMenuButton icon={<Edit3 size={18} className="text-mist" />} label="Edit Caption" onClick={() => setMobileMenuContent(null)} />
+          <MobileMenuBtn icon={<Edit size={18} className="text-mist" />} label="Edit" onClick={() => setMobileMenuContent(null)} />
+          <MobileMenuBtn icon={<Edit3 size={18} className="text-mist" />} label="Edit Caption" onClick={() => setMobileMenuContent(null)} />
           {mobileMenuContent?.content.type === 'photo' && (
-            <MobileMenuButton icon={<Images size={18} className="text-tangerine" />} label="Add to Carousel" onClick={() => setMobileMenuContent(null)} />
+            <MobileMenuBtn icon={<Images size={18} className="text-tangerine" />} label="Add to Carousel" onClick={() => setMobileMenuContent(null)} />
           )}
-          <MobileMenuButton
-            icon={<Trash2 size={18} className="text-live-red" />}
-            label="Archive"
-            danger
+          <MobileMenuBtn
+            icon={<Trash2 size={18} className="text-live-red" />} label="Archive" danger
             onClick={() => {
-              if (mobileMenuContent) {
+              if (mobileMenuContent?.pin) {
                 setArchiveTarget({ contentId: mobileMenuContent.content.id, pinId: mobileMenuContent.pin.id })
-                setMobileMenuContent(null)
               }
+              setMobileMenuContent(null)
             }}
           />
         </div>
@@ -236,34 +144,172 @@ export function ContentLibrary({ pins, onUploadContent, onAssignContent, onArchi
       <ConfirmDialog
         isOpen={!!archiveTarget}
         onClose={() => setArchiveTarget(null)}
-        onConfirm={() => {
-          if (archiveTarget) {
-            onArchiveContent(archiveTarget.contentId, archiveTarget.pinId)
-            setArchiveTarget(null)
-          }
-        }}
+        onConfirm={() => { if (archiveTarget) { onArchiveContent(archiveTarget.contentId, archiveTarget.pinId); setArchiveTarget(null) } }}
         title="Archive this content?"
-        message="This will remove the content from the listing. The file is kept and can be restored later."
+        message="This will remove the content from the listing."
         confirmLabel="Archive"
       />
     </div>
   )
 }
 
-// ── Shared components ──
+// ── Content Card ──
 
-function MenuButton({ icon, label, onClick, danger }: { icon: React.ReactNode; label: string; onClick: () => void; danger?: boolean }) {
+function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpen, onMenuToggle, onMenuClose, onAssign, onArchive }: {
+  content: ContentItem; pin: Pin | null; pins: Pin[]; isDesktop: boolean
+  isPlaying: boolean; onPlay: () => void
+  menuOpen: boolean; onMenuToggle: () => void; onMenuClose: () => void
+  onAssign: (toPinId: string) => void; onArchive: () => void
+}) {
+  const isVideo = content.type === 'reel' || content.type === 'live' || content.type === 'video_note'
+  const thumb = content.thumbnailUrl || content.mediaUrl || ''
+  const mediaUrls = content.mediaUrls || (thumb ? [thumb] : [])
+  const isCarousel = !isVideo && mediaUrls.length > 1
+  const [carouselIdx, setCarouselIdx] = useState(0)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const isLinked = !!pin
+
+  useEffect(() => {
+    if (isPlaying && videoRef.current) videoRef.current.play().catch(() => {})
+    if (!isPlaying && videoRef.current) videoRef.current.pause()
+  }, [isPlaying])
+
+  return (
+    <div className="relative">
+      <div className={`rounded-[18px] overflow-hidden bg-warm-white shadow-sm ${isLinked ? 'border-2 border-tangerine/25' : 'border border-border-light'}`}>
+        {/* Media area */}
+        <div className="relative aspect-[9/11] overflow-hidden bg-pearl cursor-pointer" onClick={isVideo ? onPlay : undefined}>
+          {isVideo && content.mediaUrl ? (
+            <>
+              <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-25" />
+              {isPlaying ? (
+                <video ref={videoRef} src={content.mediaUrl} className="absolute inset-0 w-full h-full object-contain" loop playsInline muted autoPlay />
+              ) : (
+                <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-contain"
+                  onLoad={(e) => { const img = e.currentTarget; if (img.naturalHeight > img.naturalWidth * 1.2) img.style.objectFit = 'cover' }} />
+              )}
+              {/* Play/Pause overlay */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className={`w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center transition-opacity ${isPlaying ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}>
+                  {isPlaying ? <Pause size={18} className="text-white" /> : <Play size={18} className="text-white ml-0.5" />}
+                </div>
+              </div>
+            </>
+          ) : thumb ? (
+            <>
+              <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-25" />
+              <img src={isCarousel ? mediaUrls[carouselIdx] : thumb} alt="" className="absolute inset-0 w-full h-full object-contain"
+                onLoad={(e) => { const img = e.currentTarget; if (img.naturalHeight > img.naturalWidth * 1.2) img.style.objectFit = 'cover' }} />
+              {/* Carousel arrows */}
+              {isCarousel && (
+                <>
+                  {carouselIdx > 0 && (
+                    <button onClick={(e) => { e.stopPropagation(); setCarouselIdx((i) => i - 1) }}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer">
+                      <ChevronLeft size={14} />
+                    </button>
+                  )}
+                  {carouselIdx < mediaUrls.length - 1 && (
+                    <button onClick={(e) => { e.stopPropagation(); setCarouselIdx((i) => i + 1) }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer">
+                      <ChevronRight size={14} />
+                    </button>
+                  )}
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                    {mediaUrls.map((_, i) => (
+                      <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${i === carouselIdx ? 'bg-white w-3' : 'bg-white/40'}`} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              {isVideo ? <Play size={28} className="text-smoke" /> : <Image size={28} className="text-smoke" />}
+            </div>
+          )}
+
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+
+          {/* Type pill */}
+          <div className="absolute top-2.5 left-2.5">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-sm text-[11px] font-bold text-ink shadow-sm">
+              {isVideo ? <><Play size={9} fill="currentColor" /> Video</> : <><Image size={9} /> Photo</>}
+            </span>
+          </div>
+        </div>
+
+        {/* Info section */}
+        <div className="p-3.5 space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              {/* Listing assignment */}
+              <div className="flex items-center gap-1.5">
+                <MapPin size={12} className={isLinked ? 'text-tangerine' : 'text-ash'} shrink-0 />
+                <select
+                  value={pin?.id || '__none__'}
+                  onChange={(e) => onAssign(e.target.value)}
+                  className="text-[13px] font-medium text-graphite bg-transparent border-none outline-none cursor-pointer p-0 pr-4 truncate appearance-none flex-1 min-w-0"
+                >
+                  <option value="__none__">No listing</option>
+                  {pins.map((p) => (
+                    <option key={p.id} value={p.id}>{p.address.split(',')[0]}{!p.enabled ? ' (hidden)' : ''}</option>
+                  ))}
+                </select>
+                <ChevronDown size={11} className="text-ash shrink-0 -ml-2" />
+              </div>
+              {content.caption && (
+                <p className="text-[12px] text-smoke line-clamp-2 mt-1">{content.caption}</p>
+              )}
+            </div>
+
+            <motion.button whileTap={{ scale: 0.85 }} onClick={(e) => { e.stopPropagation(); onMenuToggle() }}
+              className="p-1.5 rounded-lg text-ash hover:text-smoke hover:bg-cream cursor-pointer shrink-0">
+              <MoreHorizontal size={18} />
+            </motion.button>
+          </div>
+
+          {/* Stats */}
+          <div className="flex items-center gap-3 pt-1">
+            <span className="flex items-center gap-1 text-[11px] font-medium text-smoke"><Eye size={12} /> {content.views.toLocaleString()}</span>
+            <span className="flex items-center gap-1 text-[11px] font-medium text-smoke"><Bookmark size={12} /> {content.saves.toLocaleString()}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop popover */}
+      {isDesktop && menuOpen && (
+        <>
+          <div className="fixed inset-0 z-[49]" onClick={onMenuClose} />
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.12 }}
+            className="absolute top-2 right-2 z-[50] w-[190px] bg-obsidian rounded-[14px] shadow-2xl border border-border-dark overflow-hidden">
+            <div className="py-1.5">
+              <PopoverBtn icon={<Edit size={14} className="text-mist" />} label="Edit" onClick={onMenuClose} />
+              <PopoverBtn icon={<Edit3 size={14} className="text-mist" />} label="Edit Caption" onClick={onMenuClose} />
+              {content.type === 'photo' && (
+                <PopoverBtn icon={<Images size={14} className="text-tangerine" />} label="Add to Carousel" onClick={onMenuClose} />
+              )}
+              <PopoverBtn icon={<Trash2 size={14} className="text-live-red" />} label="Archive" danger onClick={() => { onArchive(); onMenuClose() }} />
+            </div>
+          </motion.div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ── Helpers ──
+
+function PopoverBtn({ icon, label, onClick, danger }: { icon: React.ReactNode; label: string; onClick: () => void; danger?: boolean }) {
   return (
     <button onClick={onClick}
-      className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-[13px] font-medium cursor-pointer transition-colors ${
-        danger ? 'text-live-red hover:bg-live-red/5' : 'text-white hover:bg-white/5'
-      }`}>
+      className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-[13px] font-medium cursor-pointer transition-colors ${danger ? 'text-live-red hover:bg-live-red/5' : 'text-white hover:bg-white/5'}`}>
       {icon} {label}
     </button>
   )
 }
 
-function MobileMenuButton({ icon, label, onClick, danger }: { icon: React.ReactNode; label: string; onClick: () => void; danger?: boolean }) {
+function MobileMenuBtn({ icon, label, onClick, danger }: { icon: React.ReactNode; label: string; onClick: () => void; danger?: boolean }) {
   return (
     <motion.button whileTap={{ scale: 0.97 }} onClick={onClick}
       className={`w-full flex items-center gap-3 p-3.5 rounded-[14px] text-left ${danger ? 'bg-live-red/10' : 'bg-slate'}`}>

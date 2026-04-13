@@ -96,6 +96,14 @@ service cloud.firestore {
       allow update, delete: if false; // admin-only via Cloud Functions
     }
 
+    // ── CONTENT LIBRARY (standalone media items) ──
+    // Only the owning agent can CRUD their own content
+    match /content/{contentId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.agentId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.agentId == request.auth.uid;
+    }
+
     // ── DMCA TAKEDOWN REQUESTS ──
     // Anyone can submit a DMCA request (copyright holders may not have accounts)
     match /dmca_requests/{reqId} {

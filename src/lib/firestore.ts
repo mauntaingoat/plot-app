@@ -5,7 +5,7 @@ import {
   type DocumentData, type Unsubscribe,
 } from 'firebase/firestore'
 import { db, firebaseConfigured } from '@/config/firebase'
-import type { UserDoc, Pin, ContentItem, Coordinates, PinType, ShowingRequest, ContentReport, ReportReason, LicenseDispute, DmcaRequest } from '@/lib/types'
+import type { UserDoc, Pin, ContentItem, ContentDoc, Coordinates, PinType, ShowingRequest, ContentReport, ReportReason, LicenseDispute, DmcaRequest } from '@/lib/types'
 
 // ══════════════════════════════════════════
 // USERS
@@ -512,4 +512,63 @@ export async function createDmcaRequest(
     createdAt: serverTimestamp(),
   })
   return ref.id
+}
+
+// ══════════════════════════════════════════
+// CONTENT LIBRARY (standalone content collection)
+// ══════════════════════════════════════════
+
+export async function createContent(data: Omit<ContentDoc, 'id' | 'createdAt' | 'views' | 'saves'>): Promise<string> {
+  if (!db) {
+    const id = `content_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    const list = JSON.parse(localStorage.getItem('reelst_content') || '[]')
+    list.push({ ...data, id, views: 0, saves: 0, createdAt: { toMillis: () => Date.now() } })
+    localStorage.setItem('reelst_content', JSON.stringify(list))
+    return id
+  }
+  const ref = await addDoc(collection(db, 'content'), {
+    ...data,
+    views: 0,
+    saves: 0,
+    createdAt: serverTimestamp(),
+  })
+  return ref.id
+}
+
+export async function getAgentContent(agentId: string): Promise<ContentDoc[]> {
+  if (!db) {
+    const list = JSON.parse(localStorage.getItem('reelst_content') || '[]')
+    return list.filter((c: ContentDoc) => c.agentId === agentId)
+  }
+  const q = query(
+    collection(db, 'content'),
+    where('agentId', '==', agentId),
+    orderBy('createdAt', 'desc'),
+    limit(200),
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as ContentDoc))
+}
+
+export async function updateContent(contentId: string, data: Partial<ContentDoc>) {
+  if (!db) {
+    const list = JSON.parse(localStorage.getItem('reelst_content') || '[]')
+    const updated = list.map((c: ContentDoc) => c.id === contentId ? { ...c, ...data } : c)
+    localStorage.setItem('reelst_content', JSON.stringify(updated))
+    return
+  }
+  await updateDoc(doc(db, 'content', contentId), data as any)
+}
+
+export async function linkContentToPin(contentId: string, pinId: string | null) {
+  return updateContent(contentId, { pinId })
+}
+
+export async function archiveContent(contentId: string) {
+  if (!db) {
+    const list = JSON.parse(localStorage.getItem('reelst_content') || '[]')
+    localStorage.setItem('reelst_content', JSON.stringify(list.filter((c: ContentDoc) => c.id !== contentId)))
+    return
+  }
+  await deleteDoc(doc(db, 'content', contentId))
 }
