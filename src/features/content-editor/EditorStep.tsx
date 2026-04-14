@@ -4,6 +4,7 @@ import { TransportBar } from './components/TransportBar'
 import { Timeline } from './components/Timeline'
 import { ContextStrip } from './components/ContextStrip'
 import { BottomToolbar } from './components/BottomToolbar'
+import { EditorErrorBoundary } from './components/EditorErrorBoundary'
 import { useEditorStore } from './state/editorStore'
 
 interface EditorStepProps {
@@ -11,14 +12,27 @@ interface EditorStepProps {
 }
 
 /**
- * Inline editor step that lives inside PinCreate. Uses the same heading
- * pattern as the other steps (title + smoke subtitle). Responsive grid:
- * single column on mobile, 2-col side-by-side on desktop.
+ * Viewport-locked editor step. Nothing here scrolls the page; each
+ * section gets its allocated flex space and overflows internally.
+ *
+ * Desktop (lg+): two-column grid
+ *   ┌──────────────────┬─────────────┐
+ *   │  PREVIEW         │  EDIT TOOLS │
+ *   │  TRANSPORT       │  (vertical  │
+ *   │  TIMELINE        │   column)   │
+ *   │  CONTEXT STRIP   │             │
+ *   └──────────────────┴─────────────┘
+ *
+ * Mobile: single column with dynamic preview shrink
+ *   - Default: preview ~58vh, transport, timeline, toolbar at bottom
+ *   - When a tool strip is open: preview shrinks to ~36vh, strip slides
+ *     into the gap between timeline and toolbar
  */
 export function EditorStep({ direction }: EditorStepProps) {
-  const clips = useEditorStore((s) => s.clips)
   const view = useEditorStore((s) => s.view)
-  const stripActive = view === 'adjust' || view === 'crop' || view === 'speed' || view === 'text'
+  const reset = useEditorStore((s) => s.reset)
+  const stripActive = view === 'adjust' || view === 'crop' || view === 'speed'
+                   || view === 'audio' || view === 'filter' || view === 'text'
 
   return (
     <motion.div
@@ -32,49 +46,41 @@ export function EditorStep({ direction }: EditorStepProps) {
       initial="enter"
       animate="center"
       exit="exit"
+      className="editor-stage"
+      data-strip-active={stripActive ? 'true' : 'false'}
     >
-      <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">Craft your reel</h2>
-      <p className="text-[14px] text-smoke mb-5">Trim, style, and polish each clip before you publish.</p>
+      {/* Faint noise so the dark canvas doesn't read as flat */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 opacity-[0.02] mix-blend-overlay z-0"
+        style={{
+          backgroundImage:
+            'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'120\' height=\'120\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' /%3E%3C/filter%3E%3Crect width=\'120\' height=\'120\' filter=\'url(%23n)\' opacity=\'0.4\'/%3E%3C/svg%3E")',
+        }}
+      />
 
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-5 lg:items-start">
-        {/* ── Preview card ── */}
-        <section className="bg-cream rounded-[22px] p-3 sm:p-4 mb-4 lg:mb-0">
-          <div
-            className="w-full flex items-center justify-center"
-            style={{ maxHeight: 'min(56vh, 560px)', minHeight: 240, height: 'min(56vh, 560px)' }}
-          >
+      {/* Single instance of every component — CSS-only responsive layout.
+          Previously we rendered two complete copies (one for desktop, one
+          for mobile) which caused the store refs + querySelector to find
+          the wrong element on each platform. Now there's exactly ONE of
+          PreviewCanvas, Timeline, etc., and Tailwind classes change the
+          layout. */}
+      <EditorErrorBoundary onReset={reset}>
+        <div className="relative lg:grid lg:gap-6 lg:items-stretch flex flex-col gap-3" style={{ gridTemplateColumns: '1fr 160px' }}>
+          {/* Main column on desktop / stacked on mobile */}
+          <div className="flex flex-col gap-3 lg:gap-4 min-w-0">
             <PreviewCanvas />
-          </div>
-          {clips.length === 0 && (
-            <p className="text-[11px] text-ash text-center mt-3">
-              Start by importing from the timeline below.
-            </p>
-          )}
-        </section>
-
-        {/* ── Controls card ── */}
-        <section className="bg-cream rounded-[22px] p-4 flex flex-col">
-          {/* Transport */}
-          <TransportBar />
-
-          {/* Timeline */}
-          <div className="mt-3">
+            <TransportBar />
             <Timeline />
+            <ContextStrip />
           </div>
 
-          {/* Context strip (only when active) */}
-          {stripActive && (
-            <div className="mt-4 pt-4 border-t border-border-light">
-              <ContextStrip />
-            </div>
-          )}
-
-          {/* Bottom toolbar — sits at the end of the controls card */}
-          <div className="mt-3 pt-2 border-t border-border-light">
+          {/* Toolbar — right column on desktop, bottom on mobile */}
+          <div className="lg:flex lg:items-start lg:justify-center lg:pt-2">
             <BottomToolbar />
           </div>
-        </section>
-      </div>
+        </div>
+      </EditorErrorBoundary>
     </motion.div>
   )
 }

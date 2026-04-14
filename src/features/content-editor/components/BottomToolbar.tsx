@@ -1,45 +1,49 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import { useRef } from 'react'
 import {
   ChevronLeft,
-  Scissors,
   Type,
   SlidersHorizontal,
-  SplitSquareVertical,
-  Trash2,
-  Gauge,
   Crop,
-  Edit3,
+  Mic,
+  Sparkles,
+  SplitSquareVertical,
+  RefreshCw,
+  Gauge,
+  Trash2,
 } from 'lucide-react'
 import { useEditorStore } from '../state/editorStore'
-import type { EditorView } from '../state/types'
+import type { EditorView, FontKey, TextOverlay } from '../state/types'
+import { loadAllFonts } from '../lib/fonts'
 
-type ToolId = EditorView | 'action-split' | 'action-delete'
+type ToolId = EditorView | 'action-split' | 'action-delete' | 'action-replace'
 
 interface ToolDef {
   id: ToolId
   label: string
-  icon: typeof Edit3
+  icon: typeof Type
   danger?: boolean
 }
 
 const MAIN_TOOLS: ToolDef[] = [
-  { id: 'edit',   label: 'Edit',   icon: Edit3 },
   { id: 'text',   label: 'Text',   icon: Type },
+  { id: 'audio',  label: 'Audio',  icon: Mic },
+  { id: 'filter', label: 'Filter', icon: Sparkles },
   { id: 'adjust', label: 'Adjust', icon: SlidersHorizontal },
+  { id: 'crop',   label: 'Frame',  icon: Crop },
 ]
 
-const EDIT_SUB_TOOLS: ToolDef[] = [
-  { id: 'trim',          label: 'Trim',   icon: Scissors },
-  { id: 'action-split',  label: 'Split',  icon: SplitSquareVertical },
-  { id: 'action-delete', label: 'Delete', icon: Trash2, danger: true },
-  { id: 'speed',         label: 'Speed',  icon: Gauge },
-  { id: 'crop',          label: 'Frame',  icon: Crop },
+const CLIP_SUB_TOOLS: ToolDef[] = [
+  { id: 'action-split',   label: 'Split',   icon: SplitSquareVertical },
+  { id: 'action-replace', label: 'Replace', icon: RefreshCw },
+  { id: 'speed',          label: 'Speed',   icon: Gauge },
+  { id: 'action-delete',  label: 'Delete',  icon: Trash2, danger: true },
 ]
 
 /**
- * Theme-aware bottom toolbar. Rounded-square icon tiles over bg-pearl,
- * tangerine-tinted when active. Morphs between main and Edit sub-group
- * with a smooth horizontal slide.
+ * Toolbar — responsive layout:
+ *   - Desktop (lg+): vertical column on the right side of the editor grid
+ *   - Mobile: horizontal row pinned below the timeline / strip
  */
 export function BottomToolbar() {
   const view = useEditorStore((s) => s.view)
@@ -48,10 +52,13 @@ export function BottomToolbar() {
   const selectedId = useEditorStore((s) => s.selectedClipId)
   const splitClipAtCurrent = useEditorStore((s) => s.splitClipAtCurrent)
   const removeClip = useEditorStore((s) => s.removeClip)
+  const replaceClip = useEditorStore((s) => s.replaceClip)
+  const addOverlayAtPlayhead = useEditorStore((s) => s.addOverlayAtPlayhead)
   const hasClips = clips.length > 0
 
-  const group: 'main' | 'editSub' =
-    view === 'edit' || view === 'trim' || view === 'speed' || view === 'crop' ? 'editSub' : 'main'
+  const replaceFileRef = useRef<HTMLInputElement | null>(null)
+
+  const showSubTools = !!selectedId && hasClips && (view === null || view === 'speed')
 
   const handleTap = (tool: ToolDef) => {
     if (!hasClips) return
@@ -62,102 +69,181 @@ export function BottomToolbar() {
       case 'action-delete':
         if (selectedId) removeClip(selectedId)
         return
+      case 'action-replace':
+        replaceFileRef.current?.click()
+        return
       default: {
         if (view === tool.id) {
-          if (group === 'editSub') setView('edit')
-          else setView(null)
+          setView(null)
           return
+        }
+        if (tool.id === 'text') {
+          loadAllFonts() // pull Google Fonts on demand
+          const exists = useEditorStore.getState().overlays.length > 0
+          if (!exists) addOverlayAtPlayhead()
         }
         setView(tool.id as EditorView)
       }
     }
   }
 
+  const onReplaceFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file && selectedId) {
+      replaceClip(selectedId, file).catch((err) => console.warn('replace failed', err))
+    }
+    e.target.value = ''
+  }
+
+  const tools = showSubTools ? CLIP_SUB_TOOLS : MAIN_TOOLS
+
   return (
-    <div className="relative h-[98px]">
-      <AnimatePresence mode="wait" initial={false}>
-        {group === 'main' ? (
-          <motion.div
-            key="main"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
-            className="absolute inset-0 flex items-center justify-center gap-2 px-2 overflow-x-auto scrollbar-none"
-          >
-            {MAIN_TOOLS.map((t) => (
-              <ToolTile key={t.id} tool={t} active={view === t.id} disabled={!hasClips} onTap={() => handleTap(t)} />
-            ))}
-          </motion.div>
-        ) : (
-          <motion.div
-            key="editSub"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
-            className="absolute inset-0 flex items-center gap-1.5 px-1 overflow-x-auto scrollbar-none"
-          >
-            <BackChevron onClick={() => setView(null)} />
-            <div className="w-px h-10 bg-border-light mx-0.5 shrink-0" />
-            {EDIT_SUB_TOOLS.map((t) => (
-              <ToolTile key={t.id} tool={t} active={view === t.id} disabled={!hasClips} onTap={() => handleTap(t)} />
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+    <>
+      {/* ─── Mobile: horizontal row ─── */}
+      <div className="lg:hidden">
+        <div className="relative h-[88px] flex items-center">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={showSubTools ? 'sub' : 'main'}
+              initial={{ opacity: 0, x: showSubTools ? 16 : -16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: showSubTools ? -16 : 16 }}
+              transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
+              className="absolute inset-0 flex items-center gap-1.5 px-3 overflow-x-auto scrollbar-none"
+            >
+              {showSubTools && <BackChevron onClick={() => useEditorStore.getState().selectClip(null)} />}
+              {tools.map((t) => (
+                <Tile
+                  key={t.id}
+                  tool={t}
+                  active={view === t.id}
+                  disabled={!hasClips}
+                  onTap={() => handleTap(t)}
+                  layout="horizontal"
+                />
+              ))}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* ─── Desktop: vertical column ─── */}
+      <div className="hidden lg:block w-full">
+        <div className="relative">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={showSubTools ? 'sub' : 'main'}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
+              className="flex flex-col items-stretch gap-2"
+            >
+              {showSubTools && (
+                <button
+                  onClick={() => useEditorStore.getState().selectClip(null)}
+                  className="flex items-center justify-center gap-2 h-10 rounded-[12px] bg-white/[0.06] hover:bg-white/[0.10] cursor-pointer transition-colors text-white/85 text-[11px] font-semibold"
+                  aria-label="Back"
+                >
+                  <ChevronLeft size={15} strokeWidth={2.3} />
+                  Back
+                </button>
+              )}
+              {tools.map((t) => (
+                <Tile
+                  key={t.id}
+                  tool={t}
+                  active={view === t.id}
+                  disabled={!hasClips}
+                  onTap={() => handleTap(t)}
+                  layout="vertical"
+                />
+              ))}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+
+      <input
+        ref={replaceFileRef}
+        type="file"
+        accept="image/*,video/*"
+        className="hidden"
+        onChange={onReplaceFile}
+      />
+    </>
   )
 }
 
-/* ─────────── Tile ─────────── */
+/* ─────────── Tile (responsive) ─────────── */
 
-interface ToolTileProps {
+function Tile({
+  tool,
+  active,
+  disabled,
+  onTap,
+  layout,
+}: {
   tool: ToolDef
   active: boolean
   disabled: boolean
   onTap: () => void
-}
-
-function ToolTile({ tool, active, disabled, onTap }: ToolTileProps) {
+  layout: 'horizontal' | 'vertical'
+}) {
   const Icon = tool.icon
+  const horizontal = layout === 'horizontal'
 
   return (
     <motion.button
       whileTap={disabled ? undefined : { scale: 0.93 }}
       onClick={disabled ? undefined : onTap}
       disabled={disabled}
-      className="shrink-0 flex flex-col items-center gap-[7px] py-1.5 px-2.5 cursor-pointer disabled:cursor-not-allowed group"
-      style={{ minWidth: 66 }}
+      className={`shrink-0 cursor-pointer disabled:cursor-not-allowed group flex ${
+        horizontal ? 'flex-col items-center gap-[7px] py-1 px-2.5' : 'flex-row items-center gap-3 px-3 py-2 rounded-[12px]'
+      }`}
+      style={
+        horizontal
+          ? { minWidth: 64 }
+          : {
+              background: active ? 'rgba(255,107,61,0.10)' : 'rgba(255,255,255,0.04)',
+              boxShadow: active ? '0 0 0 1.5px rgba(255,107,61,0.45) inset' : undefined,
+            }
+      }
     >
       <div
-        className="relative w-[44px] h-[44px] rounded-[13px] flex items-center justify-center transition-colors duration-150"
+        className={`relative flex items-center justify-center transition-colors duration-150 ${
+          horizontal ? 'w-[44px] h-[44px] rounded-[13px]' : 'w-[34px] h-[34px] rounded-[10px]'
+        }`}
         style={{
-          background: disabled
-            ? 'var(--color-pearl)'
-            : active
-            ? 'rgba(255,107,61,0.15)'
-            : 'var(--color-pearl)',
-          boxShadow: active ? '0 0 0 1.5px rgba(255,107,61,0.55) inset' : undefined,
+          background: horizontal
+            ? disabled
+              ? 'rgba(255,255,255,0.04)'
+              : active
+              ? 'rgba(255,107,61,0.16)'
+              : 'rgba(255,255,255,0.08)'
+            : 'transparent',
+          boxShadow: horizontal && active ? '0 0 0 1.5px rgba(255,107,61,0.55) inset' : undefined,
         }}
       >
         <Icon
-          size={19}
+          size={horizontal ? 19 : 17}
           strokeWidth={2.1}
           className={
             disabled
-              ? 'text-ash'
+              ? 'text-white/22'
               : active
               ? 'text-tangerine'
               : tool.danger
               ? 'text-live-red'
-              : 'text-ink'
+              : 'text-white/85'
           }
         />
       </div>
       <span
-        className={`text-[11px] font-semibold tracking-tight leading-none transition-colors duration-150 ${
-          disabled ? 'text-ash' : active ? 'text-tangerine' : 'text-smoke group-hover:text-ink'
+        className={`font-semibold tracking-tight leading-none transition-colors duration-150 ${
+          horizontal ? 'text-[11px]' : 'text-[12px]'
+        } ${
+          disabled ? 'text-white/22' : active ? 'text-tangerine' : 'text-white/65 group-hover:text-white/95'
         }`}
       >
         {tool.label}
@@ -171,14 +257,14 @@ function BackChevron({ onClick }: { onClick: () => void }) {
     <motion.button
       whileTap={{ scale: 0.92 }}
       onClick={onClick}
-      className="shrink-0 flex flex-col items-center gap-[7px] py-1.5 px-2.5 cursor-pointer"
+      className="shrink-0 flex flex-col items-center gap-[7px] py-1 px-2.5 cursor-pointer"
       aria-label="Back"
       style={{ minWidth: 56 }}
     >
-      <div className="w-[44px] h-[44px] rounded-[13px] bg-pearl flex items-center justify-center">
-        <ChevronLeft size={18} strokeWidth={2.3} className="text-ink" />
+      <div className="w-[44px] h-[44px] rounded-[13px] bg-white/[0.08] flex items-center justify-center">
+        <ChevronLeft size={18} strokeWidth={2.3} className="text-white/85" />
       </div>
-      <span className="text-[11px] font-semibold tracking-tight text-smoke leading-none">Back</span>
+      <span className="text-[11px] font-semibold tracking-tight text-white/65 leading-none">Back</span>
     </motion.button>
   )
 }

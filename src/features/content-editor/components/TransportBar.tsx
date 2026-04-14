@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Play, Pause, Undo2, Redo2, Maximize2 } from 'lucide-react'
+import { Play, Pause, Undo2, Redo2 } from 'lucide-react'
 import { useMemo, useState, useEffect } from 'react'
 import { useEditorStore } from '../state/editorStore'
 
@@ -11,7 +11,11 @@ function fmt(t: number): string {
 }
 
 /**
- * Slim transport row: timecode · play · placeholders. Fully theme-aware.
+ * Transport row with real hierarchy: timecode left, big tangerine play
+ * button center, ghost undo/redo right (only colored when there's history).
+ *
+ * The play button is the single largest interactive element in the
+ * transport — it's the action the user returns to most.
  */
 export function TransportBar() {
   const clips = useEditorStore((s) => s.clips)
@@ -21,6 +25,7 @@ export function TransportBar() {
   const [playing, setPlaying] = useState(false)
 
   const selected = useMemo(() => clips.find((c) => c.id === selectedId) ?? clips[0], [clips, selectedId])
+  const hasContent = clips.length > 0
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -43,32 +48,58 @@ export function TransportBar() {
   const relTime = selected ? Math.max(0, (currentTime - selected.trimIn) / selected.speed) : 0
 
   return (
-    <div className="flex items-center justify-between h-[44px]">
-      <span className="font-mono text-[11px] tabular-nums text-ink tracking-tight">
-        {fmt(relTime)}<span className="text-ash"> / {fmt(totalDuration)}</span>
+    <div className="relative flex items-center justify-between px-6 lg:px-12 h-[60px]">
+      {/* Timecode (left) */}
+      <span className="font-mono text-[13px] tabular-nums tracking-tight text-white/85">
+        {fmt(relTime)}
+        <span className="text-white/30"> / {fmt(totalDuration)}</span>
       </span>
 
-      <motion.button
-        whileTap={{ scale: 0.88 }}
-        onClick={togglePlay}
-        disabled={!selected}
-        className="w-10 h-10 rounded-full bg-ink text-warm-white disabled:opacity-30 cursor-pointer flex items-center justify-center shadow-[0_4px_14px_rgba(10,14,23,0.22)] hover:brightness-110 transition-all"
-        aria-label={playing ? 'Pause' : 'Play'}
-      >
-        {playing
-          ? <Pause size={16} fill="currentColor" />
-          : <Play size={16} fill="currentColor" className="ml-0.5" />}
-      </motion.button>
+      {/* Play (center, big, tangerine, breathing on play) */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+        <motion.button
+          whileTap={hasContent ? { scale: 0.92 } : undefined}
+          onClick={togglePlay}
+          disabled={!hasContent}
+          animate={playing ? { scale: [1, 1.03, 1] } : { scale: 1 }}
+          transition={
+            playing
+              ? { duration: 2, repeat: Infinity, ease: 'easeInOut' }
+              : { duration: 0.18 }
+          }
+          className={`relative w-[56px] h-[56px] rounded-full flex items-center justify-center transition-colors ${
+            hasContent
+              ? 'bg-tangerine cursor-pointer'
+              : 'bg-white/[0.06] cursor-not-allowed'
+          }`}
+          style={{
+            boxShadow: hasContent
+              ? '0 0 0 1px rgba(255,107,61,0.45), 0 8px 30px rgba(255,107,61,0.35)'
+              : undefined,
+          }}
+          aria-label={playing ? 'Pause' : 'Play'}
+        >
+          {playing
+            ? <Pause size={22} className="text-white" fill="currentColor" />
+            : <Play size={22} className="text-white ml-0.5" fill="currentColor" />}
+        </motion.button>
+      </div>
 
+      {/* Undo / Redo (right, ghost) */}
       <div className="flex items-center gap-1">
-        <button disabled className="w-7 h-7 flex items-center justify-center text-ash cursor-not-allowed" aria-label="Undo">
-          <Undo2 size={14} strokeWidth={2.2} />
+        <button
+          disabled
+          className="w-9 h-9 rounded-full flex items-center justify-center text-white/22 cursor-not-allowed"
+          aria-label="Undo"
+        >
+          <Undo2 size={16} strokeWidth={2.2} />
         </button>
-        <button disabled className="w-7 h-7 flex items-center justify-center text-ash cursor-not-allowed" aria-label="Redo">
-          <Redo2 size={14} strokeWidth={2.2} />
-        </button>
-        <button disabled className="w-7 h-7 flex items-center justify-center text-ash cursor-not-allowed" aria-label="Fullscreen">
-          <Maximize2 size={13} strokeWidth={2.2} />
+        <button
+          disabled
+          className="w-9 h-9 rounded-full flex items-center justify-center text-white/22 cursor-not-allowed"
+          aria-label="Redo"
+        >
+          <Redo2 size={16} strokeWidth={2.2} />
         </button>
       </div>
     </div>

@@ -146,10 +146,20 @@ export default function AgentProfile() {
       })
     }
     if (agentMode === 'explore') {
-      // All agents' pins
-      const all: Pin[] = [...allPins]
+      // All agents' pins, deduped by id. The current profile owner's pins
+      // (`allPins`) are also included as a starting set so they show up
+      // even if they're not in `nearbyAgents`. Dedup-by-id prevents double
+      // counting when the current agent IS in the nearbyAgents list.
+      const all: Pin[] = []
+      const seen = new Set<string>()
+      const addPin = (p: Pin) => {
+        if (seen.has(p.id)) return
+        all.push(p)
+        seen.add(p.id)
+      }
+      for (const p of allPins) addPin(p)
       for (const a of nearbyAgents) {
-        all.push(...getMockPins(a.uid))
+        for (const p of getMockPins(a.uid)) addPin(p)
       }
       return all
     }

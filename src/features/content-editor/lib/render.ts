@@ -21,18 +21,17 @@ import type { Adjustments, AspectRatio, Clip, TextOverlay } from '../state/types
  */
 
 const TARGET_W: Record<AspectRatio, number> = {
-  '9:16': 720,  '16:9': 1280, '1:1': 720,
-  '3:4':  720,  '4:3':  960,  'free': 720,
+  '9:16':     720, '16:9': 1280, '1:1': 720,
+  '3:4':      720, '4:3':   960, 'original': 720,
 }
 const TARGET_H: Record<AspectRatio, number> = {
-  '9:16': 1280, '16:9': 720,  '1:1': 720,
-  '3:4':  960,  '4:3':  720,  'free': 1280,
+  '9:16':    1280, '16:9':  720, '1:1': 720,
+  '3:4':      960, '4:3':   720, 'original': 1280,
 }
 
 export interface RenderArgs {
   clips: Clip[]
   aspect: AspectRatio
-  adjustments: Adjustments
   overlays: TextOverlay[]
   pinId: string
   contentId: string
@@ -49,11 +48,15 @@ export interface RenderResult {
   hlsUrl: string
 }
 
-function needsFFmpegPreprocess(args: Pick<RenderArgs, 'clips' | 'adjustments' | 'overlays' | 'aspect'>): boolean {
-  const { clips, adjustments, overlays, aspect } = args
-  if (adjustments.brightness !== 0 || adjustments.contrast !== 0 || adjustments.saturation !== 0) return true
+function clipHasAdjustments(c: Clip): boolean {
+  return c.adjustments.brightness !== 0 || c.adjustments.contrast !== 0 || c.adjustments.saturation !== 0
+}
+
+function needsFFmpegPreprocess(args: Pick<RenderArgs, 'clips' | 'overlays' | 'aspect'>): boolean {
+  const { clips, overlays, aspect } = args
+  if (clips.some(clipHasAdjustments)) return true
   if (overlays.length > 0) return true
-  if (aspect !== '9:16' && aspect !== 'free') return true
+  if (aspect !== '9:16' && aspect !== 'original') return true
   if (clips.some((c) => c.speed !== 1)) return true
   return false
 }
@@ -109,14 +112,14 @@ async function encodeSegment(
   clip: Clip,
   idx: number,
   aspect: AspectRatio,
-  adjustments: Adjustments,
   onProgress?: (v: number) => void,
 ): Promise<string> {
   const ff = await getFFmpeg()
   const inputName  = `in_${idx}.${clip.file.name.split('.').pop()?.toLowerCase() || 'bin'}`
   const outputName = `seg_${idx}.mp4`
   await ff.writeFile(inputName, new Uint8Array(await clip.file.arrayBuffer()))
-  const vf = buildFilter(aspect, adjustments, clip.speed)
+  // Per-clip adjustments now live on the clip itself
+  const vf = buildFilter(aspect, clip.adjustments, clip.speed)
 
   const args = clip.type === 'video'
     ? [
@@ -143,13 +146,13 @@ async function encodeSegment(
 }
 
 async function renderFFmpegPath(args: RenderArgs): Promise<RenderResult> {
-  const { clips, aspect, adjustments, pinId, contentId, caption, onProgress } = args
+  const { clips, aspect, pinId, contentId, caption, onProgress } = args
   const ff = await getFFmpeg()
 
   const segments: string[] = []
   for (let i = 0; i < clips.length; i++) {
     const frac = (v: number) => (i + v) / (clips.length + 1)
-    const name = await encodeSegment(clips[i], i, aspect, adjustments, (v) => onProgress?.('preprocess', frac(v)))
+    const name = await encodeSegment(clips[i], i, aspect, (v) => onProgress?.('preprocess', frac(v)))
     segments.push(name)
   }
 

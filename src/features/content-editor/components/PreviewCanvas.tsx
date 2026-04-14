@@ -1,39 +1,64 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
-import { Play, X, Check } from 'lucide-react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { X, Check, Image as ImageIcon, Film, Loader2 } from 'lucide-react'
 import { useEditorStore } from '../state/editorStore'
-import { ASPECT_OPTIONS } from '../state/types'
+import { ASPECT_OPTIONS, FONT_OPTIONS } from '../state/types'
+
+const TIMEUPDATE_THROTTLE_MS = 67 // ~15fps
 
 /**
- * Inline preview frame. Always-dark surface (video reads best on black)
- * even when the dashboard theme is light. Sized by aspect ratio, capped
- * by a max-height so the rest of the editor fits the viewport on mobile.
+ * Floating preview. No surrounding card. Adapts height when a context
+ * strip is active on mobile. Text editing happens INLINE on the preview
+ * via contentEditable — the preview frame uses position: fixed during
+ * edit so the keyboard popping up doesn't push it around.
  */
 export function PreviewCanvas() {
   const clips = useEditorStore((s) => s.clips)
   const selectedId = useEditorStore((s) => s.selectedClipId)
   const aspect = useEditorStore((s) => s.aspect)
-  const adjustments = useEditorStore((s) => s.adjustments)
   const overlays = useEditorStore((s) => s.overlays)
   const updateOverlay = useEditorStore((s) => s.updateOverlay)
   const removeOverlay = useEditorStore((s) => s.removeOverlay)
   const setCurrentTime = useEditorStore((s) => s.setCurrentTime)
+  const setComposedTime = useEditorStore((s) => s.setComposedTime)
+  const importFiles = useEditorStore((s) => s.importFiles)
+  const importingCount = useEditorStore((s) => s.importingCount)
   const view = useEditorStore((s) => s.view)
+  const composedTime = useEditorStore((s) => s.composedTime)
 
   const selected = useMemo(() => clips.find((c) => c.id === selectedId) ?? clips[0], [clips, selectedId])
 
   const frameRef = useRef<HTMLDivElement | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const lastTimeUpdate = useRef(0)
   const [playing, setPlaying] = useState(false)
   const [, setLocalTick] = useState(0)
   const [editingOverlayId, setEditingOverlayId] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
 
+  const stripActive = view === 'adjust' || view === 'crop' || view === 'speed'
+                   || view === 'audio' || view === 'filter' || view === 'text'
+
+  // Compute composed time offset for the selected clip — used so the
+  // playhead in the timeline stays in sync with playback.
+  const composedClipStart = useMemo(() => {
+    let acc = 0
+    for (const c of clips) {
+      if (c.id === selected?.id) return acc
+      acc += (c.trimOut - c.trimIn) / c.speed
+    }
+    return acc
+  }, [clips, selected?.id])
+
+  /* ─── playback state ─── */
   useEffect(() => {
     setPlaying(false)
     setCurrentTime(selected?.trimIn ?? 0)
+    setComposedTime(composedClipStart)
     const v = videoRef.current
     if (v && selected?.type === 'video') v.currentTime = selected.trimIn
-  }, [selected?.id, selected?.trimIn, selected?.type, setCurrentTime])
+  }, [selected?.id, selected?.trimIn, selected?.type, setCurrentTime, setComposedTime, composedClipStart])
 
   useEffect(() => {
     const v = videoRef.current
@@ -45,8 +70,33 @@ export function PreviewCanvas() {
     const v = videoRef.current
     if (!v || !selected || selected.type !== 'video') return
     const onTime = () => {
+      const inClip = Math.max(0, v.currentTime - selected.trimIn)
+      const composed = composedClipStart + inClip / selected.speed
+      const PX = 28
+      const state = useEditorStore.getState()
+      const wrapper = state.timelineWrapperEl
+      const strip = state.timelineStripEl
+      // Always write the transform here — guaranteed-to-fire fallback
+      // for the raf loop. Also runs on browsers where rAF is throttled.
+      if (wrapper && strip) {
+        const halfWidth = wrapper.clientWidth / 2
+        strip.style.transform = `translateX(${halfWidth - composed * PX}px)`
+      }
+
+      // ─── React state path ─── throttled to ~15fps for the timecode chrome
+      const now = performance.now()
+      if (now - lastTimeUpdate.current < TIMEUPDATE_THROTTLE_MS) {
+        if (v.currentTime >= selected.trimOut) {
+          v.pause()
+          v.currentTime = selected.trimIn
+          setPlaying(false)
+        }
+        return
+      }
+      lastTimeUpdate.current = now
       setLocalTick((t) => t + 1)
       setCurrentTime(v.currentTime)
+      setComposedTime(composed)
       if (v.currentTime >= selected.trimOut) {
         v.pause()
         v.currentTime = selected.trimIn
@@ -55,7 +105,7 @@ export function PreviewCanvas() {
     }
     v.addEventListener('timeupdate', onTime)
     return () => v.removeEventListener('timeupdate', onTime)
-  }, [selected, setCurrentTime])
+  }, [selected, setCurrentTime, setComposedTime, composedClipStart])
 
   const togglePlay = () => {
     const v = videoRef.current
@@ -69,108 +119,274 @@ export function PreviewCanvas() {
     }
   }
 
-  const filter = `brightness(${1 + adjustments.brightness / 100}) contrast(${1 + adjustments.contrast / 100}) saturate(${1 + adjustments.saturation / 100})`
+  /**
+   * Continuous requestAnimationFrame loop. Runs once on mount and ticks
+   * forever (until unmount). Reads everything fresh from the DOM + store
+   * each frame — no React deps, no closure issues. Smooths the strip
+   * position during playback to 60fps.
+   *
+   * Uses querySelector for the video element instead of React's videoRef
+   * so we don't depend on render-timing for the ref to be set.
+   */
+  useEffect(() => {
+    let raf = 0
+    const PX = 28
 
-  const ratio = ASPECT_OPTIONS.find((o) => o.id === aspect)?.ratio ?? 9 / 16
-  const isTextEditing = view === 'text' && !!editingOverlayId
+    const tick = () => {
+      const v = document.querySelector<HTMLVideoElement>('.editor-stage video')
+      if (v && !v.paused) {
+        const state = useEditorStore.getState()
+        const wrapper = state.timelineWrapperEl
+        const strip = state.timelineStripEl
+        // Recompute composed time inline from current state
+        const sel = state.clips.find((c) => c.id === state.selectedClipId) ?? state.clips[0]
+        if (sel && wrapper && strip) {
+          // Walk clips to find the cumulative offset for the selected clip
+          let acc = 0
+          for (const c of state.clips) {
+            if (c.id === sel.id) break
+            acc += (c.trimOut - c.trimIn) / c.speed
+          }
+          const inClip = Math.max(0, v.currentTime - sel.trimIn)
+          const composed = acc + inClip / sel.speed
+          const halfWidth = wrapper.clientWidth / 2
+          strip.style.transform = `translateX(${halfWidth - composed * PX}px)`
+        }
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
+
+  /* ─── drop zone handlers ─── */
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOver(true)
+  }, [])
+  const onDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOver(false)
+  }, [])
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOver(false)
+    if (!e.dataTransfer.files || e.dataTransfer.files.length === 0) return
+    importFiles(e.dataTransfer.files)
+  }, [importFiles])
+  const openFilePicker = useCallback(() => fileInputRef.current?.click(), [])
+  const onFilesPicked = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return
+    importFiles(e.target.files)
+    e.target.value = ''
+  }, [importFiles])
+
+  // Per-clip CSS filter
+  const filter = useMemo(() => {
+    if (!selected) return undefined
+    const a = selected.adjustments
+    return `brightness(${1 + a.brightness / 100}) contrast(${1 + a.contrast / 100}) saturate(${1 + a.saturation / 100})`
+  }, [selected])
+
+  // Aspect ratio resolution
+  const ratio = useMemo(() => {
+    const opt = ASPECT_OPTIONS.find((o) => o.id === aspect)
+    if (opt?.ratio != null) return opt.ratio
+    return selected?.nativeAspect ?? 9 / 16
+  }, [aspect, selected?.nativeAspect])
+
+  // Time-bound visibility — only show overlays whose [start,end] contains composed time
+  const visibleOverlays = useMemo(
+    () => overlays.filter((o) => composedTime >= o.start && composedTime <= o.end),
+    [overlays, composedTime],
+  )
+
+  const isEmpty = clips.length === 0
+  const editingOverlay = overlays.find((o) => o.id === editingOverlayId) ?? null
+  const isTextEditing = !!editingOverlay
+
+  // Tap-outside-to-commit: close text editing if user taps outside the text node
+  useEffect(() => {
+    if (!isTextEditing) return
+    const onDocPointer = (e: PointerEvent) => {
+      const target = e.target as HTMLElement
+      if (target.closest('[data-text-overlay]') || target.closest('[data-text-done]')) return
+      setEditingOverlayId(null)
+    }
+    document.addEventListener('pointerdown', onDocPointer)
+    return () => document.removeEventListener('pointerdown', onDocPointer)
+  }, [isTextEditing])
+
+  const previewHeight = stripActive ? 'min(36vh, 380px)' : 'min(58vh, 620px)'
 
   return (
-    <div className="editor-stage relative w-full flex items-center justify-center">
-      {/* Frame — always dark, rounded, subtle hairline */}
+    <div className="relative w-full flex items-center justify-center min-h-0">
       <div
         ref={frameRef}
-        className="relative rounded-[22px] overflow-hidden border border-border-light shadow-[0_12px_40px_rgba(10,14,23,0.18)]"
+        className="relative rounded-[16px] overflow-hidden"
+        onDragOver={isEmpty ? onDragOver : undefined}
+        onDragLeave={isEmpty ? onDragLeave : undefined}
+        onDrop={isEmpty ? onDrop : undefined}
         style={{
           aspectRatio: String(ratio),
-          width: ratio < 1 ? 'auto' : '100%',
-          height: ratio < 1 ? '100%' : 'auto',
+          height: previewHeight,
+          minHeight: 200,
+          width: 'auto',
           maxWidth: '100%',
-          maxHeight: '100%',
-          background: '#05070B',
-          transition: 'aspect-ratio 0.35s cubic-bezier(0.25, 0.1, 0.25, 1)',
+          boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.045)',
+          transition:
+            'aspect-ratio 0.32s cubic-bezier(0.32, 0.72, 0, 1), height 0.32s cubic-bezier(0.32, 0.72, 0, 1)',
         }}
       >
-        {!selected ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-8 gap-3">
-            <div className="w-14 h-14 rounded-2xl bg-white/[0.06] flex items-center justify-center">
-              <Play size={22} className="text-tangerine ml-0.5" fill="currentColor" />
-            </div>
-            <p className="text-white/85 text-[13px] font-semibold">Your canvas</p>
-            <p className="text-white/45 text-[11px] max-w-[220px] leading-snug">
-              Tap the + tile on the timeline to import photos or videos.
-            </p>
-          </div>
-        ) : selected.type === 'video' ? (
+        {isEmpty ? (
+          <button
+            type="button"
+            onClick={openFilePicker}
+            className="absolute inset-0 flex flex-col items-center justify-center text-center px-8 gap-4 cursor-pointer group"
+            style={{
+              background: dragOver
+                ? 'linear-gradient(180deg, rgba(255,107,61,0.10) 0%, rgba(255,107,61,0.04) 100%)'
+                : 'transparent',
+              outline: dragOver ? '2px dashed rgba(255,107,61,0.55)' : 'none',
+              outlineOffset: -10,
+              transition: 'background 0.18s ease, outline-color 0.18s ease',
+            }}
+          >
+            {importingCount > 0 ? (
+              <>
+                <Loader2 size={40} className="text-tangerine animate-spin" strokeWidth={2.2} />
+                <p className="text-white/85 text-[14px] font-semibold">Importing…</p>
+              </>
+            ) : (
+              <>
+                <div className="relative w-[72px] h-[64px]">
+                  <div className="absolute left-0 top-0 w-[52px] h-[52px] rounded-[14px] border-[1.5px] border-white/65 flex items-center justify-center bg-white/[0.02] rotate-[-6deg]">
+                    <ImageIcon size={22} strokeWidth={1.7} className="text-white/85" />
+                  </div>
+                  <div className="absolute right-0 bottom-0 w-[52px] h-[52px] rounded-[14px] border-[1.5px] border-white/65 flex items-center justify-center bg-white/[0.04] rotate-[6deg]">
+                    <Film size={22} strokeWidth={1.7} className="text-white/85" />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-white text-[15px] font-semibold tracking-tight">
+                    Drop photos and videos here
+                  </p>
+                  <p className="text-white/45 text-[11px]">or pick from your device</p>
+                </div>
+                <span className="mt-2 inline-flex items-center justify-center h-10 px-5 rounded-full bg-tangerine text-white text-[12px] font-bold shadow-[0_8px_24px_rgba(255,107,61,0.45),0_0_0_1px_rgba(255,107,61,0.55)] group-active:scale-[0.97] transition-transform">
+                  Select from device
+                </span>
+              </>
+            )}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              className="hidden"
+              onChange={onFilesPicked}
+            />
+          </button>
+        ) : selected?.type === 'video' ? (
           <video
             ref={videoRef}
             src={selected.sourceUrl}
+            poster={selected.thumbnailUrl}
             className="absolute inset-0 w-full h-full object-cover"
             style={{ filter }}
             playsInline
             muted
+            preload="auto"
             onClick={togglePlay}
           />
         ) : (
-          <img src={selected.sourceUrl} alt="" className="absolute inset-0 w-full h-full object-cover" style={{ filter }} />
+          <img
+            src={selected?.sourceUrl}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ filter }}
+          />
         )}
 
-        {/* Text overlays */}
-        {selected && overlays.map((o) => (
+        {/* Text overlays — visible only when composed time is inside their range */}
+        {selected && visibleOverlays.map((o) => (
           <TextOverlayNode
             key={o.id}
             overlay={o}
             frameRef={frameRef}
             editing={editingOverlayId === o.id}
             onStartEdit={() => setEditingOverlayId(o.id)}
-            onEndEdit={() => setEditingOverlayId(null)}
             onChange={(patch) => updateOverlay(o.id, patch)}
             onRemove={() => { removeOverlay(o.id); setEditingOverlayId(null) }}
           />
         ))}
 
-        {/* Center play button */}
-        {selected?.type === 'video' && !playing && !isTextEditing && (
-          <button
-            onClick={togglePlay}
-            className="absolute inset-0 flex items-center justify-center group"
-          >
-            <div className="w-[58px] h-[58px] rounded-full bg-black/55 backdrop-blur-md flex items-center justify-center group-active:scale-95 transition-transform duration-150">
-              <Play size={24} className="text-white ml-0.5" fill="currentColor" />
-            </div>
-          </button>
+        {/* Importing badge */}
+        {importingCount > 0 && !isEmpty && (
+          <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/65 backdrop-blur-sm">
+            <Loader2 size={11} className="text-tangerine animate-spin" strokeWidth={2.4} />
+            <span className="text-[10px] font-semibold text-white/85">Importing…</span>
+          </div>
         )}
       </div>
 
-      {isTextEditing && (
-        <button
-          onClick={() => setEditingOverlayId(null)}
-          className="absolute top-3 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 h-8 px-4 rounded-full bg-tangerine text-white text-[12px] font-bold shadow-[0_6px_20px_rgba(255,107,61,0.5)] cursor-pointer"
-        >
-          <Check size={13} strokeWidth={2.6} />
-          Done
-        </button>
-      )}
+      {/* Done pill — appears at top while text is being edited */}
+      <AnimatePresence>
+        {isTextEditing && (
+          <motion.button
+            data-text-done
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            onClick={() => setEditingOverlayId(null)}
+            className="absolute top-3 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 h-9 px-4 rounded-full bg-tangerine text-white text-[12px] font-bold shadow-[0_8px_24px_rgba(255,107,61,0.55)] cursor-pointer"
+          >
+            <Check size={13} strokeWidth={2.6} />
+            Done
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
 
-/* ─────────── TextOverlayNode ─────────── */
+/* ─────────── TextOverlayNode — inline contentEditable ─────────── */
 
 interface TextOverlayNodeProps {
   overlay: import('../state/types').TextOverlay
   frameRef: React.RefObject<HTMLDivElement | null>
   editing: boolean
   onStartEdit: () => void
-  onEndEdit: () => void
   onChange: (patch: Partial<import('../state/types').TextOverlay>) => void
   onRemove: () => void
 }
 
 function TextOverlayNode({ overlay, frameRef, editing, onStartEdit, onChange, onRemove }: TextOverlayNodeProps) {
   const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number; frameW: number; frameH: number } | null>(null)
-  const [localText, setLocalText] = useState(overlay.text)
+  const taRef = useRef<HTMLTextAreaElement | null>(null)
 
-  useEffect(() => { setLocalText(overlay.text) }, [overlay.text])
+  // Auto-resize textarea on text/size changes (no scrollbar, height matches content)
+  useLayoutEffect(() => {
+    const ta = taRef.current
+    if (!ta) return
+    ta.style.height = 'auto'
+    ta.style.height = `${ta.scrollHeight}px`
+  }, [overlay.text, overlay.size, overlay.font, overlay.maxWidthPercent])
+
+  // Focus when entering edit mode
+  useEffect(() => {
+    if (!editing) return
+    const ta = taRef.current
+    if (!ta) return
+    ta.focus()
+    // Place caret at end
+    const len = ta.value.length
+    ta.setSelectionRange(len, len)
+  }, [editing])
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (editing) return
@@ -178,16 +394,12 @@ function TextOverlayNode({ overlay, frameRef, editing, onStartEdit, onChange, on
     if (!frame) return
     const rect = frame.getBoundingClientRect()
     dragState.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      origX: overlay.position.x,
-      origY: overlay.position.y,
-      frameW: rect.width,
-      frameH: rect.height,
+      startX: e.clientX, startY: e.clientY,
+      origX: overlay.position.x, origY: overlay.position.y,
+      frameW: rect.width, frameH: rect.height,
     }
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
   }
-
   const onPointerMove = (e: React.PointerEvent) => {
     const d = dragState.current
     if (!d) return
@@ -197,16 +409,29 @@ function TextOverlayNode({ overlay, frameRef, editing, onStartEdit, onChange, on
     const y = Math.max(0.04, Math.min(0.96, d.origY + dy))
     onChange({ position: { x, y } })
   }
-
   const onPointerUp = (e: React.PointerEvent) => {
     dragState.current = null
     ;(e.target as HTMLElement).releasePointerCapture?.(e.pointerId)
   }
 
-  const fontFamily = overlay.font === 'mono' ? 'var(--font-mono)' : 'var(--font-display)'
+  const fontDef = FONT_OPTIONS.find((f) => f.key === overlay.font) ?? FONT_OPTIONS[0]
+
+  // Common text styles shared by the textarea (edit mode) and the display div (view mode)
+  const textStyles: React.CSSProperties = {
+    fontFamily: fontDef.family,
+    fontSize: overlay.size,
+    color: overlay.color,
+    fontWeight: fontDef.weight,
+    lineHeight: 1.15,
+    textAlign: 'center',
+    textShadow: '0 2px 14px rgba(0,0,0,0.7), 0 0 2px rgba(0,0,0,0.85)',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+  }
 
   return (
     <motion.div
+      data-text-overlay
       initial={{ opacity: 0, scale: 0.92 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.92 }}
@@ -217,21 +442,22 @@ function TextOverlayNode({ overlay, frameRef, editing, onStartEdit, onChange, on
         top: `${overlay.position.y * 100}%`,
         transform: 'translate(-50%, -50%)',
         touchAction: 'none',
+        width: `${overlay.maxWidthPercent}%`,
+        maxWidth: `${overlay.maxWidthPercent}%`,
       }}
     >
       <div className="relative">
         {editing ? (
-          <input
-            autoFocus
-            value={localText}
-            onChange={(e) => { setLocalText(e.target.value); onChange({ text: e.target.value }) }}
-            className="bg-black/55 backdrop-blur-sm rounded-md px-2.5 py-1 outline-none text-center"
+          /* Textarea controlled by React — no caret bugs because React's
+             native textarea handling preserves selection across re-renders. */
+          <textarea
+            ref={taRef}
+            value={overlay.text}
+            onChange={(e) => onChange({ text: e.target.value.slice(0, 200) })}
+            rows={1}
+            className="w-full bg-transparent border-none outline-none resize-none overflow-hidden px-1 py-0.5 rounded-md"
             style={{
-              fontFamily,
-              fontSize: overlay.size,
-              color: overlay.color,
-              minWidth: '80px',
-              maxWidth: '80%',
+              ...textStyles,
               caretColor: '#FF6B3D',
             }}
           />
@@ -241,26 +467,18 @@ function TextOverlayNode({ overlay, frameRef, editing, onStartEdit, onChange, on
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onClick={onStartEdit}
-            className="cursor-move px-2.5 py-1 rounded-md"
-            style={{
-              fontFamily,
-              fontSize: overlay.size,
-              color: overlay.color,
-              fontWeight: 700,
-              whiteSpace: 'pre',
-              textShadow: '0 2px 14px rgba(0,0,0,0.7), 0 0 2px rgba(0,0,0,0.8)',
-              lineHeight: 1.1,
-            }}
+            className="cursor-move px-1 py-0.5 rounded-md"
+            style={textStyles}
           >
             {overlay.text || 'Your text'}
           </div>
         )}
-
         {!editing && (
           <button
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onRemove() }}
             className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-black/80 flex items-center justify-center text-white/90 hover:bg-tangerine cursor-pointer"
+            data-text-overlay
           >
             <X size={10} strokeWidth={2.6} />
           </button>

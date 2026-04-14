@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, ArrowRight, MapPin, Search, Check, Upload, Video, Camera, X, DollarSign, Home, BadgeCheck, Compass, Plus, Film, Mic, Clock, Lock } from 'lucide-react'
+import { ArrowLeft, ArrowRight, MapPin, Search, Check, Upload, Video, Camera, X, DollarSign, Home, BadgeCheck, Compass, Plus, Film, Mic, Clock, Lock, Sparkles, Trash2, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useGeocoding } from '@/hooks/useGeocoding'
@@ -12,6 +12,7 @@ import { PIN_CONFIG, type PinType, type ContentItem } from '@/lib/types'
 import { Timestamp } from 'firebase/firestore'
 import { getTierLimits, canUploadVideo, hasFeature, type Tier } from '@/lib/tiers'
 import { PaywallPrompt } from '@/components/dashboard/PaywallPrompt'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { generateVideoThumbnail } from '@/lib/videoThumbnail'
 import { useThemeStore } from '@/stores/themeStore'
 import { EditorStep } from '@/features/content-editor/EditorStep'
@@ -24,7 +25,13 @@ const PIN_OPTIONS: { type: PinType; label: string; desc: string; icon: typeof Ho
   { type: 'spotlight', label: 'Spotlight', desc: 'Highlight a neighborhood, building, or local favorite', icon: Compass, color: '#FF6B3D' },
 ]
 
-type Step = 'type' | 'address' | 'details' | 'edit' | 'publish' | 'content' | 'publishing'
+type Step = 'type' | 'address' | 'details' | 'content-type' | 'edit' | 'publish' | 'content' | 'publishing'
+
+/**
+ * Content kinds the user can choose from on the content-type step.
+ * Each maps to a different sub-flow (or a configured editor session).
+ */
+type ContentKind = 'carousel' | 'reel' | 'editor'
 
 export default function PinCreate() {
   const navigate = useNavigate()
@@ -36,9 +43,33 @@ export default function PinCreate() {
   // Check if we're in "add content" mode (skip to content step, no back)
   const isAddContentMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab') === 'content'
 
-  const [step, _setStep] = useState<Step>(isAddContentMode ? 'edit' : 'type')
+  const [step, _setStep] = useState<Step>(isAddContentMode ? 'content-type' : 'type')
   const [direction, setDirection] = useState(1) // 1 = forward, -1 = back
-  const STEP_ORDER: Step[] = ['type', 'address', 'details', 'edit', 'publish', 'content', 'publishing']
+  const STEP_ORDER: Step[] = ['type', 'address', 'details', 'content-type', 'edit', 'publish', 'content', 'publishing']
+  const [contentKind, setContentKind] = useState<ContentKind | null>(null)
+
+  /**
+   * Accumulated editor drafts. Each draft is a snapshot of the editor
+   * state at the moment the user tapped Continue → Publish. On final
+   * publish, each draft renders as its own ContentItem on the pin.
+   *
+   * Renamed from `ContentDraft` to avoid colliding with the legacy
+   * `ContentDraft` type used by the old multi-photo handlePublish path.
+   */
+  type EditorDraft = {
+    id: string
+    kind: ContentKind
+    clipFiles: File[]            // raw files for re-render on publish
+    clipMeta: { trimIn: number; trimOut: number; speed: number; adjustments: { brightness: number; contrast: number; saturation: number } }[]
+    overlays: import('@/features/content-editor/state/types').TextOverlay[]
+    aspect: import('@/features/content-editor/state/types').AspectRatio
+    thumbnailUrl: string         // first clip's thumbnail
+  }
+  const [contentDrafts, setContentDrafts] = useState<EditorDraft[]>([])
+  /** When the user is editing an existing draft, this is its id. */
+  const [editingDraftId, setEditingDraftId] = useState<string | null>(null)
+  /** True when the user picked "Publish without content" — hides Add more content. */
+  const [skippedContent, setSkippedContent] = useState(false)
   const goTo = (next: Step) => {
     setDirection(STEP_ORDER.indexOf(next) >= STEP_ORDER.indexOf(step) ? 1 : -1)
     _setStep(next)
@@ -80,8 +111,12 @@ export default function PinCreate() {
 
   const handleAddressSearch = (val: string) => {
     setAddress(val); setCoords(null)
-    search(val, pinType === 'spotlight' ? 'place' : 'address')
+    search(val, pinType === 'spotlight' ? 'spotlight' : 'address')
   }
+
+  // Scroll-to-top is now triggered by AnimatePresence onExitComplete
+  // (see the AnimatePresence below) so the page doesn't jarringly jump
+  // BEFORE the fade-out animation runs.
 
   const selectAddress = (result: { placeName: string; center: [number, number] }) => {
     setAddress(result.placeName); setCoords({ lat: result.center[1], lng: result.center[0] }); clear()
@@ -271,9 +306,29 @@ export default function PinCreate() {
 
   const editorReset = useEditorStore((s) => s.reset)
   const editorClips = useEditorStore((s) => s.clips)
-  const editorAdjustments = useEditorStore((s) => s.adjustments)
   const editorAspect = useEditorStore((s) => s.aspect)
   const editorOverlays = useEditorStore((s) => s.overlays)
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
+  const [draftToDelete, setDraftToDelete] = useState<string | null>(null)
+
+  // Whether the user has any unsaved input — drives the discard confirmation
+  // skip on Step 1 with nothing chosen.
+  const hasUnsavedWork =
+    !!pinType || !!address.trim() || !!price || !!description ||
+    editorClips.length > 0 || editorOverlays.length > 0
+
+  const handleHeaderBack = () => {
+    if (!hasUnsavedWork) {
+      navigate(-1)
+      return
+    }
+    setShowDiscardConfirm(true)
+  }
+  const confirmDiscard = () => {
+    setShowDiscardConfirm(false)
+    editorReset()
+    navigate(-1)
+  }
   const [renderProgress, setRenderProgress] = useState(0)
   const [renderPhase, setRenderPhase] = useState<'idle' | RenderPhase>('idle')
 
@@ -281,36 +336,32 @@ export default function PinCreate() {
   useEffect(() => () => { editorReset() }, [editorReset])
 
   /**
-   * Publish from the editor → Mux pipeline.
+   * Publish: handles three cases.
+   *  1. skippedContent === true → publish the pin with no content
+   *  2. contentDrafts.length > 0 → render each draft as its own ContentItem
+   *  3. legacy fallback → use the live editor session as a single draft
    *
-   * If the composition is all photos, falls back to the legacy raw-upload
-   * path (Mux isn't used for stills). Otherwise creates the pin doc first
-   * with a placeholder content item, then runs renderComposition which
-   * uploads clips to Storage + creates a Mux asset. The Mux webhook
-   * patches the content item's mediaUrl once the asset is ready; we
-   * navigate immediately so the user doesn't wait for that.
+   * Each content draft becomes its own Mux asset (option A from the spec).
+   * Drafts render sequentially with progress shown per-draft.
    */
   const handlePublishFromEditor = async () => {
-    if (!pinType || !coords || editorClips.length === 0) return
+    if (!pinType || !coords) return
 
-    // Preflight: you need a real Firebase Auth session to write to
-    // Firestore/Storage. The mock Carolina user works for read-only
-    // browsing but cannot publish.
+    // Preflight auth check
     if (!userDoc?.uid || userDoc.uid.startsWith('demo') || userDoc.uid.startsWith('carolina')) {
       alert('You need to sign in with a real account before publishing. Visit /sign-up to create one.')
       return
     }
 
-    // All-photos path — Mux doesn't make sense for stills. Use legacy upload.
-    if (editorClips.every((c) => c.type === 'photo')) {
-      const items: ContentDraft[] = editorClips.map((clip, idx) => ({
-        type: 'photo',
-        caption: idx === 0 ? newCaption : '',
-        file: clip.file,
-        preview: clip.sourceUrl,
-        publishAt: newPublishAt || null,
-      }))
-      handlePublish(items)
+    // If the user explicitly skipped content, allow publishing empty
+    // (except spotlights, which require content per the existing rule)
+    if (skippedContent) {
+      if (pinType === 'spotlight') {
+        alert('Spotlight pins require at least one piece of content.')
+        return
+      }
+    } else if (contentDrafts.length === 0) {
+      // No skip, no drafts — there's nothing to publish
       return
     }
 
@@ -320,7 +371,6 @@ export default function PinCreate() {
     setRenderProgress(0)
 
     const agentId = userDoc?.uid || 'demo-agent'
-    const contentId = `content-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
     // Build type-specific pin data (mirrors handlePublish logic)
     const pinData: Record<string, unknown> = {
@@ -350,22 +400,21 @@ export default function PinCreate() {
       })
     }
 
-    // Seed the pin with a placeholder content item. Mux webhook fills in
-    // mediaUrl/thumbnailUrl once the asset is ready.
-    ;(pinData.content as ContentItem[]) = [{
-      id: contentId,
+    // Pre-create placeholder content items for each draft so the Mux webhook
+    // has IDs to target when the assets become ready.
+    const placeholderIds = contentDrafts.map(() => `content-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+    ;(pinData.content as ContentItem[]) = contentDrafts.map((_, idx) => ({
+      id: placeholderIds[idx],
       type: 'reel' as any,
       mediaUrl: '',
       thumbnailUrl: '',
-      caption: newCaption,
+      caption: idx === 0 ? newCaption : '',
       createdAt: Timestamp.now(),
       views: 0,
       saves: 0,
       publishAt: newPublishAt ? Timestamp.fromDate(new Date(newPublishAt)) : null,
-    } as any]
+    } as any))
 
-    // Step-by-step execution with labeled errors so we can tell which
-    // call fails when something goes wrong.
     const runStep = async <T,>(label: string, fn: () => Promise<T>): Promise<T> => {
       try {
         return await fn()
@@ -394,21 +443,47 @@ export default function PinCreate() {
         })
       }
 
-      await runStep('renderComposition', () =>
-        renderComposition({
-          clips: editorClips,
-          aspect: editorAspect,
-          adjustments: editorAdjustments,
-          overlays: editorOverlays,
-          pinId,
-          contentId,
-          caption: newCaption,
-          onProgress: (phase, pct) => {
-            setRenderPhase(phase)
-            setRenderProgress(Math.round(pct * 100))
-          },
-        }),
-      )
+      // Render each content draft as its own Mux asset, sequentially.
+      // Per-draft progress shows as "Rendering 1/3..." in the publishing UI.
+      for (let i = 0; i < contentDrafts.length; i++) {
+        const draft = contentDrafts[i]
+        // Rehydrate clips from the snapshot. For V1 we re-use the file
+        // objects directly (they're still in memory). Trim/speed/adjustments
+        // are taken from the draft's clipMeta.
+        const draftClips = draft.clipFiles.map((file, idx) => ({
+          // Build a minimal clip-shaped object that renderComposition can use.
+          // Note: we only need the fields render.ts touches.
+          id: `${draft.id}-${idx}`,
+          file,
+          sourceUrl: '',
+          thumbnailUrl: '',
+          frames: [],
+          nativeAspect: 9 / 16,
+          type: file.type.startsWith('video') ? ('video' as const) : ('photo' as const),
+          duration: 0,
+          trimIn: draft.clipMeta[idx]?.trimIn ?? 0,
+          trimOut: draft.clipMeta[idx]?.trimOut ?? 0,
+          speed: (draft.clipMeta[idx]?.speed ?? 1) as 0.5 | 1 | 1.5 | 2,
+          adjustments: draft.clipMeta[idx]?.adjustments ?? { brightness: 0, contrast: 0, saturation: 0 },
+        }))
+
+        await runStep(`renderDraft(${i + 1}/${contentDrafts.length})`, () =>
+          renderComposition({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            clips: draftClips as any,
+            aspect: draft.aspect,
+            overlays: draft.overlays,
+            pinId,
+            contentId: placeholderIds[i],
+            caption: i === 0 ? newCaption : '',
+            onProgress: (phase, pct) => {
+              setRenderPhase(phase)
+              // Show overall progress across all drafts
+              setRenderProgress(Math.round(((i + pct) / contentDrafts.length) * 100))
+            },
+          }),
+        )
+      }
 
       navigate('/dashboard')
     } catch (err) {
@@ -419,16 +494,37 @@ export default function PinCreate() {
   }
 
   return (
-    <div className="min-h-screen bg-ivory">
+    <div
+      className={`min-h-screen ${step === 'edit' ? 'bg-[#0A0E17]' : 'bg-ivory'}`}
+      style={{ transition: 'background-color 300ms cubic-bezier(0.32, 0.72, 0, 1)' }}
+    >
       {/* Header */}
-      <div className="sticky top-0 z-30 bg-ivory/95 backdrop-blur-xl border-b border-border-light">
+      <div
+        className={`sticky top-0 z-30 backdrop-blur-xl ${
+          step === 'edit'
+            ? 'bg-[#0A0E17]/92 border-b border-white/[0.06]'
+            : 'bg-ivory/95 border-b border-border-light'
+        }`}
+        style={{ transition: 'background-color 300ms cubic-bezier(0.32, 0.72, 0, 1), border-color 300ms' }}
+      >
         <div className="max-w-2xl mx-auto px-5 flex items-center gap-3"
           style={{ paddingTop: 'calc(env(safe-area-inset-top, 12px) + 8px)', paddingBottom: '12px' }}>
-          <motion.button whileTap={{ scale: 0.88 }} onClick={() => navigate(-1)}
-            className="w-9 h-9 rounded-full bg-cream flex items-center justify-center">
-            <ArrowLeft size={18} className="text-ink" />
+          <motion.button
+            whileTap={{ scale: 0.88 }}
+            onClick={handleHeaderBack}
+            className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors duration-300 ${
+              step === 'edit' ? 'bg-white/[0.09] hover:bg-white/[0.14]' : 'bg-cream'
+            }`}
+          >
+            <ArrowLeft size={18} className={step === 'edit' ? 'text-white/95' : 'text-ink'} />
           </motion.button>
-          <h1 className="text-[18px] font-bold text-ink tracking-tight">New Pin</h1>
+          <h1
+            className={`text-[18px] font-bold tracking-tight transition-colors duration-300 ${
+              step === 'edit' ? 'text-white' : 'text-ink'
+            }`}
+          >
+            {step === 'edit' ? 'Craft your reel' : 'New Pin'}
+          </h1>
           <div className="flex-1" />
           {/* Step indicator */}
           <div className="flex gap-1">
@@ -436,14 +532,36 @@ export default function PinCreate() {
               const order = ['type','address','details','edit','publish'] as const
               const currentIdx = order.indexOf(step as typeof order[number])
               const filled = step === s || (currentIdx > -1 && currentIdx > i)
-              return <div key={s} className={`w-2 h-2 rounded-full ${filled ? 'bg-tangerine' : 'bg-pearl'}`} />
+              return (
+                <div
+                  key={s}
+                  className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                    filled ? 'bg-tangerine' : step === 'edit' ? 'bg-white/12' : 'bg-pearl'
+                  }`}
+                />
+              )
             })}
           </div>
         </div>
       </div>
 
-      <div className={`${step === 'edit' ? 'max-w-5xl' : 'max-w-2xl'} mx-auto px-5 py-6 transition-[max-width] duration-300`}>
-        <AnimatePresence mode="wait" custom={direction}>
+      <div
+        className={`${step === 'edit' ? 'max-w-5xl' : 'max-w-2xl'} mx-auto px-5 py-6`}
+        // min-height locks the parent so AnimatePresence mode="wait" doesn't
+        // briefly collapse the parent to height 0 between exit and enter,
+        // which was producing the "expand from center" effect when entering
+        // the editor step.
+        style={{ minHeight: 'calc(100dvh - 200px)' }}
+      >
+        <AnimatePresence
+          mode="wait"
+          custom={direction}
+          onExitComplete={() => {
+            if (typeof window !== 'undefined') {
+              window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+            }
+          }}
+        >
           {/* ═══ STEP 1: TYPE ═══ */}
           {step === 'type' && (
             <motion.div key="type" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit">
@@ -483,7 +601,12 @@ export default function PinCreate() {
               <p className="text-[14px] text-smoke mb-6">Search for the address or location.</p>
 
               <div className="relative mb-4">
-                <Input placeholder="Search address..." value={address} onChange={(e) => handleAddressSearch(e.target.value)} icon={<Search size={16} />} />
+                <Input
+                  placeholder={pinType === 'spotlight' ? 'Search neighborhoods, cities, counties...' : 'Search address...'}
+                  value={address}
+                  onChange={(e) => handleAddressSearch(e.target.value)}
+                  icon={<Search size={16} />}
+                />
                 <AnimatePresence>
                   {results.length > 0 && !coords && (
                     <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
@@ -579,40 +702,154 @@ export default function PinCreate() {
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                <Button variant="secondary" size="xl" onClick={() => setStep('address')} className="flex-1">Back</Button>
-                <Button variant="primary" size="xl" onClick={() => setStep('edit')} className="flex-[2]">Add Content</Button>
+              <div className="flex flex-col gap-2.5">
+                <Button variant="primary" size="xl" onClick={() => setStep('content-type')} fullWidth>Add content</Button>
+                {/* Spotlights require content; hide the skip option for them */}
+                {pinType !== 'spotlight' && (
+                  <Button variant="secondary" size="xl" onClick={() => { setSkippedContent(true); setStep('publish') }} fullWidth>
+                    Publish without content
+                  </Button>
+                )}
+                <Button variant="ghost" size="lg" onClick={() => setStep('address')} fullWidth>
+                  Back
+                </Button>
               </div>
             </motion.div>
           )}
 
-          {/* ═══ STEP 4: EDIT (inline content editor) ═══ */}
+          {/* ═══ STEP 3.5: CONTENT TYPE PICKER ═══ */}
+          {step === 'content-type' && (
+            <motion.div
+              key="content-type"
+              custom={direction}
+              variants={{
+                enter: (d: number) => ({ opacity: 0, x: 20 * d }),
+                center: { opacity: 1, x: 0 },
+                exit: (d: number) => ({ opacity: 0, x: -20 * d }),
+              }}
+              initial="enter"
+              animate="center"
+              exit="exit"
+            >
+              <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">What kind of content?</h2>
+              <p className="text-[14px] text-smoke mb-6">Pick how you want to share this listing.</p>
+
+              <div className="space-y-3 mb-6">
+                <ContentKindCard
+                  kind="carousel"
+                  title="Photo carousel"
+                  description="A swipeable set of photos with optional text and filters."
+                  icon={<Camera size={22} />}
+                  onSelect={() => {
+                    setContentKind('carousel')
+                    editorReset()
+                    setStep('edit')
+                  }}
+                />
+                <ContentKindCard
+                  kind="reel"
+                  title="Video reel"
+                  description="Single video with frame and preview. Quick and simple."
+                  icon={<Film size={22} />}
+                  onSelect={() => {
+                    setContentKind('reel')
+                    editorReset()
+                    setStep('edit')
+                  }}
+                />
+                <ContentKindCard
+                  kind="editor"
+                  title="Full editor"
+                  description="Multi-clip with trim, text, adjust, audio, and more."
+                  icon={<Sparkles size={22} />}
+                  onSelect={() => {
+                    setContentKind('editor')
+                    editorReset()
+                    setStep('edit')
+                  }}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <Button variant="secondary" size="xl" onClick={() => setStep('details')} fullWidth>Back</Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ═══ STEP 4: EDIT (inline content editor — dark surface) ═══ */}
           {step === 'edit' && (
-            <div>
+            <motion.div
+              key="edit-wrapper"
+              custom={direction}
+              variants={{
+                enter: (d: number) => ({ opacity: 0, x: 20 * d }),
+                center: { opacity: 1, x: 0 },
+                exit: (d: number) => ({ opacity: 0, x: -20 * d }),
+              }}
+              initial="enter"
+              animate="center"
+              exit="exit"
+            >
               <EditorStep direction={direction} />
-              <div className="flex gap-3 mt-6">
-                <Button
-                  variant="secondary"
-                  size="xl"
+              <div className="flex gap-3 mt-7 px-4 lg:px-12">
+                <button
                   onClick={() => {
                     if (isAddContentMode) navigate(-1)
-                    else setStep('details')
+                    else setStep('content-type')
                   }}
-                  className="flex-1"
+                  className="flex-1 h-[52px] rounded-[14px] bg-white/[0.07] text-white/85 text-[14px] font-semibold cursor-pointer hover:bg-white/[0.11] active:scale-[0.99] transition-all"
                 >
                   Back
-                </Button>
-                <Button
-                  variant="primary"
-                  size="xl"
-                  onClick={() => setStep('publish')}
+                </button>
+                <motion.button
+                  whileTap={editorClips.length > 0 ? { scale: 0.98 } : undefined}
+                  onClick={() => {
+                    if (editorClips.length === 0) return
+                    // Snapshot current editor state into a draft
+                    const draftId = editingDraftId ?? Math.random().toString(36).slice(2, 10)
+                    const newDraft: EditorDraft = {
+                      id: draftId,
+                      kind: contentKind ?? 'editor',
+                      clipFiles: editorClips.map((c) => c.file),
+                      clipMeta: editorClips.map((c) => ({
+                        trimIn: c.trimIn,
+                        trimOut: c.trimOut,
+                        speed: c.speed,
+                        adjustments: { ...c.adjustments },
+                      })),
+                      overlays: [...editorOverlays],
+                      aspect: editorAspect,
+                      thumbnailUrl: editorClips[0]?.thumbnailUrl ?? '',
+                    }
+                    setContentDrafts((prev) => {
+                      const idx = prev.findIndex((d) => d.id === draftId)
+                      if (idx >= 0) {
+                        const next = [...prev]
+                        next[idx] = newDraft
+                        return next
+                      }
+                      return [...prev, newDraft]
+                    })
+                    setEditingDraftId(null)
+                    setSkippedContent(false)
+                    setStep('publish')
+                  }}
                   disabled={editorClips.length === 0}
-                  className="flex-[2]"
+                  className={`flex-[2] h-[52px] rounded-[14px] text-[14px] font-bold transition-all ${
+                    editorClips.length === 0
+                      ? 'bg-white/[0.06] text-white/30 cursor-not-allowed'
+                      : 'bg-tangerine text-white cursor-pointer hover:brightness-110'
+                  }`}
+                  style={{
+                    boxShadow: editorClips.length > 0
+                      ? '0 8px 28px rgba(255,107,61,0.4), 0 0 0 1px rgba(255,107,61,0.5)'
+                      : undefined,
+                  }}
                 >
                   Continue
-                </Button>
+                </motion.button>
               </div>
-            </div>
+            </motion.div>
           )}
 
           {/* ═══ STEP 4a: PUBLISH (caption + schedule post-editor) ═══ */}
@@ -621,22 +858,46 @@ export default function PinCreate() {
               <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">Almost there</h2>
               <p className="text-[14px] text-smoke mb-6">Add a caption and choose when this goes live.</p>
 
-              {/* Edited preview strip */}
-              {editorClips.length > 0 && (
+              {/* Compact horizontal scroller of accumulated content drafts */}
+              {contentDrafts.length > 0 && (
                 <div className="mb-5">
                   <p className="text-[10px] font-bold text-smoke uppercase tracking-wider mb-2">
-                    {editorClips.length === 1 ? '1 clip' : `${editorClips.length} clips`} · tap to re-edit
+                    {contentDrafts.length === 1 ? '1 piece of content' : `${contentDrafts.length} pieces of content`}
                   </p>
-                  <button
-                    onClick={() => setStep('edit')}
-                    className="w-full flex items-center gap-2 p-2 rounded-[14px] bg-cream border border-border-light hover:border-tangerine/40 transition-colors cursor-pointer overflow-x-auto scrollbar-none"
-                  >
-                    {editorClips.map((clip) => (
-                      <div key={clip.id} className="shrink-0 w-[56px] h-[72px] rounded-[10px] overflow-hidden bg-pearl">
-                        <img src={clip.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                  <div className="flex items-center gap-2 overflow-x-auto scrollbar-none p-1">
+                    {contentDrafts.map((d) => (
+                      <div key={d.id} className="relative shrink-0">
+                        <button
+                          onClick={() => {
+                            // Re-open this draft in the editor: rehydrate
+                            // editor state from the snapshot and route there.
+                            editorReset()
+                            setEditingDraftId(d.id)
+                            // Note: re-importing files via the store handles
+                            // probing/thumbnails. Trim/speed/etc. won't
+                            // perfectly persist in V1 — that's a follow-up.
+                            useEditorStore.getState().importFiles(d.clipFiles)
+                            setStep('edit')
+                          }}
+                          className="w-[58px] h-[78px] rounded-[10px] overflow-hidden bg-pearl border border-border-light hover:border-tangerine/40 transition-colors cursor-pointer"
+                        >
+                          {d.thumbnailUrl
+                            ? <img src={d.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                            : <div className="w-full h-full flex items-center justify-center"><Film size={16} className="text-smoke" /></div>}
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setDraftToDelete(d.id)
+                          }}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-ink text-warm-white flex items-center justify-center cursor-pointer hover:brightness-125 transition-all shadow"
+                          aria-label="Remove draft"
+                        >
+                          <X size={11} strokeWidth={2.6} />
+                        </button>
                       </div>
                     ))}
-                  </button>
+                  </div>
                 </div>
               )}
 
@@ -663,10 +924,30 @@ export default function PinCreate() {
                 />
               </div>
 
-              <div className="flex gap-3">
-                <Button variant="secondary" size="xl" onClick={() => setStep('edit')} className="flex-1">Back</Button>
-                <Button variant="primary" size="xl" onClick={handlePublishFromEditor} loading={saving} className="flex-[2]">
+              <div className="flex flex-col gap-2.5">
+                <Button variant="primary" size="xl" onClick={handlePublishFromEditor} loading={saving} fullWidth>
                   Publish Pin
+                </Button>
+                {/* "+ Add more content" only when the user actually has content
+                    (not when they explicitly chose to publish without). */}
+                {!skippedContent && contentDrafts.length > 0 && (
+                  <Button
+                    variant="secondary"
+                    size="lg"
+                    fullWidth
+                    onClick={() => setStep('content-type')}
+                    icon={<Plus size={16} />}
+                  >
+                    Add more content
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  fullWidth
+                  onClick={() => setStep(skippedContent ? 'details' : 'edit')}
+                >
+                  Back
                 </Button>
               </div>
             </motion.div>
@@ -861,7 +1142,66 @@ export default function PinCreate() {
         reason={paywall.reason}
         upgradeTo={paywall.upgradeTo}
       />
+
+      {/* Discard pin? — uses the shared ConfirmDialog (scroll lock + swipe to dismiss + no blur) */}
+      <ConfirmDialog
+        isOpen={showDiscardConfirm}
+        onClose={() => setShowDiscardConfirm(false)}
+        onConfirm={confirmDiscard}
+        title="Discard pin?"
+        message="Your progress will be lost. This can't be undone."
+        confirmLabel="Discard"
+        confirmVariant="danger"
+      />
+
+      {/* Delete content draft? — also via ConfirmDialog */}
+      <ConfirmDialog
+        isOpen={draftToDelete !== null}
+        onClose={() => setDraftToDelete(null)}
+        onConfirm={() => {
+          if (!draftToDelete) return
+          setContentDrafts((prev) => prev.filter((x) => x.id !== draftToDelete))
+          if (editingDraftId === draftToDelete) {
+            setEditingDraftId(null)
+            editorReset()
+          }
+          setDraftToDelete(null)
+        }}
+        title="Remove this content?"
+        message="This piece of content will be removed from the pin. You can add new content anytime."
+        confirmLabel="Remove"
+        confirmVariant="danger"
+      />
     </div>
+  )
+}
+
+// ── Content kind picker card ──
+
+interface ContentKindCardProps {
+  kind: ContentKind
+  title: string
+  description: string
+  icon: React.ReactNode
+  onSelect: () => void
+}
+
+function ContentKindCard({ title, description, icon, onSelect }: ContentKindCardProps) {
+  return (
+    <motion.button
+      whileTap={{ scale: 0.98 }}
+      onClick={onSelect}
+      className="w-full flex items-center gap-4 p-4 rounded-[18px] bg-cream border border-border-light hover:border-tangerine/40 cursor-pointer transition-colors text-left"
+    >
+      <div className="w-12 h-12 rounded-[14px] bg-tangerine/12 flex items-center justify-center text-tangerine shrink-0">
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[15px] font-bold text-ink">{title}</p>
+        <p className="text-[12px] text-smoke leading-snug mt-0.5">{description}</p>
+      </div>
+      <ChevronRight size={18} className="text-ash shrink-0" />
+    </motion.button>
   )
 }
 
