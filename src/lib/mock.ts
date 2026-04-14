@@ -5,6 +5,16 @@ const now = Timestamp.now()
 const hours = (h: number) => Timestamp.fromMillis(Date.now() + h * 3600_000)
 const daysAgo = (d: number) => Timestamp.fromMillis(Date.now() - d * 86400_000)
 
+/**
+ * Returns YYYY-MM-DD for today + `offsetDays`. Used to keep the mock open
+ * house sessions always upcoming relative to when the demo is viewed.
+ */
+function dateInDays(offsetDays: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + offsetDays)
+  return d.toISOString().slice(0, 10)
+}
+
 // ── Mock Agents ──
 
 export const MOCK_AGENTS: UserDoc[] = [
@@ -74,8 +84,9 @@ export const MOCK_PINS_CAROLINA: Pin[] = [
     status: 'active', daysOnMarket: 14, mlsNumber: 'A11234567',
     openHouse: {
       sessions: [
-        { id: 'oh_1_a', date: '2026-04-12', startTime: '14:00', endTime: '17:00' },
-        { id: 'oh_1_b', date: '2026-04-13', startTime: '13:00', endTime: '16:00' },
+        // Always upcoming — computed relative to today so the pill keeps showing.
+        { id: 'oh_1_a', date: dateInDays(2), startTime: '14:00', endTime: '17:00' },
+        { id: 'oh_1_b', date: dateInDays(3), startTime: '13:00', endTime: '16:00' },
       ],
       recurringWeeks: 0,
     },
