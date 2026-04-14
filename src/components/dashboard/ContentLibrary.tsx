@@ -361,7 +361,7 @@ function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpe
 
           {/* Type pill */}
           <div className="absolute top-2.5 left-2.5">
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-sm text-[11px] font-bold text-ink shadow-sm">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-sm text-[11px] font-bold text-[#1A1A1A] shadow-sm">
               {isVideo ? <><Play size={9} fill="currentColor" /> Video</> : <><Image size={9} /> Photo</>}
             </span>
           </div>
@@ -512,7 +512,7 @@ function UploadButton({ onPhoto, onVideo }: { onPhoto: () => void; onVideo: () =
         <>
           <div className="fixed inset-0 z-[40]" onClick={() => setOpen(false)} />
           <motion.div initial={{ opacity: 0, scale: 0.95, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.12 }}
-            className="absolute right-0 top-full mt-1.5 z-[50] bg-white rounded-[12px] shadow-xl border border-border-light overflow-hidden min-w-[140px]">
+            className="absolute right-0 top-full mt-1.5 z-[50] bg-warm-white rounded-[12px] shadow-xl border border-border-light overflow-hidden min-w-[140px]">
             <button onClick={() => { onPhoto() }}
               className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left text-[12px] font-medium text-ink hover:bg-cream cursor-pointer transition-colors">
               <Image size={14} className="text-smoke" /> Photos

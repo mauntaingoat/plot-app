@@ -84,6 +84,48 @@
   --ease-snap: cubic-bezier(0.12, 0.8, 0.32, 1);
 }
 
+/* ============================================================
+   DARK MODE (dashboard-scoped)
+   Applied via .dark-dashboard on <html> while Dashboard is mounted
+   AND theme preference resolves to dark. Remaps the physical LIGHT
+   tokens to dark surfaces so existing utility classes (bg-ivory,
+   bg-warm-white, text-ink, etc.) work without refactoring.
+   Intentionally-dark tokens (midnight/obsidian/slate/charcoal)
+   stay untouched.
+   ============================================================ */
+html.dark-dashboard {
+  /* Surfaces — light tokens remapped to dark layers */
+  --color-ivory:      #0A0E17; /* page canvas */
+  --color-cream:      #10141E; /* sunken sections */
+  --color-pearl:      #1A1F2C; /* nested / icon chip */
+  --color-warm-white: #141826; /* raised card */
+
+  /* Text — ink stack remapped to light */
+  --color-ink:      #F4F5F8;
+  --color-graphite: #C9CDDA;
+  --color-smoke:    #8A91A3;
+  --color-ash:      #5F6578;
+
+  /* Borders — invert the hairline */
+  --color-border-light: rgba(255, 255, 255, 0.08);
+
+  /* Shadows — subtler in dark (shadows are less effective, borders carry the weight) */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.50);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 10px 36px rgba(0, 0, 0, 0.65);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.75);
+
+  background: var(--color-ivory);
+  color: var(--color-ink);
+  color-scheme: dark;
+}
+
+/* Smooth the flip so bg/color changes don't hard-snap on toggle */
+html.dark-dashboard,
+html.dark-dashboard body {
+  transition: background-color 240ms var(--ease-smooth), color 240ms var(--ease-smooth);
+}
+
 /* ── Base Reset ── */
 *, *::before, *::after {
   -webkit-tap-highlight-color: transparent;
@@ -414,6 +456,65 @@ input:focus, textarea:focus {
 .prose-reeltor a:hover {
   text-decoration: underline;
 }
+
+/* ── Content editor: custom range slider (theme-aware) ── */
+.adjust-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 26px;
+  background: transparent;
+  cursor: pointer;
+  --track: var(--color-pearl);
+}
+.adjust-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--track) 0%,
+    var(--track) min(var(--fill, 50%), 50%),
+    #FF6B3D min(var(--fill, 50%), 50%),
+    #FF6B3D max(var(--fill, 50%), 50%),
+    var(--track) max(var(--fill, 50%), 50%),
+    var(--track) 100%
+  );
+}
+.adjust-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -7px;
+  border-radius: 999px;
+  background: #FAFAF8;
+  border: 2px solid #FF6B3D;
+  box-shadow: 0 2px 10px rgba(10,14,23,0.18), 0 0 0 4px rgba(255,107,61,0.14);
+  transition: transform 0.12s ease;
+}
+.adjust-slider::-webkit-slider-thumb:active { transform: scale(1.15); }
+.adjust-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--track);
+}
+.adjust-slider::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: #FF6B3D;
+}
+.adjust-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #FAFAF8;
+  border: 2px solid #FF6B3D;
+  box-shadow: 0 2px 10px rgba(10,14,23,0.18);
+}
+
+/* Hide scrollbars in editor surfaces */
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { scrollbar-width: none; }
 
 /* ── Mapbox popup override ── */
 .mapboxgl-popup-content {

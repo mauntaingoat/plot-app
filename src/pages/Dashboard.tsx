@@ -32,12 +32,13 @@ import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { useScrollLock } from '@/hooks/useScrollLock'
 import { Input } from '@/components/ui/Input'
 import { useAuthStore } from '@/stores/authStore'
+import { useThemeStore, type ThemePreference } from '@/stores/themeStore'
 import { firebaseConfigured } from '@/config/firebase'
 import { MOCK_PINS_CAROLINA, MOCK_CURRENT_USER, MOCK_AGENTS } from '@/lib/mock'
 import { PLATFORM_LIST, PLATFORM_LOGOS } from '@/components/icons/PlatformLogos'
 import { PIN_CONFIG, type Pin, type Platform, type ForSalePin, type OpenHouse, type ContentItem } from '@/lib/types'
 
-type DashTab = 'plot' | 'insights' | 'inbox' | 'content' | 'settings'
+type DashTab = 'reelst' | 'insights' | 'inbox' | 'content' | 'settings'
 
 function useIsDesktop() {
   const [isDesktop, setIsDesktop] = useState(typeof window !== 'undefined' && window.innerWidth >= 1024)
@@ -53,7 +54,7 @@ function useIsDesktop() {
 export default function Dashboard() {
   const navigate = useNavigate()
   const { userDoc, setUserDoc } = useAuthStore()
-  const [activeTab, setActiveTab] = useState<DashTab>('plot')
+  const [activeTab, setActiveTab] = useState<DashTab>('reelst')
   const [showSetup, setShowSetup] = useState(false)
   const [showPinActions, setShowPinActions] = useState<Pin | null>(null)
   const [showAddPlatform, setShowAddPlatform] = useState(false)
@@ -77,11 +78,12 @@ export default function Dashboard() {
   useScrollLock(isDesktop && showEditProfile)
   useScrollLock(isDesktop && showAddPlatform)
 
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('reelst_dark') === 'true')
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark-dashboard', darkMode)
-    localStorage.setItem('reelst_dark', String(darkMode))
-  }, [darkMode])
+  const themePreference = useThemeStore((s) => s.preference)
+  const resolvedTheme = useThemeStore((s) => s.resolved)
+  const setThemePreference = useThemeStore((s) => s.setPreference)
+  const activateTheme = useThemeStore((s) => s.activate)
+  const isDark = resolvedTheme === 'dark'
+  useEffect(() => activateTheme(), [activateTheme])
 
   // Use real userDoc if signed in, otherwise fall back to Carolina (mock) for demo
   const currentUser = userDoc || MOCK_CURRENT_USER
@@ -205,7 +207,7 @@ export default function Dashboard() {
     <div>
 
         {/* ═══ MY PLOT ═══ */}
-        {activeTab === 'plot' && (
+        {activeTab === 'reelst' && (
           <div className={isDesktop ? 'space-y-5' : 'px-5 py-5 space-y-4'}>
             {/* Desktop: profile card header */}
             {isDesktop && (
@@ -456,17 +458,12 @@ export default function Dashboard() {
             <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Notifications</p>
             <NotificationSettings />
 
-            <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Preferences</p>
-            <div className="w-full flex items-center gap-3.5 bg-cream rounded-[14px] p-4">
-              <div className="w-10 h-10 rounded-[12px] bg-pearl flex items-center justify-center">
-                {darkMode ? <Moon size={18} className="text-graphite" /> : <Sun size={18} className="text-graphite" />}
-              </div>
-              <div className="flex-1">
-                <span className="text-[15px] font-medium text-ink block">Appearance</span>
-                <span className="text-[12px] text-smoke">{darkMode ? 'Dark mode' : 'Light mode'}</span>
-              </div>
-              <ToggleSwitch on={darkMode} onToggle={() => setDarkMode(!darkMode)} />
-            </div>
+            <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Appearance</p>
+            <AppearancePicker
+              preference={themePreference}
+              resolved={resolvedTheme}
+              onChange={setThemePreference}
+            />
 
             {/* Custom Branding — Studio only */}
             {hasFeature(activeUser, 'customBranding') && (
@@ -764,7 +761,7 @@ export default function Dashboard() {
   // ═══════════════════════════════════════════
   if (isDesktop) {
     const NAV_ITEMS: { id: DashTab; label: string; icon: typeof MapPin }[] = [
-      { id: 'plot', label: 'My Reelst', icon: MapPin },
+      { id: 'reelst', label: 'My Reelst', icon: MapPin },
       { id: 'insights', label: 'Insights', icon: BarChart3 },
       { id: 'inbox', label: 'Inbox', icon: Inbox },
       { id: 'content', label: 'Content', icon: Film },
@@ -774,7 +771,7 @@ export default function Dashboard() {
     return (
       <div className="h-screen flex bg-ivory overflow-hidden">
         {/* ── Left Sidebar ── */}
-        <aside className="w-[240px] shrink-0 border-r border-border-light flex flex-col" style={{ background: 'linear-gradient(180deg, #FAFAF8 0%, #F5F3EF 100%)' }}>
+        <aside className="w-[240px] shrink-0 border-r border-border-light flex flex-col" style={{ background: 'linear-gradient(180deg, var(--color-ivory) 0%, var(--color-cream) 100%)' }}>
           {/* Logo */}
           <div className="px-5 pt-6 pb-2">
             <div className="flex items-center gap-2.5">
@@ -838,7 +835,7 @@ export default function Dashboard() {
           <div className="px-4 pb-6">
             <button
               onClick={() => navigate('/dashboard/pin/new')}
-              className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-2xl bg-midnight text-white font-semibold text-[13px] cursor-pointer shadow-lg hover:shadow-xl transition-shadow"
+              className={`w-full flex items-center justify-center gap-2 px-3 py-3 rounded-2xl font-semibold text-[13px] cursor-pointer shadow-lg hover:shadow-xl transition-shadow ${isDark ? 'bg-tangerine text-white' : 'bg-midnight text-white'}`}
             >
               <Plus size={16} />
               <span>Add Pin</span>
@@ -858,7 +855,7 @@ export default function Dashboard() {
           {/* Top bar */}
           <div className="shrink-0 flex items-center justify-between px-8 h-[64px] border-b border-border-light bg-ivory">
             <h1 className="text-[20px] font-bold text-ink tracking-tight">
-              {activeTab === 'plot' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'inbox' ? 'Inbox' : activeTab === 'content' ? 'Content' : 'Settings'}
+              {activeTab === 'reelst' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'inbox' ? 'Inbox' : activeTab === 'content' ? 'Content' : 'Settings'}
             </h1>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 bg-warm-white border border-border-light rounded-full pl-4 pr-1.5 py-1.5">
@@ -889,7 +886,7 @@ export default function Dashboard() {
         </main>
 
         {/* ── Right Preview Panel (Live iframe) ── */}
-        <aside className="w-[300px] shrink-0 border-l border-border-light flex flex-col items-center justify-center" style={{ background: 'linear-gradient(180deg, #F5F3EF 0%, #EDEAE4 100%)' }}>
+        <aside className="w-[300px] shrink-0 border-l border-border-light flex flex-col items-center justify-center" style={{ background: 'linear-gradient(180deg, var(--color-cream) 0%, var(--color-pearl) 100%)' }}>
           {/* Phone frame with live preview — scaled to fit */}
           <div className="relative">
             <div className="w-[240px] rounded-[32px] bg-midnight shadow-2xl overflow-hidden" style={{ height: '480px' }}>
@@ -927,7 +924,7 @@ export default function Dashboard() {
             <Avatar src={activeUser.photoURL} name={activeUser.displayName || 'Agent'} size={36} />
             <div>
               <p className="text-[16px] font-bold text-ink tracking-tight">
-                {activeTab === 'plot' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'inbox' ? 'Inbox' : activeTab === 'content' ? 'Content' : 'Settings'}
+                {activeTab === 'reelst' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'inbox' ? 'Inbox' : activeTab === 'content' ? 'Content' : 'Settings'}
               </p>
               <p className="text-[12px] text-smoke">@{activeUser.username || 'you'}</p>
             </div>
@@ -949,7 +946,7 @@ export default function Dashboard() {
 
       <TabBar
         tabs={[
-          { id: 'plot', label: 'My Reelst', icon: <MapPin size={20} /> },
+          { id: 'reelst', label: 'My Reelst', icon: <MapPin size={20} /> },
           { id: 'insights', label: 'Insights', icon: <BarChart3 size={20} /> },
           { id: 'inbox', label: 'Inbox', icon: <Inbox size={20} /> },
           { id: 'content', label: 'Content', icon: <Film size={20} /> },
@@ -1166,5 +1163,78 @@ function ToggleSwitch({ on, onToggle }: { on: boolean; onToggle: () => void }) {
         className="absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm"
       />
     </motion.button>
+  )
+}
+
+function AppearancePicker({
+  preference,
+  resolved,
+  onChange,
+}: {
+  preference: ThemePreference
+  resolved: 'light' | 'dark'
+  onChange: (pref: ThemePreference) => void
+}) {
+  const options: { id: ThemePreference; label: string; icon: typeof Sun }[] = [
+    { id: 'light', label: 'Light', icon: Sun },
+    { id: 'dark', label: 'Dark', icon: Moon },
+    { id: 'system', label: 'System', icon: Settings },
+  ]
+  const subtitle =
+    preference === 'system'
+      ? `Following your device · currently ${resolved}`
+      : preference === 'dark'
+      ? 'Dark mode'
+      : 'Light mode'
+
+  return (
+    <div className="w-full bg-cream rounded-[14px] p-4 flex flex-col gap-3.5">
+      <div className="flex items-center gap-3.5">
+        <div className="w-10 h-10 rounded-[12px] bg-pearl flex items-center justify-center">
+          {resolved === 'dark' ? (
+            <Moon size={18} className="text-graphite" />
+          ) : (
+            <Sun size={18} className="text-graphite" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="text-[15px] font-medium text-ink block">Theme</span>
+          <span className="text-[12px] text-smoke">{subtitle}</span>
+        </div>
+      </div>
+      <div
+        role="radiogroup"
+        aria-label="Color theme"
+        className="relative grid grid-cols-3 gap-1 p-1 rounded-full bg-pearl/60 border border-border-light"
+      >
+        {options.map((opt) => {
+          const active = preference === opt.id
+          const Icon = opt.icon
+          return (
+            <button
+              key={opt.id}
+              role="radio"
+              aria-checked={active}
+              onClick={() => onChange(opt.id)}
+              className={`relative z-10 flex items-center justify-center gap-1.5 h-9 rounded-full text-[12px] font-semibold cursor-pointer transition-colors duration-200 ${
+                active ? 'text-ink' : 'text-smoke hover:text-graphite'
+              }`}
+            >
+              {active && (
+                <motion.span
+                  layoutId="appearance-pill"
+                  className="absolute inset-0 rounded-full bg-warm-white shadow-sm border border-border-light"
+                  transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-1.5">
+                <Icon size={13} />
+                {opt.label}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
   )
 }

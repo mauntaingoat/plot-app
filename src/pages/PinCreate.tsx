@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, ArrowRight, MapPin, Search, Check, Upload, Video, Camera, X, DollarSign, Home, BadgeCheck, Compass, Plus, Film, Mic, Clock, Lock } from 'lucide-react'
@@ -13,6 +13,10 @@ import { Timestamp } from 'firebase/firestore'
 import { getTierLimits, canUploadVideo, hasFeature, type Tier } from '@/lib/tiers'
 import { PaywallPrompt } from '@/components/dashboard/PaywallPrompt'
 import { generateVideoThumbnail } from '@/lib/videoThumbnail'
+import { useThemeStore } from '@/stores/themeStore'
+import { EditorStep } from '@/features/content-editor/EditorStep'
+import { useEditorStore } from '@/features/content-editor/state/editorStore'
+import { renderComposition, type RenderPhase } from '@/features/content-editor/lib/render'
 
 const PIN_OPTIONS: { type: PinType; label: string; desc: string; icon: typeof Home; color: string }[] = [
   { type: 'for_sale', label: 'For Sale Listing', desc: 'Active listing with MLS data, photos, and content', icon: Home, color: '#3B82F6' },
@@ -20,19 +24,21 @@ const PIN_OPTIONS: { type: PinType; label: string; desc: string; icon: typeof Ho
   { type: 'spotlight', label: 'Spotlight', desc: 'Highlight a neighborhood, building, or local favorite', icon: Compass, color: '#FF6B3D' },
 ]
 
-type Step = 'type' | 'address' | 'details' | 'content' | 'publishing'
+type Step = 'type' | 'address' | 'details' | 'edit' | 'publish' | 'content' | 'publishing'
 
 export default function PinCreate() {
   const navigate = useNavigate()
   const { userDoc } = useAuthStore()
   const { results, search, clear } = useGeocoding()
+  const activateTheme = useThemeStore((s) => s.activate)
+  useEffect(() => activateTheme(), [activateTheme])
 
   // Check if we're in "add content" mode (skip to content step, no back)
   const isAddContentMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab') === 'content'
 
-  const [step, _setStep] = useState<Step>(isAddContentMode ? 'content' : 'type')
+  const [step, _setStep] = useState<Step>(isAddContentMode ? 'edit' : 'type')
   const [direction, setDirection] = useState(1) // 1 = forward, -1 = back
-  const STEP_ORDER: Step[] = ['type', 'address', 'details', 'content', 'publishing']
+  const STEP_ORDER: Step[] = ['type', 'address', 'details', 'edit', 'publish', 'content', 'publishing']
   const goTo = (next: Step) => {
     setDirection(STEP_ORDER.indexOf(next) >= STEP_ORDER.indexOf(step) ? 1 : -1)
     _setStep(next)
@@ -137,10 +143,12 @@ export default function PinCreate() {
     setContentItems(contentItems.filter((_, i) => i !== idx))
   }
 
-  const handlePublish = async () => {
+  type ContentDraft = { type: string; caption: string; file: File | null; preview: string | null; publishAt: string | null }
+  const handlePublish = async (override?: ContentDraft[]) => {
     if (!pinType || !coords) return
+    const items: ContentDraft[] = override ?? contentItems
     // Neighborhood pins must have at least one content item
-    if (pinType === 'spotlight' && contentItems.length === 0) {
+    if (pinType === 'spotlight' && items.length === 0) {
       alert('Neighborhood pins require at least one piece of content (reel, photo, or video note).')
       return
     }
@@ -149,7 +157,7 @@ export default function PinCreate() {
 
     // Timeout after 15s
     const timeout = setTimeout(() => {
-      setSaving(false); setStep('content')
+      setSaving(false); setStep('publish')
       alert('Publishing timed out. Please try again.')
     }, 15000)
 
@@ -203,9 +211,9 @@ export default function PinCreate() {
       }
 
       // Upload content media + build content array
-      if (contentItems.length > 0) {
+      if (items.length > 0) {
         const contentArray: ContentItem[] = []
-        for (const item of contentItems) {
+        for (const item of items) {
           let mediaUrl = ''
           let thumbnailUrl = ''
           if (item.file) {
@@ -256,8 +264,157 @@ export default function PinCreate() {
     } catch (err) {
       clearTimeout(timeout)
       console.error('Failed to create pin:', err)
-      setSaving(false); setStep('content')
+      setSaving(false); setStep('publish')
       alert(`Failed to publish: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
+  }
+
+  const editorReset = useEditorStore((s) => s.reset)
+  const editorClips = useEditorStore((s) => s.clips)
+  const editorAdjustments = useEditorStore((s) => s.adjustments)
+  const editorAspect = useEditorStore((s) => s.aspect)
+  const editorOverlays = useEditorStore((s) => s.overlays)
+  const [renderProgress, setRenderProgress] = useState(0)
+  const [renderPhase, setRenderPhase] = useState<'idle' | RenderPhase>('idle')
+
+  // Reset editor on unmount so stale clips don't leak across sessions
+  useEffect(() => () => { editorReset() }, [editorReset])
+
+  /**
+   * Publish from the editor → Mux pipeline.
+   *
+   * If the composition is all photos, falls back to the legacy raw-upload
+   * path (Mux isn't used for stills). Otherwise creates the pin doc first
+   * with a placeholder content item, then runs renderComposition which
+   * uploads clips to Storage + creates a Mux asset. The Mux webhook
+   * patches the content item's mediaUrl once the asset is ready; we
+   * navigate immediately so the user doesn't wait for that.
+   */
+  const handlePublishFromEditor = async () => {
+    if (!pinType || !coords || editorClips.length === 0) return
+
+    // Preflight: you need a real Firebase Auth session to write to
+    // Firestore/Storage. The mock Carolina user works for read-only
+    // browsing but cannot publish.
+    if (!userDoc?.uid || userDoc.uid.startsWith('demo') || userDoc.uid.startsWith('carolina')) {
+      alert('You need to sign in with a real account before publishing. Visit /sign-up to create one.')
+      return
+    }
+
+    // All-photos path — Mux doesn't make sense for stills. Use legacy upload.
+    if (editorClips.every((c) => c.type === 'photo')) {
+      const items: ContentDraft[] = editorClips.map((clip, idx) => ({
+        type: 'photo',
+        caption: idx === 0 ? newCaption : '',
+        file: clip.file,
+        preview: clip.sourceUrl,
+        publishAt: newPublishAt || null,
+      }))
+      handlePublish(items)
+      return
+    }
+
+    setSaving(true)
+    setStep('publishing')
+    setRenderPhase('upload')
+    setRenderProgress(0)
+
+    const agentId = userDoc?.uid || 'demo-agent'
+    const contentId = `content-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
+    // Build type-specific pin data (mirrors handlePublish logic)
+    const pinData: Record<string, unknown> = {
+      agentId, type: pinType, coordinates: coords, address,
+      neighborhoodId: '', geohash: '', enabled: true, content: [],
+    }
+    if (pinType === 'for_sale') {
+      Object.assign(pinData, {
+        price: Number(price) || 0, beds, baths, sqft: Number(sqft) || 0,
+        pricePerSqft: Number(sqft) ? Math.round((Number(price) || 0) / Number(sqft)) : 0,
+        homeType, yearBuilt: yearBuilt ? Number(yearBuilt) : null,
+        description, status: 'active', daysOnMarket: 0,
+        heroPhotoUrl: '', photos: [], openHouse: null, isLive: false,
+      })
+    } else if (pinType === 'sold') {
+      Object.assign(pinData, {
+        soldPrice: Number(price) || 0, originalPrice: Number(price) || 0,
+        soldDate: Timestamp.now(), beds, baths, sqft: Number(sqft) || 0,
+        pricePerSqft: Number(sqft) ? Math.round((Number(price) || 0) / Number(sqft)) : 0,
+        homeType, yearBuilt: yearBuilt ? Number(yearBuilt) : null,
+        description, daysOnMarket: 0, heroPhotoUrl: '', photos: [],
+      })
+    } else if (pinType === 'spotlight') {
+      Object.assign(pinData, {
+        name: neighborhoodName || address.split(',')[0],
+        description, heroPhotoUrl: '',
+      })
+    }
+
+    // Seed the pin with a placeholder content item. Mux webhook fills in
+    // mediaUrl/thumbnailUrl once the asset is ready.
+    ;(pinData.content as ContentItem[]) = [{
+      id: contentId,
+      type: 'reel' as any,
+      mediaUrl: '',
+      thumbnailUrl: '',
+      caption: newCaption,
+      createdAt: Timestamp.now(),
+      views: 0,
+      saves: 0,
+      publishAt: newPublishAt ? Timestamp.fromDate(new Date(newPublishAt)) : null,
+    } as any]
+
+    // Step-by-step execution with labeled errors so we can tell which
+    // call fails when something goes wrong.
+    const runStep = async <T,>(label: string, fn: () => Promise<T>): Promise<T> => {
+      try {
+        return await fn()
+      } catch (err) {
+        console.error(`[editor] publish failed at step "${label}":`, err)
+        throw new Error(`${label}: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pinId = await runStep('createPin', () => createPin(pinData as any))
+
+      if (photos.length > 0 && (pinType === 'for_sale' || pinType === 'sold')) {
+        const urls: string[] = []
+        for (const photo of photos) {
+          const url = await runStep(`uploadListingPhoto(${photo.name})`, () =>
+            uploadFile({ path: pinMediaPath(pinId, photo.name), file: photo }),
+          )
+          urls.push(url)
+        }
+        await runStep('updatePinWithPhotos', async () => {
+          const { updatePin } = await import('@/lib/firestore')
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await updatePin(pinId, { photos: urls, heroPhotoUrl: urls[0] || '' } as any)
+        })
+      }
+
+      await runStep('renderComposition', () =>
+        renderComposition({
+          clips: editorClips,
+          aspect: editorAspect,
+          adjustments: editorAdjustments,
+          overlays: editorOverlays,
+          pinId,
+          contentId,
+          caption: newCaption,
+          onProgress: (phase, pct) => {
+            setRenderPhase(phase)
+            setRenderProgress(Math.round(pct * 100))
+          },
+        }),
+      )
+
+      navigate('/dashboard')
+    } catch (err) {
+      setSaving(false)
+      setStep('publish')
+      alert(`Failed to publish — ${err instanceof Error ? err.message : 'Unknown error'}`)
     }
   }
 
@@ -275,14 +432,17 @@ export default function PinCreate() {
           <div className="flex-1" />
           {/* Step indicator */}
           <div className="flex gap-1">
-            {['type', 'address', 'details', 'content'].map((s, i) => (
-              <div key={s} className={`w-2 h-2 rounded-full ${step === s || (['type','address','details','content'].indexOf(step) > i) ? 'bg-tangerine' : 'bg-pearl'}`} />
-            ))}
+            {(['type', 'address', 'details', 'edit', 'publish'] as const).map((s, i) => {
+              const order = ['type','address','details','edit','publish'] as const
+              const currentIdx = order.indexOf(step as typeof order[number])
+              const filled = step === s || (currentIdx > -1 && currentIdx > i)
+              return <div key={s} className={`w-2 h-2 rounded-full ${filled ? 'bg-tangerine' : 'bg-pearl'}`} />
+            })}
           </div>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-5 py-6">
+      <div className={`${step === 'edit' ? 'max-w-5xl' : 'max-w-2xl'} mx-auto px-5 py-6 transition-[max-width] duration-300`}>
         <AnimatePresence mode="wait" custom={direction}>
           {/* ═══ STEP 1: TYPE ═══ */}
           {step === 'type' && (
@@ -421,12 +581,98 @@ export default function PinCreate() {
 
               <div className="flex gap-3">
                 <Button variant="secondary" size="xl" onClick={() => setStep('address')} className="flex-1">Back</Button>
-                <Button variant="primary" size="xl" onClick={() => setStep('content')} className="flex-[2]">Add Content</Button>
+                <Button variant="primary" size="xl" onClick={() => setStep('edit')} className="flex-[2]">Add Content</Button>
               </div>
             </motion.div>
           )}
 
-          {/* ═══ STEP 4: CONTENT ═══ */}
+          {/* ═══ STEP 4: EDIT (inline content editor) ═══ */}
+          {step === 'edit' && (
+            <div>
+              <EditorStep direction={direction} />
+              <div className="flex gap-3 mt-6">
+                <Button
+                  variant="secondary"
+                  size="xl"
+                  onClick={() => {
+                    if (isAddContentMode) navigate(-1)
+                    else setStep('details')
+                  }}
+                  className="flex-1"
+                >
+                  Back
+                </Button>
+                <Button
+                  variant="primary"
+                  size="xl"
+                  onClick={() => setStep('publish')}
+                  disabled={editorClips.length === 0}
+                  className="flex-[2]"
+                >
+                  Continue
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ═══ STEP 4a: PUBLISH (caption + schedule post-editor) ═══ */}
+          {step === 'publish' && (
+            <motion.div key="publish" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit">
+              <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">Almost there</h2>
+              <p className="text-[14px] text-smoke mb-6">Add a caption and choose when this goes live.</p>
+
+              {/* Edited preview strip */}
+              {editorClips.length > 0 && (
+                <div className="mb-5">
+                  <p className="text-[10px] font-bold text-smoke uppercase tracking-wider mb-2">
+                    {editorClips.length === 1 ? '1 clip' : `${editorClips.length} clips`} · tap to re-edit
+                  </p>
+                  <button
+                    onClick={() => setStep('edit')}
+                    className="w-full flex items-center gap-2 p-2 rounded-[14px] bg-cream border border-border-light hover:border-tangerine/40 transition-colors cursor-pointer overflow-x-auto scrollbar-none"
+                  >
+                    {editorClips.map((clip) => (
+                      <div key={clip.id} className="shrink-0 w-[56px] h-[72px] rounded-[10px] overflow-hidden bg-pearl">
+                        <img src={clip.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </button>
+                </div>
+              )}
+
+              <label className="text-[11px] font-bold text-smoke uppercase tracking-wider mb-1.5 block">Caption</label>
+              <textarea
+                value={newCaption}
+                onChange={(e) => setNewCaption(e.target.value)}
+                placeholder="Say something about this post…"
+                rows={3}
+                className="w-full rounded-[14px] bg-cream border border-border-light px-4 py-3 text-[14px] text-ink resize-none placeholder:text-ash outline-none focus:border-tangerine/40 mb-5"
+              />
+
+              <label className="text-[11px] font-bold text-smoke uppercase tracking-wider mb-1.5 block">Schedule</label>
+              <div className="mb-6">
+                <ScheduleField
+                  value={newPublishAt}
+                  onChange={setNewPublishAt}
+                  locked={!hasFeature(userDoc, 'scheduledContent')}
+                  onLockedClick={() => setPaywall({
+                    open: true,
+                    reason: 'Scheduling content for later is a Pro feature.',
+                    upgradeTo: 'pro',
+                  })}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <Button variant="secondary" size="xl" onClick={() => setStep('edit')} className="flex-1">Back</Button>
+                <Button variant="primary" size="xl" onClick={handlePublishFromEditor} loading={saving} className="flex-[2]">
+                  Publish Pin
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ═══ STEP 4 (legacy): CONTENT ═══ */}
           {step === 'content' && (
             <motion.div key="content" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit">
               <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">
@@ -562,18 +808,48 @@ export default function PinCreate() {
 
           {/* ═══ PUBLISHING ═══ */}
           {step === 'publishing' && (
-            <motion.div key="publishing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-24 text-center">
-              <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                className="w-10 h-10 mx-auto mb-4 border-2 border-tangerine border-t-transparent rounded-full" />
-              <p className="text-[16px] font-semibold text-ink">Publishing your pin...</p>
-              {uploadProgress > 0 && (
-                <div className="mt-4 mx-auto max-w-[200px]">
-                  <div className="h-2 bg-cream rounded-full overflow-hidden">
-                    <motion.div className="h-full bg-tangerine rounded-full" style={{ width: `${uploadProgress}%` }} />
-                  </div>
-                  <p className="text-[12px] text-smoke mt-1">{Math.round(uploadProgress)}%</p>
+            <motion.div key="publishing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-20">
+              <div className="max-w-[320px] mx-auto">
+                <div className="relative h-[120px] mb-6 flex items-center justify-center">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+                    className="absolute w-[88px] h-[88px] rounded-full border-[3px] border-tangerine/20 border-t-tangerine"
+                  />
+                  <motion.div
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                    className="w-14 h-14 rounded-full bg-tangerine/15 border border-tangerine/30 flex items-center justify-center"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-tangerine shadow-[0_0_24px_rgba(255,107,61,0.6)]" />
+                  </motion.div>
                 </div>
-              )}
+                <p className="text-[16px] font-bold text-ink text-center">
+                  {renderPhase === 'preprocess' ? 'Baking your edits…'
+                    : renderPhase === 'upload' ? 'Uploading your clips…'
+                    : renderPhase === 'queue' ? 'Handing off to Mux…'
+                    : 'Publishing your pin…'}
+                </p>
+                <p className="text-[12px] text-smoke text-center mt-1">
+                  {renderPhase === 'preprocess'
+                    ? 'Applying speed, color, and text locally before upload.'
+                    : renderPhase === 'upload'
+                    ? 'Sending clips to cloud storage.'
+                    : renderPhase === 'queue'
+                    ? 'Mux is processing your video. Your pin will update when it\u2019s ready.'
+                    : 'Uploading to your Reelst.'}
+                </p>
+                {((renderPhase !== 'idle' ? renderProgress : uploadProgress) > 0) && (
+                  <div className="mt-5">
+                    <div className="h-[3px] bg-pearl rounded-full overflow-hidden">
+                      <motion.div className="h-full bg-tangerine rounded-full" style={{ width: `${renderPhase !== 'idle' ? renderProgress : uploadProgress}%` }} />
+                    </div>
+                    <p className="font-mono text-[11px] text-smoke mt-2 tabular-nums text-center">
+                      {Math.round(renderPhase !== 'idle' ? renderProgress : uploadProgress)}%
+                    </p>
+                  </div>
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
