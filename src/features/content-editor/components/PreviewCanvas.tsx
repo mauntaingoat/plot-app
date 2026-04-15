@@ -4,8 +4,6 @@ import { X, Check, Image as ImageIcon, Film, Loader2 } from 'lucide-react'
 import { useEditorStore } from '../state/editorStore'
 import { ASPECT_OPTIONS, FONT_OPTIONS } from '../state/types'
 
-const TIMEUPDATE_THROTTLE_MS = 67 // ~15fps
-
 /**
  * Floating preview. No surrounding card. Adapts height when a context
  * strip is active on mobile. Text editing happens INLINE on the preview
@@ -31,9 +29,6 @@ export function PreviewCanvas() {
   const frameRef = useRef<HTMLDivElement | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const lastTimeUpdate = useRef(0)
-  const [playing, setPlaying] = useState(false)
-  const [, setLocalTick] = useState(0)
   const [editingOverlayId, setEditingOverlayId] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
 
@@ -51,14 +46,47 @@ export function PreviewCanvas() {
     return acc
   }, [clips, selected?.id])
 
-  /* ─── playback state ─── */
+  /* ─── playback sync: when the selected clip changes, seek the video
+     element to the correct offset inside the master clock so audio
+     resumes from the right spot. If the master clock is playing, fire
+     play() on the new element. */
   useEffect(() => {
-    setPlaying(false)
-    setCurrentTime(selected?.trimIn ?? 0)
-    setComposedTime(composedClipStart)
     const v = videoRef.current
-    if (v && selected?.type === 'video') v.currentTime = selected.trimIn
-  }, [selected?.id, selected?.trimIn, selected?.type, setCurrentTime, setComposedTime, composedClipStart])
+    if (!v || !selected || selected.type !== 'video') return
+
+    // React updates the src prop but browsers don't always reload; force it
+    // so the new clip's metadata becomes available.
+    v.load()
+
+    const onLoaded = () => {
+      const state = useEditorStore.getState()
+      // Translate composed time → this clip's source currentTime
+      const inClip = Math.max(0, state.composedTime - composedClipStart)
+      const target = selected.trimIn + inClip * selected.speed
+      v.currentTime = Math.min(Math.max(target, selected.trimIn), selected.trimOut)
+      if (state.playing) {
+        v.play().catch(() => {})
+      }
+    }
+    v.addEventListener('loadedmetadata', onLoaded, { once: true })
+    v.addEventListener('canplay', onLoaded, { once: true })
+    return () => {
+      v.removeEventListener('loadedmetadata', onLoaded)
+      v.removeEventListener('canplay', onLoaded)
+    }
+  }, [selected?.id, selected?.sourceUrl, selected?.type, composedClipStart, selected?.trimIn, selected?.trimOut, selected?.speed])
+
+  /* ─── master playing flag → drive video element ─── */
+  const playing = useEditorStore((s) => s.playing)
+  useEffect(() => {
+    const v = videoRef.current
+    if (!v || !selected || selected.type !== 'video') return
+    if (playing) {
+      v.play().catch(() => {})
+    } else {
+      v.pause()
+    }
+  }, [playing, selected?.id, selected?.type])
 
   useEffect(() => {
     const v = videoRef.current
@@ -66,57 +94,19 @@ export function PreviewCanvas() {
     v.playbackRate = selected.speed
   }, [selected?.id, selected?.speed, selected?.type])
 
-  useEffect(() => {
-    const v = videoRef.current
-    if (!v || !selected || selected.type !== 'video') return
-    const onTime = () => {
-      const inClip = Math.max(0, v.currentTime - selected.trimIn)
-      const composed = composedClipStart + inClip / selected.speed
-      const PX = 28
-      const state = useEditorStore.getState()
-      const wrapper = state.timelineWrapperEl
-      const strip = state.timelineStripEl
-      // Always write the transform here — guaranteed-to-fire fallback
-      // for the raf loop. Also runs on browsers where rAF is throttled.
-      if (wrapper && strip) {
-        const halfWidth = wrapper.clientWidth / 2
-        strip.style.transform = `translateX(${halfWidth - composed * PX}px)`
-      }
-
-      // ─── React state path ─── throttled to ~15fps for the timecode chrome
-      const now = performance.now()
-      if (now - lastTimeUpdate.current < TIMEUPDATE_THROTTLE_MS) {
-        if (v.currentTime >= selected.trimOut) {
-          v.pause()
-          v.currentTime = selected.trimIn
-          setPlaying(false)
-        }
-        return
-      }
-      lastTimeUpdate.current = now
-      setLocalTick((t) => t + 1)
-      setCurrentTime(v.currentTime)
-      setComposedTime(composed)
-      if (v.currentTime >= selected.trimOut) {
-        v.pause()
-        v.currentTime = selected.trimIn
-        setPlaying(false)
-      }
-    }
-    v.addEventListener('timeupdate', onTime)
-    return () => v.removeEventListener('timeupdate', onTime)
-  }, [selected, setCurrentTime, setComposedTime, composedClipStart])
-
+  /* ─── Click-to-toggle on the preview frame ─── */
   const togglePlay = () => {
-    const v = videoRef.current
-    if (!v || !selected || selected.type !== 'video') return
-    if (v.paused) {
-      if (v.currentTime >= selected.trimOut - 0.05) v.currentTime = selected.trimIn
-      v.play().then(() => setPlaying(true)).catch(() => {})
-    } else {
-      v.pause()
-      setPlaying(false)
+    const state = useEditorStore.getState()
+    // If at end of timeline, snap back to start before playing
+    if (!state.playing) {
+      const total = state.totalDuration()
+      if (state.composedTime >= total - 0.05) {
+        state.setComposedTime(0)
+        const first = state.clips[0]
+        if (first) state.selectClip(first.id)
+      }
     }
+    state.setPlaying(!state.playing)
   }
 
   /**
@@ -128,31 +118,90 @@ export function PreviewCanvas() {
    * Uses querySelector for the video element instead of React's videoRef
    * so we don't depend on render-timing for the ref to be set.
    */
+  /* ─── Master playback clock ───
+     A single rAF loop drives composedTime by wall-clock delta whenever
+     `playing` is true. Video elements SYNC to the clock, not the other
+     way around. This makes cross-clip transitions seamless (the clock
+     keeps ticking while the next video element loads), photos just work,
+     and the timer reflects total composed time across the whole edit. */
   useEffect(() => {
     let raf = 0
     const PX = 28
+    let lastWall = 0
+    let lastRealSync = 0
+
+    const applyStrip = (composed: number) => {
+      const state = useEditorStore.getState()
+      const wrapper = state.timelineWrapperEl
+      const strip = state.timelineStripEl
+      if (!wrapper || !strip) return
+      const halfWidth = wrapper.clientWidth / 2
+      strip.style.transform = `translateX(${halfWidth - composed * PX}px)`
+    }
 
     const tick = () => {
-      const v = document.querySelector<HTMLVideoElement>('.editor-stage video')
-      if (v && !v.paused) {
-        const state = useEditorStore.getState()
-        const wrapper = state.timelineWrapperEl
-        const strip = state.timelineStripEl
-        // Recompute composed time inline from current state
-        const sel = state.clips.find((c) => c.id === state.selectedClipId) ?? state.clips[0]
-        if (sel && wrapper && strip) {
-          // Walk clips to find the cumulative offset for the selected clip
-          let acc = 0
-          for (const c of state.clips) {
-            if (c.id === sel.id) break
-            acc += (c.trimOut - c.trimIn) / c.speed
-          }
-          const inClip = Math.max(0, v.currentTime - sel.trimIn)
-          const composed = acc + inClip / sel.speed
-          const halfWidth = wrapper.clientWidth / 2
-          strip.style.transform = `translateX(${halfWidth - composed * PX}px)`
+      const state = useEditorStore.getState()
+      const total = state.totalDuration()
+
+      if (state.playing && total > 0) {
+        const nowWall = performance.now()
+        if (lastWall === 0) lastWall = nowWall
+        const dt = Math.min(0.1, (nowWall - lastWall) / 1000) // clamp to 100ms so tab-switch doesn't skip
+        lastWall = nowWall
+
+        let nextComposed = state.composedTime + dt
+
+        // End of timeline — pause and snap.
+        if (nextComposed >= total) {
+          nextComposed = total
+          state.setPlaying(false)
+          lastWall = 0
         }
+
+        // Find which clip contains nextComposed and update selection if needed.
+        let acc = 0
+        let activeId = state.clips[0]?.id ?? null
+        let activeClipStart = 0
+        for (const c of state.clips) {
+          const eff = (c.trimOut - c.trimIn) / c.speed
+          if (nextComposed < acc + eff + 0.0001) {
+            activeId = c.id
+            activeClipStart = acc
+            break
+          }
+          acc += eff
+        }
+        if (activeId && activeId !== state.selectedClipId) {
+          state.selectClip(activeId)
+          // The selection effect will seek the new video to the right spot.
+        }
+
+        // For videos, periodically resync the video element's currentTime
+        // to the master clock so audio stays in sync. Throttled to ~4Hz so
+        // we don't cause seek-induced stutter.
+        if (nowWall - lastRealSync > 250) {
+          lastRealSync = nowWall
+          const sel = state.clips.find((c) => c.id === (activeId ?? state.selectedClipId))
+          if (sel?.type === 'video') {
+            const v = document.querySelector<HTMLVideoElement>('.editor-stage video')
+            if (v && !v.paused) {
+              const inClip = Math.max(0, nextComposed - activeClipStart)
+              const expected = sel.trimIn + inClip * sel.speed
+              if (Math.abs(v.currentTime - expected) > 0.35) {
+                v.currentTime = Math.min(Math.max(expected, sel.trimIn), sel.trimOut)
+              }
+            }
+          }
+        }
+
+        state.setComposedTime(nextComposed)
+        applyStrip(nextComposed)
+      } else {
+        lastWall = 0
+        // When paused, still apply transform if composedTime changed (scrub)
+        applyStrip(state.composedTime)
       }
+
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
@@ -299,7 +348,6 @@ export function PreviewCanvas() {
             className="absolute inset-0 w-full h-full object-cover"
             style={{ filter }}
             playsInline
-            muted
             preload="auto"
             onClick={togglePlay}
           />

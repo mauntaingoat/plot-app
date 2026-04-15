@@ -91,11 +91,25 @@ function useListingSwipeToDismiss(
 }
 
 export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSignedIn, onAuthRequired, initialTab }: ListingModalProps) {
-  const [activeTab, setActiveTab] = useState<'content' | 'listing'>(initialTab || 'content')
-  // Always sync when initialTab prop changes
+  const isForSale = pin.type === 'for_sale'
+  const isSold = pin.type === 'sold'
+  const hasListingData = isForSale || isSold
+  const hasContent = publicContent(pin).length > 0
+  // Show the content/listing toggle only when BOTH tabs are meaningful.
+  // A listing with no content collapses to the listing tab alone.
+  const showTabToggle = hasListingData && hasContent
+
+  const [activeTab, setActiveTab] = useState<'content' | 'listing'>(() => {
+    if (initialTab) return initialTab
+    if (hasListingData && !hasContent) return 'listing'
+    return 'content'
+  })
+  // Keep activeTab in sync if content/initialTab change after mount
   useEffect(() => {
-    if (initialTab) setActiveTab(initialTab)
-  }, [initialTab])
+    if (initialTab) { setActiveTab(initialTab); return }
+    if (hasListingData && !hasContent && activeTab === 'content') setActiveTab('listing')
+  }, [initialTab, hasListingData, hasContent, activeTab])
+
   const [mounted, setMounted] = useState(true)
   const [visible, setVisible] = useState(false)
   const closingRef = useRef(false)
@@ -108,10 +122,6 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
     if (scrollAreaRef.current) scrollAreaRef.current.scrollTop = 0
     if (mobileScrollRef.current) mobileScrollRef.current.scrollTop = 0
   }, [activeTab])
-
-  const isForSale = pin.type === 'for_sale'
-  const isSold = pin.type === 'sold'
-  const hasListingData = isForSale || isSold
 
   const dismiss = useCallback(() => {
     if (closingRef.current) return
@@ -135,8 +145,9 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
   if (embedded) {
     return (
       <div className="flex flex-col h-full overflow-hidden">
-        {/* Tab toggle — fixed to top */}
-        {hasListingData && (
+        {/* Tab toggle — fixed to top. Hidden when the pin has no content
+            (falls back to listing-only view). */}
+        {showTabToggle && (
           <div className="px-4 pt-3 pb-2 shrink-0 z-10 bg-obsidian">
             <div className="flex bg-slate rounded-[12px] p-1">
               <button onClick={() => setActiveTab('content')}
@@ -190,8 +201,9 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
           </button>
         </div>
 
-        {/* Tab toggle — overlay on top, translucent */}
-        {hasListingData && (
+        {/* Tab toggle — overlay on top, translucent. Hidden when the pin
+            has no content (listing-only view). */}
+        {showTabToggle && (
           <div className="absolute top-[calc(env(safe-area-inset-top,12px)+8px)] left-4 z-[110]">
             <div className="flex bg-black/30 backdrop-blur-md rounded-full p-1 border border-white/10">
               <button onClick={() => setActiveTab('content')}

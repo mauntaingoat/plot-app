@@ -6,7 +6,10 @@ import type { Clip, TextOverlay } from '../state/types'
 
 const PX_PER_SECOND = 28
 const CLIP_HEIGHT = 64
-const CLIP_GAP = 6
+// CLIP_GAP was 6px which caused clip tiles to drift right of the ruler
+// marks by 6px per clip boundary. Zeroed out so 1s of ruler = 1s of clip.
+// Visual separation now comes from the tile's own outline/border.
+const CLIP_GAP = 0
 const REORDER_LONG_PRESS_MS = 380
 
 // Trim bracket: small grip centered on the clip's vertical edge
@@ -16,7 +19,10 @@ const BRACKET_HIT_PAD = 12 // invisible padding around the bracket for easier gr
 
 function tileWidth(clip: Clip): number {
   const effective = (clip.trimOut - clip.trimIn) / clip.speed
-  return Math.max(48, Math.round(effective * PX_PER_SECOND))
+  // No min-width — the tile must map exactly 1s → PX_PER_SECOND so it
+  // lines up with the ruler marks. Very short clips are allowed to be
+  // small; the trim brackets have their own hit padding.
+  return Math.round(effective * PX_PER_SECOND)
 }
 function effectiveDuration(clip: Clip): number {
   return (clip.trimOut - clip.trimIn) / clip.speed
@@ -34,7 +40,7 @@ function fmtRuler(t: number): string {
  * and as playback advances the strip scrolls left so the playhead stays
  * visually centered.
  */
-export function Timeline() {
+export function Timeline({ simpleMode = false }: { simpleMode?: boolean } = {}) {
   const clips = useEditorStore((s) => s.clips)
   const selectedId = useEditorStore((s) => s.selectedClipId)
   const importFiles = useEditorStore((s) => s.importFiles)
@@ -105,7 +111,8 @@ export function Timeline() {
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.target instanceof HTMLElement && e.target.closest('button')) return // ignore taps on buttons
 
-    // Pause any currently playing video so dragging works as a scrub
+    // Pause master clock + any currently playing video so dragging scrubs
+    useEditorStore.getState().setPlaying(false)
     const videos = document.querySelectorAll<HTMLVideoElement>('.editor-stage video')
     videos.forEach((v) => { if (!v.paused) v.pause() })
 
@@ -206,18 +213,28 @@ export function Timeline() {
         >
           {clips.length > 0 && (
             <>
-              {/* Ruler row */}
-              <div className="relative h-[14px] flex items-end pointer-events-none">
-                {rulerMarks.marks.map((t, i) => (
-                  <div
-                    key={i}
-                    className="shrink-0 relative flex flex-col items-start"
-                    style={{ width: i === 0 ? 0 : PX_PER_SECOND * rulerMarks.interval }}
+              {/* Ruler row — absolute-positioned labels so each mark
+                  sits EXACTLY at `t * PX_PER_SECOND` regardless of the
+                  flex layout. First mark is left-aligned so "0s" isn't
+                  clipped off the edge; all other marks are center-aligned
+                  on the pixel position they refer to. */}
+              <div
+                className="relative h-[14px] pointer-events-none"
+                style={{
+                  width: (rulerMarks.marks[rulerMarks.marks.length - 1] ?? 0) * PX_PER_SECOND + 40,
+                }}
+              >
+                {rulerMarks.marks.map((t) => (
+                  <span
+                    key={t}
+                    className="absolute bottom-0 font-mono text-[9px] text-white/45 tabular-nums whitespace-nowrap"
+                    style={{
+                      left: t * PX_PER_SECOND,
+                      transform: t === 0 ? 'none' : 'translateX(-50%)',
+                    }}
                   >
-                    <span className="font-mono text-[9px] text-white/45 tabular-nums -ml-3">
-                      {fmtRuler(t)}
-                    </span>
-                  </div>
+                    {fmtRuler(t)}
+                  </span>
                 ))}
               </div>
 
@@ -279,12 +296,12 @@ export function Timeline() {
       />
 
       {/* Text track — draggable bars positioned by composed time */}
-      {clips.length > 0 && (
+      {!simpleMode && clips.length > 0 && (
         <TextTrack wrapperRef={wrapperRef} clipsTotal={total} composedTime={composedTime} />
       )}
 
       {/* Audio track (stub) */}
-      {clips.length > 0 && (
+      {!simpleMode && clips.length > 0 && (
         <button
           onClick={() => setView('audio')}
           className="mt-1.5 w-full flex items-center gap-2 h-[26px] px-3 rounded-[8px] bg-white/[0.025] hover:bg-white/[0.05] cursor-pointer transition-colors group"
@@ -381,7 +398,7 @@ function ClipTile({ clip, active, onTap, setTrim }: ClipTileProps) {
             className="absolute inset-0 w-full h-full object-cover"
             draggable={false}
           />
-        ) : clip.frames.length > 0 ? (
+        ) : clip.frames.length > 1 ? (
           /* Inner filmstrip — fixed full width, translated to align the trim window */
           <div
             className="absolute top-0 left-0 h-full flex"
@@ -404,21 +421,42 @@ function ClipTile({ clip, active, onTap, setTrim }: ClipTileProps) {
             ))}
           </div>
         ) : (
-          /* Loading shimmer until filmstrip is ready */
-          <div className="absolute inset-0">
-            <img
-              src={clip.thumbnailUrl}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover opacity-50"
-              draggable={false}
-            />
-            <div
-              className="absolute inset-0 animate-pulse"
-              style={{
-                background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)',
-              }}
-            />
-          </div>
+          /* Fallback when the filmstrip extractor couldn't produce real frames
+             (common on iOS Safari). Renders the single thumbnail stretched
+             across the FULL clip width with regular divider lines overlaid so
+             the tile still reads as a framed strip. Desktop usually gets the
+             real filmstrip above; this branch keeps mobile visually consistent. */
+          (() => {
+            const fakeCount = Math.max(4, Math.round(eff * 1.4))
+            return (
+              <div
+                className="absolute top-0 left-0 h-full"
+                style={{
+                  width: fullWidth,
+                  transform: `translateX(${filmstripOffset}px)`,
+                  backgroundImage: `url(${clip.thumbnailUrl})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  willChange: 'transform',
+                }}
+              >
+                {/* Divider lines at segment boundaries */}
+                {Array.from({ length: fakeCount - 1 }).map((_, i) => (
+                  <div
+                    key={i}
+                    aria-hidden
+                    className="absolute top-0 bottom-0 pointer-events-none"
+                    style={{
+                      left: `${((i + 1) / fakeCount) * 100}%`,
+                      width: 1,
+                      background: 'rgba(0,0,0,0.45)',
+                      boxShadow: '1px 0 0 rgba(255,255,255,0.06)',
+                    }}
+                  />
+                ))}
+              </div>
+            )
+          })()
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/15 pointer-events-none" />
 
@@ -438,9 +476,16 @@ function ClipTile({ clip, active, onTap, setTrim }: ClipTileProps) {
             Wait — they need to be siblings of the tile, not children. */}
       </div>
 
-      {/* Brackets are SIBLINGS of the tile so they're not clipped by overflow:hidden */}
-      {active && clip.type === 'video' && (
-        <CenteredBrackets clip={clip} setTrim={setTrim} tileW={tileW} />
+      {/* Brackets are SIBLINGS of the tile so they're not clipped by overflow:hidden.
+          Videos get both brackets. Photos get a single right bracket (drag to
+          extend display duration up to clip.duration, the configured max). */}
+      {active && (
+        <CenteredBrackets
+          clip={clip}
+          setTrim={setTrim}
+          tileW={tileW}
+          rightOnly={clip.type === 'photo'}
+        />
       )}
     </Reorder.Item>
   )
@@ -448,7 +493,17 @@ function ClipTile({ clip, active, onTap, setTrim }: ClipTileProps) {
 
 /* ─────────── CenteredBrackets — small grip centered on each edge ─────────── */
 
-function CenteredBrackets({ clip, setTrim, tileW }: { clip: Clip; setTrim: (id: string, trimIn: number, trimOut: number) => void; tileW: number }) {
+function CenteredBrackets({
+  clip,
+  setTrim,
+  tileW,
+  rightOnly = false,
+}: {
+  clip: Clip
+  setTrim: (id: string, trimIn: number, trimOut: number) => void
+  tileW: number
+  rightOnly?: boolean
+}) {
   const onDown = (edge: 'in' | 'out') => (e: React.PointerEvent) => {
     e.stopPropagation()
     e.preventDefault()
@@ -485,7 +540,8 @@ function CenteredBrackets({ clip, setTrim, tileW }: { clip: Clip; setTrim: (id: 
   // offsets — left bracket at left:0 of the parent; right bracket at left:tileW.
   return (
     <>
-      {/* LEFT bracket */}
+      {/* LEFT bracket (hidden in rightOnly mode — photos don't trim in) */}
+      {!rightOnly && (
       <div
         onPointerDown={onDown('in')}
         className="absolute cursor-ew-resize z-30"
@@ -516,6 +572,7 @@ function CenteredBrackets({ clip, setTrim, tileW }: { clip: Clip; setTrim: (id: 
           <div className="w-[2px] h-[12px] bg-black/60 rounded-full" />
         </div>
       </div>
+      )}
 
       {/* RIGHT bracket */}
       <div

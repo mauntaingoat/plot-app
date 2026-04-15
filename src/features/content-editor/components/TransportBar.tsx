@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion'
 import { Play, Pause, Undo2, Redo2 } from 'lucide-react'
-import { useMemo, useState, useEffect } from 'react'
 import { useEditorStore } from '../state/editorStore'
 
 function fmt(t: number): string {
@@ -11,47 +10,37 @@ function fmt(t: number): string {
 }
 
 /**
- * Transport row with real hierarchy: timecode left, big tangerine play
- * button center, ghost undo/redo right (only colored when there's history).
- *
- * The play button is the single largest interactive element in the
- * transport — it's the action the user returns to most.
+ * Transport row. Reads playback state straight from the editor store —
+ * a single master clock drives composedTime, which this bar displays as
+ * the absolute timer across the whole multi-clip edit (video + photo,
+ * continuous across clip boundaries).
  */
 export function TransportBar() {
   const clips = useEditorStore((s) => s.clips)
-  const selectedId = useEditorStore((s) => s.selectedClipId)
-  const currentTime = useEditorStore((s) => s.currentTime)
+  const playing = useEditorStore((s) => s.playing)
+  const setPlaying = useEditorStore((s) => s.setPlaying)
+  const composedTime = useEditorStore((s) => s.composedTime)
+  const setComposedTime = useEditorStore((s) => s.setComposedTime)
+  const selectClip = useEditorStore((s) => s.selectClip)
   const totalDuration = useEditorStore((s) => s.totalDuration())
-  const [playing, setPlaying] = useState(false)
-
-  const selected = useMemo(() => clips.find((c) => c.id === selectedId) ?? clips[0], [clips, selectedId])
   const hasContent = clips.length > 0
 
-  useEffect(() => {
-    const id = setInterval(() => {
-      const videos = document.querySelectorAll<HTMLVideoElement>('.editor-stage video')
-      let anyPlaying = false
-      videos.forEach((v) => { if (!v.paused) anyPlaying = true })
-      setPlaying(anyPlaying)
-    }, 160)
-    return () => clearInterval(id)
-  }, [])
-
   const togglePlay = () => {
-    const videos = document.querySelectorAll<HTMLVideoElement>('.editor-stage video')
-    if (videos.length === 0) return
-    const first = videos[0]
-    if (first.paused) first.play().catch(() => {})
-    else videos.forEach((v) => v.pause())
+    if (!hasContent) return
+    // If stopped at end of timeline, snap back to start before resuming.
+    if (!playing && composedTime >= totalDuration - 0.05) {
+      setComposedTime(0)
+      const first = clips[0]
+      if (first) selectClip(first.id)
+    }
+    setPlaying(!playing)
   }
-
-  const relTime = selected ? Math.max(0, (currentTime - selected.trimIn) / selected.speed) : 0
 
   return (
     <div className="relative flex items-center justify-between px-6 lg:px-12 h-[60px]">
-      {/* Timecode (left) */}
+      {/* Timecode (left) — composed time across the whole edit */}
       <span className="font-mono text-[13px] tabular-nums tracking-tight text-white/85">
-        {fmt(relTime)}
+        {fmt(composedTime)}
         <span className="text-white/30"> / {fmt(totalDuration)}</span>
       </span>
 

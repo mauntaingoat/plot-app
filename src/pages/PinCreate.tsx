@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, ArrowRight, MapPin, Search, Check, Upload, Video, Camera, X, DollarSign, Home, BadgeCheck, Compass, Plus, Film, Mic, Clock, Lock, Sparkles, Trash2, ChevronRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight, MapPin, Search, Check, Upload, Video, Camera, X, DollarSign, Home, BadgeCheck, Compass, Plus, Film, Mic, Clock, Lock, Trash2, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useGeocoding } from '@/hooks/useGeocoding'
@@ -18,6 +18,9 @@ import { useThemeStore } from '@/stores/themeStore'
 import { EditorStep } from '@/features/content-editor/EditorStep'
 import { useEditorStore } from '@/features/content-editor/state/editorStore'
 import { renderComposition, type RenderPhase } from '@/features/content-editor/lib/render'
+import { CarouselStep } from '@/features/content-create/CarouselStep'
+import { publishCarouselPhotos } from '@/features/content-create/lib/publish'
+import type { ContentDraft, EditorDraftKind } from '@/features/content-create/types'
 
 const PIN_OPTIONS: { type: PinType; label: string; desc: string; icon: typeof Home; color: string }[] = [
   { type: 'for_sale', label: 'For Sale Listing', desc: 'Active listing with MLS data, photos, and content', icon: Home, color: '#3B82F6' },
@@ -31,7 +34,7 @@ type Step = 'type' | 'address' | 'details' | 'content-type' | 'edit' | 'publish'
  * Content kinds the user can choose from on the content-type step.
  * Each maps to a different sub-flow (or a configured editor session).
  */
-type ContentKind = 'carousel' | 'reel' | 'editor'
+type ContentKind = 'carousel' | 'reel'
 
 export default function PinCreate() {
   const navigate = useNavigate()
@@ -49,23 +52,13 @@ export default function PinCreate() {
   const [contentKind, setContentKind] = useState<ContentKind | null>(null)
 
   /**
-   * Accumulated editor drafts. Each draft is a snapshot of the editor
-   * state at the moment the user tapped Continue → Publish. On final
-   * publish, each draft renders as its own ContentItem on the pin.
-   *
-   * Renamed from `ContentDraft` to avoid colliding with the legacy
-   * `ContentDraft` type used by the old multi-photo handlePublish path.
+   * Accumulated content drafts. Union of the simple create-flow drafts
+   * (carousel / reel / multi-reel) and the legacy Studio-tier editor draft.
+   * On final publish, each draft maps to one or more ContentItems on the pin.
    */
-  type EditorDraft = {
-    id: string
-    kind: ContentKind
-    clipFiles: File[]            // raw files for re-render on publish
-    clipMeta: { trimIn: number; trimOut: number; speed: number; adjustments: { brightness: number; contrast: number; saturation: number } }[]
-    overlays: import('@/features/content-editor/state/types').TextOverlay[]
-    aspect: import('@/features/content-editor/state/types').AspectRatio
-    thumbnailUrl: string         // first clip's thumbnail
-  }
-  const [contentDrafts, setContentDrafts] = useState<EditorDraft[]>([])
+  const [contentDrafts, setContentDrafts] = useState<ContentDraft[]>([])
+  /** The draft currently being built in the step === 'edit' view. */
+  const [currentDraft, setCurrentDraft] = useState<ContentDraft | null>(null)
   /** When the user is editing an existing draft, this is its id. */
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null)
   /** True when the user picked "Publish without content" — hides Add more content. */
@@ -178,10 +171,10 @@ export default function PinCreate() {
     setContentItems(contentItems.filter((_, i) => i !== idx))
   }
 
-  type ContentDraft = { type: string; caption: string; file: File | null; preview: string | null; publishAt: string | null }
-  const handlePublish = async (override?: ContentDraft[]) => {
+  type LegacyContentDraft = { type: string; caption: string; file: File | null; preview: string | null; publishAt: string | null }
+  const handlePublish = async (override?: LegacyContentDraft[]) => {
     if (!pinType || !coords) return
-    const items: ContentDraft[] = override ?? contentItems
+    const items: LegacyContentDraft[] = override ?? contentItems
     // Neighborhood pins must have at least one content item
     if (pinType === 'spotlight' && items.length === 0) {
       alert('Neighborhood pins require at least one piece of content (reel, photo, or video note).')
@@ -344,7 +337,7 @@ export default function PinCreate() {
    * Each content draft becomes its own Mux asset (option A from the spec).
    * Drafts render sequentially with progress shown per-draft.
    */
-  const handlePublishFromEditor = async () => {
+  const handlePublishFromEditor = async (opts?: { skip?: boolean }) => {
     if (!pinType || !coords) return
 
     // Preflight auth check
@@ -353,15 +346,17 @@ export default function PinCreate() {
       return
     }
 
-    // If the user explicitly skipped content, allow publishing empty
-    // (except spotlights, which require content per the existing rule)
-    if (skippedContent) {
+    // Honor an immediate-skip override (from the details step's
+    // "Post now, add content later" button) since setState hasn't
+    // propagated synchronously when the button fires.
+    const skipNow = opts?.skip ?? skippedContent
+
+    if (skipNow) {
       if (pinType === 'spotlight') {
         alert('Spotlight pins require at least one piece of content.')
         return
       }
     } else if (contentDrafts.length === 0) {
-      // No skip, no drafts — there's nothing to publish
       return
     }
 
@@ -400,20 +395,9 @@ export default function PinCreate() {
       })
     }
 
-    // Pre-create placeholder content items for each draft so the Mux webhook
-    // has IDs to target when the assets become ready.
+    // Pre-generate stable IDs for each draft so the pre-created (empty)
+    // placeholder items line up with the final rendered items below.
     const placeholderIds = contentDrafts.map(() => `content-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
-    ;(pinData.content as ContentItem[]) = contentDrafts.map((_, idx) => ({
-      id: placeholderIds[idx],
-      type: 'reel' as any,
-      mediaUrl: '',
-      thumbnailUrl: '',
-      caption: idx === 0 ? newCaption : '',
-      createdAt: Timestamp.now(),
-      views: 0,
-      saves: 0,
-      publishAt: newPublishAt ? Timestamp.fromDate(new Date(newPublishAt)) : null,
-    } as any))
 
     const runStep = async <T,>(label: string, fn: () => Promise<T>): Promise<T> => {
       try {
@@ -443,46 +427,82 @@ export default function PinCreate() {
         })
       }
 
-      // Render each content draft as its own Mux asset, sequentially.
-      // Per-draft progress shows as "Rendering 1/3..." in the publishing UI.
+      // Walk each draft and turn it into one or more ContentItems.
+      const contentArray: ContentItem[] = []
       for (let i = 0; i < contentDrafts.length; i++) {
         const draft = contentDrafts[i]
-        // Rehydrate clips from the snapshot. For V1 we re-use the file
-        // objects directly (they're still in memory). Trim/speed/adjustments
-        // are taken from the draft's clipMeta.
-        const draftClips = draft.clipFiles.map((file, idx) => ({
-          // Build a minimal clip-shaped object that renderComposition can use.
-          // Note: we only need the fields render.ts touches.
-          id: `${draft.id}-${idx}`,
-          file,
-          sourceUrl: '',
-          thumbnailUrl: '',
-          frames: [],
-          nativeAspect: 9 / 16,
-          type: file.type.startsWith('video') ? ('video' as const) : ('photo' as const),
-          duration: 0,
-          trimIn: draft.clipMeta[idx]?.trimIn ?? 0,
-          trimOut: draft.clipMeta[idx]?.trimOut ?? 0,
-          speed: (draft.clipMeta[idx]?.speed ?? 1) as 0.5 | 1 | 1.5 | 2,
-          adjustments: draft.clipMeta[idx]?.adjustments ?? { brightness: 0, contrast: 0, saturation: 0 },
-        }))
+        const contentId = placeholderIds[i]
+        const onDraftProgress = (phase: RenderPhase | 'preprocess' | 'upload', pct: number) => {
+          setRenderPhase(phase as RenderPhase)
+          setRenderProgress(Math.round(((i + pct) / contentDrafts.length) * 100))
+        }
 
-        await runStep(`renderDraft(${i + 1}/${contentDrafts.length})`, () =>
-          renderComposition({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            clips: draftClips as any,
-            aspect: draft.aspect,
-            overlays: draft.overlays,
-            pinId,
-            contentId: placeholderIds[i],
-            caption: i === 0 ? newCaption : '',
-            onProgress: (phase, pct) => {
-              setRenderPhase(phase)
-              // Show overall progress across all drafts
-              setRenderProgress(Math.round(((i + pct) / contentDrafts.length) * 100))
-            },
-          }),
-        )
+        if (draft.kind === 'carousel') {
+          const items = await runStep(`publishCarousel(${i + 1}/${contentDrafts.length})`, () =>
+            publishCarouselPhotos(draft, pinId, (phase, pct) => onDraftProgress(phase, pct)),
+          )
+          // Attach caption + schedule to the first item only
+          items.forEach((it, idx) => {
+            if (idx === 0) {
+              it.caption = newCaption
+              it.publishAt = newPublishAt ? Timestamp.fromDate(new Date(newPublishAt)) : null
+            }
+            contentArray.push(it)
+          })
+        } else {
+          // Reel path — uses the existing renderComposition pipeline (Mux).
+          // In simple mode the draft has no overlays / adjustments / speed,
+          // so renderComposition takes the Mux fast path (concat + trim).
+          const draftClips = draft.clipFiles.map((file, idx) => ({
+            id: `${draft.id}-${idx}`,
+            file,
+            sourceUrl: '',
+            thumbnailUrl: '',
+            frames: [],
+            nativeAspect: 9 / 16,
+            type: file.type.startsWith('video') ? ('video' as const) : ('photo' as const),
+            duration: 0,
+            trimIn: draft.clipMeta[idx]?.trimIn ?? 0,
+            trimOut: draft.clipMeta[idx]?.trimOut ?? 0,
+            speed: (draft.clipMeta[idx]?.speed ?? 1) as 0.5 | 1 | 1.5 | 2,
+            adjustments: draft.clipMeta[idx]?.adjustments ?? { brightness: 0, contrast: 0, saturation: 0 },
+          }))
+
+          await runStep(`renderDraft(${i + 1}/${contentDrafts.length})`, () =>
+            renderComposition({
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              clips: draftClips as any,
+              aspect: draft.aspect,
+              overlays: draft.overlays,
+              pinId,
+              contentId,
+              caption: i === 0 ? newCaption : '',
+              onProgress: (phase, pct) => {
+                setRenderPhase(phase)
+                setRenderProgress(Math.round(((i + pct) / contentDrafts.length) * 100))
+              },
+            }),
+          )
+          // The editor path writes the content item server-side via the
+          // Mux webhook, so we don't push anything into contentArray here.
+        }
+      }
+
+      // Persist the content array for the non-editor drafts. Editor drafts
+      // land via the Mux webhook and don't participate in this write.
+      if (contentArray.length > 0) {
+        const now = Date.now()
+        const future = contentArray
+          .map((c) => c.publishAt?.toMillis?.() ?? null)
+          .filter((ms): ms is number => ms != null && ms > now)
+        const nextPublishAt = future.length > 0
+          ? Timestamp.fromMillis(Math.min(...future))
+          : null
+        await runStep('updatePinWithContent', async () => {
+          const { updatePin } = await import('@/lib/firestore')
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await updatePin(pinId, { content: contentArray, nextPublishAt } as any)
+        })
       }
 
       navigate('/dashboard')
@@ -528,8 +548,8 @@ export default function PinCreate() {
           <div className="flex-1" />
           {/* Step indicator */}
           <div className="flex gap-1">
-            {(['type', 'address', 'details', 'edit', 'publish'] as const).map((s, i) => {
-              const order = ['type','address','details','edit','publish'] as const
+            {(['type', 'address', 'details', 'content-type', 'edit', 'publish'] as const).map((s, i) => {
+              const order = ['type','address','details','content-type','edit','publish'] as const
               const currentIdx = order.indexOf(step as typeof order[number])
               const filled = step === s || (currentIdx > -1 && currentIdx > i)
               return (
@@ -706,8 +726,17 @@ export default function PinCreate() {
                 <Button variant="primary" size="xl" onClick={() => setStep('content-type')} fullWidth>Add content</Button>
                 {/* Spotlights require content; hide the skip option for them */}
                 {pinType !== 'spotlight' && (
-                  <Button variant="secondary" size="xl" onClick={() => { setSkippedContent(true); setStep('publish') }} fullWidth>
-                    Publish without content
+                  <Button
+                    variant="secondary"
+                    size="xl"
+                    fullWidth
+                    loading={saving}
+                    onClick={() => {
+                      setSkippedContent(true)
+                      handlePublishFromEditor({ skip: true })
+                    }}
+                  >
+                    Post now, add content later
                   </Button>
                 )}
                 <Button variant="ghost" size="lg" onClick={() => setStep('address')} fullWidth>
@@ -738,33 +767,31 @@ export default function PinCreate() {
                 <ContentKindCard
                   kind="carousel"
                   title="Photo carousel"
-                  description="A swipeable set of photos with optional text and filters."
+                  description="A swipeable set of photos. Quick and simple."
                   icon={<Camera size={22} />}
                   onSelect={() => {
+                    // Wipe editor state only when switching FROM reel →
+                    // carousel. Re-picking carousel preserves any photos
+                    // already queued in currentDraft.
+                    if (contentKind === 'reel') editorReset()
                     setContentKind('carousel')
-                    editorReset()
+                    setEditingDraftId(null)
                     setStep('edit')
                   }}
                 />
                 <ContentKindCard
                   kind="reel"
                   title="Video reel"
-                  description="Single video with frame and preview. Quick and simple."
+                  description="One or more clips with trim and frame controls."
                   icon={<Film size={22} />}
                   onSelect={() => {
+                    // Wipe the carousel currentDraft only when switching
+                    // FROM carousel → reel. Re-picking reel preserves the
+                    // editor store (clips, trims, aspect) so back/forward
+                    // doesn't drop the user's progress.
+                    if (contentKind === 'carousel') setCurrentDraft(null)
                     setContentKind('reel')
-                    editorReset()
-                    setStep('edit')
-                  }}
-                />
-                <ContentKindCard
-                  kind="editor"
-                  title="Full editor"
-                  description="Multi-clip with trim, text, adjust, audio, and more."
-                  icon={<Sparkles size={22} />}
-                  onSelect={() => {
-                    setContentKind('editor')
-                    editorReset()
+                    setEditingDraftId(null)
                     setStep('edit')
                   }}
                 />
@@ -790,7 +817,17 @@ export default function PinCreate() {
               animate="center"
               exit="exit"
             >
-              <EditorStep direction={direction} />
+              {contentKind === 'carousel' && (
+                <div className="px-4 lg:px-12">
+                  <CarouselStep
+                    draft={(currentDraft && currentDraft.kind === 'carousel') ? currentDraft : null}
+                    onChange={(d) => setCurrentDraft(d)}
+                  />
+                </div>
+              )}
+              {contentKind === 'reel' && (
+                <EditorStep direction={direction} simpleMode />
+              )}
               <div className="flex gap-3 mt-7 px-4 lg:px-12">
                 <button
                   onClick={() => {
@@ -802,49 +839,71 @@ export default function PinCreate() {
                   Back
                 </button>
                 <motion.button
-                  whileTap={editorClips.length > 0 ? { scale: 0.98 } : undefined}
+                  whileTap={(() => {
+                    if (contentKind === 'reel') return editorClips.length > 0 ? { scale: 0.98 } : undefined
+                    if (contentKind === 'carousel') return (currentDraft?.kind === 'carousel' && currentDraft.photos.length > 0) ? { scale: 0.98 } : undefined
+                    return undefined
+                  })()}
                   onClick={() => {
-                    if (editorClips.length === 0) return
-                    // Snapshot current editor state into a draft
-                    const draftId = editingDraftId ?? Math.random().toString(36).slice(2, 10)
-                    const newDraft: EditorDraft = {
-                      id: draftId,
-                      kind: contentKind ?? 'editor',
-                      clipFiles: editorClips.map((c) => c.file),
-                      clipMeta: editorClips.map((c) => ({
-                        trimIn: c.trimIn,
-                        trimOut: c.trimOut,
-                        speed: c.speed,
-                        adjustments: { ...c.adjustments },
-                      })),
-                      overlays: [...editorOverlays],
-                      aspect: editorAspect,
-                      thumbnailUrl: editorClips[0]?.thumbnailUrl ?? '',
-                    }
-                    setContentDrafts((prev) => {
-                      const idx = prev.findIndex((d) => d.id === draftId)
-                      if (idx >= 0) {
-                        const next = [...prev]
-                        next[idx] = newDraft
-                        return next
+                    // Reel path: snapshot the editor store into an EditorDraftKind.
+                    // Simple mode strips text/audio/adjust/filter/speed — the draft
+                    // still flows through renderComposition on publish, which is a
+                    // no-op on all the simplified fields.
+                    if (contentKind === 'reel') {
+                      if (editorClips.length === 0) return
+                      const draftId = editingDraftId ?? Math.random().toString(36).slice(2, 10)
+                      const newDraft: EditorDraftKind = {
+                        id: draftId,
+                        kind: 'editor',
+                        clipFiles: editorClips.map((c) => c.file),
+                        clipMeta: editorClips.map((c) => ({
+                          trimIn: c.trimIn,
+                          trimOut: c.trimOut,
+                          speed: c.speed,
+                          adjustments: { ...c.adjustments },
+                        })),
+                        overlays: [...editorOverlays],
+                        aspect: editorAspect,
+                        thumbnailUrl: editorClips[0]?.thumbnailUrl ?? '',
                       }
-                      return [...prev, newDraft]
+                      setContentDrafts((prev) => {
+                        const idx = prev.findIndex((d) => d.id === draftId)
+                        if (idx >= 0) { const next = [...prev]; next[idx] = newDraft; return next }
+                        return [...prev, newDraft]
+                      })
+                      setEditingDraftId(null)
+                      setCurrentDraft(null)
+                      setSkippedContent(false)
+                      setStep('publish')
+                      return
+                    }
+
+                    // Carousel path
+                    if (!currentDraft || currentDraft.kind !== 'carousel' || currentDraft.photos.length === 0) return
+                    setContentDrafts((prev) => {
+                      const idx = prev.findIndex((d) => d.id === currentDraft.id)
+                      if (idx >= 0) { const next = [...prev]; next[idx] = currentDraft; return next }
+                      return [...prev, currentDraft]
                     })
                     setEditingDraftId(null)
+                    setCurrentDraft(null)
                     setSkippedContent(false)
                     setStep('publish')
                   }}
-                  disabled={editorClips.length === 0}
+                  disabled={(() => {
+                    if (contentKind === 'reel') return editorClips.length === 0
+                    if (contentKind === 'carousel') return !(currentDraft?.kind === 'carousel' && currentDraft.photos.length > 0)
+                    return true
+                  })()}
                   className={`flex-[2] h-[52px] rounded-[14px] text-[14px] font-bold transition-all ${
-                    editorClips.length === 0
+                    (() => {
+                      if (contentKind === 'reel') return editorClips.length === 0
+                      if (contentKind === 'carousel') return !(currentDraft?.kind === 'carousel' && currentDraft.photos.length > 0)
+                      return true
+                    })()
                       ? 'bg-white/[0.06] text-white/30 cursor-not-allowed'
                       : 'bg-tangerine text-white cursor-pointer hover:brightness-110'
                   }`}
-                  style={{
-                    boxShadow: editorClips.length > 0
-                      ? '0 8px 28px rgba(255,107,61,0.4), 0 0 0 1px rgba(255,107,61,0.5)'
-                      : undefined,
-                  }}
                 >
                   Continue
                 </motion.button>
@@ -865,24 +924,32 @@ export default function PinCreate() {
                     {contentDrafts.length === 1 ? '1 piece of content' : `${contentDrafts.length} pieces of content`}
                   </p>
                   <div className="flex items-center gap-2 overflow-x-auto scrollbar-none p-1">
-                    {contentDrafts.map((d) => (
+                    {contentDrafts.map((d) => {
+                      const thumb =
+                        d.kind === 'carousel'
+                          ? d.photos[0]?.previewUrl ?? ''
+                          : d.thumbnailUrl
+                      return (
                       <div key={d.id} className="relative shrink-0">
                         <button
                           onClick={() => {
-                            // Re-open this draft in the editor: rehydrate
-                            // editor state from the snapshot and route there.
-                            editorReset()
+                            // Re-open this draft in the right step for its kind.
                             setEditingDraftId(d.id)
-                            // Note: re-importing files via the store handles
-                            // probing/thumbnails. Trim/speed/etc. won't
-                            // perfectly persist in V1 — that's a follow-up.
-                            useEditorStore.getState().importFiles(d.clipFiles)
+                            if (d.kind === 'editor') {
+                              editorReset()
+                              useEditorStore.getState().importFiles(d.clipFiles)
+                              setContentKind('reel')
+                              setCurrentDraft(null)
+                            } else {
+                              setContentKind('carousel')
+                              setCurrentDraft(d)
+                            }
                             setStep('edit')
                           }}
                           className="w-[58px] h-[78px] rounded-[10px] overflow-hidden bg-pearl border border-border-light hover:border-tangerine/40 transition-colors cursor-pointer"
                         >
-                          {d.thumbnailUrl
-                            ? <img src={d.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                          {thumb
+                            ? <img src={thumb} alt="" className="w-full h-full object-cover" />
                             : <div className="w-full h-full flex items-center justify-center"><Film size={16} className="text-smoke" /></div>}
                         </button>
                         <button
@@ -896,7 +963,8 @@ export default function PinCreate() {
                           <X size={11} strokeWidth={2.6} />
                         </button>
                       </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )}
@@ -925,7 +993,7 @@ export default function PinCreate() {
               </div>
 
               <div className="flex flex-col gap-2.5">
-                <Button variant="primary" size="xl" onClick={handlePublishFromEditor} loading={saving} fullWidth>
+                <Button variant="primary" size="xl" onClick={() => handlePublishFromEditor()} loading={saving} fullWidth>
                   Publish Pin
                 </Button>
                 {/* "+ Add more content" only when the user actually has content
@@ -1080,7 +1148,7 @@ export default function PinCreate() {
                 {!isAddContentMode && (
                   <Button variant="secondary" size="xl" onClick={() => setStep('details')} className="flex-1">Back</Button>
                 )}
-                <Button variant="primary" size="xl" onClick={isAddContentMode ? () => navigate(-1) : handlePublish} loading={saving} className={isAddContentMode ? 'flex-1' : 'flex-[2]'}>
+                <Button variant="primary" size="xl" onClick={isAddContentMode ? () => navigate(-1) : () => handlePublish()} loading={saving} className={isAddContentMode ? 'flex-1' : 'flex-[2]'}>
                   {isAddContentMode ? 'Done' : contentItems.length > 0 ? 'Publish Pin' : 'Publish without content'}
                 </Button>
               </div>
@@ -1184,9 +1252,10 @@ interface ContentKindCardProps {
   description: string
   icon: React.ReactNode
   onSelect: () => void
+  locked?: boolean
 }
 
-function ContentKindCard({ title, description, icon, onSelect }: ContentKindCardProps) {
+function ContentKindCard({ title, description, icon, onSelect, locked }: ContentKindCardProps) {
   return (
     <motion.button
       whileTap={{ scale: 0.98 }}
@@ -1197,7 +1266,14 @@ function ContentKindCard({ title, description, icon, onSelect }: ContentKindCard
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-bold text-ink">{title}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-[15px] font-bold text-ink">{title}</p>
+          {locked && (
+            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-tangerine bg-tangerine-soft px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+              <Lock size={9} /> Studio
+            </span>
+          )}
+        </div>
         <p className="text-[12px] text-smoke leading-snug mt-0.5">{description}</p>
       </div>
       <ChevronRight size={18} className="text-ash shrink-0" />

@@ -33,6 +33,15 @@ interface EditorState {
   importingCount: number
 
   /**
+   * Master playback flag. The raf loop in PreviewCanvas advances
+   * `composedTime` by wall-clock delta while this is true — a single clock
+   * that drives both photos and videos. Video elements sync to the clock,
+   * not the other way around, so cross-clip transitions never hiccup.
+   */
+  playing: boolean
+  setPlaying: (v: boolean) => void
+
+  /**
    * Direct DOM ref slots for the Timeline. PreviewCanvas writes the strip's
    * transform directly on every video timeupdate, bypassing React entirely.
    *
@@ -104,6 +113,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   currentTime: 0,
   composedTime: 0,
   importingCount: 0,
+  playing: false,
+  setPlaying: (v) => set({ playing: v }),
   timelineWrapperEl: null,
   timelineStripEl: null,
   setTimelineEls: (wrapper, strip) => set({ timelineWrapperEl: wrapper, timelineStripEl: strip }),
@@ -124,9 +135,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           frames: isVideo ? [] : [probed.thumbnailUrl],
           nativeAspect: probed.nativeAspect,
           type: isVideo ? 'video' : 'photo',
+          // For photos, `duration` is the MAX extensible length (10s from
+          // probePhoto). The visible length defaults to 3s; user can drag
+          // the right trim handle to extend up to `duration`.
           duration: probed.duration,
           trimIn: 0,
-          trimOut: probed.duration,
+          trimOut: isVideo ? probed.duration : 3,
           speed: 1,
           adjustments: { ...DEFAULT_ADJUSTMENTS },
           pending: isVideo,
@@ -325,6 +339,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       currentTime: 0,
       composedTime: 0,
       importingCount: 0,
+      playing: false,
     })
   },
 

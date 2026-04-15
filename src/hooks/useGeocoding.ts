@@ -37,7 +37,11 @@ export function useGeocoding() {
           ? 'neighborhood,locality,place,district'
           : 'address'
 
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=us&types=${types}&limit=5`
+        // `proximity=ip` tells Mapbox to bias ranking toward the user's
+        // approximate IP location instead of the US population centroid
+        // (which sits in Ohio and was causing "Ohio" to surface for short
+        // queries like "main st").
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=us&types=${types}&limit=5&proximity=ip&autocomplete=true`
         const res = await fetch(url, { signal: controller.signal })
         const data = await res.json()
 

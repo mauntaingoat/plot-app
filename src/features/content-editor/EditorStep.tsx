@@ -9,6 +9,10 @@ import { useEditorStore } from './state/editorStore'
 
 interface EditorStepProps {
   direction: number
+  /** When true, hides Text/Audio/Filter/Adjust/Speed/Split and keeps only
+   *  Frame + Trim handles + Add clip + Replace/Delete. Used by the simple
+   *  Video Reel flow. */
+  simpleMode?: boolean
 }
 
 /**
@@ -28,7 +32,7 @@ interface EditorStepProps {
  *   - When a tool strip is open: preview shrinks to ~36vh, strip slides
  *     into the gap between timeline and toolbar
  */
-export function EditorStep({ direction }: EditorStepProps) {
+export function EditorStep({ direction, simpleMode = false }: EditorStepProps) {
   const view = useEditorStore((s) => s.view)
   const reset = useEditorStore((s) => s.reset)
   const stripActive = view === 'adjust' || view === 'crop' || view === 'speed'
@@ -71,13 +75,13 @@ export function EditorStep({ direction }: EditorStepProps) {
           <div className="flex flex-col gap-3 lg:gap-4 min-w-0">
             <PreviewCanvas />
             <TransportBar />
-            <Timeline />
+            <Timeline simpleMode={simpleMode} />
             <ContextStrip />
           </div>
 
           {/* Toolbar — right column on desktop, bottom on mobile */}
           <div className="lg:flex lg:items-start lg:justify-center lg:pt-2">
-            <BottomToolbar />
+            <BottomToolbar simpleMode={simpleMode} />
           </div>
         </div>
       </EditorErrorBoundary>

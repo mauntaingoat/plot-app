@@ -82,22 +82,30 @@ interface PhotoProbe {
   nativeAspect: number
 }
 
-/** Photos resolve synchronously with no real probe — image dims are read on-demand. */
+/**
+ * Photos resolve synchronously with no real probe — image dims are read via
+ * an off-screen `<img>`. The returned `duration` is the MAX allowed display
+ * length (10s). The caller seeds `trimOut` to the default visible length
+ * (3s). Users drag the right trim handle to extend up to `duration`.
+ */
+const PHOTO_MAX_DURATION = 10
+
 export function probePhoto(file: File): Promise<PhotoProbe> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const url = URL.createObjectURL(file)
     const img = new Image()
-    img.onload = () => {
-      const nativeAspect = img.width && img.height ? img.width / img.height : 9 / 16
-      resolve({ thumbnailUrl: url, duration: 3, nativeAspect })
+    let settled = false
+    const done = (nativeAspect: number) => {
+      if (settled) return
+      settled = true
+      resolve({ thumbnailUrl: url, duration: PHOTO_MAX_DURATION, nativeAspect })
     }
-    img.onerror = () => {
-      // Fall back to default aspect if the image fails to decode for sizing
-      resolve({ thumbnailUrl: url, duration: 3, nativeAspect: 9 / 16 })
-    }
+    img.onload = () => done(img.width && img.height ? img.width / img.height : 9 / 16)
+    img.onerror = () => done(9 / 16)
     img.src = url
-    // Fail fast after 5s
-    setTimeout(() => reject(new Error('photo probe timeout')), 5000)
+    // Never reject — fall back to defaults after 5s so slow decodes don't
+    // surface as "upload failed".
+    setTimeout(() => done(9 / 16), 5000)
   })
 }
 
@@ -122,25 +130,54 @@ const FILMSTRIP_FRAME_W = 160 // wide enough to read clearly when 80–100px is 
  * Sequentially seeks because parallel seeks on the same <video> element fight.
  * Runs in the background after probeVideo, so latency is acceptable.
  */
-export async function extractFilmstrip(file: File): Promise<string[]> {
+/** Is this browser an iOS/iPadOS Safari or webkit wrapper? */
+function isIOS(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent
+  return /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && 'ontouchend' in document)
+}
+
+/**
+ * Extract N evenly-spaced frames using the DOM `<video>` element.
+ * Works on desktop Chrome/Firefox where seek+drawImage is reliable.
+ * Returns [] on iOS Safari where this approach produces blank frames.
+ */
+async function extractViaSeekDraw(file: File): Promise<string[]> {
   const url = URL.createObjectURL(file)
   const video = document.createElement('video')
   video.preload = 'auto'
   video.muted = true
   video.playsInline = true
+  video.setAttribute('webkit-playsinline', 'true')
   video.src = url
 
   const cleanup = () => {
+    try { video.pause() } catch { /* noop */ }
     video.removeAttribute('src')
     video.load()
     URL.revokeObjectURL(url)
   }
 
-  // Wait for metadata
-  await new Promise<void>((resolve, reject) => {
-    video.addEventListener('loadedmetadata', () => resolve(), { once: true })
-    video.addEventListener('error', () => reject(new Error('extractFilmstrip metadata failed')), { once: true })
+  const waitReady = (): Promise<void> => new Promise((resolve, reject) => {
+    if (video.readyState >= 2) return resolve()
+    const onReady = () => { cleanupListeners(); resolve() }
+    const onErr = () => { cleanupListeners(); reject(new Error('metadata failed')) }
+    const cleanupListeners = () => {
+      video.removeEventListener('loadedmetadata', onReady)
+      video.removeEventListener('canplay', onReady)
+      video.removeEventListener('error', onErr)
+    }
+    video.addEventListener('loadedmetadata', onReady)
+    video.addEventListener('canplay', onReady)
+    video.addEventListener('error', onErr)
   })
+
+  try {
+    await waitReady()
+  } catch {
+    cleanup()
+    return []
+  }
 
   const duration = isFinite(video.duration) ? video.duration : 0
   if (duration <= 0) {
@@ -149,7 +186,6 @@ export async function extractFilmstrip(file: File): Promise<string[]> {
   }
 
   const count = frameCountForDuration(duration)
-  const frames: string[] = []
   const w = video.videoWidth || 320
   const h = video.videoHeight || 180
   const canvas = document.createElement('canvas')
@@ -163,32 +199,143 @@ export async function extractFilmstrip(file: File): Promise<string[]> {
   ctx.imageSmoothingEnabled = true
   ctx.imageSmoothingQuality = 'high'
 
+  const frames: string[] = []
+  const seekTo = (t: number): Promise<void> => new Promise((resolve) => {
+    let settled = false
+    const done = () => {
+      if (settled) return
+      settled = true
+      video.removeEventListener('seeked', done)
+      resolve()
+    }
+    video.addEventListener('seeked', done, { once: true })
+    video.currentTime = t
+    setTimeout(done, 400)
+  })
+
   for (let i = 0; i < count; i++) {
-    // Pick a time slightly inset from the absolute start/end so we don't get black frames
     const t = ((i + 0.5) / count) * duration
     try {
-      await new Promise<void>((resolve, reject) => {
-        const onSeeked = () => {
-          video.removeEventListener('seeked', onSeeked)
-          resolve()
-        }
-        const onErr = () => {
-          video.removeEventListener('error', onErr)
-          reject(new Error('seek failed'))
-        }
-        video.addEventListener('seeked', onSeeked, { once: true })
-        video.addEventListener('error', onErr, { once: true })
-        video.currentTime = Math.min(t, duration - 0.05)
-      })
+      await seekTo(Math.min(t, duration - 0.05))
+      await new Promise((r) => requestAnimationFrame(() => r(null)))
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.82))
-      if (blob) frames.push(URL.createObjectURL(blob))
-    } catch {
-      // Skip this frame; continue with the rest
-      continue
-    }
+      // Reject obviously-blank frames (<1KB JPEGs from unpainted canvases).
+      if (blob && blob.size > 1024) frames.push(URL.createObjectURL(blob))
+    } catch { /* skip this frame */ }
   }
 
   cleanup()
+  // If more than half came back blank, treat as total failure so the
+  // caller can fall back to ffmpeg or the tiled-thumbnail fallback.
+  if (frames.length < Math.max(2, Math.floor(count / 2))) {
+    for (const f of frames) URL.revokeObjectURL(f)
+    return []
+  }
   return frames
+}
+
+/**
+ * Extract N frames via ffmpeg.wasm. This is the ONLY reliable path on
+ * iOS Safari where drawImage(video) returns blank frames. ffmpeg runs in
+ * a worker and produces real JPEG bytes regardless of platform.
+ */
+async function extractViaFFmpeg(file: File): Promise<string[]> {
+  const { getFFmpeg } = await import('./ffmpegClient')
+  const ff = await getFFmpeg()
+
+  const ext = file.name.split('.').pop()?.toLowerCase() || 'mp4'
+  const inputName = `probe_in_${Date.now()}.${ext}`
+  await ff.writeFile(inputName, new Uint8Array(await file.arrayBuffer()))
+
+  // Probe duration via a no-op decode. ffmpeg doesn't expose duration
+  // directly via writeFile, so we use a <video> element for metadata only.
+  const duration = await new Promise<number>((resolve) => {
+    const v = document.createElement('video')
+    const u = URL.createObjectURL(file)
+    v.preload = 'metadata'
+    v.src = u
+    v.addEventListener('loadedmetadata', () => {
+      resolve(isFinite(v.duration) ? v.duration : 0)
+      v.removeAttribute('src'); v.load(); URL.revokeObjectURL(u)
+    }, { once: true })
+    v.addEventListener('error', () => { resolve(0); URL.revokeObjectURL(u) }, { once: true })
+    setTimeout(() => resolve(0), 3000)
+  })
+
+  if (duration <= 0) {
+    try { await ff.deleteFile(inputName) } catch { /* noop */ }
+    return []
+  }
+
+  const count = frameCountForDuration(duration)
+  // fps = count frames spread over duration. ffmpeg's `fps` filter takes
+  // a rate; to get `count` frames total we ask for count/duration fps.
+  const fps = Math.max(0.1, count / duration)
+  const pattern = `probe_frame_%03d.jpg`
+
+  try {
+    await ff.exec([
+      '-i', inputName,
+      '-vf', `fps=${fps.toFixed(3)},scale=${FILMSTRIP_FRAME_W}:-1`,
+      '-q:v', '5',
+      '-frames:v', String(count),
+      pattern,
+    ])
+  } catch (err) {
+    try { await ff.deleteFile(inputName) } catch { /* noop */ }
+    throw err
+  }
+
+  const frames: string[] = []
+  for (let i = 1; i <= count; i++) {
+    const name = `probe_frame_${String(i).padStart(3, '0')}.jpg`
+    try {
+      const data = await ff.readFile(name)
+      const bytes = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data))
+      const blob = new Blob([bytes as unknown as BlobPart], { type: 'image/jpeg' })
+      frames.push(URL.createObjectURL(blob))
+      try { await ff.deleteFile(name) } catch { /* noop */ }
+    } catch { /* missing frame — skip */ }
+  }
+
+  try { await ff.deleteFile(inputName) } catch { /* noop */ }
+  return frames
+}
+
+/** Mobile touch-device heuristic (mobile Safari AND Android Chrome). */
+function isMobile(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    || (navigator.userAgent.includes('Macintosh') && 'ontouchend' in document)
+}
+
+/**
+ * Primary filmstrip extractor.
+ *
+ * Desktop: uses the fast DOM-based seek+drawImage path. If that fails
+ * (rare), falls back to ffmpeg.wasm.
+ *
+ * Mobile: goes straight to ffmpeg.wasm. Both iOS Safari and Android
+ * Chrome have issues with drawImage(video) — iOS returns blank frames,
+ * Android produces inconsistent results depending on the device.
+ * ffmpeg is the only way to get real frames cross-platform.
+ */
+export async function extractFilmstrip(file: File): Promise<string[]> {
+  if (!isMobile()) {
+    const frames = await extractViaSeekDraw(file)
+    if (frames.length > 0) return frames
+    try { return await extractViaFFmpeg(file) } catch { return [] }
+  }
+
+  // Mobile: ffmpeg first. If ffmpeg fails (e.g. CDN timeout), fall back
+  // to an empty array so the tiled-thumbnail fallback renders instead
+  // of committing blank frames.
+  try {
+    const frames = await extractViaFFmpeg(file)
+    if (frames.length > 0) return frames
+  } catch (err) {
+    console.warn('ffmpeg filmstrip extraction failed', err)
+  }
+  return []
 }

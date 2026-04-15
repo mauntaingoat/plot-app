@@ -33,10 +33,19 @@ const MAIN_TOOLS: ToolDef[] = [
   { id: 'crop',   label: 'Frame',  icon: Crop },
 ]
 
+const SIMPLE_MAIN_TOOLS: ToolDef[] = [
+  { id: 'crop', label: 'Frame', icon: Crop },
+]
+
 const CLIP_SUB_TOOLS: ToolDef[] = [
   { id: 'action-split',   label: 'Split',   icon: SplitSquareVertical },
   { id: 'action-replace', label: 'Replace', icon: RefreshCw },
   { id: 'speed',          label: 'Speed',   icon: Gauge },
+  { id: 'action-delete',  label: 'Delete',  icon: Trash2, danger: true },
+]
+
+const SIMPLE_CLIP_SUB_TOOLS: ToolDef[] = [
+  { id: 'action-replace', label: 'Replace', icon: RefreshCw },
   { id: 'action-delete',  label: 'Delete',  icon: Trash2, danger: true },
 ]
 
@@ -45,7 +54,7 @@ const CLIP_SUB_TOOLS: ToolDef[] = [
  *   - Desktop (lg+): vertical column on the right side of the editor grid
  *   - Mobile: horizontal row pinned below the timeline / strip
  */
-export function BottomToolbar() {
+export function BottomToolbar({ simpleMode = false }: { simpleMode?: boolean } = {}) {
   const view = useEditorStore((s) => s.view)
   const setView = useEditorStore((s) => s.setView)
   const clips = useEditorStore((s) => s.clips)
@@ -95,7 +104,9 @@ export function BottomToolbar() {
     e.target.value = ''
   }
 
-  const tools = showSubTools ? CLIP_SUB_TOOLS : MAIN_TOOLS
+  const tools = showSubTools
+    ? (simpleMode ? SIMPLE_CLIP_SUB_TOOLS : CLIP_SUB_TOOLS)
+    : (simpleMode ? SIMPLE_MAIN_TOOLS : MAIN_TOOLS)
 
   return (
     <>

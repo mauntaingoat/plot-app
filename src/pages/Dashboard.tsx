@@ -64,7 +64,6 @@ export default function Dashboard() {
   const [qrPin, setQrPin] = useState<Pin | null>(null)
   const [openHousePin, setOpenHousePin] = useState<ForSalePin | null>(null)
   const [editPin, setEditPin] = useState<Pin | null>(null)
-  const [showContentRequired, setShowContentRequired] = useState<Pin | null>(null)
   const [showEditProfile, setShowEditProfile] = useState(false)
   const [editProfileData, setEditProfileData] = useState({ displayName: '', bio: '', photoURL: '' })
   const photoInputRef = useRef<HTMLInputElement>(null)
@@ -74,7 +73,6 @@ export default function Dashboard() {
   // Lock background scroll for desktop-only inline modals
   // (Mobile variants use DarkBottomSheet which locks scroll internally)
   useScrollLock(isDesktop && !!showDeleteConfirm)
-  useScrollLock(isDesktop && !!showContentRequired)
   useScrollLock(isDesktop && showEditProfile)
   useScrollLock(isDesktop && showAddPlatform)
 
@@ -91,30 +89,9 @@ export default function Dashboard() {
   // Pins with toggle state — use Carolina's mock pins when there's no real data
   const [pins, setPins] = useState<Pin[]>(MOCK_PINS_CAROLINA)
 
-  // Auto-hide pins with no content from map
-  const emptyEnabledIds = useMemo(() =>
-    pins.filter((p) => p.enabled && (!p.content || p.content.length === 0)).map((p) => p.id).join(','),
-    [pins]
-  )
-  useEffect(() => {
-    if (!emptyEnabledIds) return
-    const ids = emptyEnabledIds.split(',')
-    const idSet = new Set(ids)
-    setPins((prev) => prev.map((p) => idSet.has(p.id) ? { ...p, enabled: false } : p))
-    ids.forEach((id) => {
-      import('@/lib/firestore').then(({ updatePin }) => updatePin(id, { enabled: false } as any)).catch(() => {})
-    })
-  }, [emptyEnabledIds])
-
   const handleTogglePin = useCallback(async (pinId: string, enabled: boolean) => {
-    // Gate activation — block if at active pin cap
+    // Gate activation — block if at active pin cap (tier limits)
     if (enabled) {
-      const pin = pins.find((p) => p.id === pinId)
-      // Require at least 1 content item to show on map
-      if (pin && (!pin.content || pin.content.length === 0)) {
-        setShowContentRequired(pin)
-        return
-      }
       const gate = canActivatePin(currentUser, pins)
       if (!gate.allowed) {
         setPaywall({ open: true, reason: gate.reason || '', upgradeTo: gate.upgradeTo })
@@ -649,54 +626,6 @@ export default function Dashboard() {
           import('@/lib/firestore').then(({ updatePin }) => updatePin(editPin.id, { content: reordered } as any)).catch(() => {})
         }}
       />
-
-      {/* Content required modal — shown when trying to enable a pin with no content */}
-      {isDesktop ? (
-        <AnimatePresence>
-          {showContentRequired && (
-            <>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[200] bg-black/50" onClick={() => setShowContentRequired(null)} />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.96, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.96, y: 20 }}
-                transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[210] w-[calc(100vw-48px)] max-w-[380px] bg-warm-white rounded-[22px] shadow-2xl border border-border-light p-6 space-y-4"
-              >
-                <div className="w-12 h-12 rounded-full bg-tangerine/15 flex items-center justify-center mx-auto">
-                  <Camera size={20} className="text-tangerine" />
-                </div>
-                <h2 className="text-[16px] font-extrabold text-ink tracking-tight text-center">Content required</h2>
-                <p className="text-[13px] text-smoke text-center">Add at least one photo or video to this listing before it can appear on your map.</p>
-                <div className="flex gap-3">
-                  <button onClick={() => setShowContentRequired(null)} className="flex-1 px-4 py-2.5 rounded-full text-[13px] font-medium text-smoke hover:bg-cream cursor-pointer transition-colors">
-                    Cancel
-                  </button>
-                  <button onClick={() => { navigate(`/dashboard/pin/${showContentRequired.id}/edit?tab=content`); setShowContentRequired(null) }}
-                    className="flex-1 px-4 py-2.5 rounded-full bg-tangerine text-white text-[13px] font-bold cursor-pointer hover:brightness-110 transition-all">
-                    Add Content
-                  </button>
-                </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-      ) : (
-        <DarkBottomSheet isOpen={!!showContentRequired} onClose={() => setShowContentRequired(null)} title="Content required">
-          <div className="px-5 pb-8 space-y-4">
-            <div className="w-12 h-12 rounded-full bg-tangerine/15 flex items-center justify-center mx-auto">
-              <Camera size={20} className="text-tangerine" />
-            </div>
-            <p className="text-[14px] text-mist text-center">Add at least one photo or video to this listing before it can appear on your map.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setShowContentRequired(null)} className="flex-1 px-4 py-3 rounded-full bg-slate text-[14px] font-medium text-mist cursor-pointer">Cancel</button>
-              <button onClick={() => { if (showContentRequired) navigate(`/dashboard/pin/${showContentRequired.id}/edit?tab=content`); setShowContentRequired(null) }}
-                className="flex-1 px-4 py-3 rounded-full bg-tangerine text-[14px] font-bold text-white cursor-pointer">Add Content</button>
-            </div>
-          </div>
-        </DarkBottomSheet>
-      )}
 
       {/* Hidden photo file input */}
       <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
