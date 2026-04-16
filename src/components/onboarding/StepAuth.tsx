@@ -38,7 +38,7 @@ export function StepAuth() {
     setLoading(true)
     setError('')
     try {
-      const cred = await createUserWithEmailAndPassword(auth, email, password)
+      const cred = await createUserWithEmailAndPassword(auth!, email, password)
       await finishAuth(cred.user.uid, email)
     } catch (e: any) {
       const msg = e.code === 'auth/email-already-in-use' ? 'This email is already registered'
@@ -55,7 +55,7 @@ export function StepAuth() {
     setError('')
     try {
       const provider = new GoogleAuthProvider()
-      const cred = await signInWithPopup(auth, provider)
+      const cred = await signInWithPopup(auth!, provider)
       await finishAuth(
         cred.user.uid,
         cred.user.email || '',

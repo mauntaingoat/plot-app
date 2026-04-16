@@ -17,7 +17,7 @@ const stripMotion = {
   initial: { y: 18, opacity: 0 },
   animate: { y: 0, opacity: 1 },
   exit: { y: 18, opacity: 0 },
-  transition: { duration: 0.22, ease: [0.32, 0.72, 0, 1] },
+  transition: { duration: 0.22, ease: [0.32, 0.72, 0, 1] as [number, number, number, number] },
 }
 
 export function ContextStrip() {

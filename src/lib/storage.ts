@@ -8,6 +8,7 @@ interface UploadOptions {
 }
 
 export async function uploadFile({ path, file, onProgress }: UploadOptions): Promise<string> {
+  if (!storage) throw new Error('Firebase Storage not initialized')
   const storageRef = ref(storage, path)
   const task = uploadBytesResumable(storageRef, file)
 

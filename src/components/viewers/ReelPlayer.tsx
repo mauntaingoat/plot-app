@@ -2,10 +2,10 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from 'framer-motion'
 import { MessageCircle, Bookmark, Share2, Music2, X } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
-import type { ReelPin, UserDoc } from '@/lib/types'
+import type { Pin, UserDoc, ContentItem } from '@/lib/types'
 
 interface ReelPlayerProps {
-  reel: ReelPin
+  reel: Pin & { mediaUrl?: string; caption?: string }
   agent: UserDoc
   onClose: () => void
   onFollow?: () => void

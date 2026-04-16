@@ -56,7 +56,7 @@ export function Button({
         ${className}
       `}
       disabled={disabled || loading}
-      {...props}
+      {...props as any}
     >
       {loading ? (
         <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />

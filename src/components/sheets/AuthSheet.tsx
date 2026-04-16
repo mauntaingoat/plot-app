@@ -102,6 +102,7 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
         followingCount: 0,
         onboardingComplete: role === 'consumer',
         onboardingStep: role === 'consumer' ? 8 : 2,
+        tier: 'free', brandColor: null,
         setupPercent: role === 'agent' ? 20 : 0,
       }
       setUserDoc(newUser)
@@ -168,6 +169,7 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
         followingCount: 0,
         onboardingComplete: true,
         onboardingStep: 8,
+        tier: 'free', brandColor: null,
         setupPercent: 20,
       }
       setUserDoc(newUser)

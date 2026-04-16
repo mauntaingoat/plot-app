@@ -69,11 +69,11 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
             </div>
           )}
 
-          {/* Duration badge for reels */}
-          {'duration' in pin && (
+          {/* Duration badge for content with duration */}
+          {pin.content?.[0]?.duration != null && (
             <div className="absolute bottom-3 right-3">
               <span className="glass-dark rounded-md px-2 py-0.5 text-[11px] font-mono font-semibold text-white">
-                {Math.floor(pin.duration / 60)}:{String(pin.duration % 60).padStart(2, '0')}
+                {Math.floor(pin.content[0].duration / 60)}:{String(pin.content[0].duration % 60).padStart(2, '0')}
               </span>
             </div>
           )}

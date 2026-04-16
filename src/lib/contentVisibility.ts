@@ -6,7 +6,7 @@ import type { ContentItem, Pin } from '@/lib/types'
  */
 export function isContentPublished(item: ContentItem, nowMs: number = Date.now()): boolean {
   if (!item.publishAt) return true
-  const ts = (item.publishAt as any)?.toMillis?.() ?? (item.publishAt as any)?._seconds * 1000 ?? null
+  const ts = (item.publishAt as any)?.toMillis?.() ?? (item.publishAt as any)?._seconds * 1000
   if (ts == null) return true
   return ts <= nowMs
 }

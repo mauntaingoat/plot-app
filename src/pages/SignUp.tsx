@@ -89,6 +89,7 @@ export default function SignUp() {
       emailVerified: false,
       platforms: [],
       followerCount: 0, followingCount: 0,
+      tier: 'free', brandColor: null,
       onboardingComplete: role === 'consumer', onboardingStep: role === 'consumer' ? 8 : 2,
       setupPercent: role === 'agent' ? 20 : 0,
     })

@@ -29,7 +29,11 @@ export default function SignIn() {
         uid: `demo-${Date.now()}`, email, role: 'agent',
         createdAt: Timestamp.now(), username: email.split('@')[0].toLowerCase(),
         displayName: email.split('@')[0], photoURL: null, bio: '',
-        brokerage: null, licenseNumber: null, licenseState: null, platforms: [],
+        brokerage: null, licenseNumber: null, licenseState: null,
+        licenseName: null, verificationStatus: 'unverified',
+        fairHousingAccepted: false, dataSecurityAccepted: false,
+        emailVerified: false, tier: 'free', brandColor: null,
+        platforms: [],
         followerCount: 0, followingCount: 0, onboardingComplete: true,
         onboardingStep: 8, setupPercent: 20,
       }

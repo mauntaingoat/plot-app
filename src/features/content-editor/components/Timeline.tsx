@@ -447,7 +447,7 @@ function ClipTile({ clip, active, onTap, setTrim }: ClipTileProps) {
       // animation. Without this, every trim drag (which changes the tile
       // width) gets smoothly interpolated by framer, causing the lag and
       // distortion the user has been seeing for three rounds.
-      layout={false}
+      layout="position"
       className="relative"
       style={{ overflow: 'visible' }}
     >

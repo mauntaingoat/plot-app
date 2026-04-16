@@ -6,10 +6,10 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { formatPrice } from '@/lib/firestore'
-import type { ListingPin, SoldPin, OpenHousePin, UserDoc } from '@/lib/types'
+import type { ForSalePin, SoldPin, Pin, OpenHouse, UserDoc } from '@/lib/types'
 
 interface ListingSheetProps {
-  pin: ListingPin | SoldPin | OpenHousePin
+  pin: ForSalePin | SoldPin
   agent: UserDoc
   isOpen: boolean
   onClose: () => void
@@ -20,9 +20,8 @@ export function ListingSheet({ pin, agent, isOpen, onClose }: ListingSheetProps)
   const [saved, setSaved] = useState(false)
 
   const photos = 'photos' in pin ? pin.photos : []
-  const price = 'price' in pin ? pin.price : 'soldPrice' in pin ? pin.soldPrice : 'listingPrice' in pin ? pin.listingPrice : 0
+  const price = 'price' in pin ? pin.price : 'soldPrice' in pin ? pin.soldPrice : 0
   const isSold = pin.type === 'sold'
-  const isOpenHouse = pin.type === 'open_house'
 
   return (
     <DarkBottomSheet isOpen={isOpen} onClose={onClose} fullHeight>
@@ -61,7 +60,7 @@ export function ListingSheet({ pin, agent, isOpen, onClose }: ListingSheetProps)
 
                   {/* Dots */}
                   <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-                    {photos.map((_, i) => (
+                    {photos.map((_: string, i: number) => (
                       <div
                         key={i}
                         className={`w-1.5 h-1.5 rounded-full transition-all ${
@@ -99,7 +98,7 @@ export function ListingSheet({ pin, agent, isOpen, onClose }: ListingSheetProps)
           {/* Badge */}
           <div className="absolute top-3 left-3">
             {isSold && <Badge variant="sold">Sold</Badge>}
-            {isOpenHouse && <Badge variant="open" pulse>Open House</Badge>}
+            {'openHouse' in pin && pin.openHouse && <Badge variant="open" pulse>Open House</Badge>}
           </div>
         </div>
 

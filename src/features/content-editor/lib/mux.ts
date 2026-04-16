@@ -35,7 +35,7 @@ export interface CreateMuxAssetResult {
  * during this window.
  */
 export async function createMuxAsset(args: CreateMuxAssetArgs): Promise<CreateMuxAssetResult> {
-  const functions = getFunctions(app)
+  const functions = getFunctions(app ?? undefined)
   const fn = httpsCallable<CreateMuxAssetArgs, CreateMuxAssetResult>(functions, 'createMuxAsset')
   const res = await fn(args)
   return res.data

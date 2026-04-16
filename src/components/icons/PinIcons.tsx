@@ -66,10 +66,7 @@ export function OpenHousePinIcon({ size = iconSize }: { size?: number }) {
 }
 
 export const PIN_TYPE_ICONS: Record<PinType, typeof ListingPinIcon> = {
-  listing: ListingPinIcon,
+  for_sale: ListingPinIcon,
   sold: SoldPinIcon,
-  story: StoryPinIcon,
-  reel: ReelPinIcon,
-  live: LivePinIcon,
-  open_house: OpenHousePinIcon,
+  spotlight: StoryPinIcon,
 }

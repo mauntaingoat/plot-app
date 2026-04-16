@@ -2,10 +2,12 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, useMotionValue, animate, type PanInfo } from 'framer-motion'
 import { X, Bookmark, Share2 } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
-import type { StoryPin, UserDoc } from '@/lib/types'
+import type { Pin, UserDoc } from '@/lib/types'
+
+type StoryItem = Pin & { mediaType?: string; mediaUrl?: string; caption?: string }
 
 interface StoryViewerProps {
-  stories: StoryPin[]
+  stories: StoryItem[]
   agent: UserDoc
   initialIndex?: number
   onClose: () => void

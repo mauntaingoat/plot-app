@@ -485,7 +485,7 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
   const animatedPinIds = useRef<{ openHouse: string[]; live: string[] }>({ openHouse: [], live: [] })
   const pinFrames = useRef<Map<string, number>>(new Map()) // per-pin frame counter
   const prevVisibleIds = useRef<Set<string>>(new Set()) // track which pins were visible last tick
-  const animIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const animIntervalRef = useRef<number | null>(null)
 
   const loadPinImages = useCallback(async (map: mapboxgl.Map, pinList: Pin[]) => {
     // Load all images in parallel for faster pin rendering
@@ -538,7 +538,7 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       // Per-pin label pill (price/status/neighborhood name in type-colored pill)
       const label = pin.type === 'sold' ? 'SOLD'
         : pin.type === 'spotlight' && 'name' in pin ? pin.name
-        : ('price' in pin ? formatPrice(pin.price) : 'soldPrice' in pin ? formatPrice(pin.soldPrice) : '')
+        : ('price' in pin ? formatPrice((pin as any).price) : 'soldPrice' in pin ? formatPrice((pin as any).soldPrice) : '')
       if (label) {
         const labelId = `label-${pin.id}`
         if (!loadedImagesRef.current.has(labelId)) {
@@ -695,7 +695,7 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
         if (openHouse.length === 0 && live.length === 0) return
 
         // Check which animated pins are actually visible in the viewport
-        const visibleFeatures = map.queryRenderedFeatures(undefined, { layers: ['pin-icons'] })
+        const visibleFeatures = map.queryRenderedFeatures(undefined as any, { layers: ['pin-icons'] })
         const visibleIds = new Set(visibleFeatures.map((f) => f.properties?.id))
 
         const visibleOH = openHouse.filter((id) => visibleIds.has(id))
@@ -742,7 +742,7 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
         pinIconExpr.push(['concat', 'pin-img-', ['get', 'id']])
 
         try {
-          map.setLayoutProperty('pin-icons', 'icon-image', pinIconExpr)
+          map.setLayoutProperty('pin-icons', 'icon-image', pinIconExpr as any)
         } catch {}
       }
 
