@@ -1,6 +1,6 @@
 import type { TextOverlay, AspectRatio } from '@/features/content-editor/state/types'
 
-export type CreateAspect = '9:16' | '1:1' | '4:5' | 'original'
+export type CreateAspect = '9:16' | '16:9' | '1:1' | '4:3' | '3:4' | '4:5' | 'original'
 
 export interface CarouselPhoto {
   id: string

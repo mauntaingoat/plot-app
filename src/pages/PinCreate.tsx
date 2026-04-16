@@ -551,14 +551,20 @@ export default function PinCreate() {
               isDark ? 'bg-white/[0.09] hover:bg-white/[0.14]' : 'bg-cream'
             }`}
           >
-            <ArrowLeft size={18} className={isDark ? 'text-white/95' : 'text-ink'} />
+            <X size={18} className={isDark ? 'text-white/95' : 'text-ink'} />
           </motion.button>
           <h1
             className={`text-[18px] font-bold tracking-tight transition-colors duration-300 ${
               isDark ? 'text-white' : 'text-ink'
             }`}
           >
-            {step === 'edit' ? 'Craft your reel' : 'New Pin'}
+            {isAddContentMode
+              ? (step === 'edit'
+                ? (contentKind === 'carousel' ? 'New carousel' : 'New reel')
+                : 'New Content')
+              : step === 'edit'
+              ? (contentKind === 'carousel' ? 'Create carousel' : 'Craft your reel')
+              : 'New Pin'}
           </h1>
           <div className="flex-1" />
           {/* Step indicator */}
@@ -788,8 +794,12 @@ export default function PinCreate() {
                   description="A swipeable set of photos. Quick and simple."
                   icon={<Camera size={22} />}
                   onSelect={() => {
+                    // Don't clear editingDraftId here — if the user is
+                    // bouncing back/forward (editor → picker → editor),
+                    // the existing draft ID prevents duplicates on the
+                    // next Continue. Only "+ Add more content" clears it
+                    // to start a genuinely new draft.
                     setContentKind('carousel')
-                    setEditingDraftId(null)
                     setStep('edit')
                   }}
                 />
@@ -800,14 +810,18 @@ export default function PinCreate() {
                   icon={<Film size={22} />}
                   onSelect={() => {
                     setContentKind('reel')
-                    setEditingDraftId(null)
                     setStep('edit')
                   }}
                 />
               </div>
 
               <div className="flex gap-3">
-                {addingMoreContent ? (
+                {/* Priority order:
+                    1. If drafts exist → "Back to drafts" (never leave the
+                       content-flow once you've committed at least one draft)
+                    2. If came from Content tab (+Upload) → "Cancel" (exit)
+                    3. Normal flow → "Back" (to details step) */}
+                {contentDrafts.length > 0 ? (
                   <Button
                     variant="secondary"
                     size="xl"
@@ -820,8 +834,6 @@ export default function PinCreate() {
                     Back to drafts
                   </Button>
                 ) : isAddContentMode ? (
-                  /* Arrived from Content tab upload — no prior steps to go
-                     back to. Only a cancel that returns to the dashboard. */
                   <Button variant="secondary" size="xl" onClick={() => navigate(-1)} fullWidth>
                     Cancel
                   </Button>
@@ -875,10 +887,7 @@ export default function PinCreate() {
                       )}
                       <div className="flex gap-3">
                         <button
-                          onClick={() => {
-                            if (isAddContentMode) navigate(-1)
-                            else setStep('content-type')
-                          }}
+                          onClick={() => setStep('content-type')}
                           className="flex-1 h-[52px] rounded-[14px] ed-surface-07 hover:ed-surface-11 ed-fg-85 text-[14px] font-semibold cursor-pointer active:scale-[0.99] transition-all"
                         >
                           Back
@@ -944,10 +953,7 @@ export default function PinCreate() {
               {/* Original Back / Continue row — now only used for carousel. */}
               <div className={`flex gap-3 mt-7 px-4 lg:px-12 ${contentKind === 'reel' ? 'hidden' : ''}`}>
                 <button
-                  onClick={() => {
-                    if (isAddContentMode) navigate(-1)
-                    else setStep('content-type')
-                  }}
+                  onClick={() => setStep('content-type')}
                   className={`flex-1 h-[52px] rounded-[14px] text-[14px] font-semibold cursor-pointer active:scale-[0.99] transition-all ${
                     isDark
                       ? 'bg-white/[0.07] text-white/85 hover:bg-white/[0.11]'
@@ -1203,7 +1209,34 @@ export default function PinCreate() {
                   variant="ghost"
                   size="sm"
                   fullWidth
-                  onClick={() => setStep(skippedContent ? 'details' : 'edit')}
+                  onClick={async () => {
+                    if (skippedContent) { setStep('details'); return }
+                    // Re-open the currently selected draft so the user
+                    // lands in an editor with content, not an empty one.
+                    const draft = contentDrafts[safeIdx]
+                    if (draft) {
+                      setEditingDraftId(draft.id)
+                      if (draft.kind === 'editor') {
+                        const currentClips = useEditorStore.getState().clips
+                        const sameDraft =
+                          currentClips.length === draft.clipFiles.length &&
+                          currentClips.every((c, i) => c.file === draft.clipFiles[i])
+                        if (!sameDraft) {
+                          editorReset()
+                          await useEditorStore.getState().importFiles(draft.clipFiles)
+                          if (draft.thumbnailUrl) {
+                            const first = useEditorStore.getState().clips[0]
+                            if (first) useEditorStore.getState().setClipThumbnail(first.id, draft.thumbnailUrl)
+                          }
+                        }
+                        setContentKind('reel')
+                      } else {
+                        setContentKind('carousel')
+                        setCurrentDraft(draft)
+                      }
+                    }
+                    setStep('edit')
+                  }}
                 >
                   Back
                 </Button>

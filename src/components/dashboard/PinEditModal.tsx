@@ -75,7 +75,7 @@ function PinEditContent({ pin, onAddContent, onArchiveContent, onReorderContent,
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-[14px] font-bold text-white">Content ({content.length})</h3>
           <Button variant="primary" size="sm" onClick={onAddContent}>
-            Add content
+            Add Content
           </Button>
         </div>
 

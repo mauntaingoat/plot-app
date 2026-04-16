@@ -15,12 +15,15 @@ interface ContentLibraryProps {
   onAssignContent: (contentId: string, fromPinId: string, toPinId: string, contentItem?: ContentItem) => void
   onArchiveContent: (contentId: string, pinId: string) => void
   isDesktop: boolean
-  /** Navigate to the content-creation flow (PinCreate content-type step). */
   onNavigateUpload?: () => void
+  /** Called after a caption is saved so the parent can update local state. */
+  onCaptionSaved?: (pinId: string, contentId: string, caption: string) => void
+  /** Navigate to the content editor for a specific content item. */
+  onEditContent?: (content: ContentItem, pin: Pin | null) => void
 }
 
-export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent, onArchiveContent, isDesktop, onNavigateUpload }: ContentLibraryProps) {
-  const [filter, setFilter] = useState<'all' | 'reel' | 'photo'>('all')
+export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent, onArchiveContent, isDesktop, onNavigateUpload, onCaptionSaved, onEditContent }: ContentLibraryProps) {
+  const [filter, setFilter] = useState<'all' | 'reel' | 'photo' | 'no_listing'>('all')
   const [archiveTarget, setArchiveTarget] = useState<{ contentId: string; pinId: string } | null>(null)
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [mobileMenuContent, setMobileMenuContent] = useState<{ content: ContentItem; pin: Pin | null } | null>(null)
@@ -93,6 +96,7 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
     if (filter === 'all') return allContent
     if (filter === 'reel') return allContent.filter((i) => i.content.type === 'reel' || i.content.type === 'live' || i.content.type === 'video_note')
     if (filter === 'photo') return allContent.filter((i) => i.content.type === 'photo')
+    if (filter === 'no_listing') return allContent.filter((i) => i.pin === null)
     return allContent
   }, [allContent, filter])
 
@@ -107,6 +111,7 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
           { id: 'all' as const, label: 'All' },
           { id: 'reel' as const, label: 'Videos' },
           { id: 'photo' as const, label: 'Photos' },
+          { id: 'no_listing' as const, label: 'No Listing' },
         ]).map((f) => (
           <button key={f.id} onClick={() => setFilter(f.id)}
             className={`px-3 py-1 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${
@@ -206,6 +211,7 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
                 }
               }}
               onEditCaption={() => setEditingCaption({ contentId: content.id, pinId: pin?.id || null, caption: content.caption || '' })}
+              onEditContent={() => onEditContent?.(content, pin)}
             />
           ))}
         </div>
@@ -229,7 +235,16 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
             setMobileMenuContent(null)
           }} />
           {mobileMenuContent?.content.type === 'photo' && (
-            <MobileMenuBtn icon={<Images size={18} className="text-tangerine" />} label="Add to Carousel" onClick={() => setMobileMenuContent(null)} />
+            <MobileMenuBtn icon={<Images size={18} className="text-tangerine" />} label="Edit Carousel" onClick={() => {
+              if (mobileMenuContent) onEditContent?.(mobileMenuContent.content, mobileMenuContent.pin)
+              setMobileMenuContent(null)
+            }} />
+          )}
+          {(mobileMenuContent?.content.type === 'reel' || mobileMenuContent?.content.type === 'video_note') && (
+            <MobileMenuBtn icon={<Film size={18} className="text-tangerine" />} label="Edit Reel" onClick={() => {
+              if (mobileMenuContent) onEditContent?.(mobileMenuContent.content, mobileMenuContent.pin)
+              setMobileMenuContent(null)
+            }} />
           )}
           <MobileMenuBtn
             icon={<Trash2 size={18} className="text-live-red" />} label="Archive" danger
@@ -267,7 +282,7 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
                 className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[210] w-[calc(100vw-48px)] max-w-[400px] bg-warm-white rounded-[22px] shadow-2xl border border-border-light p-6 space-y-4"
               >
                 <h2 className="text-[16px] font-extrabold text-ink tracking-tight">Edit Caption</h2>
-                <CaptionEditFields editingCaption={editingCaption} setEditingCaption={setEditingCaption} pins={pins} setUnlinkedContent={setUnlinkedContent} updateContent={updateContent} variant="light" />
+                <CaptionEditFields editingCaption={editingCaption} setEditingCaption={setEditingCaption} pins={pins} setUnlinkedContent={setUnlinkedContent} updateContent={updateContent} variant="light" onCaptionSaved={onCaptionSaved} />
               </motion.div>
             </>
           )}
@@ -279,7 +294,7 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
         <DarkBottomSheet isOpen={!!editingCaption} onClose={() => setEditingCaption(null)} title="Edit Caption">
           <div className="px-5 pb-8">
             {editingCaption && (
-              <CaptionEditFields editingCaption={editingCaption} setEditingCaption={setEditingCaption} pins={pins} setUnlinkedContent={setUnlinkedContent} updateContent={updateContent} variant="dark" />
+              <CaptionEditFields editingCaption={editingCaption} setEditingCaption={setEditingCaption} pins={pins} setUnlinkedContent={setUnlinkedContent} updateContent={updateContent} variant="dark" onCaptionSaved={onCaptionSaved} />
             )}
           </div>
         </DarkBottomSheet>
@@ -290,11 +305,11 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
 
 // ── Content Card ──
 
-function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpen, onMenuToggle, onMenuClose, onAssign, onArchive, onEditCaption }: {
+function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpen, onMenuToggle, onMenuClose, onAssign, onArchive, onEditCaption, onEditContent }: {
   content: ContentItem; pin: Pin | null; pins: Pin[]; isDesktop: boolean
   isPlaying: boolean; onPlay: () => void
   menuOpen: boolean; onMenuToggle: () => void; onMenuClose: () => void
-  onAssign: (toPinId: string) => void; onArchive: () => void; onEditCaption: () => void
+  onAssign: (toPinId: string) => void; onArchive: () => void; onEditCaption: () => void; onEditContent?: () => void
 }) {
   const isVideo = content.type === 'reel' || content.type === 'live' || content.type === 'video_note'
   const thumb = content.thumbnailUrl || content.mediaUrl || ''
@@ -415,7 +430,10 @@ function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpe
                     <div className="py-1.5">
                       <PopoverBtn icon={<Edit3 size={15} className="text-mist" />} label="Edit Caption" onClick={() => { onEditCaption(); onMenuClose() }} />
                       {content.type === 'photo' && (
-                        <PopoverBtn icon={<Images size={15} className="text-tangerine" />} label="Add to Carousel" onClick={onMenuClose} />
+                        <PopoverBtn icon={<Images size={15} className="text-tangerine" />} label="Edit Carousel" onClick={() => { onEditContent?.(); onMenuClose() }} />
+                      )}
+                      {(content.type === 'reel' || content.type === 'video_note') && (
+                        <PopoverBtn icon={<Film size={15} className="text-tangerine" />} label="Edit Reel" onClick={() => { onEditContent?.(); onMenuClose() }} />
                       )}
                       <PopoverBtn icon={<Trash2 size={15} className="text-live-red" />} label="Archive" danger onClick={() => { onArchive(); onMenuClose() }} />
                     </div>
@@ -439,13 +457,14 @@ function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpe
 
 // ── Helpers ──
 
-function CaptionEditFields({ editingCaption, setEditingCaption, pins, setUnlinkedContent, updateContent, variant }: {
+function CaptionEditFields({ editingCaption, setEditingCaption, pins, setUnlinkedContent, updateContent, variant, onCaptionSaved }: {
   editingCaption: { contentId: string; pinId: string | null; caption: string }
   setEditingCaption: (v: { contentId: string; pinId: string | null; caption: string } | null) => void
   pins: Pin[]
   setUnlinkedContent: React.Dispatch<React.SetStateAction<ContentItem[]>>
   updateContent: (id: string, data: any) => Promise<any>
   variant: 'light' | 'dark'
+  onCaptionSaved?: (pinId: string, contentId: string, caption: string) => void
 }) {
   const isDark = variant === 'dark'
   return (
@@ -475,6 +494,7 @@ function CaptionEditFields({ editingCaption, setEditingCaption, pins, setUnlinke
                 const updatedContent = pin.content.map((c) => c.id === contentId ? { ...c, caption } : c)
                 import('@/lib/firestore').then(({ updatePin }) => updatePin(pinId, { content: updatedContent } as any)).catch(() => {})
               }
+              onCaptionSaved?.(pinId, contentId, caption)
             }
             setUnlinkedContent((prev) => prev.map((c) => c.id === contentId ? { ...c, caption } : c))
             updateContent(contentId, { caption }).catch(() => {})

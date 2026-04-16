@@ -21,11 +21,10 @@ const TARGET_W = 480
 
 /** Single-frame fast probe — first pass. */
 export function probeVideo(file: File): Promise<VideoProbe> {
-  return new Promise((resolve) => {
-    let settled = false
+  return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file)
     const video = document.createElement('video')
-    video.preload = 'auto'
+    video.preload = 'metadata'
     video.muted = true
     video.playsInline = true
     video.src = url
@@ -33,18 +32,12 @@ export function probeVideo(file: File): Promise<VideoProbe> {
     const cleanup = () => {
       video.removeAttribute('src')
       video.load()
-    }
-
-    const finish = (thumbnailUrl: string, duration: number, nativeAspect: number) => {
-      if (settled) return
-      settled = true
-      cleanup()
-      resolve({ thumbnailUrl, duration, nativeAspect })
+      URL.revokeObjectURL(url)
     }
 
     video.addEventListener('loadedmetadata', () => {
       const duration = isFinite(video.duration) ? video.duration : 0
-      video.currentTime = Math.min(0.1, duration || 0.1)
+      video.currentTime = Math.min(Math.max(duration * 0.1, 0.1), duration || 0.1)
     })
 
     video.addEventListener('seeked', () => {
@@ -56,35 +49,30 @@ export function probeVideo(file: File): Promise<VideoProbe> {
       canvas.height = Math.round((TARGET_W * h) / w)
       const ctx = canvas.getContext('2d')
       if (!ctx) {
-        finish(url, isFinite(video.duration) ? video.duration : 0, nativeAspect)
+        cleanup()
+        reject(new Error('2d context unavailable'))
         return
       }
       ctx.imageSmoothingEnabled = true
       ctx.imageSmoothingQuality = 'high'
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
       canvas.toBlob((blob) => {
-        const duration = isFinite(video.duration) ? video.duration : 0
-        if (blob) {
-          finish(URL.createObjectURL(blob), duration, nativeAspect)
-        } else {
-          finish(url, duration, nativeAspect)
+        if (!blob) {
+          cleanup()
+          reject(new Error('thumbnail blob null'))
+          return
         }
+        const thumbnailUrl = URL.createObjectURL(blob)
+        const duration = isFinite(video.duration) ? video.duration : 0
+        cleanup()
+        resolve({ thumbnailUrl, duration, nativeAspect })
       }, 'image/jpeg', 0.88)
     })
 
     video.addEventListener('error', () => {
-      finish(url, 0, 9 / 16)
+      cleanup()
+      reject(new Error('video probe failed'))
     })
-
-    // Hard timeout — if the browser can't decode within 3s, resolve with
-    // whatever metadata we have so the import isn't blocked.
-    setTimeout(() => {
-      const duration = isFinite(video.duration) ? video.duration : 0
-      const nativeAspect = video.videoWidth && video.videoHeight
-        ? video.videoWidth / video.videoHeight
-        : 9 / 16
-      finish(url, duration, nativeAspect)
-    }, 3000)
   })
 }
 
@@ -223,7 +211,7 @@ async function extractViaSeekDraw(file: File): Promise<string[]> {
     }
     video.addEventListener('seeked', done, { once: true })
     video.currentTime = t
-    setTimeout(done, 200)
+    setTimeout(done, 400)
   })
 
   for (let i = 0; i < count; i++) {

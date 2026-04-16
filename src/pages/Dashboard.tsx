@@ -370,6 +370,15 @@ export default function Dashboard() {
             agentId={activeUser.uid}
             isDesktop={isDesktop}
             onNavigateUpload={() => navigate('/dashboard/pin/new?tab=content')}
+            onCaptionSaved={(pinId, contentId, caption) => {
+              setPins((prev) => prev.map((p) => {
+                if (p.id !== pinId) return p
+                return { ...p, content: p.content.map((c) => c.id === contentId ? { ...c, caption } : c) } as typeof p
+              }))
+            }}
+            onEditContent={(content, pin) => {
+              navigate('/dashboard/content/edit', { state: { content, pin } })
+            }}
             onUploadContent={(files, type) => {
               // TODO: upload files to Storage, create content items
               console.log('Upload', files.length, type, 'files')

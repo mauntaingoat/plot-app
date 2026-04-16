@@ -130,10 +130,9 @@ function startFilmstripExtraction(
 ) {
   if (!isVideoFile(file)) return
 
-  // Skip extraction for clips over 60s — not worth the wait on desktop
-  // (8 sequential seeks × 400ms timeout = 3+ seconds of blocking).
-  // The tile renders with the single-thumbnail + divider-lines fallback.
-  if (duration > 60) {
+  // Skip extraction for very long clips — not worth the wait. The clip
+  // tile will render with the single-thumbnail fallback.
+  if (duration > 120) {
     set((state) => ({
       clips: state.clips.map((c) => (c.id === clipId ? { ...c, pending: false } : c)),
     }))

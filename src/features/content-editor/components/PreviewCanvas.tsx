@@ -41,38 +41,42 @@ export function PreviewCanvas() {
     return () => clearTimeout(id)
   }, [thumbSavedAt])
 
-  /** Capture whatever the preview <video> is currently showing. Fully
-   *  synchronous — no createImageBitmap, no readyState waits, no async
-   *  closure staleness. If the user can SEE a frame in the preview,
-   *  drawImage captures it. If the video hasn't loaded yet, the canvas
-   *  stays blank and the length guard skips the save. */
-  const captureThumbnail = useCallback(() => {
+  /** Capture the current video frame via createImageBitmap, which grabs
+   *  the decoded frame directly from the video decoder — works paused,
+   *  no poster interference. Falls back to drawImage if unavailable. */
+  const captureThumbnail = useCallback(async () => {
     if (!selected || selected.type !== 'video') return
     const v = videoRef.current
-    if (!v) return
+    if (!v || v.videoWidth === 0) return
 
     const clipId = selected.id
-    const w = v.videoWidth || v.clientWidth || 480
-    const h = v.videoHeight || v.clientHeight || 270
     const TARGET_W = 480
+    const w = v.videoWidth
+    const h = v.videoHeight
     const canvasH = Math.round((TARGET_W * h) / w)
     const canvas = document.createElement('canvas')
     canvas.width = TARGET_W
     canvas.height = canvasH
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
 
     try {
-      ctx.drawImage(v, 0, 0, TARGET_W, canvasH)
+      const bitmap = await createImageBitmap(v)
+      ctx.drawImage(bitmap, 0, 0, TARGET_W, canvasH)
+      bitmap.close()
     } catch {
-      return
+      try { ctx.drawImage(v, 0, 0, TARGET_W, canvasH) } catch { return }
     }
 
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.88)
-    if (!dataUrl || dataUrl.length < 500) return
-
-    setClipThumbnail(clipId, dataUrl)
-    setThumbSavedAt(Date.now())
+    try {
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.88)
+      if (dataUrl && dataUrl.length > 500) {
+        setClipThumbnail(clipId, dataUrl)
+        setThumbSavedAt(Date.now())
+      }
+    } catch { /* tainted canvas — silent fail */ }
   }, [selected, setClipThumbnail])
 
   const stripActive = view === 'adjust' || view === 'crop' || view === 'speed'
@@ -451,7 +455,7 @@ export function PreviewCanvas() {
             type="button"
             onClick={(e) => {
               e.stopPropagation()
-              captureThumbnail()
+              void captureThumbnail()
             }}
             className="absolute top-3 left-3 z-30 h-9 px-3 rounded-full flex items-center gap-1.5 bg-black/55 text-white/95 text-[11px] font-semibold backdrop-blur-sm hover:bg-black/70 cursor-pointer transition-all active:scale-95"
             aria-label="Set thumbnail"
