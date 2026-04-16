@@ -94,9 +94,9 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
           <div className="w-14 h-14 rounded-full bg-pearl mx-auto mb-3 flex items-center justify-center">
             <Inbox size={24} className="text-smoke" />
           </div>
-          <h3 className="text-[16px] font-bold text-ink mb-1">No showing requests yet</h3>
+          <h3 className="text-[16px] font-bold text-ink mb-1">No notifications yet</h3>
           <p className="text-[13px] text-smoke">
-            When visitors request a tour, they'll show up here.
+            Showing requests, new followers, saves, and other activity will appear here.
           </p>
         </div>
       ) : (

@@ -339,7 +339,7 @@ export default function Dashboard() {
           <div className={isDesktop ? 'space-y-5' : 'px-5 py-5 space-y-4'}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-[16px] font-bold text-ink">Showing Requests</h3>
+                <h3 className="text-[16px] font-bold text-ink">Notifications</h3>
                 <p className="text-[12px] text-smoke mt-0.5">Visitors who asked to tour your listings.</p>
               </div>
             </div>
@@ -352,7 +352,7 @@ export default function Dashboard() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-bold text-ink">Get notified about new requests</p>
-                  <p className="text-[11px] text-smoke mt-0.5">Enable push notifications so you never miss a showing request.</p>
+                  <p className="text-[11px] text-smoke mt-0.5">Enable push notifications so you never miss an update.</p>
                   <button onClick={() => setActiveTab('settings')} className="text-[12px] font-bold text-tangerine mt-2 cursor-pointer hover:underline">
                     Go to Settings
                   </button>
