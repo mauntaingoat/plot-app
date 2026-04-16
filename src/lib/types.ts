@@ -196,7 +196,11 @@ export interface PinBase {
   views: number
   taps: number
   saves: number
-  content: ContentItem[] // all content lives inside the pin
+  content: ContentItem[]
+  /** Earliest future publishAt in the content array — scheduling hint
+   *  for the publishScheduledContent cron so it can skip pins with no
+   *  due content via a simple <= query. */
+  nextPublishAt?: Timestamp | null
 }
 
 // For Sale listing
@@ -213,11 +217,11 @@ export interface ForSalePin extends PinBase {
   heroPhotoUrl: string
   photos: string[]
   description: string
-  status: ListingStatus
+  listingStatus: ListingStatus
   daysOnMarket: number
   mlsNumber?: string
   openHouse?: OpenHouse | null
-  isLive?: boolean // agent is currently live streaming this listing
+  isLive?: boolean
 }
 
 // Sold listing

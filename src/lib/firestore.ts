@@ -5,7 +5,7 @@ import {
   type DocumentData, type Unsubscribe,
 } from 'firebase/firestore'
 import { db, firebaseConfigured } from '@/config/firebase'
-import type { UserDoc, Pin, ContentItem, ContentDoc, Coordinates, PinType, ShowingRequest, ContentReport, ReportReason, LicenseDispute, DmcaRequest } from '@/lib/types'
+import type { UserDoc, Pin, ForSalePin, SoldPin, SpotlightPin, ContentItem, ContentDoc, Coordinates, PinType, ShowingRequest, ContentReport, ReportReason, LicenseDispute, DmcaRequest } from '@/lib/types'
 
 // ══════════════════════════════════════════
 // USERS
@@ -68,7 +68,7 @@ export async function updateUserDoc(uid: string, data: Partial<UserDoc>) {
 // PINS (Listings + Neighborhoods)
 // ══════════════════════════════════════════
 
-export async function createPin(data: Omit<Pin, 'id'>): Promise<string> {
+export async function createPin(data: Record<string, unknown>): Promise<string> {
   if (!db) return `local-${Date.now()}`
   const ref = await addDoc(collection(db, 'pins'), {
     ...data,
@@ -84,7 +84,12 @@ export async function createPin(data: Omit<Pin, 'id'>): Promise<string> {
   return ref.id
 }
 
-export async function updatePin(pinId: string, data: Partial<Pin>) {
+/** Accepts any partial pin fields — including subtype-specific ones
+ *  (ForSalePin's openHouse, SoldPin's soldPrice, etc.) so callers
+ *  don't need `as any` casts. Firestore is schema-less; the TS
+ *  union type Pin = ForSalePin | SoldPin | SpotlightPin makes
+ *  Partial<Pin> too narrow for cross-subtype writes. */
+export async function updatePin(pinId: string, data: Partial<ForSalePin> | Partial<SoldPin> | Partial<SpotlightPin> | Record<string, unknown>) {
   if (!db) return
   await updateDoc(doc(db, 'pins', pinId), {
     ...data,

@@ -65,7 +65,7 @@ export function StepFirstPin() {
           type: 'for_sale',
           price: 0, beds: 0, baths: 0, sqft: 0, pricePerSqft: 0,
           homeType: 'single_family', heroPhotoUrl: '', photos: [],
-          description: '', status: 'active', daysOnMarket: 0,
+          description: '', listingStatus: 'active', daysOnMarket: 0,
           isLive: false, openHouse: null,
         } as Omit<ForSalePin, 'id'>)
       } else if (selectedType === 'sold') {

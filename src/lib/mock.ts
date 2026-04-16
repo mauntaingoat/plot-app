@@ -81,7 +81,7 @@ export const MOCK_PINS_CAROLINA: Pin[] = [
     heroPhotoUrl: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&h=600&fit=crop',
     photos: ['https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&h=600&fit=crop', 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop', 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=600&fit=crop'],
     description: 'Stunning waterfront condo in the heart of Brickell. Floor-to-ceiling windows with panoramic bay views.',
-    status: 'active', daysOnMarket: 14, mlsNumber: 'A11234567',
+    listingStatus: 'active', daysOnMarket: 14, mlsNumber: 'A11234567',
     openHouse: {
       sessions: [
         // Always upcoming — computed relative to today so the pill keeps showing.
@@ -106,7 +106,7 @@ export const MOCK_PINS_CAROLINA: Pin[] = [
     heroPhotoUrl: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop',
     photos: ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop', 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&h=600&fit=crop'],
     description: 'Oceanfront penthouse with private rooftop terrace. Direct beach access.',
-    status: 'active', daysOnMarket: 7, mlsNumber: 'A11234568', openHouse: null, isLive: false,
+    listingStatus: 'active', daysOnMarket: 7, mlsNumber: 'A11234568', openHouse: null, isLive: false,
     content: makeContent([
       { type: 'reel', caption: 'This $2.8M oceanfront penthouse has a private rooftop you need to see.', thumbnailUrl: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&h=700&fit=crop', duration: 38, views: 8900, saves: 267 },
     ]),
@@ -120,7 +120,7 @@ export const MOCK_PINS_CAROLINA: Pin[] = [
     heroPhotoUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&h=600&fit=crop',
     photos: ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&h=600&fit=crop'],
     description: 'Charming Mediterranean home. Updated kitchen, lush tropical landscaping.',
-    status: 'active', daysOnMarket: 3, openHouse: null, isLive: false,
+    listingStatus: 'active', daysOnMarket: 3, openHouse: null, isLive: false,
     content: makeContent([
       { type: 'photo', caption: 'New listing in Coral Gables. DM me for early access.', thumbnailUrl: 'https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=400&h=700&fit=crop', views: 1560, saves: 45 },
     ]),
@@ -134,7 +134,7 @@ export const MOCK_PINS_CAROLINA: Pin[] = [
     heroPhotoUrl: 'https://images.unsplash.com/photo-1567496898669-ee935f5f647a?w=800&h=600&fit=crop',
     photos: ['https://images.unsplash.com/photo-1567496898669-ee935f5f647a?w=800&h=600&fit=crop'],
     description: 'Modern 2/2 in Brickell Heights. Rooftop pool, gym, walking distance to everything.',
-    status: 'active', daysOnMarket: 5, isLive: true, openHouse: null,
+    listingStatus: 'active', daysOnMarket: 5, isLive: true, openHouse: null,
     content: makeContent([
       { type: 'live', caption: 'Live tour: Brickell Heights new listing walkthrough!', views: 43, saves: 2 },
       { type: 'reel', caption: 'Why Brickell Heights is the hottest building right now.', thumbnailUrl: 'https://images.unsplash.com/photo-1567496898669-ee935f5f647a?w=400&h=700&fit=crop', duration: 28, views: 3400, saves: 98 },

@@ -219,7 +219,7 @@ export default function PinCreate() {
           price: Number(price) || 0, beds, baths, sqft: Number(sqft) || 0,
           pricePerSqft: Number(sqft) ? Math.round((Number(price) || 0) / Number(sqft)) : 0,
           homeType, yearBuilt: yearBuilt ? Number(yearBuilt) : null,
-          description, status: 'active', daysOnMarket: 0,
+          description, listingStatus: 'active', daysOnMarket: 0,
           heroPhotoUrl: '', photos: [], openHouse: null, isLive: false,
         })
       } else if (pinType === 'sold') {
@@ -238,7 +238,7 @@ export default function PinCreate() {
       }
 
       // Create pin doc
-      const pinId = await createPin(pinData as any)
+      const pinId = await createPin(pinData)
 
       // Upload listing photos
       if (photos.length > 0 && (pinType === 'for_sale' || pinType === 'sold')) {
@@ -248,7 +248,7 @@ export default function PinCreate() {
           urls.push(url)
         }
         const { updatePin } = await import('@/lib/firestore')
-        await updatePin(pinId, { photos: urls, heroPhotoUrl: urls[0] || '' } as any)
+        await updatePin(pinId, { photos: urls, heroPhotoUrl: urls[0] || '' })
       }
 
       // Upload content media + build content array
@@ -297,7 +297,7 @@ export default function PinCreate() {
           : null
 
         const { updatePin } = await import('@/lib/firestore')
-        await updatePin(pinId, { content: contentArray, nextPublishAt } as any)
+        await updatePin(pinId, { content: contentArray, nextPublishAt })
       }
 
       clearTimeout(timeout)
@@ -394,7 +394,7 @@ export default function PinCreate() {
         price: Number(price) || 0, beds, baths, sqft: Number(sqft) || 0,
         pricePerSqft: Number(sqft) ? Math.round((Number(price) || 0) / Number(sqft)) : 0,
         homeType, yearBuilt: yearBuilt ? Number(yearBuilt) : null,
-        description, status: 'active', daysOnMarket: 0,
+        description, listingStatus: 'active', daysOnMarket: 0,
         heroPhotoUrl: '', photos: [], openHouse: null, isLive: false,
       })
     } else if (pinType === 'sold') {
@@ -427,7 +427,7 @@ export default function PinCreate() {
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pinId = await runStep('createPin', () => createPin(pinData as any))
+      const pinId = await runStep('createPin', () => createPin(pinData))
 
       if (photos.length > 0 && (pinType === 'for_sale' || pinType === 'sold')) {
         const urls: string[] = []
@@ -440,7 +440,7 @@ export default function PinCreate() {
         await runStep('updatePinWithPhotos', async () => {
           const { updatePin } = await import('@/lib/firestore')
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await updatePin(pinId, { photos: urls, heroPhotoUrl: urls[0] || '' } as any)
+          await updatePin(pinId, { photos: urls, heroPhotoUrl: urls[0] || '' })
         })
       }
 
@@ -516,7 +516,7 @@ export default function PinCreate() {
         await runStep('updatePinWithContent', async () => {
           const { updatePin } = await import('@/lib/firestore')
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await updatePin(pinId, { content: contentArray, nextPublishAt } as any)
+          await updatePin(pinId, { content: contentArray, nextPublishAt })
         })
       }
 

@@ -193,7 +193,7 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
                   if (targetPin) {
                     const updatedPinContent = [...(targetPin.content || []), content]
                     import('@/lib/firestore').then(({ updatePin }) => {
-                      updatePin(toPinId, { content: updatedPinContent } as any).catch(() => {})
+                      updatePin(toPinId, { content: updatedPinContent }).catch(() => {})
                     })
                     // Update content doc pinId
                     updateContent(content.id, { pinId: toPinId }).catch(() => {})
@@ -492,7 +492,7 @@ function CaptionEditFields({ editingCaption, setEditingCaption, pins, setUnlinke
               const pin = pins.find((p) => p.id === pinId)
               if (pin) {
                 const updatedContent = pin.content.map((c) => c.id === contentId ? { ...c, caption } : c)
-                import('@/lib/firestore').then(({ updatePin }) => updatePin(pinId, { content: updatedContent } as any)).catch(() => {})
+                import('@/lib/firestore').then(({ updatePin }) => updatePin(pinId, { content: updatedContent })).catch(() => {})
               }
               onCaptionSaved?.(pinId, contentId, caption)
             }

@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight, ChevronLeft, Users, Globe, X, Map, Play, Bookmark, UserCircle, LogIn } from 'lucide-react'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { MapCanvas } from '@/components/map/MapCanvas'
 import { MapOverlay } from '@/components/map/MapOverlay'
 import { PeekDrawer } from '@/components/map/PeekDrawer'
@@ -423,6 +424,7 @@ export default function AgentProfile() {
             boxShadow: '0 8px 30px rgba(0,0,0,0.4), 0 2px 10px rgba(0,0,0,0.2)',
           }}
         >
+          <ErrorBoundary label="Map">
           <MapCanvas
             pins={filteredPins}
             agentPhotoUrl={agent.photoURL}
@@ -431,6 +433,7 @@ export default function AgentProfile() {
             showBackButton={isPreview}
             onBack={() => navigate('/dashboard')}
           />
+          </ErrorBoundary>
 
           {/* ── Live / Open House indicators ── */}
           <MapIndicators
@@ -490,7 +493,7 @@ export default function AgentProfile() {
             boxShadow: '0 8px 30px rgba(0,0,0,0.4), 0 2px 10px rgba(0,0,0,0.2)',
           }}
         >
-          <ContentFeed pins={filteredPins} agent={agent} onPinTap={(p) => setSelectedPin(p)} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} />
+          <ErrorBoundary label="Feed"><ContentFeed pins={filteredPins} agent={agent} onPinTap={(p) => setSelectedPin(p)} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} /></ErrorBoundary>
         </div>
 
         {/* ═══ LISTING MODAL — centered to map ═══ */}
@@ -553,6 +556,7 @@ export default function AgentProfile() {
       <AnimatePresence mode="wait">
         {viewMode === 'map' ? (
           <motion.div key="map" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0">
+            <ErrorBoundary label="Map">
             <MapCanvas
               pins={filteredPins}
               agentPhotoUrl={agent.photoURL}
@@ -561,6 +565,7 @@ export default function AgentProfile() {
               showBackButton={isPreview}
               onBack={() => navigate('/dashboard')}
             />
+            </ErrorBoundary>
             <MapIndicators
               pins={filteredPins}
               onLiveTap={(livePins) => { if (livePins[0]) setSelectedPin(livePins[0]) }}
@@ -588,7 +593,7 @@ export default function AgentProfile() {
           </motion.div>
         ) : (
           <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0">
-            <ContentFeed pins={filteredPins} agent={agent} onPinTap={(p) => setSelectedPin(p)} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} />
+            <ErrorBoundary label="Feed"><ContentFeed pins={filteredPins} agent={agent} onPinTap={(p) => setSelectedPin(p)} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} /></ErrorBoundary>
           </motion.div>
         )}
       </AnimatePresence>

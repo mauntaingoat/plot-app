@@ -114,7 +114,7 @@ export default function Dashboard() {
     }
     setPins((prev) => prev.map((p) => p.id === pinId ? { ...p, enabled } : p))
     const { updatePin } = await import('@/lib/firestore')
-    await updatePin(pinId, { enabled } as any).catch(() => {})
+    await updatePin(pinId, { enabled }).catch(() => {})
   }, [currentUser, pins])
 
   const handleDeletePin = useCallback(async (pinId: string) => {
@@ -129,7 +129,7 @@ export default function Dashboard() {
   const handleSaveOpenHouse = useCallback(async (pinId: string, openHouse: OpenHouse | null) => {
     setPins((prev) => prev.map((p) => (p.id === pinId && p.type === 'for_sale' ? { ...p, openHouse } : p)))
     const { updatePin } = await import('@/lib/firestore')
-    await updatePin(pinId, { openHouse } as any).catch(() => {})
+    await updatePin(pinId, { openHouse }).catch(() => {})
   }, [])
 
   const stats = useMemo(() => {
@@ -400,7 +400,7 @@ export default function Dashboard() {
               if (!pin) return
               const updated = { ...pin, content: pin.content.filter((c) => c.id !== contentId) }
               setPins((prev) => prev.map((p) => p.id === pinId ? updated as Pin : p))
-              import('@/lib/firestore').then(({ updatePin }) => updatePin(pinId, { content: updated.content } as any)).catch(() => {})
+              import('@/lib/firestore').then(({ updatePin }) => updatePin(pinId, { content: updated.content })).catch(() => {})
             }}
             onAssignContent={(contentId, fromPinId, toPinId, contentItem) => {
               if (fromPinId === toPinId) return
@@ -427,8 +427,8 @@ export default function Dashboard() {
                 return p
               }))
               import('@/lib/firestore').then(({ updatePin }) => {
-                updatePin(fromPinId, { content: fromPin.content.filter((c) => c.id !== contentId) } as any).catch(() => {})
-                updatePin(toPinId, { content: [...toPin.content, movedItem] } as any).catch(() => {})
+                updatePin(fromPinId, { content: fromPin.content.filter((c) => c.id !== contentId) }).catch(() => {})
+                updatePin(toPinId, { content: [...toPin.content, movedItem] }).catch(() => {})
               })
             }}
           />
@@ -652,7 +652,7 @@ export default function Dashboard() {
           const updated = { ...editPin, content: editPin.content.filter((c) => c.id !== contentId) }
           setPins((prev) => prev.map((p) => p.id === editPin.id ? updated as Pin : p))
           setEditPin(updated as Pin)
-          import('@/lib/firestore').then(({ updatePin }) => updatePin(editPin.id, { content: updated.content } as any)).catch(() => {})
+          import('@/lib/firestore').then(({ updatePin }) => updatePin(editPin.id, { content: updated.content })).catch(() => {})
         }}
         onReorderContent={(contentIds) => {
           if (!editPin) return
@@ -660,7 +660,7 @@ export default function Dashboard() {
           const updated = { ...editPin, content: reordered }
           setPins((prev) => prev.map((p) => p.id === editPin.id ? updated as Pin : p))
           setEditPin(updated as Pin)
-          import('@/lib/firestore').then(({ updatePin }) => updatePin(editPin.id, { content: reordered } as any)).catch(() => {})
+          import('@/lib/firestore').then(({ updatePin }) => updatePin(editPin.id, { content: reordered })).catch(() => {})
         }}
       />
 
