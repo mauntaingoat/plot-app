@@ -21,10 +21,11 @@ const TARGET_W = 480
 
 /** Single-frame fast probe — first pass. */
 export function probeVideo(file: File): Promise<VideoProbe> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
+    let settled = false
     const url = URL.createObjectURL(file)
     const video = document.createElement('video')
-    video.preload = 'metadata'
+    video.preload = 'auto'
     video.muted = true
     video.playsInline = true
     video.src = url
@@ -32,12 +33,18 @@ export function probeVideo(file: File): Promise<VideoProbe> {
     const cleanup = () => {
       video.removeAttribute('src')
       video.load()
-      URL.revokeObjectURL(url)
+    }
+
+    const finish = (thumbnailUrl: string, duration: number, nativeAspect: number) => {
+      if (settled) return
+      settled = true
+      cleanup()
+      resolve({ thumbnailUrl, duration, nativeAspect })
     }
 
     video.addEventListener('loadedmetadata', () => {
       const duration = isFinite(video.duration) ? video.duration : 0
-      video.currentTime = Math.min(Math.max(duration * 0.1, 0.1), duration || 0.1)
+      video.currentTime = Math.min(0.1, duration || 0.1)
     })
 
     video.addEventListener('seeked', () => {
@@ -49,30 +56,35 @@ export function probeVideo(file: File): Promise<VideoProbe> {
       canvas.height = Math.round((TARGET_W * h) / w)
       const ctx = canvas.getContext('2d')
       if (!ctx) {
-        cleanup()
-        reject(new Error('2d context unavailable'))
+        finish(url, isFinite(video.duration) ? video.duration : 0, nativeAspect)
         return
       }
       ctx.imageSmoothingEnabled = true
       ctx.imageSmoothingQuality = 'high'
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
       canvas.toBlob((blob) => {
-        if (!blob) {
-          cleanup()
-          reject(new Error('thumbnail blob null'))
-          return
-        }
-        const thumbnailUrl = URL.createObjectURL(blob)
         const duration = isFinite(video.duration) ? video.duration : 0
-        cleanup()
-        resolve({ thumbnailUrl, duration, nativeAspect })
+        if (blob) {
+          finish(URL.createObjectURL(blob), duration, nativeAspect)
+        } else {
+          finish(url, duration, nativeAspect)
+        }
       }, 'image/jpeg', 0.88)
     })
 
     video.addEventListener('error', () => {
-      cleanup()
-      reject(new Error('video probe failed'))
+      finish(url, 0, 9 / 16)
     })
+
+    // Hard timeout — if the browser can't decode within 3s, resolve with
+    // whatever metadata we have so the import isn't blocked.
+    setTimeout(() => {
+      const duration = isFinite(video.duration) ? video.duration : 0
+      const nativeAspect = video.videoWidth && video.videoHeight
+        ? video.videoWidth / video.videoHeight
+        : 9 / 16
+      finish(url, duration, nativeAspect)
+    }, 3000)
   })
 }
 
@@ -111,16 +123,17 @@ export function probePhoto(file: File): Promise<PhotoProbe> {
 
 /**
  * Adaptive frame count for the timeline filmstrip.
- * Denser for short clips so a 3-second tile doesn't look sparse.
+ * Capped at 8 frames total so long-clip imports don't stall. A short
+ * clip gets more frames per second; long clips get 8 evenly spread.
  *
- *  - Short clips (≤8s):    2 frames per second, min 6
- *  - Medium clips (≤30s):  1 frame per second, capped 14
- *  - Long clips:           16 frames total, evenly spaced
+ *  - Short clips (≤4s):    2 frames per second, min 4
+ *  - Medium clips (≤30s):  1 frame per second, capped 8
+ *  - Long clips:           8 frames total, evenly spaced
  */
 function frameCountForDuration(duration: number): number {
-  if (duration <= 8) return Math.max(6, Math.ceil(duration * 2))
-  if (duration <= 30) return Math.min(14, Math.ceil(duration))
-  return 16
+  if (duration <= 4) return Math.max(4, Math.ceil(duration * 2))
+  if (duration <= 30) return Math.min(8, Math.ceil(duration))
+  return 8
 }
 
 const FILMSTRIP_FRAME_W = 160 // wide enough to read clearly when 80–100px is visible
@@ -210,7 +223,7 @@ async function extractViaSeekDraw(file: File): Promise<string[]> {
     }
     video.addEventListener('seeked', done, { once: true })
     video.currentTime = t
-    setTimeout(done, 400)
+    setTimeout(done, 200)
   })
 
   for (let i = 0; i < count; i++) {

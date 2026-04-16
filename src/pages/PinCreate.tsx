@@ -41,6 +41,8 @@ export default function PinCreate() {
   const { userDoc } = useAuthStore()
   const { results, search, clear } = useGeocoding()
   const activateTheme = useThemeStore((s) => s.activate)
+  const resolvedTheme = useThemeStore((s) => s.resolved)
+  const isDark = resolvedTheme === 'dark'
   useEffect(() => activateTheme(), [activateTheme])
 
   // Check if we're in "add content" mode (skip to content step, no back)
@@ -101,6 +103,17 @@ export default function PinCreate() {
   const fileRef = useRef<HTMLInputElement>(null)
   const photosRef = useRef<HTMLInputElement>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
+
+  // Publish step — per-draft caption editing.
+  const [selectedDraftIdx, setSelectedDraftIdx] = useState(0)
+  const [showMissingCaptionWarn, setShowMissingCaptionWarn] = useState(false)
+  const CAPTION_LIMIT = 300
+  // When the user taps "+ Add more content" on the Publish step, we
+  // flag the next picker/edit trip as an "add-more" session. In this
+  // mode, the normal Back path from those steps is disabled, and an
+  // extra button lets them return to the Publish drafts screen if
+  // they change their mind.
+  const [addingMoreContent, setAddingMoreContent] = useState(false)
 
   const handleAddressSearch = (val: string) => {
     setAddress(val); setCoords(null)
@@ -299,6 +312,10 @@ export default function PinCreate() {
 
   const editorReset = useEditorStore((s) => s.reset)
   const editorClips = useEditorStore((s) => s.clips)
+  // Reel composed duration — used to enforce the 3-minute per-reel cap.
+  const editorTotalDuration = useEditorStore((s) => s.totalDuration())
+  const REEL_MAX_SECONDS = 180
+  const reelOverLimit = contentKind === 'reel' && editorTotalDuration > REEL_MAX_SECONDS
   const editorAspect = useEditorStore((s) => s.aspect)
   const editorOverlays = useEditorStore((s) => s.overlays)
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
@@ -441,12 +458,10 @@ export default function PinCreate() {
           const items = await runStep(`publishCarousel(${i + 1}/${contentDrafts.length})`, () =>
             publishCarouselPhotos(draft, pinId, (phase, pct) => onDraftProgress(phase, pct)),
           )
-          // Attach caption + schedule to the first item only
+          // Per-draft caption: applied to the FIRST item of the carousel
+          // (the one that represents the post in the feed).
           items.forEach((it, idx) => {
-            if (idx === 0) {
-              it.caption = newCaption
-              it.publishAt = newPublishAt ? Timestamp.fromDate(new Date(newPublishAt)) : null
-            }
+            if (idx === 0) it.caption = draft.caption ?? ''
             contentArray.push(it)
           })
         } else {
@@ -476,7 +491,7 @@ export default function PinCreate() {
               overlays: draft.overlays,
               pinId,
               contentId,
-              caption: i === 0 ? newCaption : '',
+              caption: draft.caption ?? '',
               onProgress: (phase, pct) => {
                 setRenderPhase(phase)
                 setRenderProgress(Math.round(((i + pct) / contentDrafts.length) * 100))
@@ -515,13 +530,13 @@ export default function PinCreate() {
 
   return (
     <div
-      className={`min-h-screen ${step === 'edit' ? 'bg-[#0A0E17]' : 'bg-ivory'}`}
+      className={`min-h-screen ${isDark ? 'bg-[#0A0E17]' : 'bg-ivory'}`}
       style={{ transition: 'background-color 300ms cubic-bezier(0.32, 0.72, 0, 1)' }}
     >
       {/* Header */}
       <div
-        className={`sticky top-0 z-30 backdrop-blur-xl ${
-          step === 'edit'
+        className={`sticky top-0 z-[100] backdrop-blur-xl ${
+          isDark
             ? 'bg-[#0A0E17]/92 border-b border-white/[0.06]'
             : 'bg-ivory/95 border-b border-border-light'
         }`}
@@ -533,14 +548,14 @@ export default function PinCreate() {
             whileTap={{ scale: 0.88 }}
             onClick={handleHeaderBack}
             className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors duration-300 ${
-              step === 'edit' ? 'bg-white/[0.09] hover:bg-white/[0.14]' : 'bg-cream'
+              isDark ? 'bg-white/[0.09] hover:bg-white/[0.14]' : 'bg-cream'
             }`}
           >
-            <ArrowLeft size={18} className={step === 'edit' ? 'text-white/95' : 'text-ink'} />
+            <ArrowLeft size={18} className={isDark ? 'text-white/95' : 'text-ink'} />
           </motion.button>
           <h1
             className={`text-[18px] font-bold tracking-tight transition-colors duration-300 ${
-              step === 'edit' ? 'text-white' : 'text-ink'
+              isDark ? 'text-white' : 'text-ink'
             }`}
           >
             {step === 'edit' ? 'Craft your reel' : 'New Pin'}
@@ -556,7 +571,7 @@ export default function PinCreate() {
                 <div
                   key={s}
                   className={`w-2 h-2 rounded-full transition-colors duration-300 ${
-                    filled ? 'bg-tangerine' : step === 'edit' ? 'bg-white/12' : 'bg-pearl'
+                    filled ? 'bg-tangerine' : isDark ? 'bg-white/12' : 'bg-pearl'
                   }`}
                 />
               )
@@ -566,11 +581,13 @@ export default function PinCreate() {
       </div>
 
       <div
-        className={`${step === 'edit' ? 'max-w-5xl' : 'max-w-2xl'} mx-auto px-5 py-6`}
-        // min-height locks the parent so AnimatePresence mode="wait" doesn't
-        // briefly collapse the parent to height 0 between exit and enter,
-        // which was producing the "expand from center" effect when entering
-        // the editor step.
+        // Wide container so the editor step can center its 672px main
+        // column at the viewport midline AND still fit a 180px tools
+        // sidebar floated absolutely to its right. Non-editor steps use
+        // an inner `max-w-2xl mx-auto` so they still look centered at
+        // 672px. Parent width stays stable across all steps to keep
+        // AnimatePresence mode="wait" transitions clean.
+        className="max-w-6xl mx-auto px-5 py-6"
         style={{ minHeight: 'calc(100dvh - 200px)' }}
       >
         <AnimatePresence
@@ -584,7 +601,7 @@ export default function PinCreate() {
         >
           {/* ═══ STEP 1: TYPE ═══ */}
           {step === 'type' && (
-            <motion.div key="type" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit">
+            <motion.div key="type" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit" className="max-w-2xl mx-auto w-full">
               <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">What are you adding?</h2>
               <p className="text-[14px] text-smoke mb-6">Choose the type of pin for your map.</p>
               <div className="space-y-3">
@@ -614,7 +631,7 @@ export default function PinCreate() {
 
           {/* ═══ STEP 2: ADDRESS ═══ */}
           {step === 'address' && (
-            <motion.div key="address" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit">
+            <motion.div key="address" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit" className="max-w-2xl mx-auto w-full">
               <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">
                 {pinType === 'spotlight' ? 'What location?' : 'Where is it?'}
               </h2>
@@ -661,7 +678,7 @@ export default function PinCreate() {
 
           {/* ═══ STEP 3: DETAILS ═══ */}
           {step === 'details' && (
-            <motion.div key="details" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit">
+            <motion.div key="details" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit" className="max-w-2xl mx-auto w-full">
               <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">Add details</h2>
               <p className="text-[14px] text-smoke mb-6">{address}</p>
 
@@ -759,6 +776,7 @@ export default function PinCreate() {
               initial="enter"
               animate="center"
               exit="exit"
+              className="max-w-2xl mx-auto w-full"
             >
               <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">What kind of content?</h2>
               <p className="text-[14px] text-smoke mb-6">Pick how you want to share this listing.</p>
@@ -770,10 +788,6 @@ export default function PinCreate() {
                   description="A swipeable set of photos. Quick and simple."
                   icon={<Camera size={22} />}
                   onSelect={() => {
-                    // Wipe editor state only when switching FROM reel →
-                    // carousel. Re-picking carousel preserves any photos
-                    // already queued in currentDraft.
-                    if (contentKind === 'reel') editorReset()
                     setContentKind('carousel')
                     setEditingDraftId(null)
                     setStep('edit')
@@ -785,11 +799,6 @@ export default function PinCreate() {
                   description="One or more clips with trim and frame controls."
                   icon={<Film size={22} />}
                   onSelect={() => {
-                    // Wipe the carousel currentDraft only when switching
-                    // FROM carousel → reel. Re-picking reel preserves the
-                    // editor store (clips, trims, aspect) so back/forward
-                    // doesn't drop the user's progress.
-                    if (contentKind === 'carousel') setCurrentDraft(null)
                     setContentKind('reel')
                     setEditingDraftId(null)
                     setStep('edit')
@@ -798,7 +807,27 @@ export default function PinCreate() {
               </div>
 
               <div className="flex gap-3">
-                <Button variant="secondary" size="xl" onClick={() => setStep('details')} fullWidth>Back</Button>
+                {addingMoreContent ? (
+                  <Button
+                    variant="secondary"
+                    size="xl"
+                    onClick={() => {
+                      setAddingMoreContent(false)
+                      setStep('publish')
+                    }}
+                    fullWidth
+                  >
+                    Back to drafts
+                  </Button>
+                ) : isAddContentMode ? (
+                  /* Arrived from Content tab upload — no prior steps to go
+                     back to. Only a cancel that returns to the dashboard. */
+                  <Button variant="secondary" size="xl" onClick={() => navigate(-1)} fullWidth>
+                    Cancel
+                  </Button>
+                ) : (
+                  <Button variant="secondary" size="xl" onClick={() => setStep('details')} fullWidth>Back</Button>
+                )}
               </div>
             </motion.div>
           )}
@@ -816,6 +845,7 @@ export default function PinCreate() {
               initial="enter"
               animate="center"
               exit="exit"
+              className="w-full"
             >
               {contentKind === 'carousel' && (
                 <div className="px-4 lg:px-12">
@@ -825,30 +855,119 @@ export default function PinCreate() {
                   />
                 </div>
               )}
+              {/* Back / Continue row for the reel (editor) flow — passed
+                  into EditorStep as `footer` so it renders INSIDE the
+                  main column and aligns exactly with the timeline width
+                  on desktop. Mobile still stacks it below the editor. */}
               {contentKind === 'reel' && (
-                <EditorStep direction={direction} simpleMode />
+                <EditorStep
+                  direction={direction}
+                  simpleMode
+                  footer={
+                    <div className="flex flex-col gap-2">
+                      {reelOverLimit && (
+                        <p className="text-[11px] text-live-red text-center font-medium px-2">
+                          Reels must be under 3 minutes — currently{' '}
+                          {Math.floor(editorTotalDuration / 60)}m{' '}
+                          {Math.round(editorTotalDuration % 60)}s. Trim clips or
+                          remove one to continue.
+                        </p>
+                      )}
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => {
+                            if (isAddContentMode) navigate(-1)
+                            else setStep('content-type')
+                          }}
+                          className="flex-1 h-[52px] rounded-[14px] ed-surface-07 hover:ed-surface-11 ed-fg-85 text-[14px] font-semibold cursor-pointer active:scale-[0.99] transition-all"
+                        >
+                          Back
+                        </button>
+                        <motion.button
+                          whileTap={(editorClips.length > 0 && !reelOverLimit) ? { scale: 0.98 } : undefined}
+                          onClick={() => {
+                            // Read the LATEST store state at click time so
+                            // any thumbnail the user captured seconds before
+                            // tapping Continue is guaranteed to be picked up,
+                            // regardless of React render/closure timing.
+                            const latest = useEditorStore.getState()
+                            const latestClips = latest.clips
+                            const latestOverlays = latest.overlays
+                            const latestAspect = latest.aspect
+                            if (latestClips.length === 0 || reelOverLimit) return
+                            const draftId = editingDraftId ?? Math.random().toString(36).slice(2, 10)
+                            // Prefer any user-chosen custom thumbnail across
+                            // all clips (not just clip 0) since the user may
+                            // have captured on a later clip. Falls back to the
+                            // first clip's auto-probe thumbnail.
+                            const clipWithCustom = latestClips.find((c) => c.customThumbnailUrl)
+                            const chosenThumbnail =
+                              clipWithCustom?.customThumbnailUrl
+                              || latestClips[0]?.thumbnailUrl || ''
+                            const newDraft: EditorDraftKind = {
+                              id: draftId,
+                              kind: 'editor',
+                              clipFiles: latestClips.map((c) => c.file),
+                              clipMeta: latestClips.map((c) => ({
+                                trimIn: c.trimIn,
+                                trimOut: c.trimOut,
+                                speed: c.speed,
+                                adjustments: { ...c.adjustments },
+                              })),
+                              overlays: [...latestOverlays],
+                              aspect: latestAspect,
+                              thumbnailUrl: chosenThumbnail,
+                            }
+                            setContentDrafts((prev) => {
+                              const idx = prev.findIndex((d) => d.id === draftId)
+                              if (idx >= 0) { const next = [...prev]; next[idx] = newDraft; return next }
+                              return [...prev, newDraft]
+                            })
+                            setEditingDraftId(draftId)
+                            setSkippedContent(false)
+                            setStep('publish')
+                          }}
+                          disabled={editorClips.length === 0 || reelOverLimit}
+                          className={`flex-[2] h-[52px] rounded-[14px] text-[14px] font-bold transition-all ${
+                            editorClips.length === 0 || reelOverLimit
+                              ? 'ed-surface-06 ed-fg-30 cursor-not-allowed'
+                              : 'bg-tangerine text-white cursor-pointer hover:brightness-110'
+                          }`}
+                        >
+                          Continue
+                        </motion.button>
+                      </div>
+                    </div>
+                  }
+                />
               )}
-              <div className="flex gap-3 mt-7 px-4 lg:px-12">
+              {/* Original Back / Continue row — now only used for carousel. */}
+              <div className={`flex gap-3 mt-7 px-4 lg:px-12 ${contentKind === 'reel' ? 'hidden' : ''}`}>
                 <button
                   onClick={() => {
                     if (isAddContentMode) navigate(-1)
                     else setStep('content-type')
                   }}
-                  className="flex-1 h-[52px] rounded-[14px] bg-white/[0.07] text-white/85 text-[14px] font-semibold cursor-pointer hover:bg-white/[0.11] active:scale-[0.99] transition-all"
+                  className={`flex-1 h-[52px] rounded-[14px] text-[14px] font-semibold cursor-pointer active:scale-[0.99] transition-all ${
+                    isDark
+                      ? 'bg-white/[0.07] text-white/85 hover:bg-white/[0.11]'
+                      : 'bg-cream text-ink hover:bg-pearl'
+                  }`}
                 >
                   Back
                 </button>
                 <motion.button
                   whileTap={(() => {
-                    if (contentKind === 'reel') return editorClips.length > 0 ? { scale: 0.98 } : undefined
+                    if (contentKind === 'reel') return (editorClips.length > 0 && !reelOverLimit) ? { scale: 0.98 } : undefined
                     if (contentKind === 'carousel') return (currentDraft?.kind === 'carousel' && currentDraft.photos.length > 0) ? { scale: 0.98 } : undefined
                     return undefined
                   })()}
                   onClick={() => {
                     // Reel path: snapshot the editor store into an EditorDraftKind.
-                    // Simple mode strips text/audio/adjust/filter/speed — the draft
-                    // still flows through renderComposition on publish, which is a
-                    // no-op on all the simplified fields.
+                    // Critical: keep `editingDraftId` set to the committed id
+                    // after this call so back→continue re-updates the SAME
+                    // draft rather than appending a duplicate. Cleared only
+                    // when the user taps "+ Add more content" or discards.
                     if (contentKind === 'reel') {
                       if (editorClips.length === 0) return
                       const draftId = editingDraftId ?? Math.random().toString(36).slice(2, 10)
@@ -871,37 +990,37 @@ export default function PinCreate() {
                         if (idx >= 0) { const next = [...prev]; next[idx] = newDraft; return next }
                         return [...prev, newDraft]
                       })
-                      setEditingDraftId(null)
-                      setCurrentDraft(null)
+                      setEditingDraftId(draftId)
                       setSkippedContent(false)
+                      setAddingMoreContent(false)
                       setStep('publish')
                       return
                     }
 
-                    // Carousel path
+                    // Carousel path — same no-duplicate logic.
                     if (!currentDraft || currentDraft.kind !== 'carousel' || currentDraft.photos.length === 0) return
                     setContentDrafts((prev) => {
                       const idx = prev.findIndex((d) => d.id === currentDraft.id)
                       if (idx >= 0) { const next = [...prev]; next[idx] = currentDraft; return next }
                       return [...prev, currentDraft]
                     })
-                    setEditingDraftId(null)
-                    setCurrentDraft(null)
+                    setEditingDraftId(currentDraft.id)
                     setSkippedContent(false)
+                    setAddingMoreContent(false)
                     setStep('publish')
                   }}
                   disabled={(() => {
-                    if (contentKind === 'reel') return editorClips.length === 0
+                    if (contentKind === 'reel') return editorClips.length === 0 || reelOverLimit
                     if (contentKind === 'carousel') return !(currentDraft?.kind === 'carousel' && currentDraft.photos.length > 0)
                     return true
                   })()}
                   className={`flex-[2] h-[52px] rounded-[14px] text-[14px] font-bold transition-all ${
                     (() => {
-                      if (contentKind === 'reel') return editorClips.length === 0
+                      if (contentKind === 'reel') return editorClips.length === 0 || reelOverLimit
                       if (contentKind === 'carousel') return !(currentDraft?.kind === 'carousel' && currentDraft.photos.length > 0)
                       return true
                     })()
-                      ? 'bg-white/[0.06] text-white/30 cursor-not-allowed'
+                      ? (isDark ? 'bg-white/[0.06] text-white/30 cursor-not-allowed' : 'bg-pearl text-smoke cursor-not-allowed')
                       : 'bg-tangerine text-white cursor-pointer hover:brightness-110'
                   }`}
                 >
@@ -911,99 +1030,170 @@ export default function PinCreate() {
             </motion.div>
           )}
 
-          {/* ═══ STEP 4a: PUBLISH (caption + schedule post-editor) ═══ */}
-          {step === 'publish' && (
-            <motion.div key="publish" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit">
-              <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">Almost there</h2>
-              <p className="text-[14px] text-smoke mb-6">Add a caption and choose when this goes live.</p>
+          {/* ═══ STEP 4a: PUBLISH (per-draft captions, no schedule) ═══ */}
+          {step === 'publish' && (() => {
+            const safeIdx = Math.min(selectedDraftIdx, Math.max(0, contentDrafts.length - 1))
+            const selectedDraft = contentDrafts[safeIdx]
+            const selectedCaption = selectedDraft?.caption ?? ''
+            const multi = contentDrafts.length > 1
+            const updateSelectedCaption = (value: string) => {
+              const next = value.slice(0, CAPTION_LIMIT)
+              setContentDrafts((prev) => prev.map((d, i) =>
+                i === safeIdx ? ({ ...d, caption: next } as ContentDraft) : d
+              ))
+            }
+            const missingCaptions = contentDrafts.some((d) => !(d.caption ?? '').trim())
+            const publishNow = () => handlePublishFromEditor()
+            const onPublishClick = () => {
+              if (skippedContent) { publishNow(); return }
+              if (missingCaptions) { setShowMissingCaptionWarn(true); return }
+              publishNow()
+            }
 
-              {/* Compact horizontal scroller of accumulated content drafts */}
+            return (
+            <motion.div key="publish" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit" className="max-w-2xl mx-auto w-full">
+              <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">Almost there</h2>
+              <p className="text-[14px] text-smoke mb-6">
+                {contentDrafts.length === 0
+                  ? 'Review and publish your pin.'
+                  : multi
+                  ? 'Write a caption for each piece of content before publishing.'
+                  : 'Write a caption for your content before publishing.'}
+              </p>
+
+              {/* Draft selector — tangerine border on the active tile. */}
               {contentDrafts.length > 0 && (
                 <div className="mb-5">
                   <p className="text-[10px] font-bold text-smoke uppercase tracking-wider mb-2">
-                    {contentDrafts.length === 1 ? '1 piece of content' : `${contentDrafts.length} pieces of content`}
+                    {multi ? `${contentDrafts.length} pieces of content` : '1 piece of content'}
                   </p>
                   <div className="flex items-center gap-2 overflow-x-auto scrollbar-none p-1">
-                    {contentDrafts.map((d) => {
+                    {contentDrafts.map((d, i) => {
                       const thumb =
                         d.kind === 'carousel'
                           ? d.photos[0]?.previewUrl ?? ''
                           : d.thumbnailUrl
+                      const active = i === safeIdx
+                      const hasCaption = !!(d.caption ?? '').trim()
                       return (
-                      <div key={d.id} className="relative shrink-0">
-                        <button
-                          onClick={() => {
-                            // Re-open this draft in the right step for its kind.
-                            setEditingDraftId(d.id)
-                            if (d.kind === 'editor') {
-                              editorReset()
-                              useEditorStore.getState().importFiles(d.clipFiles)
-                              setContentKind('reel')
-                              setCurrentDraft(null)
-                            } else {
-                              setContentKind('carousel')
-                              setCurrentDraft(d)
-                            }
-                            setStep('edit')
-                          }}
-                          className="w-[58px] h-[78px] rounded-[10px] overflow-hidden bg-pearl border border-border-light hover:border-tangerine/40 transition-colors cursor-pointer"
-                        >
-                          {thumb
-                            ? <img src={thumb} alt="" className="w-full h-full object-cover" />
-                            : <div className="w-full h-full flex items-center justify-center"><Film size={16} className="text-smoke" /></div>}
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setDraftToDelete(d.id)
-                          }}
-                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-ink text-warm-white flex items-center justify-center cursor-pointer hover:brightness-125 transition-all shadow"
-                          aria-label="Remove draft"
-                        >
-                          <X size={11} strokeWidth={2.6} />
-                        </button>
-                      </div>
+                        <div key={d.id} className="relative shrink-0">
+                          <button
+                            onClick={() => setSelectedDraftIdx(i)}
+                            className={`w-[58px] h-[78px] rounded-[10px] overflow-hidden bg-pearl transition-all cursor-pointer ${
+                              active
+                                ? 'ring-2 ring-tangerine ring-offset-2 ring-offset-ivory'
+                                : 'border border-border-light hover:border-tangerine/40'
+                            }`}
+                          >
+                            {thumb
+                              ? <img src={thumb} alt="" className="w-full h-full object-cover" />
+                              : <div className="w-full h-full flex items-center justify-center"><Film size={16} className="text-smoke" /></div>}
+                          </button>
+                          {/* Tiny dot marker for missing caption */}
+                          {!hasCaption && (
+                            <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-live-red" />
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setDraftToDelete(d.id)
+                            }}
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-ink text-warm-white flex items-center justify-center cursor-pointer hover:brightness-125 transition-all shadow"
+                            aria-label="Remove draft"
+                          >
+                            <X size={11} strokeWidth={2.6} />
+                          </button>
+                        </div>
                       )
                     })}
+                    {/* "Edit" link jumps back into the selected draft's editor */}
                   </div>
+                  {selectedDraft && (
+                    <button
+                      onClick={async () => {
+                        setEditingDraftId(selectedDraft.id)
+                        if (selectedDraft.kind === 'editor') {
+                          // If the editor already holds THIS draft's clips
+                          // (same File objects), skip the destructive
+                          // reset+re-import so the user's custom thumbnail
+                          // and in-flight edits are preserved.
+                          const currentClips = useEditorStore.getState().clips
+                          const sameDraft =
+                            currentClips.length === selectedDraft.clipFiles.length &&
+                            currentClips.every((c, i) => c.file === selectedDraft.clipFiles[i])
+                          if (!sameDraft) {
+                            editorReset()
+                            await useEditorStore.getState().importFiles(selectedDraft.clipFiles)
+                            // Restore the draft's chosen thumbnail after
+                            // re-import. importFiles re-probes and sets
+                            // clip.thumbnailUrl from scratch; writing it
+                            // into `customThumbnailUrl` preserves the
+                            // user's pick without mangling the timeline.
+                            if (selectedDraft.thumbnailUrl) {
+                              const firstClip = useEditorStore.getState().clips[0]
+                              if (firstClip) {
+                                useEditorStore.getState().setClipThumbnail(firstClip.id, selectedDraft.thumbnailUrl)
+                              }
+                            }
+                          }
+                          setContentKind('reel')
+                          setCurrentDraft(null)
+                        } else {
+                          setContentKind('carousel')
+                          setCurrentDraft(selectedDraft)
+                        }
+                        setStep('edit')
+                      }}
+                      className="mt-2 text-[11px] font-semibold text-tangerine hover:underline cursor-pointer"
+                    >
+                      Edit this content →
+                    </button>
+                  )}
                 </div>
               )}
 
-              <label className="text-[11px] font-bold text-smoke uppercase tracking-wider mb-1.5 block">Caption</label>
-              <textarea
-                value={newCaption}
-                onChange={(e) => setNewCaption(e.target.value)}
-                placeholder="Say something about this post…"
-                rows={3}
-                className="w-full rounded-[14px] bg-cream border border-border-light px-4 py-3 text-[14px] text-ink resize-none placeholder:text-ash outline-none focus:border-tangerine/40 mb-5"
-              />
-
-              <label className="text-[11px] font-bold text-smoke uppercase tracking-wider mb-1.5 block">Schedule</label>
-              <div className="mb-6">
-                <ScheduleField
-                  value={newPublishAt}
-                  onChange={setNewPublishAt}
-                  locked={!hasFeature(userDoc, 'scheduledContent')}
-                  onLockedClick={() => setPaywall({
-                    open: true,
-                    reason: 'Scheduling content for later is a Pro feature.',
-                    upgradeTo: 'pro',
-                  })}
-                />
-              </div>
+              {/* Per-draft caption field */}
+              {selectedDraft && (
+                <>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[11px] font-bold text-smoke uppercase tracking-wider">
+                      {multi ? `Caption for #${safeIdx + 1}` : 'Caption'}
+                    </label>
+                    <span className={`text-[10px] font-mono tabular-nums ${selectedCaption.length > CAPTION_LIMIT * 0.9 ? 'text-live-red' : 'text-ash'}`}>
+                      {selectedCaption.length}/{CAPTION_LIMIT}
+                    </span>
+                  </div>
+                  <textarea
+                    value={selectedCaption}
+                    onChange={(e) => updateSelectedCaption(e.target.value)}
+                    placeholder="Say something about this post…"
+                    rows={4}
+                    maxLength={CAPTION_LIMIT}
+                    className="w-full rounded-[14px] bg-cream border border-border-light px-4 py-3 text-[14px] text-ink resize-none placeholder:text-ash outline-none focus:border-tangerine/40 mb-6"
+                  />
+                </>
+              )}
 
               <div className="flex flex-col gap-2.5">
-                <Button variant="primary" size="xl" onClick={() => handlePublishFromEditor()} loading={saving} fullWidth>
-                  Publish Pin
+                <Button variant="primary" size="xl" onClick={onPublishClick} loading={saving} fullWidth>
+                  {multi ? 'Publish Pins' : 'Publish Pin'}
                 </Button>
-                {/* "+ Add more content" only when the user actually has content
-                    (not when they explicitly chose to publish without). */}
                 {!skippedContent && contentDrafts.length > 0 && (
                   <Button
                     variant="secondary"
                     size="lg"
                     fullWidth
-                    onClick={() => setStep('content-type')}
+                    onClick={() => {
+                      // Start fresh — wipe editor store (reel state) and
+                      // currentDraft (carousel state), drop the edit cursor,
+                      // then route to the picker.
+                      editorReset()
+                      setCurrentDraft(null)
+                      setEditingDraftId(null)
+                      setContentKind(null)
+                      setAddingMoreContent(true)
+                      setStep('content-type')
+                    }}
                     icon={<Plus size={16} />}
                   >
                     Add more content
@@ -1019,11 +1209,12 @@ export default function PinCreate() {
                 </Button>
               </div>
             </motion.div>
-          )}
+            )
+          })()}
 
           {/* ═══ STEP 4 (legacy): CONTENT ═══ */}
           {step === 'content' && (
-            <motion.div key="content" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit">
+            <motion.div key="content" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit" className="max-w-2xl mx-auto w-full">
               <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">
                 {isAddContentMode ? 'Add Content' : 'Add content'}
               </h2>
@@ -1157,7 +1348,7 @@ export default function PinCreate() {
 
           {/* ═══ PUBLISHING ═══ */}
           {step === 'publishing' && (
-            <motion.div key="publishing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-20">
+            <motion.div key="publishing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-20 max-w-2xl mx-auto w-full">
               <div className="max-w-[320px] mx-auto">
                 <div className="relative h-[120px] mb-6 flex items-center justify-center">
                   <motion.div
@@ -1228,17 +1419,44 @@ export default function PinCreate() {
         onClose={() => setDraftToDelete(null)}
         onConfirm={() => {
           if (!draftToDelete) return
-          setContentDrafts((prev) => prev.filter((x) => x.id !== draftToDelete))
+          const remaining = contentDrafts.filter((x) => x.id !== draftToDelete)
+          setContentDrafts(remaining)
           if (editingDraftId === draftToDelete) {
             setEditingDraftId(null)
             editorReset()
           }
           setDraftToDelete(null)
+          // If the user removed the only remaining draft, there's
+          // nothing to publish — jump back to the editor so they can
+          // import new content. An empty "Almost there" screen makes
+          // no sense.
+          if (remaining.length === 0) {
+            setAddingMoreContent(false)
+            setStep('edit')
+          }
         }}
         title="Remove this content?"
         message="This piece of content will be removed from the pin. You can add new content anytime."
         confirmLabel="Remove"
         confirmVariant="danger"
+      />
+
+      {/* Missing caption warning — shown when user taps Publish but one
+          or more drafts have blank captions. Can skip or cancel. */}
+      <ConfirmDialog
+        isOpen={showMissingCaptionWarn}
+        onClose={() => setShowMissingCaptionWarn(false)}
+        onConfirm={() => {
+          setShowMissingCaptionWarn(false)
+          handlePublishFromEditor()
+        }}
+        title="Some captions are blank"
+        message={
+          contentDrafts.length > 1
+            ? "One or more of your content drafts doesn't have a caption. Publish anyway, or cancel to add them?"
+            : "Your content doesn't have a caption. Publish anyway, or cancel to add one?"
+        }
+        confirmLabel="Publish anyway"
       />
     </div>
   )

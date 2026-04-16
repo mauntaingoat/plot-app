@@ -16,6 +16,7 @@ export interface CarouselDraft {
   kind: 'carousel'
   photos: CarouselPhoto[]
   aspect: CreateAspect
+  caption?: string
 }
 
 /**
@@ -37,6 +38,7 @@ export interface EditorDraftKind {
   overlays: TextOverlay[]
   aspect: AspectRatio
   thumbnailUrl: string
+  caption?: string
 }
 
 export type ContentDraft = CarouselDraft | EditorDraftKind

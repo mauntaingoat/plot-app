@@ -97,8 +97,12 @@ function CropStrip() {
   const setAspect = useEditorStore((s) => s.setAspect)
 
   return (
-    <motion.div {...stripMotion} className="max-w-md mx-auto">
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+    <motion.div {...stripMotion} className="max-w-md mx-auto w-full">
+      {/* Mobile ContextStrip is rendered full-width below the timeline
+          (6 cols); desktop ContextStrip lives in the ~180px sidebar
+          (2 cols stacked). Tailwind's lg: breakpoint maps cleanly because
+          the desktop instance only exists above lg. */}
+      <div className="grid grid-cols-6 lg:grid-cols-2 gap-1.5">
         {ASPECT_OPTIONS.map((opt) => {
           const active = aspect === opt.id
           const ratio = opt.ratio
@@ -115,21 +119,21 @@ function CropStrip() {
               onClick={() => setAspect(opt.id)}
               className="relative flex flex-col items-center justify-center gap-1 h-[60px] rounded-[10px] cursor-pointer transition-all"
               style={{
-                background: active ? 'rgba(255,107,61,0.14)' : 'rgba(255,255,255,0.04)',
+                background: active ? 'rgba(255,107,61,0.14)' : 'rgba(var(--ed-fg), 0.05)',
                 boxShadow: active ? '0 0 0 1.5px rgba(255,107,61,0.55) inset' : undefined,
               }}
             >
               <div
                 className="border"
                 style={{
-                  borderColor: active ? '#FF6B3D' : 'rgba(255,255,255,0.55)',
+                  borderColor: active ? '#FF6B3D' : 'rgba(var(--ed-fg), 0.55)',
                   ...thumbStyle,
                   borderRadius: isOriginal ? '50%' : 2,
                 }}
               />
               <span
                 className="font-mono text-[9px] font-bold tracking-wider uppercase"
-                style={{ color: active ? '#FF6B3D' : 'rgba(255,255,255,0.65)' }}
+                style={{ color: active ? '#FF6B3D' : 'rgba(var(--ed-fg), 0.65)' }}
               >
                 {opt.label}
               </span>

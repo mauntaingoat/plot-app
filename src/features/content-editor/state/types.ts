@@ -28,6 +28,14 @@ export interface Clip {
   adjustments: Adjustments
   /** True while frames are still being extracted in the background. */
   pending?: boolean
+  /**
+   * User-chosen display thumbnail, captured from the preview via the
+   * "Thumbnail" overlay button. When set, this is what shows in the
+   * draft scroller, content library, and on the map pin — but the
+   * timeline (thumbnailUrl / frames) is NOT affected, so the editor
+   * filmstrip still reflects the source video, not the chosen poster.
+   */
+  customThumbnailUrl?: string
 }
 
 /** Font key — maps to a Google Font in the FONT_OPTIONS table. */

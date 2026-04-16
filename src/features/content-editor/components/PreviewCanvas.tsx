@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Check, Image as ImageIcon, Film, Loader2 } from 'lucide-react'
+import { X, Check, Image as ImageIcon, Film, Loader2, Crop } from 'lucide-react'
 import { useEditorStore } from '../state/editorStore'
 import { ASPECT_OPTIONS, FONT_OPTIONS } from '../state/types'
 
@@ -22,15 +22,58 @@ export function PreviewCanvas() {
   const importFiles = useEditorStore((s) => s.importFiles)
   const importingCount = useEditorStore((s) => s.importingCount)
   const view = useEditorStore((s) => s.view)
+  const setView = useEditorStore((s) => s.setView)
   const composedTime = useEditorStore((s) => s.composedTime)
 
   const selected = useMemo(() => clips.find((c) => c.id === selectedId) ?? clips[0], [clips, selectedId])
 
+  const setClipThumbnail = useEditorStore((s) => s.setClipThumbnail)
   const frameRef = useRef<HTMLDivElement | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [editingOverlayId, setEditingOverlayId] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
+  const [thumbSavedAt, setThumbSavedAt] = useState(0)
+  // Auto-clear the "Thumbnail saved" pill after 1.6s.
+  useEffect(() => {
+    if (thumbSavedAt === 0) return
+    const id = setTimeout(() => setThumbSavedAt(0), 1600)
+    return () => clearTimeout(id)
+  }, [thumbSavedAt])
+
+  /** Capture whatever the preview <video> is currently showing. Fully
+   *  synchronous — no createImageBitmap, no readyState waits, no async
+   *  closure staleness. If the user can SEE a frame in the preview,
+   *  drawImage captures it. If the video hasn't loaded yet, the canvas
+   *  stays blank and the length guard skips the save. */
+  const captureThumbnail = useCallback(() => {
+    if (!selected || selected.type !== 'video') return
+    const v = videoRef.current
+    if (!v) return
+
+    const clipId = selected.id
+    const w = v.videoWidth || v.clientWidth || 480
+    const h = v.videoHeight || v.clientHeight || 270
+    const TARGET_W = 480
+    const canvasH = Math.round((TARGET_W * h) / w)
+    const canvas = document.createElement('canvas')
+    canvas.width = TARGET_W
+    canvas.height = canvasH
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    try {
+      ctx.drawImage(v, 0, 0, TARGET_W, canvasH)
+    } catch {
+      return
+    }
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.88)
+    if (!dataUrl || dataUrl.length < 500) return
+
+    setClipThumbnail(clipId, dataUrl)
+    setThumbSavedAt(Date.now())
+  }, [selected, setClipThumbnail])
 
   const stripActive = view === 'adjust' || view === 'crop' || view === 'speed'
                    || view === 'audio' || view === 'filter' || view === 'text'
@@ -269,13 +312,31 @@ export function PreviewCanvas() {
     return () => document.removeEventListener('pointerdown', onDocPointer)
   }, [isTextEditing])
 
-  const previewHeight = stripActive ? 'min(36vh, 380px)' : 'min(58vh, 620px)'
+  // Smaller than before so the whole editor fits in one viewport on
+  // typical laptops and phones without scrolling. Desktop never shrinks
+  // when a context strip opens because the strip lives in the right
+  // sidebar on desktop — shrinking would waste preview real estate.
+  const [isDesktop, setIsDesktop] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(min-width: 1024px)').matches : false,
+  )
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  const previewHeight = isDesktop
+    ? 'min(48vh, 480px)'
+    : stripActive
+    ? 'min(30vh, 320px)'
+    : 'min(44vh, 440px)'
 
   return (
     <div className="relative w-full flex items-center justify-center min-h-0">
       <div
         ref={frameRef}
-        className="relative rounded-[16px] overflow-hidden"
+        className="relative rounded-[16px] overflow-hidden ed-preview-bg"
         onDragOver={isEmpty ? onDragOver : undefined}
         onDragLeave={isEmpty ? onDragLeave : undefined}
         onDrop={isEmpty ? onDrop : undefined}
@@ -285,7 +346,7 @@ export function PreviewCanvas() {
           minHeight: 200,
           width: 'auto',
           maxWidth: '100%',
-          boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.045)',
+          boxShadow: 'inset 0 0 0 1px rgba(var(--ed-fg), 0.10)',
           transition:
             'aspect-ratio 0.32s cubic-bezier(0.32, 0.72, 0, 1), height 0.32s cubic-bezier(0.32, 0.72, 0, 1)',
         }}
@@ -307,23 +368,23 @@ export function PreviewCanvas() {
             {importingCount > 0 ? (
               <>
                 <Loader2 size={40} className="text-tangerine animate-spin" strokeWidth={2.2} />
-                <p className="text-white/85 text-[14px] font-semibold">Importing…</p>
+                <p className="ed-fg-85 text-[14px] font-semibold">Importing…</p>
               </>
             ) : (
               <>
                 <div className="relative w-[72px] h-[64px]">
-                  <div className="absolute left-0 top-0 w-[52px] h-[52px] rounded-[14px] border-[1.5px] border-white/65 flex items-center justify-center bg-white/[0.02] rotate-[-6deg]">
-                    <ImageIcon size={22} strokeWidth={1.7} className="text-white/85" />
+                  <div className="absolute left-0 top-0 w-[52px] h-[52px] rounded-[14px] border-[1.5px] ed-border-15 flex items-center justify-center ed-surface-04 rotate-[-6deg]">
+                    <ImageIcon size={22} strokeWidth={1.7} className="ed-fg-85" />
                   </div>
-                  <div className="absolute right-0 bottom-0 w-[52px] h-[52px] rounded-[14px] border-[1.5px] border-white/65 flex items-center justify-center bg-white/[0.04] rotate-[6deg]">
-                    <Film size={22} strokeWidth={1.7} className="text-white/85" />
+                  <div className="absolute right-0 bottom-0 w-[52px] h-[52px] rounded-[14px] border-[1.5px] ed-border-15 flex items-center justify-center ed-surface-06 rotate-[6deg]">
+                    <Film size={22} strokeWidth={1.7} className="ed-fg-85" />
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-white text-[15px] font-semibold tracking-tight">
+                  <p className="ed-fg text-[15px] font-semibold tracking-tight">
                     Drop photos and videos here
                   </p>
-                  <p className="text-white/45 text-[11px]">or pick from your device</p>
+                  <p className="ed-fg-45 text-[11px]">or pick from your device</p>
                 </div>
                 <span className="mt-2 inline-flex items-center justify-center h-10 px-5 rounded-full bg-tangerine text-white text-[12px] font-bold shadow-[0_8px_24px_rgba(255,107,61,0.45),0_0_0_1px_rgba(255,107,61,0.55)] group-active:scale-[0.97] transition-transform">
                   Select from device
@@ -377,8 +438,65 @@ export function PreviewCanvas() {
         {importingCount > 0 && !isEmpty && (
           <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/65 backdrop-blur-sm">
             <Loader2 size={11} className="text-tangerine animate-spin" strokeWidth={2.4} />
-            <span className="text-[10px] font-semibold text-white/85">Importing…</span>
+            <span className="text-[10px] font-semibold ed-fg-85">Importing…</span>
           </div>
+        )}
+
+        {/* Set-thumbnail overlay — top-left. Only for video clips.
+            Captures the currently-displayed frame as the clip's
+            thumbnail (what shows on the map pin when this is the
+            first content item). */}
+        {!isEmpty && selected?.type === 'video' && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              captureThumbnail()
+            }}
+            className="absolute top-3 left-3 z-30 h-9 px-3 rounded-full flex items-center gap-1.5 bg-black/55 text-white/95 text-[11px] font-semibold backdrop-blur-sm hover:bg-black/70 cursor-pointer transition-all active:scale-95"
+            aria-label="Set thumbnail"
+          >
+            <ImageIcon size={13} strokeWidth={2.3} />
+            Thumbnail
+          </button>
+        )}
+
+        {/* Saved confirmation pill — shows briefly after capture */}
+        <AnimatePresence>
+          {thumbSavedAt > 0 && (
+            <motion.div
+              key={thumbSavedAt}
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 h-7 px-3 rounded-full bg-sold-green/95 text-white text-[10px] font-bold pointer-events-none"
+            >
+              <Check size={10} strokeWidth={3} />
+              Thumbnail saved
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Frame overlay button — always on top-right of the preview,
+            icon-only, identical on mobile and desktop. Tapping toggles
+            the crop context strip (mobile: below timeline; desktop:
+            in the right sidebar). */}
+        {!isEmpty && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              setView(view === 'crop' ? null : 'crop')
+            }}
+            className={`absolute top-3 right-3 z-30 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all active:scale-95 ${
+              view === 'crop'
+                ? 'bg-tangerine text-white shadow-[0_4px_16px_rgba(255,107,61,0.55)]'
+                : 'bg-black/55 text-white/90 backdrop-blur-sm hover:bg-black/70'
+            }`}
+            aria-label="Frame"
+          >
+            <Crop size={16} strokeWidth={2.3} />
+          </button>
         )}
       </div>
 

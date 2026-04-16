@@ -526,3 +526,58 @@ input:focus, textarea:focus {
 .mapboxgl-popup-tip {
   display: none !important;
 }
+
+/* ─────────── Editor theming ───────────
+   The editor lives inside .editor-stage. Dark is the default; light
+   variant is activated by adding .editor-light on the same element.
+   All semi-transparent surfaces & text use rgba(var(--ed-fg), X) so
+   flipping --ed-fg between white and near-black swaps the whole UI. */
+.editor-stage {
+  --ed-fg: 255, 255, 255;
+  --ed-bg: #0A0E17;
+  --ed-preview-bg: #000;
+  --ed-ruler-line: rgba(255, 255, 255, 0.16);
+  --ed-ruler-line-strong: rgba(255, 255, 255, 0.35);
+}
+.editor-stage.editor-light {
+  --ed-fg: 10, 14, 23;
+  --ed-bg: #F3F4F8;
+  --ed-preview-bg: #EDEEF3;
+  --ed-ruler-line: rgba(10, 14, 23, 0.14);
+  --ed-ruler-line-strong: rgba(10, 14, 23, 0.32);
+}
+
+.editor-stage .ed-bg         { background-color: var(--ed-bg); }
+.editor-stage .ed-preview-bg { background-color: var(--ed-preview-bg); }
+.editor-stage .ed-fg         { color: rgb(var(--ed-fg)); }
+.editor-stage .ed-fg-95      { color: rgba(var(--ed-fg), 0.95); }
+.editor-stage .ed-fg-85      { color: rgba(var(--ed-fg), 0.85); }
+.editor-stage .ed-fg-65      { color: rgba(var(--ed-fg), 0.65); }
+.editor-stage .ed-fg-45      { color: rgba(var(--ed-fg), 0.45); }
+.editor-stage .ed-fg-30      { color: rgba(var(--ed-fg), 0.30); }
+.editor-stage .ed-fg-22      { color: rgba(var(--ed-fg), 0.22); }
+
+.editor-stage .ed-surface-025 { background-color: rgba(var(--ed-fg), 0.025); }
+.editor-stage .ed-surface-04  { background-color: rgba(var(--ed-fg), 0.04); }
+.editor-stage .ed-surface-05  { background-color: rgba(var(--ed-fg), 0.05); }
+.editor-stage .ed-surface-06  { background-color: rgba(var(--ed-fg), 0.06); }
+.editor-stage .ed-surface-07  { background-color: rgba(var(--ed-fg), 0.07); }
+.editor-stage .ed-surface-08  { background-color: rgba(var(--ed-fg), 0.08); }
+.editor-stage .ed-surface-09  { background-color: rgba(var(--ed-fg), 0.09); }
+.editor-stage .ed-surface-11  { background-color: rgba(var(--ed-fg), 0.11); }
+.editor-stage .ed-surface-14  { background-color: rgba(var(--ed-fg), 0.14); }
+.editor-stage .hover\:ed-surface-08:hover  { background-color: rgba(var(--ed-fg), 0.08); }
+.editor-stage .hover\:ed-surface-11:hover  { background-color: rgba(var(--ed-fg), 0.11); }
+.editor-stage .hover\:ed-surface-14:hover  { background-color: rgba(var(--ed-fg), 0.14); }
+
+.editor-stage .ed-border-06   { border-color: rgba(var(--ed-fg), 0.06); }
+.editor-stage .ed-border-08   { border-color: rgba(var(--ed-fg), 0.08); }
+.editor-stage .ed-border-10   { border-color: rgba(var(--ed-fg), 0.10); }
+.editor-stage .ed-border-15   { border-color: rgba(var(--ed-fg), 0.15); }
+
+/* Overlay badges on preview: always sit on top of media, so the
+   background needs to contrast against BOTH light and dark media.
+   Keep the backgrounds semi-transparent dark in light mode (same as
+   dark mode) so text stays white/readable against any photo. */
+.editor-stage .ed-overlay-bg { background-color: rgba(0, 0, 0, 0.55); }
+.editor-stage .ed-overlay-bg-strong { background-color: rgba(0, 0, 0, 0.70); }

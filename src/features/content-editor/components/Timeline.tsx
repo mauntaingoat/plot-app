@@ -106,12 +106,52 @@ export function Timeline({ simpleMode = false }: { simpleMode?: boolean } = {}) 
     return () => ro.disconnect()
   }, [applyStripTransform, clips.length])
 
-  // Manual scrub: pointer drag on the wrapper updates composedTime, syncs
-  // the video element to the new position, and pauses if it was playing.
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (e.target instanceof HTMLElement && e.target.closest('button')) return // ignore taps on buttons
+  // Helper: given a composedTime, find which clip it falls into and
+  // what currentTime within that clip's source corresponds to it.
+  const decompose = useCallback((composed: number) => {
+    const cs = useEditorStore.getState().clips
+    let acc = 0
+    for (const clip of cs) {
+      const eff = (clip.trimOut - clip.trimIn) / clip.speed
+      if (composed <= acc + eff + 0.001) {
+        const offset = Math.max(0, composed - acc)
+        return { clipId: clip.id, timeInClip: clip.trimIn + offset * clip.speed }
+      }
+      acc += eff
+    }
+    const last = cs[cs.length - 1]
+    return last ? { clipId: last.id, timeInClip: last.trimOut } : null
+  }, [])
 
-    // Pause master clock + any currently playing video so dragging scrubs
+  // Commit a composed-time delta to the store + DOM + video element.
+  const commitScrub = useCallback((next: number) => {
+    setComposedTime(next)
+    applyStripTransform(next)
+    const target = decompose(next)
+    if (target) {
+      if (target.clipId !== useEditorStore.getState().selectedClipId) {
+        useEditorStore.getState().selectClip(target.clipId)
+      }
+      const v = document.querySelector<HTMLVideoElement>('.editor-stage video')
+      if (v) v.currentTime = target.timeInClip
+    }
+  }, [setComposedTime, applyStripTransform, decompose])
+
+  // Inertia scrolling state shared across pointer, wheel, and momentum raf.
+  const momentumRaf = useRef<number | null>(null)
+  const stopMomentum = useCallback(() => {
+    if (momentumRaf.current !== null) {
+      cancelAnimationFrame(momentumRaf.current)
+      momentumRaf.current = null
+    }
+  }, [])
+
+  // Pointer drag with velocity sampling → momentum decay on release.
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.target instanceof HTMLElement && e.target.closest('button')) return
+
+    // Kill any in-flight momentum from a previous flick, pause playback.
+    stopMomentum()
     useEditorStore.getState().setPlaying(false)
     const videos = document.querySelectorAll<HTMLVideoElement>('.editor-stage video')
     videos.forEach((v) => { if (!v.paused) v.pause() })
@@ -122,54 +162,93 @@ export function Timeline({ simpleMode = false }: { simpleMode?: boolean } = {}) 
     const totalDur = state0.totalDuration()
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
 
-    // Helper: given a composedTime, find which clip it falls into and
-    // what currentTime within that clip's source corresponds to it.
-    const decompose = (composed: number) => {
-      const cs = useEditorStore.getState().clips
-      let acc = 0
-      for (const clip of cs) {
-        const eff = (clip.trimOut - clip.trimIn) / clip.speed
-        if (composed <= acc + eff + 0.001) {
-          const offset = Math.max(0, composed - acc)
-          return { clipId: clip.id, timeInClip: clip.trimIn + offset * clip.speed }
-        }
-        acc += eff
-      }
-      const last = cs[cs.length - 1]
-      return last ? { clipId: last.id, timeInClip: last.trimOut } : null
-    }
+    // Velocity tracking — keep last two samples so the release velocity
+    // reflects the final flick, not the whole drag.
+    let lastX = startX
+    let lastT = performance.now()
+    let velocityPxPerMs = 0
 
     const move = (ev: PointerEvent) => {
       const dx = ev.clientX - startX
-      // Dragging right scrubs backwards (composedTime decreases)
       const next = Math.max(0, Math.min(totalDur, startComposed - dx / PX_PER_SECOND))
+      commitScrub(next)
 
-      // Update React state for chrome (timecode display)
-      setComposedTime(next)
-      // Write transform directly so the strip moves on this exact frame
-      applyStripTransform(next)
-
-      // Sync the video element's currentTime so play resumes from here
-      const target = decompose(next)
-      if (target) {
-        // Switch selected clip if dragged across clip boundaries
-        if (target.clipId !== useEditorStore.getState().selectedClipId) {
-          useEditorStore.getState().selectClip(target.clipId)
-        }
-        const v = document.querySelector<HTMLVideoElement>('.editor-stage video')
-        if (v) {
-          // Clamp to the clip's source range so we don't seek past trimOut
-          v.currentTime = target.timeInClip
-        }
+      const now = performance.now()
+      const dt = now - lastT
+      if (dt > 0) {
+        const instant = (ev.clientX - lastX) / dt
+        // Low-pass filter so a single jittery sample doesn't dominate.
+        velocityPxPerMs = velocityPxPerMs * 0.6 + instant * 0.4
       }
+      lastX = ev.clientX
+      lastT = now
     }
+
     const up = () => {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
+
+      // Below this threshold the flick was intentional-stop, not a throw.
+      if (Math.abs(velocityPxPerMs) < 0.15) return
+
+      // Momentum decay: each frame apply the velocity, then damp it.
+      // Friction tuned so a firm flick travels ~12–16 clip-seconds before
+      // coming to rest, which matches iOS scroll feel on a 28px/s ruler.
+      const FRICTION = 0.94
+      const MIN_V = 0.02
+      let v = -velocityPxPerMs // screen +x → composed -t
+      let lastFrameT = performance.now()
+
+      const step = () => {
+        const now = performance.now()
+        const dt = now - lastFrameT
+        lastFrameT = now
+        // Velocity is in px/ms; convert to composed seconds/ms via PX_PER_SECOND.
+        const composedDelta = (v * dt) / PX_PER_SECOND
+        const currentComposed = useEditorStore.getState().composedTime
+        const total = useEditorStore.getState().totalDuration()
+        const next = Math.max(0, Math.min(total, currentComposed + composedDelta))
+        commitScrub(next)
+
+        // Hit a boundary → stop immediately.
+        if (next === 0 || next === total) {
+          momentumRaf.current = null
+          return
+        }
+        v *= Math.pow(FRICTION, dt / 16.67) // frame-rate independent damping
+        if (Math.abs(v) < MIN_V) {
+          momentumRaf.current = null
+          return
+        }
+        momentumRaf.current = requestAnimationFrame(step)
+      }
+      momentumRaf.current = requestAnimationFrame(step)
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
   }
+
+  // Trackpad horizontal scroll. ONLY reacts to `deltaX` (2-finger
+  // horizontal swipe) so vertical page scrolling still works normally
+  // when the pointer happens to be over the timeline. If the gesture is
+  // predominantly vertical, let the browser handle it.
+  const onWheel = (e: React.WheelEvent) => {
+    if (clips.length === 0) return
+    const dx = e.deltaX
+    // Guard against mostly-vertical gestures (trackpads emit tiny deltaX
+    // noise during vertical scrolls). Require deltaX to dominate.
+    if (Math.abs(dx) < 1 || Math.abs(dx) <= Math.abs(e.deltaY)) return
+    e.preventDefault()
+    stopMomentum()
+    useEditorStore.getState().setPlaying(false)
+    const totalDur = useEditorStore.getState().totalDuration()
+    const current = useEditorStore.getState().composedTime
+    const next = Math.max(0, Math.min(totalDur, current + dx / PX_PER_SECOND))
+    commitScrub(next)
+  }
+
+  // Stop any momentum when the component unmounts to avoid stray raf.
+  useEffect(() => () => stopMomentum(), [stopMomentum])
 
   // Always-visible ruler
   const rulerMarks = useMemo(() => {
@@ -187,12 +266,13 @@ export function Timeline({ simpleMode = false }: { simpleMode?: boolean } = {}) 
       <div
         ref={wrapperRef}
         onPointerDown={clips.length > 0 ? onPointerDown : undefined}
+        onWheel={clips.length > 0 ? onWheel : undefined}
         className={`relative overflow-hidden ${clips.length > 0 ? 'cursor-grab active:cursor-grabbing' : ''}`}
         style={{ height: CLIP_HEIGHT + 32, touchAction: 'pan-y' }}
       >
         {/* Empty placeholder — only when no clips */}
         {clips.length === 0 && (
-          <div className="absolute inset-0 rounded-[14px] bg-white/[0.025] flex items-center justify-center text-white/35 text-[12px] font-medium pointer-events-none">
+          <div className="absolute inset-0 rounded-[14px] ed-surface-025 flex items-center justify-center ed-fg-45 text-[12px] font-medium pointer-events-none">
             {importingCount > 0 ? (
               <span className="inline-flex items-center gap-2">
                 <Loader2 size={12} className="text-tangerine animate-spin" strokeWidth={2.4} />
@@ -227,7 +307,7 @@ export function Timeline({ simpleMode = false }: { simpleMode?: boolean } = {}) 
                 {rulerMarks.marks.map((t) => (
                   <span
                     key={t}
-                    className="absolute bottom-0 font-mono text-[9px] text-white/45 tabular-nums whitespace-nowrap"
+                    className="absolute bottom-0 font-mono text-[9px] ed-fg-45 tabular-nums whitespace-nowrap"
                     style={{
                       left: t * PX_PER_SECOND,
                       transform: t === 0 ? 'none' : 'translateX(-50%)',
@@ -263,7 +343,7 @@ export function Timeline({ simpleMode = false }: { simpleMode?: boolean } = {}) 
                 <button
                   onClick={(e) => { e.stopPropagation(); fileRef.current?.click() }}
                   onPointerDown={(e) => e.stopPropagation()}
-                  className="shrink-0 rounded-[10px] bg-white/[0.05] flex items-center justify-center text-white/55 hover:text-white hover:bg-white/[0.09] active:scale-[0.97] transition-all cursor-pointer"
+                  className="shrink-0 rounded-[10px] ed-surface-05 flex items-center justify-center ed-fg-65 hover:ed-fg hover:ed-surface-09 active:scale-[0.97] transition-all cursor-pointer"
                   style={{ width: 48, height: CLIP_HEIGHT }}
                   aria-label="Add clip"
                 >
@@ -278,10 +358,10 @@ export function Timeline({ simpleMode = false }: { simpleMode?: boolean } = {}) 
         {clips.length > 0 && (
           <div
             aria-hidden
-            className="absolute top-[14px] bottom-[2px] left-1/2 w-[2px] bg-white pointer-events-none z-10"
-            style={{ boxShadow: '0 0 0 1px rgba(0,0,0,0.4), 0 0 12px rgba(255,255,255,0.25)' }}
+            className="absolute top-[14px] bottom-[2px] left-1/2 w-[2px] pointer-events-none z-10"
+            style={{ background: 'rgb(var(--ed-fg))', boxShadow: '0 0 0 1px rgba(0,0,0,0.4), 0 0 12px rgba(var(--ed-fg), 0.25)' }}
           >
-            <div className="absolute -top-[3px] left-1/2 -translate-x-1/2 w-[10px] h-[10px] rounded-full bg-white" />
+            <div className="absolute -top-[3px] left-1/2 -translate-x-1/2 w-[10px] h-[10px] rounded-full" style={{ background: 'rgb(var(--ed-fg))' }} />
           </div>
         )}
       </div>
@@ -304,13 +384,13 @@ export function Timeline({ simpleMode = false }: { simpleMode?: boolean } = {}) 
       {!simpleMode && clips.length > 0 && (
         <button
           onClick={() => setView('audio')}
-          className="mt-1.5 w-full flex items-center gap-2 h-[26px] px-3 rounded-[8px] bg-white/[0.025] hover:bg-white/[0.05] cursor-pointer transition-colors group"
+          className="mt-1.5 w-full flex items-center gap-2 h-[26px] px-3 rounded-[8px] ed-surface-025 hover:ed-surface-05 cursor-pointer transition-colors group"
         >
-          <Music2 size={11} className="text-white/40 group-hover:text-white/80 transition-colors" strokeWidth={2.2} />
-          <span className="text-[10px] font-semibold text-white/45 group-hover:text-white/85 transition-colors tracking-tight">
+          <Music2 size={11} className="ed-fg-45 transition-colors" strokeWidth={2.2} />
+          <span className="text-[10px] font-semibold ed-fg-45 transition-colors tracking-tight">
             + Audio
           </span>
-          <span className="text-[9px] text-white/30 ml-2">{overlays.length === 0 ? 'voiceover coming next' : ''}</span>
+          <span className="text-[9px] ed-fg-30 ml-2">{overlays.length === 0 ? 'voiceover coming next' : ''}</span>
         </button>
       )}
     </div>
@@ -378,14 +458,15 @@ function ClipTile({ clip, active, onTap, setTrim }: ClipTileProps) {
         onPointerCancel={cancelLongPress}
         onPointerLeave={cancelLongPress}
         onClick={onTap}
-        className="relative shrink-0 bg-charcoal cursor-pointer"
+        className="relative shrink-0 cursor-pointer"
         style={{
           width: tileW,
           height: CLIP_HEIGHT,
           touchAction: 'pan-x',
           borderRadius: 10,
           overflow: 'hidden',
-          outline: active ? '2px solid #FFD93D' : '1px solid rgba(255,255,255,0.05)',
+          background: '#1A1D26',
+          outline: active ? '2px solid #FFD93D' : '1px solid rgba(var(--ed-fg), 0.08)',
           outlineOffset: active ? 1 : 0,
           // Only animate the outline color — explicit so width never animates
           transition: 'outline-color 0.15s ease',
@@ -507,6 +588,9 @@ function CenteredBrackets({
   const onDown = (edge: 'in' | 'out') => (e: React.PointerEvent) => {
     e.stopPropagation()
     e.preventDefault()
+    // Capture history ONCE at drag start so the entire trim gesture
+    // rolls back as a single undo step (not dozens of per-pixel entries).
+    useEditorStore.getState().markHistory()
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
 
     const startX = e.clientX
@@ -535,9 +619,11 @@ function CenteredBrackets({
     window.addEventListener('pointerup', up)
   }
 
-  // Brackets are siblings of the tile (parent has overflow:visible). They
-  // align to the tile's actual visible left/right edges via fixed pixel
-  // offsets — left bracket at left:0 of the parent; right bracket at left:tileW.
+  // Both bracket hit areas sit ENTIRELY OUTSIDE the tile (left of the
+  // left edge, right of the right edge) so they never overlap regardless
+  // of how narrow the user trims the clip. The visible yellow grip hugs
+  // the tile edge from outside.
+  const HIT_W = BRACKET_W + BRACKET_HIT_PAD * 2
   return (
     <>
       {/* LEFT bracket (hidden in rightOnly mode — photos don't trim in) */}
@@ -546,17 +632,17 @@ function CenteredBrackets({
         onPointerDown={onDown('in')}
         className="absolute cursor-ew-resize z-30"
         style={{
-          left: -BRACKET_HIT_PAD,
+          left: -HIT_W,
           top: 0,
           height: CLIP_HEIGHT,
-          width: BRACKET_W + BRACKET_HIT_PAD * 2,
+          width: HIT_W,
           touchAction: 'none',
         }}
       >
         <div
           className="absolute pointer-events-none"
           style={{
-            left: BRACKET_HIT_PAD,
+            right: 0,
             top: '50%',
             transform: 'translateY(-50%)',
             width: BRACKET_W,
@@ -579,17 +665,17 @@ function CenteredBrackets({
         onPointerDown={onDown('out')}
         className="absolute cursor-ew-resize z-30"
         style={{
-          left: tileW - BRACKET_W - BRACKET_HIT_PAD,
+          left: tileW,
           top: 0,
           height: CLIP_HEIGHT,
-          width: BRACKET_W + BRACKET_HIT_PAD * 2,
+          width: HIT_W,
           touchAction: 'none',
         }}
       >
         <div
           className="absolute pointer-events-none"
           style={{
-            left: BRACKET_HIT_PAD,
+            left: 0,
             top: '50%',
             transform: 'translateY(-50%)',
             width: BRACKET_W,
@@ -630,10 +716,10 @@ function TextTrack({ wrapperRef, clipsTotal, composedTime }: TextTrackProps) {
           addOverlayAtPlayhead()
           setView('text')
         }}
-        className="mt-2 w-full flex items-center gap-2 h-[26px] px-3 rounded-[8px] bg-white/[0.025] hover:bg-white/[0.05] cursor-pointer transition-colors group"
+        className="mt-2 w-full flex items-center gap-2 h-[26px] px-3 rounded-[8px] ed-surface-025 hover:ed-surface-05 cursor-pointer transition-colors group"
       >
-        <Type size={11} className="text-white/40 group-hover:text-white/80 transition-colors" strokeWidth={2.2} />
-        <span className="text-[10px] font-semibold text-white/45 group-hover:text-white/85 transition-colors tracking-tight">
+        <Type size={11} className="ed-fg-45 transition-colors" strokeWidth={2.2} />
+        <span className="text-[10px] font-semibold ed-fg-45 transition-colors tracking-tight">
           + Text
         </span>
       </button>

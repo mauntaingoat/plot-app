@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { PreviewCanvas } from './components/PreviewCanvas'
 import { TransportBar } from './components/TransportBar'
@@ -6,6 +7,7 @@ import { ContextStrip } from './components/ContextStrip'
 import { BottomToolbar } from './components/BottomToolbar'
 import { EditorErrorBoundary } from './components/EditorErrorBoundary'
 import { useEditorStore } from './state/editorStore'
+import { useThemeStore } from '@/stores/themeStore'
 
 interface EditorStepProps {
   direction: number
@@ -13,6 +15,10 @@ interface EditorStepProps {
    *  Frame + Trim handles + Add clip + Replace/Delete. Used by the simple
    *  Video Reel flow. */
   simpleMode?: boolean
+  /** Back/Continue row. Rendered INSIDE the main column on desktop so the
+   *  buttons share the same width as the preview/timeline; rendered below
+   *  the editor on mobile as part of the stacked flow. */
+  footer?: ReactNode
 }
 
 /**
@@ -32,9 +38,11 @@ interface EditorStepProps {
  *   - When a tool strip is open: preview shrinks to ~36vh, strip slides
  *     into the gap between timeline and toolbar
  */
-export function EditorStep({ direction, simpleMode = false }: EditorStepProps) {
+export function EditorStep({ direction, simpleMode = false, footer }: EditorStepProps) {
   const view = useEditorStore((s) => s.view)
   const reset = useEditorStore((s) => s.reset)
+  const resolvedTheme = useThemeStore((s) => s.resolved)
+  const isLight = resolvedTheme === 'light'
   const stripActive = view === 'adjust' || view === 'crop' || view === 'speed'
                    || view === 'audio' || view === 'filter' || view === 'text'
 
@@ -50,7 +58,7 @@ export function EditorStep({ direction, simpleMode = false }: EditorStepProps) {
       initial="enter"
       animate="center"
       exit="exit"
-      className="editor-stage"
+      className={`editor-stage ${isLight ? 'editor-light' : ''}`}
       data-strip-active={stripActive ? 'true' : 'false'}
     >
       {/* Faint noise so the dark canvas doesn't read as flat */}
@@ -70,18 +78,38 @@ export function EditorStep({ direction, simpleMode = false }: EditorStepProps) {
           PreviewCanvas, Timeline, etc., and Tailwind classes change the
           layout. */}
       <EditorErrorBoundary onReset={reset}>
-        <div className="relative lg:grid lg:gap-6 lg:items-stretch flex flex-col gap-3" style={{ gridTemplateColumns: '1fr 160px' }}>
-          {/* Main column on desktop / stacked on mobile */}
-          <div className="flex flex-col gap-3 lg:gap-4 min-w-0">
+        {/*
+          Desktop layout:
+            - Main column is `max-w-2xl mx-auto` so it sits centered at
+              the viewport midline — preview, timeline, and back/
+              continue all align with every other step in the flow.
+            - Sidebar is ABSOLUTELY positioned to the right of the
+              centered main column via `left: calc(50% + 336px + 24px)`
+              so it doesn't offset the main column's centering.
+          Mobile layout: vertical stack; sidebar hidden.
+        */}
+        <div className="relative flex flex-col gap-3 lg:gap-0">
+          <div className="flex flex-col gap-3 lg:gap-4 w-full max-w-2xl mx-auto">
             <PreviewCanvas />
             <TransportBar />
             <Timeline simpleMode={simpleMode} />
-            <ContextStrip />
+            {/* Mobile context strip + toolbar, hidden on desktop. */}
+            <div className="lg:hidden">
+              <ContextStrip />
+              <BottomToolbar simpleMode={simpleMode} />
+            </div>
+            {footer}
           </div>
 
-          {/* Toolbar — right column on desktop, bottom on mobile */}
-          <div className="lg:flex lg:items-start lg:justify-center lg:pt-2">
+          {/* Desktop sidebar — absolutely positioned relative to the
+              outer wrapper so it sits to the right of the centered
+              main column without affecting its centering. */}
+          <div
+            className="hidden lg:flex lg:flex-col lg:gap-3 lg:absolute lg:top-0 lg:w-[180px]"
+            style={{ left: 'calc(50% + 336px + 24px)' }}
+          >
             <BottomToolbar simpleMode={simpleMode} />
+            <ContextStrip />
           </div>
         </div>
       </EditorErrorBoundary>

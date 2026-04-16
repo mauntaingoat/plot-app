@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AlertTriangle } from 'lucide-react'
 import { Button } from './Button'
@@ -43,7 +44,16 @@ export function ConfirmDialog({
   useScrollLock(isOpen)
   const isDesktop = useIsDesktop()
 
-  return (
+  // Render into document.body via a portal so `position: fixed` resolves
+  // against the viewport — NOT against any transformed ancestor (e.g.
+  // the AnimatePresence motion.divs in PinCreate, which use `x` transforms
+  // that create a new containing block for fixed descendants). Without
+  // the portal, the bottom sheet floats above the viewport's bottom edge
+  // and the swipe drag misbehaves because its constraints are measured
+  // from the wrong container.
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
@@ -79,15 +89,19 @@ export function ConfirmDialog({
               </div>
             </motion.div>
           ) : (
-            /* Mobile: bottom sheet with swipe-to-dismiss */
+            /* Mobile: bottom sheet with swipe-DOWN-to-dismiss only. */
             <motion.div
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
               drag="y"
-              dragConstraints={{ top: 0 }}
-              dragElastic={0.2}
+              // Hard-clamp: y cannot go ABOVE its resting position (bottom
+              // edge of viewport) and can travel down freely toward
+              // dismissal. No elastic overshoot at the top so the sheet
+              // never lifts through the screen.
+              dragConstraints={{ top: 0, bottom: 10000 }}
+              dragElastic={{ top: 0, bottom: 0.3 }}
               onDragEnd={(_, info) => {
                 if (info.offset.y > 80 || info.velocity.y > 400) onClose()
               }}
@@ -117,6 +131,7 @@ export function ConfirmDialog({
           )}
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   )
 }

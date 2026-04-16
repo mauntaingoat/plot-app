@@ -33,9 +33,9 @@ const MAIN_TOOLS: ToolDef[] = [
   { id: 'crop',   label: 'Frame',  icon: Crop },
 ]
 
-const SIMPLE_MAIN_TOOLS: ToolDef[] = [
-  { id: 'crop', label: 'Frame', icon: Crop },
-]
+// Simple-mode main tools: empty. Frame is now a floating overlay on the
+// preview itself, so there's no reason to duplicate it in the toolbar.
+const SIMPLE_MAIN_TOOLS: ToolDef[] = []
 
 const CLIP_SUB_TOOLS: ToolDef[] = [
   { id: 'action-split',   label: 'Split',   icon: SplitSquareVertical },
@@ -108,10 +108,16 @@ export function BottomToolbar({ simpleMode = false }: { simpleMode?: boolean } =
     ? (simpleMode ? SIMPLE_CLIP_SUB_TOOLS : CLIP_SUB_TOOLS)
     : (simpleMode ? SIMPLE_MAIN_TOOLS : MAIN_TOOLS)
 
+  // In simple mode the main tool list is empty (Frame lives on the
+  // preview as an overlay). Hide the toolbar row entirely unless a clip
+  // is selected (sub-tools Replace/Delete). Applies to BOTH mobile and
+  // desktop — desktop sidebar just shows nothing when not sub-tooling.
+  const hideBar = simpleMode && !showSubTools
+
   return (
     <>
       {/* ─── Mobile: horizontal row ─── */}
-      <div className="lg:hidden">
+      <div className={`lg:hidden ${hideBar ? 'hidden' : ''}`}>
         <div className="relative h-[88px] flex items-center">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
@@ -139,7 +145,7 @@ export function BottomToolbar({ simpleMode = false }: { simpleMode?: boolean } =
       </div>
 
       {/* ─── Desktop: vertical column ─── */}
-      <div className="hidden lg:block w-full">
+      <div className={`hidden lg:block w-full ${hideBar ? 'lg:hidden' : ''}`}>
         <div className="relative">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
@@ -153,7 +159,7 @@ export function BottomToolbar({ simpleMode = false }: { simpleMode?: boolean } =
               {showSubTools && (
                 <button
                   onClick={() => useEditorStore.getState().selectClip(null)}
-                  className="flex items-center justify-center gap-2 h-10 rounded-[12px] bg-white/[0.06] hover:bg-white/[0.10] cursor-pointer transition-colors text-white/85 text-[11px] font-semibold"
+                  className="flex items-center justify-center gap-2 h-10 rounded-[12px] ed-surface-06 hover:ed-surface-11 cursor-pointer transition-colors ed-fg-85 text-[11px] font-semibold"
                   aria-label="Back"
                 >
                   <ChevronLeft size={15} strokeWidth={2.3} />
@@ -216,7 +222,7 @@ function Tile({
         horizontal
           ? { minWidth: 64 }
           : {
-              background: active ? 'rgba(255,107,61,0.10)' : 'rgba(255,255,255,0.04)',
+              background: active ? 'rgba(255,107,61,0.10)' : 'rgba(var(--ed-fg), 0.04)',
               boxShadow: active ? '0 0 0 1.5px rgba(255,107,61,0.45) inset' : undefined,
             }
       }
@@ -228,10 +234,10 @@ function Tile({
         style={{
           background: horizontal
             ? disabled
-              ? 'rgba(255,255,255,0.04)'
+              ? 'rgba(var(--ed-fg), 0.04)'
               : active
               ? 'rgba(255,107,61,0.16)'
-              : 'rgba(255,255,255,0.08)'
+              : 'rgba(var(--ed-fg), 0.08)'
             : 'transparent',
           boxShadow: horizontal && active ? '0 0 0 1.5px rgba(255,107,61,0.55) inset' : undefined,
         }}
@@ -241,12 +247,12 @@ function Tile({
           strokeWidth={2.1}
           className={
             disabled
-              ? 'text-white/22'
+              ? 'ed-fg-22'
               : active
               ? 'text-tangerine'
               : tool.danger
               ? 'text-live-red'
-              : 'text-white/85'
+              : 'ed-fg-85'
           }
         />
       </div>
@@ -254,7 +260,7 @@ function Tile({
         className={`font-semibold tracking-tight leading-none transition-colors duration-150 ${
           horizontal ? 'text-[11px]' : 'text-[12px]'
         } ${
-          disabled ? 'text-white/22' : active ? 'text-tangerine' : 'text-white/65 group-hover:text-white/95'
+          disabled ? 'ed-fg-22' : active ? 'text-tangerine' : 'ed-fg-65 group-hover:ed-fg-95'
         }`}
       >
         {tool.label}
@@ -272,10 +278,10 @@ function BackChevron({ onClick }: { onClick: () => void }) {
       aria-label="Back"
       style={{ minWidth: 56 }}
     >
-      <div className="w-[44px] h-[44px] rounded-[13px] bg-white/[0.08] flex items-center justify-center">
-        <ChevronLeft size={18} strokeWidth={2.3} className="text-white/85" />
+      <div className="w-[44px] h-[44px] rounded-[13px] ed-surface-08 flex items-center justify-center">
+        <ChevronLeft size={18} strokeWidth={2.3} className="ed-fg-85" />
       </div>
-      <span className="text-[11px] font-semibold tracking-tight text-white/65 leading-none">Back</span>
+      <span className="text-[11px] font-semibold tracking-tight ed-fg-65 leading-none">Back</span>
     </motion.button>
   )
 }

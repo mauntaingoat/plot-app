@@ -29,6 +29,7 @@ import { NotificationSettings } from '@/components/dashboard/NotificationSetting
 import { ContentLibrary } from '@/components/dashboard/ContentLibrary'
 import { canActivatePin, hasFeature, type Tier } from '@/lib/tiers'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useScrollLock } from '@/hooks/useScrollLock'
 import { Input } from '@/components/ui/Input'
 import { useAuthStore } from '@/stores/authStore'
@@ -59,6 +60,7 @@ export default function Dashboard() {
   const [showPinActions, setShowPinActions] = useState<Pin | null>(null)
   const [showAddPlatform, setShowAddPlatform] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Pin | null>(null)
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
   const [copied, setCopied] = useState(false)
   const [paywall, setPaywall] = useState<{ open: boolean; reason: string; upgradeTo?: Tier }>({ open: false, reason: '' })
   const [qrPin, setQrPin] = useState<Pin | null>(null)
@@ -129,10 +131,12 @@ export default function Dashboard() {
     return days.map((label, i) => ({ label, value: [1240, 1890, 1560, 2340, 3120, 2870, 2180][i] }))
   }, [])
 
-  const handleSignOut = () => {
+  const confirmSignOut = () => {
+    setShowSignOutConfirm(false)
     setUserDoc(null)
     navigate('/')
   }
+  const requestSignOut = () => setShowSignOutConfirm(true)
 
   const handleSharePlot = async () => {
     const url = `https://reel.st/${activeUser?.username || ''}`
@@ -365,6 +369,7 @@ export default function Dashboard() {
             pins={pins}
             agentId={activeUser.uid}
             isDesktop={isDesktop}
+            onNavigateUpload={() => navigate('/dashboard/pin/new?tab=content')}
             onUploadContent={(files, type) => {
               // TODO: upload files to Storage, create content items
               console.log('Upload', files.length, type, 'files')
@@ -477,7 +482,7 @@ export default function Dashboard() {
             </div>
 
             <div className="pt-2">
-              <Button variant="danger" size="lg" fullWidth icon={<LogOut size={16} />} onClick={handleSignOut}>Sign out</Button>
+              <Button variant="danger" size="lg" fullWidth icon={<LogOut size={16} />} onClick={requestSignOut}>Sign out</Button>
             </div>
             <div className="flex items-center justify-center gap-3 pt-4">
               <button className="text-[12px] text-ash">Privacy</button>
@@ -588,6 +593,17 @@ export default function Dashboard() {
         onClose={() => setPaywall({ open: false, reason: '' })}
         reason={paywall.reason}
         upgradeTo={paywall.upgradeTo}
+      />
+
+      {/* Sign out confirmation — desktop modal / mobile bottom sheet. */}
+      <ConfirmDialog
+        isOpen={showSignOutConfirm}
+        onClose={() => setShowSignOutConfirm(false)}
+        onConfirm={confirmSignOut}
+        title="Sign out?"
+        message="You'll need to sign back in to access your dashboard."
+        confirmLabel="Sign out"
+        confirmVariant="danger"
       />
 
       <QRCodeModal
@@ -770,7 +786,7 @@ export default function Dashboard() {
               <span>Add Pin</span>
             </button>
             <button
-              onClick={handleSignOut}
+              onClick={requestSignOut}
               className="w-full flex items-center justify-center gap-2 mt-2 px-3 py-2 rounded-xl text-smoke text-[12px] font-medium cursor-pointer hover:text-ink transition-colors"
             >
               <LogOut size={14} />
@@ -847,7 +863,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-ivory pb-tab-safe">
       {/* Header */}
-      <div className="sticky top-0 z-30 bg-ivory/95 backdrop-blur-xl border-b border-border-light">
+      <div className="sticky top-0 z-[100] bg-ivory/95 backdrop-blur-xl border-b border-border-light">
         <div className="px-5 flex items-center justify-between" style={{ paddingTop: 'calc(env(safe-area-inset-top, 12px) + 8px)', paddingBottom: '12px' }}>
           <div className="flex items-center gap-3">
             <Avatar src={activeUser.photoURL} name={activeUser.displayName || 'Agent'} size={36} />

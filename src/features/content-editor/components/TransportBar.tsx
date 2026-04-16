@@ -24,6 +24,14 @@ export function TransportBar() {
   const selectClip = useEditorStore((s) => s.selectClip)
   const totalDuration = useEditorStore((s) => s.totalDuration())
   const hasContent = clips.length > 0
+  // Undo/redo — subscribe to past/future length so the button states
+  // re-render when history changes.
+  const past = useEditorStore((s) => s.past)
+  const future = useEditorStore((s) => s.future)
+  const undo = useEditorStore((s) => s.undo)
+  const redo = useEditorStore((s) => s.redo)
+  const canUndo = past.length > 0
+  const canRedo = future.length > 0
 
   const togglePlay = () => {
     if (!hasContent) return
@@ -39,9 +47,9 @@ export function TransportBar() {
   return (
     <div className="relative flex items-center justify-between px-6 lg:px-12 h-[60px]">
       {/* Timecode (left) — composed time across the whole edit */}
-      <span className="font-mono text-[13px] tabular-nums tracking-tight text-white/85">
+      <span className="font-mono text-[13px] tabular-nums tracking-tight ed-fg-85">
         {fmt(composedTime)}
-        <span className="text-white/30"> / {fmt(totalDuration)}</span>
+        <span className="ed-fg-30"> / {fmt(totalDuration)}</span>
       </span>
 
       {/* Play (center, big, tangerine, breathing on play) */}
@@ -59,7 +67,7 @@ export function TransportBar() {
           className={`relative w-[56px] h-[56px] rounded-full flex items-center justify-center transition-colors ${
             hasContent
               ? 'bg-tangerine cursor-pointer'
-              : 'bg-white/[0.06] cursor-not-allowed'
+              : 'ed-surface-06 cursor-not-allowed'
           }`}
           style={{
             boxShadow: hasContent
@@ -74,18 +82,28 @@ export function TransportBar() {
         </motion.button>
       </div>
 
-      {/* Undo / Redo (right, ghost) */}
+      {/* Undo / Redo (right) */}
       <div className="flex items-center gap-1">
         <button
-          disabled
-          className="w-9 h-9 rounded-full flex items-center justify-center text-white/22 cursor-not-allowed"
+          onClick={canUndo ? undo : undefined}
+          disabled={!canUndo}
+          className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+            canUndo
+              ? 'ed-fg-85 hover:ed-fg hover:ed-surface-08 cursor-pointer'
+              : 'ed-fg-22 cursor-not-allowed'
+          }`}
           aria-label="Undo"
         >
           <Undo2 size={16} strokeWidth={2.2} />
         </button>
         <button
-          disabled
-          className="w-9 h-9 rounded-full flex items-center justify-center text-white/22 cursor-not-allowed"
+          onClick={canRedo ? redo : undefined}
+          disabled={!canRedo}
+          className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+            canRedo
+              ? 'ed-fg-85 hover:ed-fg hover:ed-surface-08 cursor-pointer'
+              : 'ed-fg-22 cursor-not-allowed'
+          }`}
           aria-label="Redo"
         >
           <Redo2 size={16} strokeWidth={2.2} />

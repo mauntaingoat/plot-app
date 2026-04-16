@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Upload, Play, Image, Film, MapPin, Plus, Eye, Bookmark, MoreHorizontal, Edit3, Trash2, Images, ChevronDown, ChevronLeft, ChevronRight, Pause } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
@@ -14,9 +15,11 @@ interface ContentLibraryProps {
   onAssignContent: (contentId: string, fromPinId: string, toPinId: string, contentItem?: ContentItem) => void
   onArchiveContent: (contentId: string, pinId: string) => void
   isDesktop: boolean
+  /** Navigate to the content-creation flow (PinCreate content-type step). */
+  onNavigateUpload?: () => void
 }
 
-export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent, onArchiveContent, isDesktop }: ContentLibraryProps) {
+export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent, onArchiveContent, isDesktop, onNavigateUpload }: ContentLibraryProps) {
   const [filter, setFilter] = useState<'all' | 'reel' | 'photo'>('all')
   const [archiveTarget, setArchiveTarget] = useState<{ contentId: string; pinId: string } | null>(null)
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
@@ -113,7 +116,11 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
           </button>
         ))}
         <div className="flex-1" />
-        <UploadButton onPhoto={() => photoRef.current?.click()} onVideo={() => videoRef.current?.click()} />
+        {onNavigateUpload ? (
+          <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={onNavigateUpload}>Upload</Button>
+        ) : (
+          <UploadButton onPhoto={() => photoRef.current?.click()} onVideo={() => videoRef.current?.click()} />
+        )}
       </div>
 
       <p className="text-[11px] text-ash">{filtered.length} item{filtered.length !== 1 ? 's' : ''}</p>
