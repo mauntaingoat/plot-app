@@ -35,6 +35,7 @@ import { Input } from '@/components/ui/Input'
 import { useAuthStore } from '@/stores/authStore'
 import { useThemeStore, type ThemePreference } from '@/stores/themeStore'
 import { firebaseConfigured } from '@/config/firebase'
+import { subscribeToAllAgentPins } from '@/lib/firestore'
 import { MOCK_PINS_CAROLINA, MOCK_CURRENT_USER, MOCK_AGENTS } from '@/lib/mock'
 import { PLATFORM_LIST, PLATFORM_LOGOS } from '@/components/icons/PlatformLogos'
 import { PIN_CONFIG, type Pin, type Platform, type ForSalePin, type OpenHouse, type ContentItem } from '@/lib/types'
@@ -88,8 +89,19 @@ export default function Dashboard() {
   // Use real userDoc if signed in, otherwise fall back to Carolina (mock) for demo
   const currentUser = userDoc || MOCK_CURRENT_USER
 
-  // Pins with toggle state — use Carolina's mock pins when there's no real data
+  // Pins — real Firestore subscription when signed in, mock data for demo.
   const [pins, setPins] = useState<Pin[]>(MOCK_PINS_CAROLINA)
+  const [pinsLoading, setPinsLoading] = useState(false)
+  useEffect(() => {
+    if (!userDoc?.uid) return
+    setPinsLoading(true)
+    const unsub = subscribeToAllAgentPins(userDoc.uid, (live) => {
+      // If the agent has real pins, use them. Otherwise keep mock for demo.
+      if (live.length > 0) setPins(live)
+      setPinsLoading(false)
+    })
+    return () => { unsub?.() }
+  }, [userDoc?.uid])
 
   const handleTogglePin = useCallback(async (pinId: string, enabled: boolean) => {
     // Gate activation — block if at active pin cap (tier limits)

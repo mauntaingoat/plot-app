@@ -175,6 +175,21 @@ export function subscribeToAgentPins(agentId: string, callback: (pins: Pin[]) =>
   })
 }
 
+/** Dashboard variant — returns ALL agent pins (enabled + disabled)
+ *  so the toggle UI can manage visibility. */
+export function subscribeToAllAgentPins(agentId: string, callback: (pins: Pin[]) => void): Unsubscribe | null {
+  if (!db) return null
+  const q = query(
+    collection(db, 'pins'),
+    where('agentId', '==', agentId),
+    orderBy('createdAt', 'desc'),
+    limit(200)
+  )
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Pin))
+  })
+}
+
 // ══════════════════════════════════════════
 // FOLLOWS
 // ══════════════════════════════════════════

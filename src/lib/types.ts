@@ -69,14 +69,19 @@ export interface ContentItem {
   id: string
   type: ContentType
   mediaUrl: string
-  mediaUrls?: string[] // for photo carousels — multiple images in one content item
+  mediaUrls?: string[]
   thumbnailUrl?: string
   caption: string
-  duration?: number // seconds, for reels/videos
+  duration?: number
   createdAt: Timestamp
   views: number
   saves: number
-  publishAt?: Timestamp | null // if set + in the future, content is hidden from the public until then
+  publishAt?: Timestamp | null
+  /** Mux fields — populated by the Mux webhook when the asset finishes processing. */
+  muxAssetId?: string
+  muxPlaybackId?: string
+  mp4Url?: string
+  status?: 'preparing' | 'ready' | 'errored'
 }
 
 // ── Standalone content document (content collection) ──

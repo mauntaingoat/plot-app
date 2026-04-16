@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { X, Loader2 } from 'lucide-react'
@@ -6,8 +6,12 @@ import { Button } from '@/components/ui/Button'
 import { useThemeStore } from '@/stores/themeStore'
 import { EditorStep } from '@/features/content-editor/EditorStep'
 import { useEditorStore } from '@/features/content-editor/state/editorStore'
+import { renderComposition } from '@/features/content-editor/lib/render'
 import { CarouselStep } from '@/features/content-create/CarouselStep'
+import { publishCarouselPhotos } from '@/features/content-create/lib/publish'
 import { probePhoto } from '@/features/content-create/lib/probe'
+import { uploadFile, pinMediaPath } from '@/lib/storage'
+import { generateVideoThumbnail } from '@/lib/videoThumbnail'
 import type { CarouselDraft, CarouselPhoto } from '@/features/content-create/types'
 import type { ContentItem, Pin } from '@/lib/types'
 
@@ -39,6 +43,7 @@ export default function ContentEdit() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [saveProgress, setSaveProgress] = useState('')
   const [carouselDraft, setCarouselDraft] = useState<CarouselDraft | null>(null)
 
   // On mount: fetch the media from its URL and load into the editor.
@@ -93,13 +98,89 @@ export default function ContentEdit() {
   }, [])
 
   const handleSave = async () => {
+    if (!content) return
     setSaving(true)
-    // TODO: re-render via Mux/ffmpeg + update Firestore content item.
-    // For now, navigate back after a short delay to indicate "saved".
-    setTimeout(() => {
-      setSaving(false)
+    setSaveProgress('Preparing…')
+
+    try {
+      const pinId = pin?.id || `unlinked-${content.id}`
+      const contentId = content.id
+
+      if (isReel) {
+        // Render via the same pipeline as pin creation — uploads clips
+        // to Firebase Storage, then hands URLs to Mux for transcoding.
+        const latestClips = useEditorStore.getState().clips
+        if (latestClips.length === 0) { setSaving(false); return }
+
+        setSaveProgress('Rendering…')
+        await renderComposition({
+          clips: latestClips,
+          aspect: useEditorStore.getState().aspect,
+          overlays: useEditorStore.getState().overlays,
+          pinId,
+          contentId,
+          caption: content.caption || '',
+          onProgress: (phase, pct) => {
+            if (phase === 'upload') setSaveProgress(`Uploading… ${Math.round(pct * 100)}%`)
+            else if (phase === 'queue') setSaveProgress('Processing with Mux…')
+            else setSaveProgress('Rendering…')
+          },
+        })
+
+        // Update the content doc in Firestore with status = preparing.
+        // The Mux webhook will patch mediaUrl/thumbnailUrl when ready.
+        setSaveProgress('Saving…')
+        const { updateContent } = await import('@/lib/firestore')
+        await updateContent(contentId, { status: 'preparing' } as any)
+
+        // If linked to a pin, also update the pin's content array status
+        if (pin?.id) {
+          const { updatePin } = await import('@/lib/firestore')
+          const updatedContent = (pin.content || []).map((c) =>
+            c.id === contentId ? { ...c, status: 'preparing' } : c,
+          )
+          await updatePin(pin.id, { content: updatedContent } as any)
+        }
+      } else if (isPhoto && carouselDraft) {
+        // Photo carousel — re-upload photos to Storage and update URLs.
+        setSaveProgress('Uploading photos…')
+        const urls: string[] = []
+        for (let i = 0; i < carouselDraft.photos.length; i++) {
+          const photo = carouselDraft.photos[i]
+          const filename = `content-${contentId}-photo-${i}-${Date.now()}.jpg`
+          const url = await uploadFile({
+            path: pinMediaPath(pinId, filename),
+            file: photo.file,
+          })
+          urls.push(url)
+        }
+
+        setSaveProgress('Saving…')
+        const patch: Partial<ContentItem> = {
+          mediaUrl: urls[0] || content.mediaUrl,
+          thumbnailUrl: urls[0] || content.thumbnailUrl,
+          mediaUrls: urls.length > 1 ? urls : undefined,
+        }
+        const { updateContent } = await import('@/lib/firestore')
+        await updateContent(contentId, patch as any)
+
+        if (pin?.id) {
+          const { updatePin } = await import('@/lib/firestore')
+          const updatedContent = (pin.content || []).map((c) =>
+            c.id === contentId ? { ...c, ...patch } : c,
+          )
+          await updatePin(pin.id, { content: updatedContent } as any)
+        }
+      }
+
       navigate(-1)
-    }, 600)
+    } catch (err) {
+      console.error('[ContentEdit] save failed', err)
+      alert(`Save failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    } finally {
+      setSaving(false)
+      setSaveProgress('')
+    }
   }
 
   if (!content) {
@@ -148,7 +229,7 @@ export default function ContentEdit() {
           </div>
         ) : isReel ? (
           <EditorStep direction={1} simpleMode footer={
-            <div className="flex gap-3 mt-4">
+            <div className="flex flex-col gap-2 mt-4">
               <Button
                 variant="primary"
                 size="xl"
@@ -157,14 +238,14 @@ export default function ContentEdit() {
                 disabled={editorClips.length === 0}
                 onClick={handleSave}
               >
-                Save
+                {saving ? (saveProgress || 'Saving…') : 'Save'}
               </Button>
             </div>
           } />
         ) : (
           <div className="max-w-2xl mx-auto w-full">
             <CarouselStep draft={carouselDraft} onChange={setCarouselDraft} />
-            <div className="flex gap-3 mt-6">
+            <div className="flex flex-col gap-2 mt-6">
               <Button
                 variant="primary"
                 size="xl"
@@ -173,7 +254,7 @@ export default function ContentEdit() {
                 disabled={!carouselDraft || carouselDraft.photos.length === 0}
                 onClick={handleSave}
               >
-                Save
+                {saving ? (saveProgress || 'Saving…') : 'Save'}
               </Button>
             </div>
           </div>
