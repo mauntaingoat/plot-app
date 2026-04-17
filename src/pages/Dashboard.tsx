@@ -90,22 +90,25 @@ export default function Dashboard() {
   const currentUser = userDoc || MOCK_CURRENT_USER
 
   // Pins — real Firestore data when signed in, mock for demo (not signed in).
-  const [pins, setPins] = useState<Pin[]>(userDoc ? [] : MOCK_PINS_CAROLINA)
-  const [pinsLoading, setPinsLoading] = useState(!!userDoc)
+  const [pins, setPins] = useState<Pin[]>(MOCK_PINS_CAROLINA)
+  const [pinsLoading, setPinsLoading] = useState(false)
   useEffect(() => {
     if (!userDoc?.uid) {
-      // Not signed in — show mock data for demo purposes
       setPins(MOCK_PINS_CAROLINA)
       setPinsLoading(false)
       return
     }
-    // Signed in — always use real Firestore data (empty dashboard is
-    // correct for a new agent, mock data would be misleading).
+    // Signed in — clear mock data immediately, then subscribe to real.
+    setPins([])
     setPinsLoading(true)
     const unsub = subscribeToAllAgentPins(userDoc.uid, (live) => {
       setPins(live)
       setPinsLoading(false)
     })
+    // If subscription returned null (db not available), stop loading.
+    if (!unsub) {
+      setPinsLoading(false)
+    }
     return () => { unsub?.() }
   }, [userDoc?.uid])
 

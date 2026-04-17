@@ -190,9 +190,17 @@ export function subscribeToAllAgentPins(agentId: string, callback: (pins: Pin[])
     orderBy('createdAt', 'desc'),
     limit(200)
   )
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Pin))
-  })
+  return onSnapshot(
+    q,
+    (snap) => {
+      callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Pin))
+    },
+    (err) => {
+      console.warn('[firestore] subscribeToAllAgentPins error:', err.message)
+      // Still call back with empty so the UI isn't stuck loading.
+      callback([])
+    },
+  )
 }
 
 // ══════════════════════════════════════════
