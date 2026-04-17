@@ -90,12 +90,7 @@ export default function Dashboard() {
   // finished loading and confirmed no user. During auth load, use userDoc
   // (which may already be set from a prior session via zustand persistence)
   // or a minimal placeholder so the dashboard skeleton renders.
-  const currentUser = userDoc ?? (loading ? {
-    ...MOCK_CURRENT_USER,
-    uid: '__loading__',
-    displayName: '',
-    username: '',
-  } as typeof MOCK_CURRENT_USER : MOCK_CURRENT_USER)
+  const currentUser = userDoc ?? (loading ? null : MOCK_CURRENT_USER)
 
   // Pins — real Firestore data when signed in, mock for demo (not signed in).
   // Initialize empty so there's never a flash of mock data on reload.
@@ -195,9 +190,13 @@ export default function Dashboard() {
     setShowAddPlatform(false)
   }
 
-  // Dashboard always renders — no blocking gate. During auth load,
-  // currentUser is a minimal placeholder (uid='__loading__') so the
-  // layout skeleton shows without Carolina's name/photo flashing.
+  if (!currentUser) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-[#0A0E17]' : 'bg-ivory'}`}>
+        <div className="w-8 h-8 rounded-full border-[3px] border-tangerine/20 border-t-tangerine animate-spin" />
+      </div>
+    )
+  }
   const activeUser = currentUser || MOCK_CURRENT_USER
   const profileUrl = `reel.st/${activeUser.username || 'you'}`
 
