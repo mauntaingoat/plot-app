@@ -180,7 +180,7 @@ export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick
       >
         <FilterBar className={centerFilters ? '' : 'flex-1'}>
           <FilterDropdown label="Pin Type" dark={isFeed}
-            options={FILTER_OPTIONS.filter((o) => (pinCounts[o.value] || 0) > 0).map((o) => ({ value: o.value, label: `${o.label} (${pinCounts[o.value] || 0})` }))}
+            options={FILTER_OPTIONS.map((o) => ({ value: o.value, label: `${o.label} (${pinCounts[o.value] || 0})` }))}
             selected={activeFilters} onToggle={(v) => handleFilterClick(v as PinType)} onClear={clearFilters} />
           <FilterDropdown label="Price" dark={isFeed}
             options={[{ value: '0-500k', label: 'Under $500K' }, { value: '500k-1m', label: '$500K–$1M' }, { value: '1m-2m', label: '$1M–$2M' }, { value: '2m-5m', label: '$2M–$5M' }, { value: '5m+', label: '$5M+' }]}

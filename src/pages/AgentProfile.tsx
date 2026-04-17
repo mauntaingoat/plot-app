@@ -97,7 +97,10 @@ export default function AgentProfile() {
   const { setViewingAgentId, activeFilters, propertyFilters } = useMapStore()
   const { userDoc: currentUser } = useAuthStore()
 
-  const nearbyAgents = useMemo(() => MOCK_AGENTS, [agent])
+  // Real users see no nearby agents until follows are wired to Firestore.
+  // Mock agents only show for mock profiles (carolina, etc.).
+  const isMockProfile = !!(agent && getMockAgent(agent.username || ''))
+  const nearbyAgents = useMemo(() => isMockProfile ? MOCK_AGENTS : [], [isMockProfile])
 
   // Set viewing agent when agent data loads
   useEffect(() => {

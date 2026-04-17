@@ -150,8 +150,10 @@ export default function Dashboard() {
 
   const chartData = useMemo(() => {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    return days.map((label, i) => ({ label, value: [1240, 1890, 1560, 2340, 3120, 2870, 2180][i] }))
-  }, [])
+    // Real users see zeros until analytics are wired; mock data shows sample values.
+    const mockValues = [1240, 1890, 1560, 2340, 3120, 2870, 2180]
+    return days.map((label, i) => ({ label, value: userDoc ? 0 : mockValues[i] }))
+  }, [userDoc])
 
   const confirmSignOut = () => {
     setShowSignOutConfirm(false)
@@ -675,12 +677,23 @@ export default function Dashboard() {
       />
 
       {/* Hidden photo file input */}
-      <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
+      <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
         const file = e.target.files?.[0]
-        if (!file) return
-        const url = URL.createObjectURL(file)
-        setEditProfileData((prev) => ({ ...prev, photoURL: url }))
-        // TODO: upload to Firebase Storage and get real URL
+        if (!file || !activeUser?.uid) return
+        // Show preview immediately, then upload in background.
+        const localUrl = URL.createObjectURL(file)
+        setEditProfileData((prev) => ({ ...prev, photoURL: localUrl }))
+        try {
+          const { uploadFile, avatarPath } = await import('@/lib/storage')
+          const firebaseUrl = await uploadFile({ path: avatarPath(activeUser.uid), file })
+          setEditProfileData((prev) => ({ ...prev, photoURL: firebaseUrl }))
+          // Persist to Firestore so it survives page reload.
+          const { updateUserDoc } = await import('@/lib/firestore')
+          await updateUserDoc(activeUser.uid, { photoURL: firebaseUrl })
+          setUserDoc({ ...activeUser, photoURL: firebaseUrl })
+        } catch (err) {
+          console.warn('Photo upload failed:', err)
+        }
         e.target.value = ''
       }} />
 

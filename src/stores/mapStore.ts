@@ -47,8 +47,9 @@ const emptyPropertyFilters: PropertyFilters = {
 }
 
 export const useMapStore = create<MapState>((set, get) => ({
-  center: [-80.1918, 25.7617],
-  zoom: 12,
+  // Default: continental US overview. Zooms to agent's pins when they load.
+  center: [-98.5, 39.8],
+  zoom: 4,
   setCenter: (center) => set({ center }),
   setZoom: (zoom) => set({ zoom }),
 

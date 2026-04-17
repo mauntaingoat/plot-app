@@ -192,7 +192,8 @@ export function subscribeToAgentPins(agentId: string, callback: (pins: Pin[]) =>
 }
 
 /** Dashboard variant — returns ALL agent pins (enabled + disabled)
- *  so the toggle UI can manage visibility. */
+ *  so the toggle UI can manage visibility. Falls back to a simpler
+ *  query (no orderBy) if the composite index doesn't exist yet. */
 export function subscribeToAllAgentPins(agentId: string, callback: (pins: Pin[]) => void): Unsubscribe | null {
   if (!db) return null
   const q = query(
@@ -207,9 +208,18 @@ export function subscribeToAllAgentPins(agentId: string, callback: (pins: Pin[])
       callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Pin))
     },
     (err) => {
-      console.warn('[firestore] subscribeToAllAgentPins error:', err.message)
-      // Still call back with empty so the UI isn't stuck loading.
-      callback([])
+      console.warn('[firestore] subscribeToAllAgentPins error (trying fallback):', err.message)
+      // Fallback: query without orderBy (doesn't need composite index).
+      const fallbackQ = query(
+        collection(db!, 'pins'),
+        where('agentId', '==', agentId),
+        limit(200)
+      )
+      onSnapshot(
+        fallbackQ,
+        (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Pin)),
+        () => callback([]),
+      )
     },
   )
 }
