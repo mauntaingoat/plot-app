@@ -236,7 +236,7 @@ export default function AgentProfile() {
   }, [])
 
   const handleFollow = async () => {
-    if (isPreview) return
+    if (isPreview || isOwnProfile) return
     await toggleFollow()
   }
 
@@ -457,6 +457,7 @@ export default function AgentProfile() {
             enabledAgentCount={enabledAgentIds.size}
             isFollowing={isFollowing}
             isPreview={isPreview}
+            isOwnProfile={isOwnProfile}
             onProfileClick={() => setShowAgentDetail(true)}
             onFollow={handleFollow}
             onShare={handleShare}
