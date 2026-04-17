@@ -96,6 +96,7 @@ export default function AgentProfile() {
 
   const { setViewingAgentId, activeFilters, propertyFilters } = useMapStore()
   const { userDoc: currentUser } = useAuthStore()
+  const isOwnProfile = !!(currentUser?.uid && agent?.uid && currentUser.uid === agent.uid)
 
   // Real users see no nearby agents until follows are wired to Firestore.
   // Mock agents only show for mock profiles (carolina, etc.).
@@ -496,7 +497,7 @@ export default function AgentProfile() {
             boxShadow: '0 8px 30px rgba(0,0,0,0.4), 0 2px 10px rgba(0,0,0,0.2)',
           }}
         >
-          <ErrorBoundary label="Feed"><ContentFeed pins={filteredPins} agent={agent} onPinTap={(p) => setSelectedPin(p)} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} /></ErrorBoundary>
+          <ErrorBoundary label="Feed"><ContentFeed pins={filteredPins} agent={agent} onPinTap={(p) => setSelectedPin(p)} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} isOwnProfile={isOwnProfile} /></ErrorBoundary>
         </div>
 
         {/* ═══ LISTING MODAL — centered to map ═══ */}
@@ -514,7 +515,7 @@ export default function AgentProfile() {
                     <button onClick={() => setSelectedPin(null)} className="w-8 h-8 rounded-full bg-charcoal flex items-center justify-center text-ghost hover:text-white cursor-pointer shrink-0"><X size={16} /></button>
                   </div>
                   <div className="flex-1 min-h-0 overflow-hidden">
-                    <ListingModal key={`modal-${modalKey}`} pin={selectedPin} agent={agent} onClose={() => { setSelectedPin(null); setSelectedPinTab(undefined) }} isPreview={isPreview} embedded isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} initialTab={selectedPinTab} />
+                    <ListingModal key={`modal-${modalKey}`} pin={selectedPin} agent={agent} onClose={() => { setSelectedPin(null); setSelectedPinTab(undefined) }} isPreview={isPreview} embedded isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} initialTab={selectedPinTab} isOwnProfile={isOwnProfile} />
                   </div>
                 </motion.div>
               </div>
@@ -596,7 +597,7 @@ export default function AgentProfile() {
           </motion.div>
         ) : (
           <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0">
-            <ErrorBoundary label="Feed"><ContentFeed pins={filteredPins} agent={agent} onPinTap={(p) => setSelectedPin(p)} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} /></ErrorBoundary>
+            <ErrorBoundary label="Feed"><ContentFeed pins={filteredPins} agent={agent} onPinTap={(p) => setSelectedPin(p)} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} isOwnProfile={isOwnProfile} /></ErrorBoundary>
           </motion.div>
         )}
       </AnimatePresence>
@@ -635,7 +636,7 @@ export default function AgentProfile() {
       </motion.button>
 
       {selectedPin ? (
-        <ListingModal key={`modal-m-${modalKey}`} pin={selectedPin} agent={agent} onClose={() => { setSelectedPin(null); setSelectedPinTab(undefined) }} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} initialTab={selectedPinTab} />
+        <ListingModal key={`modal-m-${modalKey}`} pin={selectedPin} agent={agent} onClose={() => { setSelectedPin(null); setSelectedPinTab(undefined) }} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} initialTab={selectedPinTab} isOwnProfile={isOwnProfile} />
       ) : null}
 
       {/* Indicator picker — multiple livestreams or open houses */}

@@ -20,6 +20,7 @@ interface ListingModalProps {
   isSignedIn?: boolean
   initialTab?: 'content' | 'listing'
   onAuthRequired?: () => void
+  isOwnProfile?: boolean
 }
 
 // Scroll-aware swipe-to-dismiss — same logic as BottomSheet.tsx
@@ -90,7 +91,7 @@ function useListingSwipeToDismiss(
   }, [sheetRef, scrollRef, active, onDismiss])
 }
 
-export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSignedIn, onAuthRequired, initialTab }: ListingModalProps) {
+export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSignedIn, onAuthRequired, initialTab, isOwnProfile }: ListingModalProps) {
   const isForSale = pin.type === 'for_sale'
   const isSold = pin.type === 'sold'
   const hasListingData = isForSale || isSold
@@ -169,9 +170,9 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
             ...(activeTab === 'content' ? { scrollSnapType: 'y mandatory' } : {}),
           }}>
             {activeTab === 'content' ? (
-              <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={onClose} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
+              <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={onClose} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} isOwnProfile={isOwnProfile} />
             ) : (
-              <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={onClose} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
+              <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={onClose} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} isOwnProfile={isOwnProfile} />
             )}
           </div>
         </div>
@@ -225,9 +226,9 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
           ...(activeTab === 'content' ? { scrollSnapType: 'y mandatory' } : {}),
         }}>
           {activeTab === 'content' ? (
-            <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
+            <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} isOwnProfile={isOwnProfile} />
           ) : (
-            <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isFullScreen isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
+            <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isFullScreen isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} isOwnProfile={isOwnProfile} />
           )}
         </div>
       </div>
@@ -237,7 +238,7 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
 
 // ── Content Tab: full-screen vertical feed ──
 
-function ContentTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, onAuthRequired }: { pin: Pin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void }) {
+function ContentTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, onAuthRequired, isOwnProfile }: { pin: Pin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void; isOwnProfile?: boolean }) {
   // Filter out content scheduled for the future — public should never see it
   const visibleContent = publicContent(pin)
 
@@ -257,7 +258,7 @@ function ContentTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
     return (
       <>
         {visibleContent.map((content) => (
-          <ContentCard key={content.id} content={content} pin={pin} agent={agent} isPreview={isPreview} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
+          <ContentCard key={content.id} content={content} pin={pin} agent={agent} isPreview={isPreview} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} isOwnProfile={isOwnProfile} />
         ))}
       </>
     )
@@ -266,13 +267,13 @@ function ContentTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
   return (
     <div className="flex-1 overflow-y-auto bg-midnight" style={{ scrollSnapType: 'y mandatory', overscrollBehavior: 'none', WebkitOverflowScrolling: 'touch' }}>
       {visibleContent.map((content) => (
-        <ContentCard key={content.id} content={content} pin={pin} agent={agent} isPreview={isPreview} isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
+        <ContentCard key={content.id} content={content} pin={pin} agent={agent} isPreview={isPreview} isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} isOwnProfile={isOwnProfile} />
       ))}
     </div>
   )
 }
 
-function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onAuthRequired }: { content: ContentItem; pin: Pin; agent: UserDoc; isPreview?: boolean; embedded?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void }) {
+function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onAuthRequired, isOwnProfile }: { content: ContentItem; pin: Pin; agent: UserDoc; isPreview?: boolean; embedded?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void; isOwnProfile?: boolean }) {
   const requireAuth = () => { if (!isSignedIn && onAuthRequired) onAuthRequired() }
   const videoRef = useRef<HTMLVideoElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -334,16 +335,18 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
 
       {/* Right sidebar */}
       <div className="absolute right-3 bottom-[20%] z-10 flex flex-col items-center gap-4" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }}>
-        {/* Save button — disabled for stories (ephemeral content) */}
-        <motion.button
-          whileTap={!isPreview ? { scale: 0.75 } : undefined}
-          onClick={!isPreview ? () => toggleSave(pin.id, content.id, content.type) : undefined}
-          className={(isPreview) ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
-          title={undefined}
-        >
-          <Bookmark size={24} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
-          <span className="text-[9px] text-white font-semibold block mt-0.5">{content.saves + (saved ? 1 : 0)}</span>
-        </motion.button>
+        {/* Save button — hidden on own profile */}
+        {!isOwnProfile && (
+          <motion.button
+            whileTap={!isPreview ? { scale: 0.75 } : undefined}
+            onClick={!isPreview ? () => toggleSave(pin.id, content.id, content.type) : undefined}
+            className={(isPreview) ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
+            title={undefined}
+          >
+            <Bookmark size={24} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
+            <span className="text-[9px] text-white font-semibold block mt-0.5">{content.saves + (saved ? 1 : 0)}</span>
+          </motion.button>
+        )}
         <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined} className={isPreview ? 'opacity-40' : 'cursor-pointer'}>
           <Share2 size={20} className="text-white" />
         </motion.button>
@@ -377,7 +380,7 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
 
 // ── Listing Tab: scrollable MLS data ──
 
-function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isFullScreen, isSignedIn, onAuthRequired }: { pin: ForSalePin | SoldPin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean; isFullScreen?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void }) {
+function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isFullScreen, isSignedIn, onAuthRequired, isOwnProfile }: { pin: ForSalePin | SoldPin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean; isFullScreen?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void; isOwnProfile?: boolean }) {
   const requireAuth = () => { if (!isSignedIn && onAuthRequired) onAuthRequired() }
   const [photoIndex, setPhotoIndex] = useState(0)
   const [showRequestForm, setShowRequestForm] = useState(false)
@@ -406,12 +409,14 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isFullScreen, 
             </>
           )}
           <div className={`absolute flex items-center gap-2 z-[111] ${isFullScreen ? 'top-[calc(env(safe-area-inset-top,12px)+8px)] right-16' : 'top-3 right-3'}`}>
-            <button
-              onClick={!isPreview ? () => toggleSave(pin.id) : undefined}
-              className={`w-9 h-9 rounded-full ${saved ? 'bg-tangerine' : 'bg-black/30'} backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''} transition-colors`}
-            >
-              <Bookmark size={16} fill={saved ? 'white' : 'none'} />
-            </button>
+            {!isOwnProfile && (
+              <button
+                onClick={!isPreview ? () => toggleSave(pin.id) : undefined}
+                className={`w-9 h-9 rounded-full ${saved ? 'bg-tangerine' : 'bg-black/30'} backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''} transition-colors`}
+              >
+                <Bookmark size={16} fill={saved ? 'white' : 'none'} />
+              </button>
+            )}
             <button className={`w-9 h-9 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''}`}><Share2 size={14} /></button>
           </div>
           {pin.type === 'sold' && <div className="absolute top-3 left-3"><Badge variant="sold">SOLD</Badge></div>}

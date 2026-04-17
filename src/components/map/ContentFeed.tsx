@@ -15,9 +15,10 @@ interface ContentFeedProps {
   isSignedIn?: boolean
   onAuthRequired?: () => void
   agentMode?: string
+  isOwnProfile?: boolean
 }
 
-export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAuthRequired, agentMode = 'single' }: ContentFeedProps) {
+export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAuthRequired, agentMode = 'single', isOwnProfile }: ContentFeedProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const allContent = getAllContent(pins)
   const [listingSheet, setListingSheet] = useState<Pin | null>(null)
@@ -43,6 +44,7 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
             isPreview={isPreview} following={following}
             showFollowButton={agentMode === 'single'}
             isSignedIn={isSignedIn} onAuthRequired={onAuthRequired}
+            isOwnProfile={isOwnProfile}
             onFollowToggle={() => {
               if (!isSignedIn && !isPreview && onAuthRequired) { onAuthRequired(); return }
               setFollowing(!following)
@@ -93,10 +95,10 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
   )
 }
 
-function FeedCard({ content, pin, agent, isPreview, following, showFollowButton, onFollowToggle, onListingTap, isSignedIn, onAuthRequired }: {
+function FeedCard({ content, pin, agent, isPreview, following, showFollowButton, onFollowToggle, onListingTap, isSignedIn, onAuthRequired, isOwnProfile }: {
   content: ContentItem; pin: Pin; agent: UserDoc; isPreview?: boolean
   following: boolean; showFollowButton?: boolean; onFollowToggle: () => void; onListingTap: () => void
-  isSignedIn?: boolean; onAuthRequired?: () => void
+  isSignedIn?: boolean; onAuthRequired?: () => void; isOwnProfile?: boolean
 }) {
   const requireAuth = () => { if (!isSignedIn && onAuthRequired) onAuthRequired() }
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -163,27 +165,31 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
       {/* Right sidebar */}
       <div className="absolute right-3 bottom-[22%] z-10 flex flex-col items-center gap-5" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }}>
         {/* Agent avatar — tap to follow/unfollow (fixed size, no shift) */}
-        <div className="relative w-10 h-12">
-          <motion.button whileTap={!isPreview ? { scale: 0.9 } : undefined}
-            onClick={!isPreview ? onFollowToggle : undefined}
+        <div className={`relative w-10 ${isOwnProfile ? 'h-10' : 'h-12'}`}>
+          <motion.button whileTap={!isPreview && !isOwnProfile ? { scale: 0.9 } : undefined}
+            onClick={!isPreview && !isOwnProfile ? onFollowToggle : undefined}
             className="w-10 h-10">
             <Avatar src={agent.photoURL} name={agent.displayName} size={40} ring="none" />
           </motion.button>
-          <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-[18px] h-[18px] rounded-full flex items-center justify-center"
-            style={{ background: following ? '#34C759' : '#FF6B3D' }}>
-            {following ? <UserCheck size={9} className="text-white" /> : <UserPlus size={9} className="text-white" />}
-          </div>
+          {!isOwnProfile && (
+            <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-[18px] h-[18px] rounded-full flex items-center justify-center"
+              style={{ background: following ? '#34C759' : '#FF6B3D' }}>
+              {following ? <UserCheck size={9} className="text-white" /> : <UserPlus size={9} className="text-white" />}
+            </div>
+          )}
         </div>
 
-        <motion.button
-          whileTap={!isPreview ? { scale: 0.75 } : undefined}
-          onClick={!isPreview ? () => toggleSave(pin.id, content.id, content.type) : undefined}
-          className={`flex flex-col items-center gap-0.5 ${(isPreview) ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
-          title={undefined}
-        >
-          <Bookmark size={26} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
-          <span className="text-[10px] text-white font-semibold">{content.saves + (saved ? 1 : 0)}</span>
-        </motion.button>
+        {!isOwnProfile && (
+          <motion.button
+            whileTap={!isPreview ? { scale: 0.75 } : undefined}
+            onClick={!isPreview ? () => toggleSave(pin.id, content.id, content.type) : undefined}
+            className={`flex flex-col items-center gap-0.5 ${(isPreview) ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+            title={undefined}
+          >
+            <Bookmark size={26} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
+            <span className="text-[10px] text-white font-semibold">{content.saves + (saved ? 1 : 0)}</span>
+          </motion.button>
+        )}
 
         <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
           onClick={!isPreview ? requireAuth : undefined}

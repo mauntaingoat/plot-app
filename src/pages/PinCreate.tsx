@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useGeocoding } from '@/hooks/useGeocoding'
 import { useAuthStore } from '@/stores/authStore'
-import { createPin } from '@/lib/firestore'
+import { createPin, createContent } from '@/lib/firestore'
 import { uploadFile, pinMediaPath } from '@/lib/storage'
 import { PIN_CONFIG, type PinType, type ContentItem } from '@/lib/types'
 import { Timestamp } from 'firebase/firestore'
@@ -344,6 +344,106 @@ export default function PinCreate() {
 
   // Reset editor on unmount so stale clips don't leak across sessions
   useEffect(() => () => { editorReset() }, [editorReset])
+
+  /**
+   * Publish standalone content (no pin). Used when the user arrives via
+   * the Content tab (+Upload) and hits Publish — there's no pin to create.
+   * Each draft is saved to the standalone `content` Firestore collection
+   * with `pinId: null` (unlinked).
+   */
+  const handlePublishContent = async () => {
+    if (contentDrafts.length === 0) return
+
+    // Preflight auth check
+    if (!userDoc?.uid || userDoc.uid.startsWith('demo') || userDoc.uid.startsWith('carolina')) {
+      alert('You need to sign in with a real account before publishing. Visit /sign-up to create one.')
+      return
+    }
+
+    setSaving(true)
+    setStep('publishing')
+    setRenderPhase('upload')
+    setRenderProgress(0)
+
+    const agentId = userDoc.uid
+
+    try {
+      for (let i = 0; i < contentDrafts.length; i++) {
+        const draft = contentDrafts[i]
+        const contentId = `content-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+        const placeholderPinId = `unlinked-${Date.now()}`
+
+        if (draft.kind === 'carousel') {
+          const items = await publishCarouselPhotos(
+            draft,
+            placeholderPinId,
+            (phase, pct) => {
+              setRenderPhase(phase as RenderPhase)
+              setRenderProgress(Math.round(((i + pct) / contentDrafts.length) * 100))
+            },
+          )
+          // Save each photo as a standalone content doc
+          for (const item of items) {
+            await createContent({
+              agentId,
+              pinId: null,
+              type: item.type,
+              mediaUrl: item.mediaUrl,
+              thumbnailUrl: item.thumbnailUrl,
+              caption: draft.caption ?? '',
+              publishAt: item.publishAt ?? null,
+            })
+          }
+        } else {
+          // Editor (reel) draft — render via Mux pipeline
+          const draftClips = draft.clipFiles.map((file, idx) => ({
+            id: `${draft.id}-${idx}`,
+            file,
+            sourceUrl: '',
+            thumbnailUrl: '',
+            frames: [],
+            nativeAspect: 9 / 16,
+            type: file.type.startsWith('video') ? ('video' as const) : ('photo' as const),
+            duration: 0,
+            trimIn: draft.clipMeta[idx]?.trimIn ?? 0,
+            trimOut: draft.clipMeta[idx]?.trimOut ?? 0,
+            speed: (draft.clipMeta[idx]?.speed ?? 1) as 0.5 | 1 | 1.5 | 2,
+            adjustments: draft.clipMeta[idx]?.adjustments ?? { brightness: 0, contrast: 0, saturation: 0 },
+          }))
+
+          const result = await renderComposition({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            clips: draftClips as any,
+            aspect: draft.aspect,
+            overlays: draft.overlays,
+            pinId: `content-${Date.now()}`,
+            contentId,
+            caption: draft.caption ?? '',
+            onProgress: (phase, pct) => {
+              setRenderPhase(phase)
+              setRenderProgress(Math.round(((i + pct) / contentDrafts.length) * 100))
+            },
+          })
+
+          await createContent({
+            agentId,
+            pinId: null,
+            type: 'reel',
+            mediaUrl: result.mp4Url,
+            thumbnailUrl: `https://image.mux.com/${result.muxPlaybackId}/thumbnail.webp?width=720`,
+            caption: draft.caption ?? '',
+            publishAt: null,
+          })
+        }
+      }
+
+      navigate('/dashboard')
+    } catch (err) {
+      setSaving(false)
+      setStep('publish')
+      alert(`Failed to publish content — ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
+  }
 
   /**
    * Publish: handles three cases.
@@ -1049,7 +1149,14 @@ export default function PinCreate() {
               ))
             }
             const missingCaptions = contentDrafts.some((d) => !(d.caption ?? '').trim())
-            const publishNow = () => handlePublishFromEditor()
+            const publishNow = () => {
+              // Standalone content mode (no pin) — use the dedicated content handler
+              if (isAddContentMode && !pinType) {
+                handlePublishContent()
+                return
+              }
+              handlePublishFromEditor()
+            }
             const onPublishClick = () => {
               if (skippedContent) { publishNow(); return }
               if (missingCaptions) { setShowMissingCaptionWarn(true); return }
@@ -1182,7 +1289,9 @@ export default function PinCreate() {
 
               <div className="flex flex-col gap-2.5">
                 <Button variant="primary" size="xl" onClick={onPublishClick} loading={saving} fullWidth>
-                  {multi ? 'Publish Pins' : 'Publish Pin'}
+                  {isAddContentMode && !pinType
+                    ? (multi ? 'Publish Content' : 'Publish Content')
+                    : (multi ? 'Publish Pins' : 'Publish Pin')}
                 </Button>
                 {!skippedContent && contentDrafts.length > 0 && (
                   <Button
@@ -1481,7 +1590,11 @@ export default function PinCreate() {
         onClose={() => setShowMissingCaptionWarn(false)}
         onConfirm={() => {
           setShowMissingCaptionWarn(false)
-          handlePublishFromEditor()
+          if (isAddContentMode && !pinType) {
+            handlePublishContent()
+          } else {
+            handlePublishFromEditor()
+          }
         }}
         title="Some captions are blank"
         message={

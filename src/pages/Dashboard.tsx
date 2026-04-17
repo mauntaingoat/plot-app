@@ -55,7 +55,7 @@ function useIsDesktop() {
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { userDoc, setUserDoc } = useAuthStore()
+  const { userDoc, setUserDoc, initialized } = useAuthStore()
   const [activeTab, setActiveTab] = useState<DashTab>('reelst')
   const [showSetup, setShowSetup] = useState(false)
   const [showPinActions, setShowPinActions] = useState<Pin | null>(null)
@@ -86,8 +86,9 @@ export default function Dashboard() {
   const isDark = resolvedTheme === 'dark'
   useEffect(() => activateTheme(), [activateTheme])
 
-  // Use real userDoc if signed in, otherwise fall back to Carolina (mock) for demo
-  const currentUser = userDoc || MOCK_CURRENT_USER
+  // Use real userDoc if signed in, otherwise fall back to Carolina (mock) for demo.
+  // Wait for auth to initialize before deciding — prevents flash of mock profile.
+  const currentUser = initialized ? (userDoc || MOCK_CURRENT_USER) : null
 
   // Pins — real Firestore data when signed in, mock for demo (not signed in).
   // Initialize empty so there's never a flash of mock data on reload.
@@ -182,6 +183,16 @@ export default function Dashboard() {
     }
     setUserDoc(updated)
     setShowAddPlatform(false)
+  }
+
+  // Wait for auth to initialize before rendering anything — prevents
+  // Carolina mock profile from flashing on reload.
+  if (!initialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-ivory dark:bg-midnight">
+        <div className="w-8 h-8 rounded-full border-[3px] border-tangerine/20 border-t-tangerine animate-spin" />
+      </div>
+    )
   }
 
   if (!currentUser && !MOCK_CURRENT_USER) {
