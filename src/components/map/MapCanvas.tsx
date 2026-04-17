@@ -86,7 +86,25 @@ function pinsToGeoJSON(pins: Pin[]) {
   }
 }
 
-function createPinImage(img: HTMLImageElement | null, ringColor: string, fallbackLetter: string, size: number = PIN_SIZE + RING_PAD): ImageData {
+// SVG icon paths for pin type fallbacks (from lucide: Home, BadgeCheck, Compass)
+const PIN_TYPE_ICONS: Record<string, string> = {
+  for_sale: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>`,
+  sold: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m9 12 2 2 4-4"/></svg>`,
+  spotlight: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>`,
+}
+
+const iconImageCache = new Map<string, HTMLImageElement>()
+function getPinTypeIcon(type: string): HTMLImageElement | null {
+  const svg = PIN_TYPE_ICONS[type]
+  if (!svg) return null
+  if (iconImageCache.has(type)) return iconImageCache.get(type)!
+  const img = new Image()
+  img.src = `data:image/svg+xml,${encodeURIComponent(svg)}`
+  iconImageCache.set(type, img)
+  return img
+}
+
+function createPinImage(img: HTMLImageElement | null, ringColor: string, pinType: string, size: number = PIN_SIZE + RING_PAD): ImageData {
   const canvas = document.createElement('canvas')
   const s = size * 2
   canvas.width = s; canvas.height = s
@@ -100,9 +118,18 @@ function createPinImage(img: HTMLImageElement | null, ringColor: string, fallbac
     const imgSize = (innerR - 2) * 2
     ctx.drawImage(img, cx - innerR + 2, cy - innerR + 2, imgSize, imgSize)
     ctx.restore()
-  } else if (fallbackLetter) {
-    ctx.fillStyle = '#ffffff'; ctx.font = `bold ${innerR * 0.7}px Outfit, sans-serif`
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(fallbackLetter, cx, cy)
+  } else {
+    // Draw pin-type icon instead of a letter fallback
+    const icon = getPinTypeIcon(pinType)
+    if (icon && icon.complete && icon.naturalWidth > 0) {
+      const iconSize = innerR * 1.1
+      ctx.drawImage(icon, cx - iconSize / 2, cy - iconSize / 2, iconSize, iconSize)
+    } else {
+      // Ultimate fallback: first letter
+      const letter = (PIN_CONFIG[pinType as keyof typeof PIN_CONFIG]?.label || 'P')[0]
+      ctx.fillStyle = '#ffffff'; ctx.font = `bold ${innerR * 0.7}px Outfit, sans-serif`
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(letter, cx, cy)
+    }
   }
   return ctx.getImageData(0, 0, s, s)
 }
@@ -235,7 +262,7 @@ const OH_HOUSE_HOLD_END = 35
 const ANIM_FRAMES = 40
 const ANIM_EXTRA_SIZE = 12 // extra canvas space for chimney + pulse ring
 
-function createOpenHouseFrame(img: HTMLImageElement | null, fallbackLetter: string, frame: number, ringColor: string, gradientColor: string): ImageData {
+function createOpenHouseFrame(img: HTMLImageElement | null, pinType: string, frame: number, ringColor: string, gradientColor: string): ImageData {
   const size = PIN_SIZE + RING_PAD + ANIM_EXTRA_SIZE
   const canvas = document.createElement('canvas')
   const s = size * 2
@@ -322,9 +349,12 @@ function createOpenHouseFrame(img: HTMLImageElement | null, fallbackLetter: stri
       const imgSize = (innerR - 2) * 2
       ctx.drawImage(img, cx - innerR + 2, cy - innerR + 2, imgSize, imgSize)
       ctx.restore()
-    } else if (fallbackLetter) {
-      ctx.fillStyle = '#ffffff'; ctx.font = `bold ${innerR * 0.7}px Outfit, sans-serif`
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(fallbackLetter, cx, cy)
+    } else {
+      const icon = getPinTypeIcon(pinType)
+      if (icon && icon.complete && icon.naturalWidth > 0) {
+        const iconSize = innerR * 1.1
+        ctx.drawImage(icon, cx - iconSize / 2, cy - iconSize / 2, iconSize, iconSize)
+      }
     }
   } else {
     // Transitioning — draw thumbnail then overlay solid color with opacity
@@ -336,9 +366,12 @@ function createOpenHouseFrame(img: HTMLImageElement | null, fallbackLetter: stri
       const imgSize = (innerR - 2) * 2
       ctx.drawImage(img, cx - innerR + 2, cy - innerR + 2, imgSize, imgSize)
       ctx.restore()
-    } else if (fallbackLetter) {
-      ctx.fillStyle = '#ffffff'; ctx.font = `bold ${innerR * 0.7}px Outfit, sans-serif`
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(fallbackLetter, cx, cy)
+    } else {
+      const icon = getPinTypeIcon(pinType)
+      if (icon && icon.complete && icon.naturalWidth > 0) {
+        const iconSize = innerR * 1.1
+        ctx.drawImage(icon, cx - iconSize / 2, cy - iconSize / 2, iconSize, iconSize)
+      }
     }
     // Overlay solid color with transition opacity
     ctx.save()
@@ -356,7 +389,7 @@ function createOpenHouseFrame(img: HTMLImageElement | null, fallbackLetter: stri
 }
 
 // Livestream: pulsing ring that expands and fades, color matches pin type
-function createLiveFrame(img: HTMLImageElement | null, fallbackLetter: string, frame: number, ringColor: string, gradientColor: string): ImageData {
+function createLiveFrame(img: HTMLImageElement | null, pinType: string, frame: number, ringColor: string, gradientColor: string): ImageData {
   const size = PIN_SIZE + RING_PAD + ANIM_EXTRA_SIZE
   const canvas = document.createElement('canvas')
   const s = size * 2
@@ -405,9 +438,16 @@ function createLiveFrame(img: HTMLImageElement | null, fallbackLetter: string, f
     const imgSize = (innerR - 2) * 2
     ctx.drawImage(img, cx - innerR + 2, cy - innerR + 2, imgSize, imgSize)
     ctx.restore()
-  } else if (fallbackLetter) {
-    ctx.fillStyle = '#ffffff'; ctx.font = `bold ${innerR * 0.7}px Outfit, sans-serif`
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(fallbackLetter, cx, cy)
+  } else {
+    const icon = getPinTypeIcon(pinType)
+    if (icon && icon.complete && icon.naturalWidth > 0) {
+      const iconSize = innerR * 1.1
+      ctx.drawImage(icon, cx - iconSize / 2, cy - iconSize / 2, iconSize, iconSize)
+    } else {
+      const letter = (PIN_CONFIG[pinType as keyof typeof PIN_CONFIG]?.label || 'P')[0]
+      ctx.fillStyle = '#ffffff'; ctx.font = `bold ${innerR * 0.7}px Outfit, sans-serif`
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(letter, cx, cy)
+    }
   }
 
   return ctx.getImageData(0, 0, s, s)
@@ -488,10 +528,16 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
   const animIntervalRef = useRef<number | null>(null)
 
   const loadPinImages = useCallback(async (map: mapboxgl.Map, pinList: Pin[]) => {
-    // Load all images in parallel for faster pin rendering
+    // Load all images in parallel. Priority for each pin's thumbnail:
+    // 1. First content item's thumbnailUrl (if content exists)
+    // 2. Listing heroPhotoUrl (MLS photos)
+    // 3. Agent's profile photo
+    // 4. Pin-type icon fallback (handled in createPinImage)
     const agentImgPromise = agentPhotoUrl ? loadImage(agentPhotoUrl).catch(() => null) : Promise.resolve(null)
     const pinImagePromises = pinList.map((pin) => {
-      const url = 'heroPhotoUrl' in pin ? pin.heroPhotoUrl : ''
+      const contentThumb = pin.content?.[0]?.thumbnailUrl || ''
+      const heroUrl = 'heroPhotoUrl' in pin ? pin.heroPhotoUrl : ''
+      const url = contentThumb || heroUrl
       return url ? loadImage(url).catch(() => null) : Promise.resolve(null)
     })
     const [agentImg, ...pinImages] = await Promise.all([agentImgPromise, ...pinImagePromises])
@@ -502,7 +548,7 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
     for (let idx = 0; idx < pinList.length; idx++) {
       const pin = pinList[idx]
       const color = RING_COLORS[pin.type] || '#FF6B3D'
-      const letter = PIN_CONFIG[pin.type].label[0]
+      const pType = pin.type
       const img = pinImages[idx] || agentImg
 
       const isLive = pin.type === 'for_sale' && 'isLive' in pin && pin.isLive
@@ -511,27 +557,27 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       // Queue animation frame generation (non-blocking)
       if (hasOpenHouse) {
         newOpenHouse.push(pin.id)
-        const ohImg = img, ohColor = color, ohGrad = RING_GRADIENT_COLORS[pin.type] || color, ohLetter = letter, ohId = pin.id
-        queueFrameGeneration(map, loadedImagesRef.current, ohId, 'oh', ANIM_FRAMES, (f) => createOpenHouseFrame(ohImg, ohLetter, f, ohColor, ohGrad))
+        const ohImg = img, ohColor = color, ohGrad = RING_GRADIENT_COLORS[pin.type] || color, ohType = pType, ohId = pin.id
+        queueFrameGeneration(map, loadedImagesRef.current, ohId, 'oh', ANIM_FRAMES, (f) => createOpenHouseFrame(ohImg, ohType, f, ohColor, ohGrad))
       }
 
       if (isLive) {
         newLive.push(pin.id)
-        const liveImg = img, liveColor = color, liveGrad = RING_GRADIENT_COLORS[pin.type] || color, liveLetter = letter, liveId = pin.id
-        queueFrameGeneration(map, loadedImagesRef.current, liveId, 'live', ANIM_FRAMES, (f) => createLiveFrame(liveImg, liveLetter, f, liveColor, liveGrad))
+        const liveImg = img, liveColor = color, liveGrad = RING_GRADIENT_COLORS[pin.type] || color, liveType = pType, liveId = pin.id
+        queueFrameGeneration(map, loadedImagesRef.current, liveId, 'live', ANIM_FRAMES, (f) => createLiveFrame(liveImg, liveType, f, liveColor, liveGrad))
       }
 
       // Type-colored ring version (for individual pins)
       const imgId = `pin-img-${pin.id}`
       if (!loadedImagesRef.current.has(imgId)) {
-        const imageData = createPinImage(img, color, letter)
+        const imageData = createPinImage(img, color, pType)
         if (!map.hasImage(imgId)) { map.addImage(imgId, imageData, { pixelRatio: 2 }); loadedImagesRef.current.add(imgId) }
       }
 
       // Orange ring version (for mixed-type clusters)
       const orangeId = `pin-img-orange-${pin.id}`
       if (!loadedImagesRef.current.has(orangeId)) {
-        const orangeData = createPinImage(img, TANGERINE, letter)
+        const orangeData = createPinImage(img, TANGERINE, pType)
         if (!map.hasImage(orangeId)) { map.addImage(orangeId, orangeData, { pixelRatio: 2 }); loadedImagesRef.current.add(orangeId) }
       }
 
