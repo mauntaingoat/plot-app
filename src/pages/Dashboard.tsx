@@ -226,7 +226,7 @@ export default function Dashboard() {
                 </div>
                 <div className="flex items-center gap-5">
                   <div className="text-center">
-                    <p className="text-[22px] font-extrabold text-ink font-mono">{stats.pins}</p>
+                    <p className="text-[22px] font-extrabold text-ink font-mono">{pinsLoading ? '–' : stats.pins}</p>
                     <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Pins</p>
                   </div>
                   <div className="w-px h-8 bg-border-light" />
@@ -247,7 +247,7 @@ export default function Dashboard() {
             {!isDesktop && (
               <div className="grid grid-cols-3 gap-2">
                 <div className="bg-cream rounded-[14px] p-3 text-center">
-                  <p className="text-[20px] font-extrabold text-ink font-mono">{stats.pins}</p>
+                  <p className="text-[20px] font-extrabold text-ink font-mono">{pinsLoading ? '–' : stats.pins}</p>
                   <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Pins</p>
                 </div>
                 <div className="bg-cream rounded-[14px] p-3 text-center">
@@ -266,7 +266,17 @@ export default function Dashboard() {
               <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => navigate('/dashboard/pin/new')}>Add Pin</Button>
             </div>
 
-            {pins.length === 0 ? (
+            {pinsLoading ? (
+              <div className="space-y-3">
+                {[0, 1].map((i) => (
+                  <div key={i} className="bg-cream rounded-[16px] p-4 animate-pulse">
+                    <div className="h-32 bg-pearl rounded-[12px] mb-3" />
+                    <div className="h-3 w-2/3 bg-pearl rounded mb-2" />
+                    <div className="h-3 w-1/2 bg-pearl rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : pins.length === 0 ? (
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-cream rounded-[20px] p-8 text-center">
                 <div className="w-16 h-16 rounded-full bg-tangerine-soft mx-auto mb-4 flex items-center justify-center">
                   <MapPin size={28} className="text-tangerine" />

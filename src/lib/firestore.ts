@@ -166,15 +166,29 @@ export async function removeContentFromPin(pinId: string, contentId: string) {
 
 export async function getAgentPins(agentId: string): Promise<Pin[]> {
   if (!db) return []
-  const q = query(
-    collection(db, 'pins'),
-    where('agentId', '==', agentId),
-    where('enabled', '==', true),
-    orderBy('createdAt', 'desc'),
-    limit(100)
-  )
-  const snap = await getDocs(q)
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Pin)
+  try {
+    const q = query(
+      collection(db, 'pins'),
+      where('agentId', '==', agentId),
+      where('enabled', '==', true),
+      orderBy('createdAt', 'desc'),
+      limit(100)
+    )
+    const snap = await getDocs(q)
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Pin)
+  } catch (err) {
+    // Composite index may not exist yet — fall back to simpler query.
+    console.warn('[firestore] getAgentPins falling back (no index?):', (err as Error).message)
+    const fallbackQ = query(
+      collection(db, 'pins'),
+      where('agentId', '==', agentId),
+      limit(100)
+    )
+    const snap = await getDocs(fallbackQ)
+    return snap.docs
+      .filter((d) => d.data().enabled !== false)
+      .map((d) => ({ id: d.id, ...d.data() }) as Pin)
+  }
 }
 
 export function subscribeToAgentPins(agentId: string, callback: (pins: Pin[]) => void): Unsubscribe | null {
@@ -186,9 +200,25 @@ export function subscribeToAgentPins(agentId: string, callback: (pins: Pin[]) =>
     orderBy('createdAt', 'desc'),
     limit(100)
   )
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Pin))
-  })
+  return onSnapshot(
+    q,
+    (snap) => {
+      callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Pin))
+    },
+    (err) => {
+      console.warn('[firestore] subscribeToAgentPins fallback:', err.message)
+      const fallbackQ = query(
+        collection(db!, 'pins'),
+        where('agentId', '==', agentId),
+        limit(100)
+      )
+      onSnapshot(
+        fallbackQ,
+        (snap) => callback(snap.docs.filter((d) => d.data().enabled !== false).map((d) => ({ id: d.id, ...d.data() }) as Pin)),
+        () => callback([]),
+      )
+    },
+  )
 }
 
 /** Dashboard variant — returns ALL agent pins (enabled + disabled)
