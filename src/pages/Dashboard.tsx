@@ -90,19 +90,14 @@ export default function Dashboard() {
   // finished loading and confirmed no user. During auth load, use userDoc
   // (which may already be set from a prior session via zustand persistence)
   // or a minimal placeholder so the dashboard skeleton renders.
-  const currentUser = userDoc ?? (loading ? null : MOCK_CURRENT_USER)
+  const currentUser = userDoc || MOCK_CURRENT_USER
 
-  // Pins — real Firestore data when signed in, mock for demo (not signed in).
-  // Initialize empty so there's never a flash of mock data on reload.
   const [pins, setPins] = useState<Pin[]>([])
   const [pinsLoading, setPinsLoading] = useState(true)
   useEffect(() => {
     if (!userDoc?.uid) {
-      // Only show mock pins when auth has finished and confirmed no user.
-      if (!loading) {
-        setPins(MOCK_PINS_CAROLINA)
-        setPinsLoading(false)
-      }
+      setPins(MOCK_PINS_CAROLINA)
+      setPinsLoading(false)
       return
     }
     // Signed in — clear mock data immediately, then subscribe to real.
@@ -190,13 +185,6 @@ export default function Dashboard() {
     setShowAddPlatform(false)
   }
 
-  if (!currentUser) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#FAFAF8' }}>
-        <div className="w-8 h-8 rounded-full border-[3px] border-tangerine/20 border-t-tangerine animate-spin" />
-      </div>
-    )
-  }
   const activeUser = currentUser || MOCK_CURRENT_USER
   const profileUrl = `reel.st/${activeUser.username || 'you'}`
 
