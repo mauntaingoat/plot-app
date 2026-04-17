@@ -302,29 +302,34 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
   }, [])
 
   return (
-    <div ref={cardRef} className="relative w-full" style={{ height: embedded ? '100%' : '100dvh', scrollSnapAlign: 'start', scrollSnapStop: 'always', willChange: 'transform', contain: 'layout style paint' }}>
-      {/* Background media */}
-      <div className="absolute inset-0 bg-charcoal overflow-hidden">
-        {isVideo && content.mediaUrl && isNearViewport ? (
-          <>
-            {thumbnailUrl && <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-105 opacity-30" />}
-            <video ref={videoRef} src={content.mediaUrl} className="relative w-full h-full object-contain" loop playsInline muted preload="auto"
-              onLoadedMetadata={(e) => { const v = e.currentTarget; if (v.videoHeight > v.videoWidth * 1.2) v.style.objectFit = 'cover' }} />
-          </>
-        ) : isVideo && content.mediaUrl && !isNearViewport ? (
-          <>
-            {thumbnailUrl && <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />}
-          </>
-        ) : thumbnailUrl ? (
-          <>
-            <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-105 opacity-30" loading="lazy" />
-            <img src={thumbnailUrl} alt="" className="relative w-full h-full object-contain" loading="lazy"
-              onLoad={(e) => { const img = e.currentTarget; if (img.naturalHeight > img.naturalWidth * 1.2) img.style.objectFit = 'cover' }} />
-          </>
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-slate"><p className="text-ghost">{content.type}</p></div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30" />
+    <div ref={cardRef} className="relative w-full bg-black" style={{ height: embedded ? '100%' : '100dvh', scrollSnapAlign: 'start', scrollSnapStop: 'always', willChange: 'transform', contain: 'layout style paint' }}>
+      {/* Media container — 9:16 centered with dark bars on wider viewports */}
+      <div
+        className="absolute inset-y-0 left-1/2 -translate-x-1/2 overflow-hidden"
+        style={{ width: 'min(100%, calc(100vh * 9 / 16))' }}
+      >
+        <div className="absolute inset-0 bg-charcoal overflow-hidden">
+          {isVideo && content.mediaUrl && isNearViewport ? (
+            <>
+              {thumbnailUrl && <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-105 opacity-30" />}
+              <video ref={videoRef} src={content.mediaUrl} className="relative w-full h-full object-contain" loop playsInline muted preload="auto"
+                onLoadedMetadata={(e) => { const v = e.currentTarget; if (v.videoHeight > v.videoWidth * 1.2) v.style.objectFit = 'cover' }} />
+            </>
+          ) : isVideo && content.mediaUrl && !isNearViewport ? (
+            <>
+              {thumbnailUrl && <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />}
+            </>
+          ) : thumbnailUrl ? (
+            <>
+              <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-105 opacity-30" loading="lazy" />
+              <img src={thumbnailUrl} alt="" className="relative w-full h-full object-contain" loading="lazy"
+                onLoad={(e) => { const img = e.currentTarget; if (img.naturalHeight > img.naturalWidth * 1.2) img.style.objectFit = 'cover' }} />
+            </>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-slate"><p className="text-ghost">{content.type}</p></div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30" />
+        </div>
       </div>
 
       {/* Right sidebar */}
