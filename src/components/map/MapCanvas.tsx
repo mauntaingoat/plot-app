@@ -93,15 +93,19 @@ const PIN_TYPE_ICONS: Record<string, string> = {
   spotlight: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>`,
 }
 
+// Pre-load all pin type icons at module init so they're decoded and
+// ready before any pin image is created. Data URIs decode fast but
+// img.complete can be false on the first synchronous access.
 const iconImageCache = new Map<string, HTMLImageElement>()
+;(() => {
+  for (const [type, svg] of Object.entries(PIN_TYPE_ICONS)) {
+    const img = new Image()
+    img.src = `data:image/svg+xml,${encodeURIComponent(svg)}`
+    iconImageCache.set(type, img)
+  }
+})()
 function getPinTypeIcon(type: string): HTMLImageElement | null {
-  const svg = PIN_TYPE_ICONS[type]
-  if (!svg) return null
-  if (iconImageCache.has(type)) return iconImageCache.get(type)!
-  const img = new Image()
-  img.src = `data:image/svg+xml,${encodeURIComponent(svg)}`
-  iconImageCache.set(type, img)
-  return img
+  return iconImageCache.get(type) ?? null
 }
 
 function createPinImage(img: HTMLImageElement | null, ringColor: string, pinType: string, size: number = PIN_SIZE + RING_PAD): ImageData {
