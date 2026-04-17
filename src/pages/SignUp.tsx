@@ -111,12 +111,12 @@ export default function SignUp() {
         const cred = await createUserWithEmailAndPassword(auth, email, password)
         clearTimeout(timeout)
         // Write user doc + claim username
-        await createUserDoc(cred.user.uid, makeUser(cred.user.uid) as any).catch((e) => console.warn('User doc write failed:', e))
+        const newUser = makeUser(cred.user.uid)
+        await createUserDoc(cred.user.uid, newUser as any).catch((e) => console.warn('User doc write failed:', e))
+        setUserDoc(newUser)
         // Send email verification
         try { await sendEmailVerification(cred.user) } catch {}
         if (role === 'agent' && username) {
-          const { claim } = useUsername()
-          // Direct Firestore write for username claim
           const { doc, setDoc, serverTimestamp } = await import('firebase/firestore')
           const { db } = await import('@/config/firebase')
           if (db) await setDoc(doc(db, 'usernames', username.toLowerCase()), { uid: cred.user.uid, createdAt: serverTimestamp() }).catch(() => {})
