@@ -96,7 +96,10 @@ export default function AgentProfile() {
 
   const { setViewingAgentId, activeFilters, propertyFilters } = useMapStore()
   const { userDoc: currentUser } = useAuthStore()
-  const isOwnProfile = !!(currentUser?.uid && agent?.uid && currentUser.uid === agent.uid)
+  // Own profile: either the signed-in user matches the agent, OR this
+  // is the dashboard preview iframe (which always shows the agent's own
+  // profile but doesn't share auth state across the iframe boundary).
+  const isOwnProfile = isPreview || !!(currentUser?.uid && agent?.uid && currentUser.uid === agent.uid)
 
   // Real users see no nearby agents until follows are wired to Firestore.
   // Mock agents only show for mock profiles (carolina, etc.).
