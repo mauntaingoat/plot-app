@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { firebaseConfigured } from '@/config/firebase'
 import { getUserByUsername, getAgentPins } from '@/lib/firestore'
-import { getMockAgent, getMockPins } from '@/lib/mock'
 import type { UserDoc, Pin } from '@/lib/types'
 
 export function useAgent(username: string | undefined) {
@@ -9,10 +8,6 @@ export function useAgent(username: string | undefined) {
     queryKey: ['agent', username],
     queryFn: async () => {
       if (!username) return null
-
-      // Check mock data first
-      const mockAgent = getMockAgent(username)
-      if (mockAgent) return mockAgent
 
       // Try Firebase with timeout
       if (firebaseConfigured) {
@@ -31,10 +26,6 @@ export function useAgentPins(agent: UserDoc | null | undefined) {
     queryKey: ['agentPins', agent?.uid],
     queryFn: async () => {
       if (!agent) return []
-
-      // Check mock data first
-      const mockPins = getMockPins(agent.uid)
-      if (mockPins.length > 0) return mockPins
 
       // Try Firebase
       if (firebaseConfigured) {

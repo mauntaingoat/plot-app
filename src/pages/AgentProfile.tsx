@@ -26,7 +26,6 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAgent, useAgentPins } from '@/hooks/useQueries'
 import { useFollow, useFollowingList } from '@/hooks/useFollow'
 import { useSaves } from '@/hooks/useSaves'
-import { getMockAgent, getMockPins, MOCK_AGENTS } from '@/lib/mock'
 import { firebaseConfigured } from '@/config/firebase'
 import type { UserDoc, Pin } from '@/lib/types'
 
@@ -101,10 +100,8 @@ export default function AgentProfile() {
   // profile but doesn't share auth state across the iframe boundary).
   const isOwnProfile = isPreview || !!(currentUser?.uid && agent?.uid && currentUser.uid === agent.uid)
 
-  // Real users see no nearby agents until follows are wired to Firestore.
-  // Mock agents only show for mock profiles (carolina, etc.).
-  const isMockProfile = !!(agent && getMockAgent(agent.username || ''))
-  const nearbyAgents = useMemo(() => isMockProfile ? MOCK_AGENTS : [], [isMockProfile])
+  // Nearby agents: empty until follows/explore are wired to Firestore.
+  const nearbyAgents = useMemo<UserDoc[]>(() => [], [])
 
   // Set viewing agent when agent data loads
   useEffect(() => {
@@ -139,49 +136,19 @@ export default function AgentProfile() {
     if (agentMode === 'saved') {
       // Saved mode: show all pins the user has saved across all agents
       if (saves.length === 0) return []
-      const allAgentPins: Pin[] = [...allPins]
-      for (const a of MOCK_AGENTS) {
-        allAgentPins.push(...getMockPins(a.uid))
-      }
       const savedPinIds = new Set(saves.map((s) => s.pinId))
-      // Dedupe by pin id
-      const seen = new Set<string>()
-      return allAgentPins.filter((p) => {
-        if (!savedPinIds.has(p.id)) return false
-        if (seen.has(p.id)) return false
-        seen.add(p.id)
-        return true
-      })
+      return allPins.filter((p) => savedPinIds.has(p.id))
     }
     if (agentMode === 'explore') {
-      // All agents' pins, deduped by id. The current profile owner's pins
-      // (`allPins`) are also included as a starting set so they show up
-      // even if they're not in `nearbyAgents`. Dedup-by-id prevents double
-      // counting when the current agent IS in the nearbyAgents list.
-      const all: Pin[] = []
-      const seen = new Set<string>()
-      const addPin = (p: Pin) => {
-        if (seen.has(p.id)) return
-        all.push(p)
-        seen.add(p.id)
-      }
-      for (const p of allPins) addPin(p)
-      for (const a of nearbyAgents) {
-        for (const p of getMockPins(a.uid)) addPin(p)
-      }
-      return all
+      // All agents' pins — currently just the profile owner's pins until
+      // explore is wired to Firestore.
+      return [...allPins]
     }
     if (agentMode === 'following') {
       if (enabledAgentIds.size === 0) return []
-      const all: Pin[] = []
-      const seen = new Set<string>()
-      for (const id of enabledAgentIds) {
-        const pins = id === agent?.uid ? allPins : getMockPins(id)
-        for (const p of pins) {
-          if (!seen.has(p.id)) { all.push(p); seen.add(p.id) }
-        }
-      }
-      return all
+      // Only show current agent's pins if they're in the enabled set
+      if (agent && enabledAgentIds.has(agent.uid)) return [...allPins]
+      return []
     }
     return allPins
   }, [allPins, agentMode, nearbyAgents, enabledAgentIds, saves])
@@ -246,11 +213,10 @@ export default function AgentProfile() {
   }
 
   if (loading || !loadingComplete) {
-    const previewAgent = username ? getMockAgent(username) : null
     return (
       <LoadingScreen
-        agentName={agent?.displayName || previewAgent?.displayName}
-        agentPhoto={agent?.photoURL || previewAgent?.photoURL}
+        agentName={agent?.displayName}
+        agentPhoto={agent?.photoURL}
         onComplete={() => setLoadingComplete(true)}
         minDuration={loading ? 3000 : 1800}
       />

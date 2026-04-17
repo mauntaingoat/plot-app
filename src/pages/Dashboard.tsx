@@ -36,7 +36,6 @@ import { useAuthStore } from '@/stores/authStore'
 import { useThemeStore, type ThemePreference } from '@/stores/themeStore'
 import { firebaseConfigured } from '@/config/firebase'
 import { subscribeToAllAgentPins } from '@/lib/firestore'
-import { MOCK_PINS_CAROLINA, MOCK_CURRENT_USER, MOCK_AGENTS } from '@/lib/mock'
 import { PLATFORM_LIST, PLATFORM_LOGOS } from '@/components/icons/PlatformLogos'
 import { PIN_CONFIG, type Pin, type Platform, type ForSalePin, type OpenHouse, type ContentItem } from '@/lib/types'
 
@@ -86,17 +85,20 @@ export default function Dashboard() {
   const isDark = resolvedTheme === 'dark'
   useEffect(() => activateTheme(), [activateTheme])
 
-  // Use real userDoc when signed in. Fall back to mock ONLY when auth has
-  // finished loading and confirmed no user. During auth load, use userDoc
-  // (which may already be set from a prior session via zustand persistence)
-  // or a minimal placeholder so the dashboard skeleton renders.
-  const currentUser = userDoc || MOCK_CURRENT_USER
+  // Redirect to sign-in if not authenticated (after auth finishes loading)
+  useEffect(() => {
+    if (!loading && !userDoc) {
+      navigate('/sign-in')
+    }
+  }, [loading, userDoc, navigate])
+
+  const currentUser = userDoc
 
   const [pins, setPins] = useState<Pin[]>([])
   const [pinsLoading, setPinsLoading] = useState(true)
   useEffect(() => {
     if (!userDoc?.uid) {
-      setPins(MOCK_PINS_CAROLINA)
+      setPins([])
       setPinsLoading(false)
       return
     }
@@ -151,10 +153,9 @@ export default function Dashboard() {
 
   const chartData = useMemo(() => {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    // Real users see zeros until analytics are wired; mock data shows sample values.
-    const mockValues = [1240, 1890, 1560, 2340, 3120, 2870, 2180]
-    return days.map((label, i) => ({ label, value: userDoc ? 0 : mockValues[i] }))
-  }, [userDoc])
+    // Zeros until analytics are wired to Firestore.
+    return days.map((label) => ({ label, value: 0 }))
+  }, [])
 
   const confirmSignOut = () => {
     setShowSignOutConfirm(false)
@@ -185,11 +186,12 @@ export default function Dashboard() {
     setShowAddPlatform(false)
   }
 
-  const activeUser = currentUser || MOCK_CURRENT_USER
-  const profileUrl = `reel.st/${activeUser.username || 'you'}`
+  const activeUser = currentUser
+  const profileUrl = `reel.st/${activeUser?.username || 'you'}`
 
   // Compute real setup percent to match checklist (fix mismatch)
   const computedSetupPercent = useMemo(() => {
+    if (!activeUser) return 0
     const items = [
       { weight: 10, check: !!activeUser.username },
       { weight: 15, check: !!activeUser.photoURL },
@@ -202,6 +204,9 @@ export default function Dashboard() {
     ]
     return items.filter((i) => i.check).reduce((s, i) => s + i.weight, 0)
   }, [activeUser, pins])
+
+  // If not authenticated, show nothing while redirect fires
+  if (!activeUser) return null
 
   // ── Tab content (shared between mobile and desktop) ──
 
@@ -854,7 +859,7 @@ export default function Dashboard() {
                 </button>
               </div>
               <button
-                onClick={() => navigate(`/${activeUser.username || 'carolina'}?preview=true`)}
+                onClick={() => activeUser.username && navigate(`/${activeUser.username}?preview=true`)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-warm-white border border-border-light text-[13px] font-medium text-ink cursor-pointer hover:bg-cream transition-colors"
               >
                 <ExternalLink size={14} className="text-smoke" />
@@ -873,24 +878,33 @@ export default function Dashboard() {
 
         {/* ── Right Preview Panel (Live iframe) ── */}
         <aside className="w-[300px] shrink-0 border-l border-border-light flex flex-col items-center justify-center" style={{ background: 'linear-gradient(180deg, var(--color-cream) 0%, var(--color-pearl) 100%)' }}>
-          {/* Phone frame with live preview — scaled to fit */}
-          <div className="relative">
-            <div className="w-[240px] rounded-[32px] bg-midnight shadow-2xl overflow-hidden" style={{ height: '480px' }}>
-              <iframe
-                src={`/${activeUser.username || 'carolina'}?preview=true`}
-                className="border-0 origin-top-left"
-                style={{ pointerEvents: 'none', width: '375px', height: '750px', transform: 'scale(0.64)', transformOrigin: 'top left' }}
-                title="Profile preview"
-              />
-            </div>
-          </div>
+          {activeUser.username ? (
+            <>
+              {/* Phone frame with live preview — scaled to fit */}
+              <div className="relative">
+                <div className="w-[240px] rounded-[32px] bg-midnight shadow-2xl overflow-hidden" style={{ height: '480px' }}>
+                  <iframe
+                    src={`/${activeUser.username}?preview=true`}
+                    className="border-0 origin-top-left"
+                    style={{ pointerEvents: 'none', width: '375px', height: '750px', transform: 'scale(0.64)', transformOrigin: 'top left' }}
+                    title="Profile preview"
+                  />
+                </div>
+              </div>
 
-          <button
-            onClick={() => navigate(`/${activeUser.username || 'carolina'}?preview=true`)}
-            className="mt-4 text-[12px] font-semibold text-tangerine cursor-pointer hover:underline"
-          >
-            Open full preview
-          </button>
+              <button
+                onClick={() => navigate(`/${activeUser.username}?preview=true`)}
+                className="mt-4 text-[12px] font-semibold text-tangerine cursor-pointer hover:underline"
+              >
+                Open full preview
+              </button>
+            </>
+          ) : (
+            <div className="text-center px-6">
+              <p className="text-[14px] font-semibold text-ink mb-1">Set up your username</p>
+              <p className="text-[12px] text-smoke">Choose a username to see your live preview here.</p>
+            </div>
+          )}
         </aside>
 
         {renderSheets()}
@@ -921,7 +935,7 @@ export default function Dashboard() {
                 <SetupRing percent={computedSetupPercent} />
               </motion.button>
             )}
-            <Button variant="secondary" size="sm" icon={<ExternalLink size={14} />} onClick={() => navigate('/carolina?preview=true')}>
+            <Button variant="secondary" size="sm" icon={<ExternalLink size={14} />} onClick={() => activeUser?.username && navigate(`/${activeUser.username}?preview=true`)}>
               Preview
             </Button>
           </div>
