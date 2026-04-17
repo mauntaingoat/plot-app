@@ -165,6 +165,7 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
         <div className="relative flex-1 min-h-0">
           <div ref={scrollAreaRef} className="absolute inset-0 overflow-y-auto" style={{
             overscrollBehavior: 'none',
+            WebkitOverflowScrolling: 'touch',
             ...(activeTab === 'content' ? { scrollSnapType: 'y mandatory' } : {}),
           }}>
             {activeTab === 'content' ? (
@@ -263,7 +264,7 @@ function ContentTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-midnight" style={{ scrollSnapType: 'y mandatory', overscrollBehavior: 'none' }}>
+    <div className="flex-1 overflow-y-auto bg-midnight" style={{ scrollSnapType: 'y mandatory', overscrollBehavior: 'none', WebkitOverflowScrolling: 'touch' }}>
       {visibleContent.map((content) => (
         <ContentCard key={content.id} content={content} pin={pin} agent={agent} isPreview={isPreview} isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
       ))}

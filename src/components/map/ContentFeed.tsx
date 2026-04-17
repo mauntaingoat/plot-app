@@ -37,7 +37,7 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
   return (
     <>
       <div ref={scrollRef} className="absolute inset-0 bg-midnight overflow-y-auto"
-        style={{ scrollSnapType: 'y mandatory', scrollBehavior: 'auto', overscrollBehavior: 'none' }}>
+        style={{ scrollSnapType: 'y mandatory', overscrollBehavior: 'none', WebkitOverflowScrolling: 'touch' }}>
         {allContent.map(({ content, pin }) => (
           <FeedCard key={content.id} content={content} pin={pin} agent={agent}
             isPreview={isPreview} following={following}
