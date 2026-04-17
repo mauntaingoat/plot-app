@@ -90,8 +90,9 @@ export default function Dashboard() {
   const currentUser = userDoc || MOCK_CURRENT_USER
 
   // Pins — real Firestore data when signed in, mock for demo (not signed in).
-  const [pins, setPins] = useState<Pin[]>(MOCK_PINS_CAROLINA)
-  const [pinsLoading, setPinsLoading] = useState(false)
+  // Initialize empty so there's never a flash of mock data on reload.
+  const [pins, setPins] = useState<Pin[]>([])
+  const [pinsLoading, setPinsLoading] = useState(true)
   useEffect(() => {
     if (!userDoc?.uid) {
       setPins(MOCK_PINS_CAROLINA)

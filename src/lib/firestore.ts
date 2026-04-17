@@ -13,12 +13,23 @@ import type { UserDoc, Pin, ForSalePin, SoldPin, SpotlightPin, ContentItem, Cont
 
 export async function getUserByUsername(username: string): Promise<UserDoc | null> {
   if (!db) return null
+  // Primary path: look up the usernames collection (fast, indexed).
   const usernameSnap = await getDoc(doc(db, 'usernames', username.toLowerCase()))
-  if (!usernameSnap.exists()) return null
-  const { uid } = usernameSnap.data()
-  const userSnap = await getDoc(doc(db, 'users', uid))
-  if (!userSnap.exists()) return null
-  return { uid: userSnap.id, ...userSnap.data() } as UserDoc
+  if (usernameSnap.exists()) {
+    const { uid } = usernameSnap.data()
+    const userSnap = await getDoc(doc(db, 'users', uid))
+    if (userSnap.exists()) return { uid: userSnap.id, ...userSnap.data() } as UserDoc
+  }
+  // Fallback: the usernames doc may not exist if sign-up partially
+  // failed or the claim write was skipped. Query users collection
+  // directly by the username field.
+  const q = query(collection(db, 'users'), where('username', '==', username.toLowerCase()), limit(1))
+  const snap = await getDocs(q)
+  if (snap.empty) return null
+  const d = snap.docs[0]
+  // Backfill the missing usernames doc so future lookups are fast.
+  setDoc(doc(db, 'usernames', username.toLowerCase()), { uid: d.id, createdAt: serverTimestamp() }).catch(() => {})
+  return { uid: d.id, ...d.data() } as UserDoc
 }
 
 export async function getUserById(uid: string): Promise<UserDoc | null> {
