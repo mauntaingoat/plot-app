@@ -192,7 +192,7 @@ export default function Dashboard() {
 
   if (!currentUser) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-[#0A0E17]' : 'bg-ivory'}`}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#FAFAF8' }}>
         <div className="w-8 h-8 rounded-full border-[3px] border-tangerine/20 border-t-tangerine animate-spin" />
       </div>
     )
