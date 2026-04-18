@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, ArrowRight, MapPin, Search, Check, Upload, Video, Camera, X, DollarSign, Home, BadgeCheck, Compass, Plus, Film, Mic, Clock, Lock, Trash2, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -38,6 +38,7 @@ type ContentKind = 'carousel' | 'reel'
 
 export default function PinCreate() {
   const navigate = useNavigate()
+  const { id: existingPinId } = useParams<{ id: string }>()
   const { userDoc } = useAuthStore()
   const { results, search, clear } = useGeocoding()
   const activateTheme = useThemeStore((s) => s.activate)
@@ -45,7 +46,9 @@ export default function PinCreate() {
   const isDark = resolvedTheme === 'dark'
   useEffect(() => activateTheme(), [activateTheme])
 
-  // Check if we're in "add content" mode (skip to content step, no back)
+  // Check if we're in "add content" mode (skip to content step, no back).
+  // existingPinId is set when adding content to an existing pin via
+  // /dashboard/pin/:id/edit?tab=content — content attaches to that pin.
   const isAddContentMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab') === 'content'
 
   const [step, _setStep] = useState<Step>(isAddContentMode ? 'content-type' : 'type')
@@ -348,13 +351,13 @@ export default function PinCreate() {
   /**
    * Publish standalone content (no pin). Used when the user arrives via
    * the Content tab (+Upload) and hits Publish — there's no pin to create.
-   * Each draft is saved to the standalone `content` Firestore collection
-   * with `pinId: null` (unlinked).
+   * Each draft is saved either:
+   * - To the existing pin's content[] array (if existingPinId is set)
+   * - To the standalone `content` Firestore collection (if no pin)
    */
   const handlePublishContent = async () => {
     if (contentDrafts.length === 0) return
 
-    // Preflight auth check
     if (!userDoc?.uid || userDoc.uid.startsWith('demo') || userDoc.uid.startsWith('carolina')) {
       alert('You need to sign in with a real account before publishing. Visit /sign-up to create one.')
       return
@@ -366,36 +369,32 @@ export default function PinCreate() {
     setRenderProgress(0)
 
     const agentId = userDoc.uid
+    // When adding content to an existing pin, use that pin's ID for
+    // Storage paths and to attach the content items to the pin doc.
+    const targetPinId = existingPinId || null
+    const storagePinId = targetPinId || `unlinked-${Date.now()}`
 
     try {
+      const newContentItems: import('@/lib/types').ContentItem[] = []
+
       for (let i = 0; i < contentDrafts.length; i++) {
         const draft = contentDrafts[i]
         const contentId = `content-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-        const placeholderPinId = `unlinked-${Date.now()}`
 
         if (draft.kind === 'carousel') {
           const items = await publishCarouselPhotos(
             draft,
-            placeholderPinId,
+            storagePinId,
             (phase, pct) => {
               setRenderPhase(phase as RenderPhase)
               setRenderProgress(Math.round(((i + pct) / contentDrafts.length) * 100))
             },
           )
-          // Save each photo as a standalone content doc
           for (const item of items) {
-            await createContent({
-              agentId,
-              pinId: null,
-              type: item.type,
-              mediaUrl: item.mediaUrl,
-              thumbnailUrl: item.thumbnailUrl,
-              caption: draft.caption ?? '',
-              publishAt: item.publishAt ?? null,
-            })
+            item.caption = draft.caption ?? ''
+            newContentItems.push(item)
           }
         } else {
-          // Editor (reel) draft — render via Mux pipeline
           const draftClips = draft.clipFiles.map((file, idx) => ({
             id: `${draft.id}-${idx}`,
             file,
@@ -412,11 +411,10 @@ export default function PinCreate() {
           }))
 
           const result = await renderComposition({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             clips: draftClips as any,
             aspect: draft.aspect,
             overlays: draft.overlays,
-            pinId: `content-${Date.now()}`,
+            pinId: storagePinId,
             contentId,
             caption: draft.caption ?? '',
             onProgress: (phase, pct) => {
@@ -425,14 +423,41 @@ export default function PinCreate() {
             },
           })
 
-          await createContent({
-            agentId,
-            pinId: null,
+          newContentItems.push({
+            id: contentId,
             type: 'reel',
             mediaUrl: result.mp4Url,
             thumbnailUrl: `https://image.mux.com/${result.muxPlaybackId}/thumbnail.webp?width=720`,
             caption: draft.caption ?? '',
+            createdAt: Timestamp.now(),
+            views: 0,
+            saves: 0,
             publishAt: null,
+          })
+        }
+      }
+
+      // Attach to existing pin OR save as standalone content docs.
+      if (targetPinId && newContentItems.length > 0) {
+        const { updatePin } = await import('@/lib/firestore')
+        // Fetch current pin content and append
+        const { getDoc, doc } = await import('firebase/firestore')
+        const { db } = await import('@/config/firebase')
+        if (db) {
+          const pinSnap = await getDoc(doc(db, 'pins', targetPinId))
+          const existing: any[] = pinSnap.exists() ? (pinSnap.data().content || []) : []
+          await updatePin(targetPinId, { content: [...existing, ...newContentItems] })
+        }
+      } else {
+        for (const item of newContentItems) {
+          await createContent({
+            agentId,
+            pinId: null,
+            type: item.type,
+            mediaUrl: item.mediaUrl,
+            thumbnailUrl: item.thumbnailUrl,
+            caption: item.caption,
+            publishAt: item.publishAt ?? null,
           })
         }
       }
