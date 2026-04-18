@@ -276,16 +276,16 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
         onConfirm={() => {
           if (!archiveTarget) return
           if (archiveTarget.pinId) {
+            // Remove from the pin's content array AND archive the content doc
             onArchiveContent(archiveTarget.contentId, archiveTarget.pinId)
-          } else {
-            // Unlinked content — remove from local state + Firestore
-            setUnlinkedContent((prev) => prev.filter((c) => c.id !== archiveTarget.contentId))
-            archiveContentDoc(archiveTarget.contentId).catch(() => {})
           }
+          // Always remove from local unlinked state + archive in Firestore
+          setUnlinkedContent((prev) => prev.filter((c) => c.id !== archiveTarget.contentId))
+          archiveContentDoc(archiveTarget.contentId).catch(() => {})
           setArchiveTarget(null)
         }}
         title="Archive this content?"
-        message="This will remove the content from the listing."
+        message="This will permanently remove this content."
         confirmLabel="Archive"
       />
 
