@@ -24,7 +24,7 @@ interface ContentLibraryProps {
 
 export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent, onArchiveContent, isDesktop, onNavigateUpload, onCaptionSaved, onEditContent }: ContentLibraryProps) {
   const [filter, setFilter] = useState<'all' | 'reel' | 'photo' | 'no_listing'>('all')
-  const [archiveTarget, setArchiveTarget] = useState<{ contentId: string; pinId: string } | null>(null)
+  const [archiveTarget, setArchiveTarget] = useState<{ contentId: string; pinId: string | null } | null>(null)
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [mobileMenuContent, setMobileMenuContent] = useState<{ content: ContentItem; pin: Pin | null } | null>(null)
   const [playingVideo, setPlayingVideo] = useState<string | null>(null)
@@ -220,12 +220,7 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
                 }
               }}
               onArchive={() => {
-                if (pin) {
-                  setArchiveTarget({ contentId: content.id, pinId: pin.id })
-                } else {
-                  // Archive unlinked content — just remove from local state
-                  setUnlinkedContent((prev) => prev.filter((c) => c.id !== content.id))
-                }
+                setArchiveTarget({ contentId: content.id, pinId: pin?.id ?? null })
               }}
               onEditCaption={() => setEditingCaption({ contentId: content.id, pinId: pin?.id || null, caption: content.caption || '' })}
               onEditContent={() => onEditContent?.(content, pin)}
@@ -266,8 +261,8 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
           <MobileMenuBtn
             icon={<Trash2 size={18} className="text-live-red" />} label="Archive" danger
             onClick={() => {
-              if (mobileMenuContent?.pin) {
-                setArchiveTarget({ contentId: mobileMenuContent.content.id, pinId: mobileMenuContent.pin.id })
+              if (mobileMenuContent) {
+                setArchiveTarget({ contentId: mobileMenuContent.content.id, pinId: mobileMenuContent.pin?.id ?? null })
               }
               setMobileMenuContent(null)
             }}
@@ -278,7 +273,17 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
       <ConfirmDialog
         isOpen={!!archiveTarget}
         onClose={() => setArchiveTarget(null)}
-        onConfirm={() => { if (archiveTarget) { onArchiveContent(archiveTarget.contentId, archiveTarget.pinId); setArchiveTarget(null) } }}
+        onConfirm={() => {
+          if (!archiveTarget) return
+          if (archiveTarget.pinId) {
+            onArchiveContent(archiveTarget.contentId, archiveTarget.pinId)
+          } else {
+            // Unlinked content — remove from local state + Firestore
+            setUnlinkedContent((prev) => prev.filter((c) => c.id !== archiveTarget.contentId))
+            archiveContentDoc(archiveTarget.contentId).catch(() => {})
+          }
+          setArchiveTarget(null)
+        }}
         title="Archive this content?"
         message="This will remove the content from the listing."
         confirmLabel="Archive"

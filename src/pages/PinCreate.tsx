@@ -455,6 +455,7 @@ export default function PinCreate() {
             pinId: null,
             type: item.type,
             mediaUrl: item.mediaUrl,
+            mediaUrls: item.mediaUrls,
             thumbnailUrl: item.thumbnailUrl,
             caption: item.caption,
             publishAt: item.publishAt ?? null,
