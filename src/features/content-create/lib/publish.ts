@@ -13,15 +13,17 @@ function newContentId() {
 }
 
 /**
- * Photo carousel → one Firebase Storage upload per photo, one ContentItem
- * per photo. Mux is not involved (video-only service).
+ * Photo carousel → uploads all photos to Firebase Storage, returns a
+ * SINGLE ContentItem with `mediaUrls[]` containing all photo URLs.
+ * The first photo's URL is also set as `mediaUrl` and `thumbnailUrl`
+ * for backwards compatibility with views that only read the single URL.
  */
 export async function publishCarouselPhotos(
   draft: CarouselDraft,
   pinId: string,
   onProgress?: PublishProgress,
 ): Promise<ContentItem[]> {
-  const items: ContentItem[] = []
+  const urls: string[] = []
   const total = draft.photos.length || 1
   for (let i = 0; i < draft.photos.length; i++) {
     const photo = draft.photos[i]
@@ -31,17 +33,18 @@ export async function publishCarouselPhotos(
       file: photo.file,
       onProgress: (pct) => onProgress?.('upload', clamp01((i + pct / 100) / total)),
     })
-    items.push({
-      id: newContentId(),
-      type: 'photo',
-      mediaUrl: url,
-      thumbnailUrl: url,
-      caption: '',
-      createdAt: Timestamp.now(),
-      views: 0,
-      saves: 0,
-      publishAt: null,
-    })
+    urls.push(url)
   }
-  return items
+  return [{
+    id: newContentId(),
+    type: 'photo',
+    mediaUrl: urls[0] || '',
+    mediaUrls: urls,
+    thumbnailUrl: urls[0] || '',
+    caption: '',
+    createdAt: Timestamp.now(),
+    views: 0,
+    saves: 0,
+    publishAt: null,
+  }]
 }

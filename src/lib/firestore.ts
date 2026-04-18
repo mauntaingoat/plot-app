@@ -619,14 +619,25 @@ export async function getAgentContent(agentId: string): Promise<ContentDoc[]> {
     const list = JSON.parse(localStorage.getItem('reelst_content') || '[]')
     return list.filter((c: ContentDoc) => c.agentId === agentId)
   }
-  const q = query(
-    collection(db, 'content'),
-    where('agentId', '==', agentId),
-    orderBy('createdAt', 'desc'),
-    limit(200),
-  )
-  const snap = await getDocs(q)
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as ContentDoc))
+  try {
+    const q = query(
+      collection(db, 'content'),
+      where('agentId', '==', agentId),
+      orderBy('createdAt', 'desc'),
+      limit(200),
+    )
+    const snap = await getDocs(q)
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as ContentDoc))
+  } catch (err) {
+    console.warn('[firestore] getAgentContent fallback:', (err as Error).message)
+    const fallbackQ = query(
+      collection(db, 'content'),
+      where('agentId', '==', agentId),
+      limit(200),
+    )
+    const snap = await getDocs(fallbackQ)
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as ContentDoc))
+  }
 }
 
 export async function updateContent(contentId: string, data: Partial<ContentDoc>) {
