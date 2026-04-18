@@ -118,19 +118,29 @@ function createPinImage(img: HTMLImageElement | null, ringColor: string, pinType
   const ringW = (RING_PAD / 2) * 2, innerR = outerR - ringW
   ctx.beginPath(); ctx.arc(cx, cy, outerR, 0, Math.PI * 2); ctx.fillStyle = ringColor; ctx.fill()
   ctx.beginPath(); ctx.arc(cx, cy, innerR, 0, Math.PI * 2); ctx.fillStyle = '#0A0E17'; ctx.fill()
+  let tainted = false
   if (img && img.complete && img.naturalWidth > 0) {
-    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, innerR - 2, 0, Math.PI * 2); ctx.clip()
-    const imgSize = (innerR - 2) * 2
-    ctx.drawImage(img, cx - innerR + 2, cy - innerR + 2, imgSize, imgSize)
-    ctx.restore()
-  } else {
-    // Draw pin-type icon instead of a letter fallback
+    try {
+      ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, innerR - 2, 0, Math.PI * 2); ctx.clip()
+      const imgSize = (innerR - 2) * 2
+      ctx.drawImage(img, cx - innerR + 2, cy - innerR + 2, imgSize, imgSize)
+      ctx.restore()
+      // Test if canvas is tainted before returning
+      ctx.getImageData(0, 0, 1, 1)
+    } catch {
+      // Cross-origin image tainted the canvas — redraw with icon fallback
+      tainted = true
+      ctx.clearRect(0, 0, s, s)
+      ctx.beginPath(); ctx.arc(cx, cy, outerR, 0, Math.PI * 2); ctx.fillStyle = ringColor; ctx.fill()
+      ctx.beginPath(); ctx.arc(cx, cy, innerR, 0, Math.PI * 2); ctx.fillStyle = '#0A0E17'; ctx.fill()
+    }
+  }
+  if (tainted || !img || !img.complete || img.naturalWidth === 0) {
     const icon = getPinTypeIcon(pinType)
     if (icon && icon.complete && icon.naturalWidth > 0) {
       const iconSize = innerR * 1.1
       ctx.drawImage(icon, cx - iconSize / 2, cy - iconSize / 2, iconSize, iconSize)
     } else {
-      // Ultimate fallback: first letter
       const letter = (PIN_CONFIG[pinType as keyof typeof PIN_CONFIG]?.label || 'P')[0]
       ctx.fillStyle = '#ffffff'; ctx.font = `bold ${innerR * 0.7}px Outfit, sans-serif`
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(letter, cx, cy)
@@ -514,6 +524,7 @@ function queueFrameGeneration(
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
+    img.crossOrigin = 'anonymous'
     img.onload = () => resolve(img)
     img.onerror = reject
     img.src = url
