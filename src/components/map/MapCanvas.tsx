@@ -511,11 +511,31 @@ function queueFrameGeneration(
   setTimeout(processBatch, 50)
 }
 
-function loadImage(url: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image(); img.crossOrigin = 'anonymous'
-    img.onload = () => resolve(img); img.onerror = reject; img.src = url
-  })
+async function loadImage(url: string): Promise<HTMLImageElement> {
+  // Fetch as blob to avoid CORS issues with Firebase Storage URLs.
+  // crossOrigin='anonymous' on <img> requires the server to return
+  // Access-Control-Allow-Origin, which Firebase Storage doesn't always
+  // do for canvas-tainted operations. Blob URLs are same-origin.
+  try {
+    const res = await fetch(url)
+    const blob = await res.blob()
+    const blobUrl = URL.createObjectURL(blob)
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => { URL.revokeObjectURL(blobUrl); resolve(img) }
+      img.onerror = () => { URL.revokeObjectURL(blobUrl); reject() }
+      img.src = blobUrl
+    })
+  } catch {
+    // Fallback: try direct load without CORS (may taint canvas but at
+    // least the image renders on the pin).
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => resolve(img)
+      img.onerror = reject
+      img.src = url
+    })
+  }
 }
 
 export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, className = '', fitToPins = true, interactive = true, showBackButton, onBack }: MapCanvasProps) {
