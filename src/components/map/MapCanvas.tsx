@@ -567,7 +567,10 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       const pin = pinList[idx]
       const color = RING_COLORS[pin.type] || '#FF6B3D'
       const pType = pin.type
-      const img = pinImages[idx] || agentImg
+      // Only use the pin's own image (content thumbnail or listing photo).
+      // Agent photo is NOT a fallback — the pin-type icon in createPinImage
+      // is a better visual cue than the agent's face on every pin.
+      const img = pinImages[idx]
 
       const isLive = pin.type === 'for_sale' && 'isLive' in pin && pin.isLive
       const hasOpenHouse = pin.type === 'for_sale' && 'openHouse' in pin && !!pin.openHouse?.sessions?.length
