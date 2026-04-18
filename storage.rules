@@ -36,13 +36,17 @@ service firebase.storage {
 
     // ── Pin media: pins/{pinId}/* ──
     // Anyone can read (it's listing photos and reels — public content)
-    // Only the pin's agent can write
+    // Only the pin's agent can write. For standalone content uploads
+    // (pinId starts with 'unlinked-' or 'content-'), no Firestore pin
+    // doc exists — just require auth + valid file type + size.
     match /pins/{pinId}/{allPaths=**} {
       allow read: if true;
       allow write: if isSignedIn()
-                   && firestore.get(/databases/(default)/documents/pins/$(pinId)).data.agentId == request.auth.uid
                    && reasonableSize()
-                   && isImageOrVideo();
+                   && isImageOrVideo()
+                   && (pinId[0:9] == 'unlinked-'
+                       || pinId[0:8] == 'content-'
+                       || firestore.get(/databases/(default)/documents/pins/$(pinId)).data.agentId == request.auth.uid);
     }
 
     // ── Default deny ──
