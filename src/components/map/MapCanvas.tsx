@@ -572,19 +572,25 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
         queueFrameGeneration(map, loadedImagesRef.current, liveId, 'live', ANIM_FRAMES, (f) => createLiveFrame(liveImg, liveType, f, liveColor, liveGrad))
       }
 
-      // Type-colored ring version (for individual pins)
+      // Type-colored ring version (for individual pins).
+      // Always regenerate — pin content/photos may have changed since
+      // the last render, and the thumbnail should reflect the latest.
       const imgId = `pin-img-${pin.id}`
-      if (!loadedImagesRef.current.has(imgId)) {
-        const imageData = createPinImage(img, color, pType)
-        if (!map.hasImage(imgId)) { map.addImage(imgId, imageData, { pixelRatio: 2 }); loadedImagesRef.current.add(imgId) }
+      const imageData = createPinImage(img, color, pType)
+      if (map.hasImage(imgId)) {
+        map.removeImage(imgId)
       }
+      map.addImage(imgId, imageData, { pixelRatio: 2 })
+      loadedImagesRef.current.add(imgId)
 
       // Orange ring version (for mixed-type clusters)
       const orangeId = `pin-img-orange-${pin.id}`
-      if (!loadedImagesRef.current.has(orangeId)) {
-        const orangeData = createPinImage(img, TANGERINE, pType)
-        if (!map.hasImage(orangeId)) { map.addImage(orangeId, orangeData, { pixelRatio: 2 }); loadedImagesRef.current.add(orangeId) }
+      const orangeData = createPinImage(img, TANGERINE, pType)
+      if (map.hasImage(orangeId)) {
+        map.removeImage(orangeId)
       }
+      map.addImage(orangeId, orangeData, { pixelRatio: 2 })
+      loadedImagesRef.current.add(orangeId)
 
       // Per-pin label pill (price/status/neighborhood name in type-colored pill)
       const label = pin.type === 'sold' ? 'SOLD'
