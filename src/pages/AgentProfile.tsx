@@ -209,10 +209,13 @@ export default function AgentProfile() {
   }, [filteredPins, agentMode])
 
   const handlePinClick = useCallback((pin: Pin) => {
-    // Don't reset tab — if handleIndicatorTap set it in the same tick, keep it
     setSelectedPin(pin)
-    import('@/lib/firestore').then(({ incrementPinTap }) => incrementPinTap(pin.id)).catch(() => {})
-  }, [allPins])
+    // Only count taps from OTHER users — the agent's own clicks on
+    // their own pins (or preview) shouldn't inflate metrics.
+    if (!isOwnProfile) {
+      import('@/lib/firestore').then(({ incrementPinTap }) => incrementPinTap(pin.id)).catch(() => {})
+    }
+  }, [allPins, isOwnProfile])
 
   const handleIndicatorTap = useCallback((pins: Pin[], type: 'live' | 'openhouse') => {
     const tab = type === 'openhouse' ? 'listing' as const : 'content' as const
