@@ -38,6 +38,23 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
   const photoRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLInputElement>(null)
 
+  // Fetch standalone content from Firestore (the `content` collection).
+  // This picks up content published via the standalone upload flow.
+  useEffect(() => {
+    if (!agentId) return
+    import('@/lib/firestore').then(({ getAgentContent }) => {
+      getAgentContent(agentId).then((docs) => {
+        if (docs.length > 0) {
+          setUnlinkedContent((prev) => {
+            const existingIds = new Set(prev.map((c) => c.id))
+            const newItems = docs.filter((d) => !existingIds.has(d.id))
+            return newItems.length > 0 ? [...prev, ...newItems] : prev
+          })
+        }
+      }).catch(() => {})
+    })
+  }, [agentId])
+
   // Sync unlinked content to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(unlinkedContent))
