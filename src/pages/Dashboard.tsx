@@ -7,7 +7,7 @@ import {
   ExternalLink, LogOut, ChevronRight, CreditCard,
   User, Trash2, Edit3, EyeOff, Link2, Shield,
   Film, Share2, Copy, Check, X, QrCode, CalendarDays, Inbox,
-  Bell, Camera, Sun, Moon,
+  Bell, Camera, Sun, Moon, RefreshCw,
 } from 'lucide-react'
 import { TabBar } from '@/components/ui/TabBar'
 import { Button } from '@/components/ui/Button'
@@ -70,6 +70,7 @@ export default function Dashboard() {
   const [editProfileData, setEditProfileData] = useState({ displayName: '', bio: '', photoURL: '' })
   const photoInputRef = useRef<HTMLInputElement>(null)
   const desktopScrollRef = useRef<HTMLDivElement>(null)
+  const previewIframeRef = useRef<HTMLIFrameElement>(null)
   const isDesktop = useIsDesktop()
 
   // Lock background scroll for desktop-only inline modals
@@ -894,12 +895,24 @@ export default function Dashboard() {
               <div className="relative">
                 <div className="w-[240px] rounded-[32px] bg-midnight shadow-2xl overflow-hidden" style={{ height: '480px' }}>
                   <iframe
+                    ref={previewIframeRef}
                     src={`/${activeUser.username}?preview=true`}
                     className="border-0 origin-top-left"
                     style={{ pointerEvents: 'none', width: '375px', height: '750px', transform: 'scale(0.64)', transformOrigin: 'top left' }}
                     title="Profile preview"
                   />
                 </div>
+                {/* Reload button — top-right of phone frame */}
+                <button
+                  onClick={() => {
+                    const iframe = previewIframeRef.current
+                    if (iframe) iframe.src = iframe.src
+                  }}
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-warm-white/90 shadow border border-border-light flex items-center justify-center text-smoke hover:text-ink cursor-pointer transition-colors"
+                  title="Reload preview"
+                >
+                  <RefreshCw size={13} strokeWidth={2.3} />
+                </button>
               </div>
 
               <button
