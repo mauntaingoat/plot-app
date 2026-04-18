@@ -32,6 +32,8 @@ interface MapCanvasProps {
   interactive?: boolean
   showBackButton?: boolean
   onBack?: () => void
+  /** Center to fly to when pins are empty (e.g. agent's licensed state) */
+  defaultCenter?: [number, number]
 }
 
 function pinsToGeoJSON(pins: Pin[]) {
@@ -531,7 +533,7 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   })
 }
 
-export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, className = '', fitToPins = true, interactive = true, showBackButton, onBack }: MapCanvasProps) {
+export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, className = '', fitToPins = true, interactive = true, showBackButton, onBack, defaultCenter }: MapCanvasProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const fittedRef = useRef(false)
@@ -750,7 +752,10 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
         fittedRef.current = true
         const coords = pinsRef.current.map((p) => p.coordinates)
         if (coords.length === 1) map.easeTo({ center: [coords[0].lng, coords[0].lat], zoom: 15, duration: 800 })
-        else map.fitBounds(getBounds(coords), { padding: 80, duration: 800 })
+        else map.fitBounds(getBounds(coords), { padding: { top: 180, bottom: 80, left: 80, right: 80 }, duration: 800 })
+      } else if (fitToPins && pinsRef.current.length === 0 && defaultCenter && !fittedRef.current) {
+        fittedRef.current = true
+        map.easeTo({ center: defaultCenter, zoom: 7, duration: 800 })
       }
 
       // ── Animation loop using requestAnimationFrame ──
@@ -841,16 +846,19 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       fittedRef.current = true
       const coords = pins.map((p) => p.coordinates)
       if (coords.length === 1) map.easeTo({ center: [coords[0].lng, coords[0].lat], zoom: 15, duration: 800 })
-      else map.fitBounds(getBounds(coords), { padding: 80, duration: 800 })
+      else map.fitBounds(getBounds(coords), { padding: { top: 180, bottom: 80, left: 80, right: 80 }, duration: 800 })
+    } else if (fitToPins && pins.length === 0 && defaultCenter && !fittedRef.current) {
+      fittedRef.current = true
+      map.easeTo({ center: defaultCenter, zoom: 7, duration: 800 })
     }
-  }, [pins, fitToPins, loadPinImages])
+  }, [pins, fitToPins, loadPinImages, defaultCenter])
 
   const fitTo = useCallback((targetPins: Pin[]) => {
     const map = mapRef.current
     if (!map || targetPins.length === 0) return
     const coords = targetPins.map((p) => p.coordinates)
     if (coords.length === 1) map.easeTo({ center: [coords[0].lng, coords[0].lat], zoom: 15, duration: 600 })
-    else map.fitBounds(getBounds(coords), { padding: 80, duration: 600 })
+    else map.fitBounds(getBounds(coords), { padding: { top: 180, bottom: 80, left: 80, right: 80 }, duration: 600 })
   }, [])
 
   useEffect(() => { if (mapContainer.current) (mapContainer.current as any).__plotFitTo = fitTo }, [fitTo])
@@ -858,7 +866,7 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
   return (
     <div className={`relative w-full h-full touch-none ${className}`}>
       <div ref={mapContainer} className="w-full h-full" />
-      {showBackButton && onBack && (
+      {showBackButton && onBack && window.self === window.top && (
         <button onClick={onBack} className="absolute bottom-[calc(env(safe-area-inset-bottom,8px)+20px)] left-4 z-50 bg-white/90 backdrop-blur-md rounded-full px-4 py-2.5 text-[13px] font-semibold text-ink shadow-lg border border-black/5">
           Exit Preview
         </button>

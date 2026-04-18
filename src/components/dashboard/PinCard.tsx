@@ -16,10 +16,10 @@ interface PinCardProps {
 export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark = true }: PinCardProps) {
   const config = PIN_CONFIG[pin.type]
 
-  // For spotlights without heroPhotoUrl, use first content item's thumbnail
-  const heroImage = 'heroPhotoUrl' in pin && pin.heroPhotoUrl
+  // Priority: listing photo (heroPhotoUrl) > content thumbnail > content mediaUrl > none
+  const heroImage = ('heroPhotoUrl' in pin && pin.heroPhotoUrl)
     ? pin.heroPhotoUrl
-    : pin.content?.[0]?.thumbnailUrl || pin.content?.[0]?.mediaUrl || null
+    : (pin.content?.[0]?.thumbnailUrl || pin.content?.[0]?.mediaUrl || null)
 
   const priceDisplay = 'price' in pin ? formatPrice(pin.price)
     : 'soldPrice' in pin ? formatPrice(pin.soldPrice)

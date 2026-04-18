@@ -32,6 +32,23 @@ import type { UserDoc, Pin } from '@/lib/types'
 // Demo mode: bypass auth gates when Firebase isn't configured
 const DEMO_MODE = !firebaseConfigured
 
+// State abbreviation → approximate geographic center [lng, lat]
+const STATE_CENTERS: Record<string, [number, number]> = {
+  AL: [-86.9, 32.3], AK: [-153.4, 64.2], AZ: [-111.1, 34.0], AR: [-92.2, 34.7],
+  CA: [-119.4, 36.8], CO: [-105.8, 39.1], CT: [-72.7, 41.6], DE: [-75.5, 38.9],
+  FL: [-81.5, 27.6], GA: [-83.5, 32.2], HI: [-155.5, 19.9], ID: [-114.7, 44.1],
+  IL: [-89.4, 40.6], IN: [-86.1, 40.3], IA: [-93.1, 41.9], KS: [-98.5, 38.5],
+  KY: [-84.3, 37.8], LA: [-92.1, 30.5], ME: [-69.4, 45.3], MD: [-76.6, 39.0],
+  MA: [-71.5, 42.4], MI: [-84.5, 44.3], MN: [-94.7, 46.7], MS: [-89.3, 32.3],
+  MO: [-91.8, 37.9], MT: [-109.5, 46.9], NE: [-99.9, 41.5], NV: [-116.4, 38.8],
+  NH: [-71.6, 43.2], NJ: [-74.4, 40.1], NM: [-105.9, 34.5], NY: [-75.0, 43.0],
+  NC: [-79.0, 35.8], ND: [-101.0, 47.5], OH: [-82.9, 40.4], OK: [-97.1, 35.0],
+  OR: [-120.6, 43.8], PA: [-77.2, 41.2], RI: [-71.5, 41.6], SC: [-81.2, 34.0],
+  SD: [-99.9, 43.9], TN: [-86.6, 35.5], TX: [-99.9, 31.9], UT: [-111.1, 39.3],
+  VT: [-72.6, 44.0], VA: [-78.7, 37.4], WA: [-120.7, 47.8], WV: [-80.5, 38.9],
+  WI: [-89.6, 43.8], WY: [-107.3, 43.0], DC: [-77.0, 38.9],
+}
+
 function useIsDesktop() {
   const [d, setD] = useState(typeof window !== 'undefined' && window.innerWidth >= 1024)
   useEffect(() => {
@@ -102,6 +119,12 @@ export default function AgentProfile() {
 
   // Nearby agents: empty until follows/explore are wired to Firestore.
   const nearbyAgents = useMemo<UserDoc[]>(() => [], [])
+
+  // Default map center: agent's licensed state when no pins exist
+  const defaultCenter = useMemo<[number, number] | undefined>(() => {
+    if (agent?.licenseState) return STATE_CENTERS[agent.licenseState]
+    return undefined
+  }, [agent])
 
   // Set viewing agent when agent data loads
   useEffect(() => {
@@ -403,8 +426,7 @@ export default function AgentProfile() {
             agentPhotoUrl={agent.photoURL}
             onPinClick={handlePinClick}
             className="absolute inset-0"
-            showBackButton={isPreview}
-            onBack={() => navigate('/dashboard')}
+            defaultCenter={defaultCenter}
           />
           </ErrorBoundary>
 
@@ -536,8 +558,7 @@ export default function AgentProfile() {
               agentPhotoUrl={agent.photoURL}
               onPinClick={handlePinClick}
               className="absolute inset-0"
-              showBackButton={isPreview}
-              onBack={() => navigate('/dashboard')}
+              defaultCenter={defaultCenter}
             />
             </ErrorBoundary>
             <MapIndicators
