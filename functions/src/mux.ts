@@ -264,7 +264,7 @@ export const createMuxAsset = onCall<CreateMuxAssetRequest, Promise<CreateMuxAss
       return {
         assetId: asset.id,
         playbackId,
-        mp4Url: `https://stream.mux.com/${playbackId}/high.mp4`,
+        mp4Url: `https://stream.mux.com/${playbackId}/capped-1080p.mp4`,
         hlsUrl: `https://stream.mux.com/${playbackId}.m3u8`,
       }
     } catch (err) {
@@ -330,7 +330,7 @@ export const muxWebhook = onRequest(
           caption: string
         }
 
-        const mp4Url = `https://stream.mux.com/${playbackId}/high.mp4`
+        const mp4Url = `https://stream.mux.com/${playbackId}/capped-1080p.mp4`
         const hlsUrl = `https://stream.mux.com/${playbackId}.m3u8`
         const thumbUrl = `https://image.mux.com/${playbackId}/thumbnail.jpg?time=0`
 
