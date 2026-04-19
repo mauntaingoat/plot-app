@@ -21,6 +21,9 @@ export interface CreateMuxAssetArgs {
   contentId: string
   clips: MuxClipInput[]
   caption?: string
+  /** Target aspect ratio from the editor (e.g. '9:16', '1:1', '4:5').
+   *  The Cloud Function applies this as a crop/scale via FFmpeg. */
+  aspect?: string
 }
 
 export interface CreateMuxAssetResult {

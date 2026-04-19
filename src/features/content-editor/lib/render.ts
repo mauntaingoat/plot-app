@@ -72,7 +72,7 @@ export async function renderComposition(args: RenderArgs): Promise<RenderResult>
 
   // 3. Call the Cloud Function — it preprocesses + creates Mux asset.
   onProgress?.('queue', 0)
-  const result = await createMuxAsset({ pinId, contentId, clips: muxClips, caption })
+  const result = await createMuxAsset({ pinId, contentId, clips: muxClips, caption, aspect: args.aspect })
   onProgress?.('queue', 1)
 
   return {

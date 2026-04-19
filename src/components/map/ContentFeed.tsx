@@ -160,7 +160,9 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
                   if (el) el.muted = true
                 }}
                 src={videoSrc}
-                className="relative w-full h-full object-cover"
+                className={`relative w-full h-full ${
+                  content.aspect === '9:16' || !content.aspect ? 'object-cover' : 'object-contain'
+                }`}
                 loop playsInline muted preload="auto"
                 autoPlay
               />

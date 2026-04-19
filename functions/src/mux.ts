@@ -53,6 +53,9 @@ interface CreateMuxAssetRequest {
   contentId: string
   clips: ClipInput[]
   caption?: string
+  /** Target aspect ratio (e.g. '9:16', '1:1', '4:5', '16:9'). Applied
+   *  as an FFmpeg scale+crop on each clip during preprocessing. */
+  aspect?: string
 }
 
 interface CreateMuxAssetResult {
@@ -79,20 +82,35 @@ async function uploadToStorage(localPath: string, storagePath: string): Promise<
   return `https://storage.googleapis.com/${bucket.name}/${storagePath}`
 }
 
-function needsPreprocess(clip: ClipInput): boolean {
+// Aspect ratio → FFmpeg scale+crop dimensions
+const ASPECT_DIMS: Record<string, { w: number; h: number }> = {
+  '9:16': { w: 720, h: 1280 },
+  '16:9': { w: 1280, h: 720 },
+  '1:1':  { w: 720, h: 720 },
+  '4:3':  { w: 960, h: 720 },
+  '3:4':  { w: 720, h: 960 },
+  '4:5':  { w: 720, h: 900 },
+}
+
+function needsPreprocess(clip: ClipInput, aspect?: string): boolean {
   if (clip.type === 'photo') return true
   if (clip.startTime && clip.startTime > 0.05) return true
   if (clip.speed && clip.speed !== 1) return true
+  // Non-default aspect requires re-encode with crop
+  if (aspect && aspect !== '9:16' && aspect !== 'original') return true
   return false
 }
 
-async function preprocessClip(clip: ClipInput, idx: number, tmpDir: string): Promise<string> {
+async function preprocessClip(clip: ClipInput, idx: number, tmpDir: string, aspect?: string): Promise<string> {
   const isPhoto = clip.type === 'photo'
   const ext = isPhoto ? 'png' : 'mp4'
   const inputPath = path.join(tmpDir, `input_${idx}.${ext}`)
   const outputPath = path.join(tmpDir, `output_${idx}.mp4`)
 
   await downloadFile(clip.url, inputPath)
+
+  const dims = aspect && ASPECT_DIMS[aspect] ? ASPECT_DIMS[aspect] : ASPECT_DIMS['9:16']
+  const scaleFilter = `scale=${dims.w}:${dims.h}:force_original_aspect_ratio=increase,crop=${dims.w}:${dims.h}`
 
   const args: string[] = []
 
@@ -102,14 +120,13 @@ async function preprocessClip(clip: ClipInput, idx: number, tmpDir: string): Pro
       '-loop', '1',
       '-i', inputPath,
       '-t', String(duration),
-      '-vf', 'scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280',
+      '-vf', scaleFilter,
       '-r', '30',
       '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '26',
       '-pix_fmt', 'yuv420p', '-movflags', '+faststart',
       outputPath,
     )
   } else {
-    // Video with trim and/or speed
     if (clip.startTime && clip.startTime > 0) {
       args.push('-ss', String(clip.startTime))
     }
@@ -120,18 +137,14 @@ async function preprocessClip(clip: ClipInput, idx: number, tmpDir: string): Pro
       args.push('-t', String(clip.endTime))
     }
 
-    const filters: string[] = []
+    const filters: string[] = [scaleFilter]
     if (clip.speed && clip.speed !== 1) {
       filters.push(`setpts=${(1 / clip.speed).toFixed(4)}*PTS`)
     }
 
-    if (filters.length > 0) {
-      args.push('-vf', filters.join(','))
-      args.push('-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '26',
-        '-pix_fmt', 'yuv420p', '-movflags', '+faststart')
-    } else {
-      args.push('-c', 'copy', '-movflags', '+faststart')
-    }
+    args.push('-vf', filters.join(','))
+    args.push('-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '26',
+      '-pix_fmt', 'yuv420p', '-movflags', '+faststart')
     args.push('-an', outputPath)
   }
 
@@ -158,7 +171,7 @@ export const createMuxAsset = onCall<CreateMuxAssetRequest, Promise<CreateMuxAss
       throw new HttpsError('unauthenticated', 'Sign in required to publish content.')
     }
 
-    const { pinId, contentId, clips, caption } = request.data
+    const { pinId, contentId, clips, caption, aspect } = request.data
 
     if (!pinId || !contentId || !Array.isArray(clips) || clips.length === 0) {
       throw new HttpsError('invalid-argument', 'pinId, contentId, and at least one clip are required.')
@@ -180,17 +193,17 @@ export const createMuxAsset = onCall<CreateMuxAssetRequest, Promise<CreateMuxAss
     let finalUrl = clips[0].url // default for single untouched clip
 
     try {
-      if (clips.length === 1 && !needsPreprocess(clips[0])) {
+      if (clips.length === 1 && !needsPreprocess(clips[0], aspect)) {
         // Single clip, no processing needed — pass raw URL to Mux.
         logger.info('[mux] single clip, no preprocessing')
       } else {
-        // Process each clip (photo→video, trim, speed) then concat.
+        // Process each clip (photo→video, trim, speed, aspect) then concat.
         const segments: string[] = []
         for (let i = 0; i < clips.length; i++) {
           const clip = clips[i]
-          if (needsPreprocess(clip)) {
-            logger.info(`[mux] preprocessing clip ${i}`, { type: clip.type })
-            segments.push(await preprocessClip(clip, i, tmpDir))
+          if (needsPreprocess(clip, aspect)) {
+            logger.info(`[mux] preprocessing clip ${i}`, { type: clip.type, aspect })
+            segments.push(await preprocessClip(clip, i, tmpDir, aspect))
           } else {
             // Download the raw video to local for concat
             const localPath = path.join(tmpDir, `raw_${i}.mp4`)
@@ -247,7 +260,7 @@ export const createMuxAsset = onCall<CreateMuxAssetRequest, Promise<CreateMuxAss
 
       logger.info('[mux] asset created', {
         assetId: asset.id, playbackId, pinId, contentId,
-        clipCount: clips.length, preprocessed: clips.filter(needsPreprocess).length,
+        clipCount: clips.length, preprocessed: clips.filter((c) => needsPreprocess(c, aspect)).length,
       })
 
       await admin.firestore().collection('muxAssets').doc(asset.id).set({

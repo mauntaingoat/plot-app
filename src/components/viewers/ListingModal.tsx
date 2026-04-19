@@ -330,7 +330,9 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
                   if (el) el.muted = true
                 }}
                 src={videoSrc}
-                className="relative w-full h-full object-cover"
+                className={`relative w-full h-full ${
+                  content.aspect === '9:16' || !content.aspect ? 'object-cover' : 'object-contain'
+                }`}
                 loop playsInline muted preload="auto"
                 autoPlay
               />
