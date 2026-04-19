@@ -108,7 +108,9 @@ export const createMuxAsset = onCall<CreateMuxAssetRequest, Promise<CreateMuxAss
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         inputs: inputs as any,
         playback_policy: ['public'],
-        video_quality: 'basic',
+        // Multi-input (concat) isn't supported on basic tier.
+        // Use default (plus) for multi-clip, basic for single.
+        ...(inputs.length === 1 ? { video_quality: 'basic' } : {}),
         mp4_support: 'capped-1080p',
         passthrough: JSON.stringify({ pinId, contentId, caption: caption ?? '' }),
       })

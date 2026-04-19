@@ -46,6 +46,9 @@ export interface RenderResult {
   muxPlaybackId: string
   mp4Url: string
   hlsUrl: string
+  /** The raw Firebase Storage URL of the first/only clip. Plays
+   *  immediately unlike the Mux URLs which need processing time. */
+  storageUrl?: string
 }
 
 function clipHasAdjustments(c: Clip): boolean {
@@ -54,15 +57,15 @@ function clipHasAdjustments(c: Clip): boolean {
 
 function needsFFmpegPreprocess(args: Pick<RenderArgs, 'clips' | 'overlays' | 'aspect'>): boolean {
   const { clips, overlays, aspect } = args
-  // Multi-clip reels must concat locally — Mux basic tier only accepts
-  // one video input. Additional URLs get rejected as "invalid input".
-  if (clips.length > 1) return true
   if (clips.some(clipHasAdjustments)) return true
   if (overlays.length > 0) return true
   if (aspect !== '9:16' && aspect !== 'original') return true
   if (clips.some((c) => c.speed !== 1)) return true
+  // Photos must be converted to video via ffmpeg before Mux.
   if (clips.some((c) => c.type === 'photo')) return true
   if (clips.some((c) => c.trimIn > 0.05)) return true
+  // Multi-clip video reels go through Mux concat (Cloud Function
+  // uses plus tier for multi-input). No ffmpeg needed.
   return false
 }
 
@@ -95,6 +98,7 @@ async function renderMuxFastPath(args: RenderArgs): Promise<RenderResult> {
     muxPlaybackId: result.playbackId,
     mp4Url: result.mp4Url,
     hlsUrl: result.hlsUrl,
+    storageUrl: storageUrls[0],
   }
 }
 

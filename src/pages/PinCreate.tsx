@@ -641,9 +641,10 @@ export default function PinCreate() {
           contentArray.push({
             id: contentId,
             type: 'reel',
-            // Use mp4 as primary — works in all browsers. HLS (.m3u8)
-            // only plays natively in Safari; Chrome/Firefox need hls.js.
-            mediaUrl: result.mp4Url || result.hlsUrl || '',
+            // Use the raw Storage URL as the immediate media source — it
+            // plays right away. Mux mp4/hls URLs take ~30-60s to become
+            // available. The Mux webhook will patch with optimized URLs.
+            mediaUrl: result.storageUrl || result.mp4Url || result.hlsUrl || '',
             mp4Url: result.mp4Url,
             thumbnailUrl: result.muxPlaybackId
               ? `https://image.mux.com/${result.muxPlaybackId}/thumbnail.webp?width=720`
