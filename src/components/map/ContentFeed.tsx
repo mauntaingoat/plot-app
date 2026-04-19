@@ -154,8 +154,16 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
           ) : isVideo && videoSrc && isNearViewport ? (
             <>
               {thumbnailUrl && <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-105 opacity-30" />}
-              <video ref={videoRef} src={videoSrc} className="relative w-full h-full object-contain" loop playsInline muted preload="auto"
-                onLoadedMetadata={(e) => { const v = e.currentTarget; if (v.videoHeight > v.videoWidth * 1.2) v.style.objectFit = 'cover' }} />
+              <video
+                ref={(el) => {
+                  (videoRef as any).current = el
+                  if (el) el.muted = true
+                }}
+                src={videoSrc}
+                className="relative w-full h-full object-cover"
+                loop playsInline muted preload="auto"
+                autoPlay
+              />
             </>
           ) : isVideo && videoSrc ? (
             <>
