@@ -426,7 +426,8 @@ export default function PinCreate() {
           newContentItems.push({
             id: contentId,
             type: 'reel',
-            mediaUrl: result.storageUrl || result.mp4Url || '',
+            mediaUrl: '',  // Empty until Mux is ready
+            sourceUrl: result.storageUrl || '',  // Original file for editing
             mp4Url: result.mp4Url,
             thumbnailUrl: result.muxPlaybackId
               ? `https://image.mux.com/${result.muxPlaybackId}/thumbnail.webp?width=720`
@@ -463,10 +464,12 @@ export default function PinCreate() {
             type: item.type,
             mediaUrl: item.mediaUrl,
             ...(item.mediaUrls ? { mediaUrls: item.mediaUrls } : {}),
+            ...(item.sourceUrl ? { sourceUrl: item.sourceUrl } : {}),
             thumbnailUrl: item.thumbnailUrl,
             caption: item.caption,
             publishAt: item.publishAt ?? null,
             ...(item.aspect ? { aspect: item.aspect } : {}),
+            ...(item.status ? { status: item.status } : {}),
           })
         }
       }
@@ -649,10 +652,8 @@ export default function PinCreate() {
           contentArray.push({
             id: contentId,
             type: 'reel',
-            // Use the raw Storage URL as the immediate media source — it
-            // plays right away. Mux mp4/hls URLs take ~30-60s to become
-            // available. The Mux webhook will patch with optimized URLs.
-            mediaUrl: result.storageUrl || result.mp4Url || result.hlsUrl || '',
+            mediaUrl: '',  // Empty until Mux is ready
+            sourceUrl: result.storageUrl || '',  // Original file for editing
             mp4Url: result.mp4Url,
             thumbnailUrl: result.muxPlaybackId
               ? `https://image.mux.com/${result.muxPlaybackId}/thumbnail.webp?width=720`

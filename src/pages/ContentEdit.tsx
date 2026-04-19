@@ -53,35 +53,24 @@ export default function ContentEdit() {
     const load = async () => {
       try {
         if (isReel) {
-          // Try mp4Url first (direct download from Mux), then mediaUrl
-          // (Firebase Storage URL). Skip HLS URLs — they can't be fetched as blobs.
-          const candidates = [
-            content.mp4Url,
-            content.mediaUrl && !content.mediaUrl.includes('.m3u8') ? content.mediaUrl : null,
-          ].filter(Boolean) as string[]
-          if (candidates.length === 0) {
+          // Use sourceUrl (the original Firebase Storage URL) for editing.
+          const editUrl = content.sourceUrl
+          if (!editUrl) {
             alert('This content can\'t be edited — the original source is no longer available.')
             setLoading(false)
             return
           }
           editorReset()
-          let loaded = false
-          for (const url of candidates) {
-            try {
-              const res = await fetch(url)
-              if (!res.ok) continue
-              const blob = await res.blob()
-              const file = new File([blob], `edit-${content.id}.mp4`, {
-                type: blob.type || 'video/mp4',
-              })
-              await useEditorStore.getState().importFiles([file])
-              loaded = true
-              break
-            } catch {
-              console.warn(`[ContentEdit] failed to fetch from ${url.slice(0, 60)}…`)
-            }
-          }
-          if (!loaded) {
+          try {
+            const res = await fetch(editUrl)
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
+            const blob = await res.blob()
+            const file = new File([blob], `edit-${content.id}.mp4`, {
+              type: blob.type || 'video/mp4',
+            })
+            await useEditorStore.getState().importFiles([file])
+          } catch {
+            console.warn(`[ContentEdit] failed to fetch from sourceUrl`)
             alert('This content can\'t be edited — the original source is no longer available.')
           }
         } else if (isPhoto) {
@@ -147,7 +136,7 @@ export default function ContentEdit() {
         if (latestClips.length === 0) { setSaving(false); return }
 
         setSaveProgress('Rendering…')
-        await renderComposition({
+        const result = await renderComposition({
           clips: latestClips,
           aspect: useEditorStore.getState().aspect,
           overlays: useEditorStore.getState().overlays,
@@ -161,18 +150,24 @@ export default function ContentEdit() {
           },
         })
 
-        // Update the content doc in Firestore with status = preparing.
-        // The Mux webhook will patch mediaUrl/thumbnailUrl when ready.
+        // Update the content doc: clear mediaUrl (Mux webhook will set it),
+        // store sourceUrl for future editing, set status to preparing.
         setSaveProgress('Saving…')
         const { updateContent } = await import('@/lib/firestore')
         const editorAspect = useEditorStore.getState().aspect
-        await updateContent(contentId, { status: 'preparing', aspect: editorAspect } as any)
+        const reelPatch = {
+          status: 'preparing' as const,
+          mediaUrl: '',
+          sourceUrl: result.storageUrl || '',
+          aspect: editorAspect,
+        }
+        await updateContent(contentId, reelPatch as any)
 
-        // If linked to a pin, also update the pin's content array status
+        // If linked to a pin, also update the pin's content array
         if (pin?.id) {
           const { updatePin } = await import('@/lib/firestore')
           const updatedContent = (pin.content || []).map((c) =>
-            c.id === contentId ? { ...c, status: 'preparing' } : c,
+            c.id === contentId ? { ...c, ...reelPatch } : c,
           )
           await updatePin(pin.id, { content: updatedContent } as any)
         }
@@ -194,6 +189,7 @@ export default function ContentEdit() {
         const patch: Partial<ContentItem> = {
           mediaUrl: urls[0] || content.mediaUrl,
           thumbnailUrl: urls[0] || content.thumbnailUrl,
+          status: 'ready',  // Photos don't need Mux transcoding
           ...(urls.length > 1 ? { mediaUrls: urls } : {}),
           ...(carouselDraft.aspect ? { aspect: carouselDraft.aspect } : {}),
         }

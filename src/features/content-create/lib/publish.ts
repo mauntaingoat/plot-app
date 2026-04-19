@@ -43,6 +43,7 @@ export async function publishCarouselPhotos(
     thumbnailUrl: urls[0] || '',
     caption: '',
     aspect: draft.aspect,
+    status: 'ready',  // Photos don't need Mux transcoding
     createdAt: Timestamp.now(),
     views: 0,
     saves: 0,

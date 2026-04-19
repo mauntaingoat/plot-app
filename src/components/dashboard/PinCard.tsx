@@ -69,8 +69,17 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
             </div>
           )}
 
+          {/* Processing badge */}
+          {pin.content?.[0]?.status === 'preparing' && (
+            <div className="absolute bottom-3 right-3">
+              <span className="glass-dark rounded-md px-2 py-0.5 text-[11px] font-semibold text-white flex items-center gap-1.5">
+                <div className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" />
+                Processing...
+              </span>
+            </div>
+          )}
           {/* Duration badge for content with duration */}
-          {pin.content?.[0]?.duration != null && (
+          {pin.content?.[0]?.status !== 'preparing' && pin.content?.[0]?.duration != null && (
             <div className="absolute bottom-3 right-3">
               <span className="glass-dark rounded-md px-2 py-0.5 text-[11px] font-mono font-semibold text-white">
                 {Math.floor(pin.content[0].duration / 60)}:{String(pin.content[0].duration % 60).padStart(2, '0')}

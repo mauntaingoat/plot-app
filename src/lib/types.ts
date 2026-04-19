@@ -81,6 +81,8 @@ export interface ContentItem {
   muxAssetId?: string
   muxPlaybackId?: string
   mp4Url?: string
+  /** Original Firebase Storage URL — preserved for editing. */
+  sourceUrl?: string
   status?: 'preparing' | 'ready' | 'errored'
   /** The aspect ratio chosen in the editor (e.g. '9:16', '1:1', '4:5'). */
   aspect?: string

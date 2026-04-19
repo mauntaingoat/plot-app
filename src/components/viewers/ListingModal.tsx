@@ -284,10 +284,8 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
   const thumbnailUrl = content.thumbnailUrl || ('heroPhotoUrl' in pin ? pin.heroPhotoUrl : '') || ''
   const isVideo = content.type === 'reel' || content.type === 'live'
   const isCarousel = content.type === 'photo' && content.mediaUrls && content.mediaUrls.length > 1
-  // Prefer mp4Url (direct download). Skip HLS (.m3u8) — Chrome can't play it without hls.js.
-  const rawFallback = content.mediaUrl
-  const fallbackOk = rawFallback && !rawFallback.includes('.m3u8')
-  const videoSrc = content.mp4Url || (fallbackOk ? rawFallback : '') || ''
+  const isProcessing = isVideo && (!content.mediaUrl || content.status === 'preparing')
+  const videoSrc = content.mediaUrl || ''
   const neighborhoodName = pin.type === 'spotlight' && 'name' in pin ? pin.name : pin.neighborhoodId
 
   // Lazy load: only mount video when card is near viewport
@@ -315,7 +313,15 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
         style={{ width: 'min(100%, calc(100vh * 9 / 16))' }}
       >
         <div className="absolute inset-0 bg-charcoal overflow-hidden">
-          {isVideo && videoSrc && isNearViewport ? (
+          {isVideo && isProcessing ? (
+            <>
+              {thumbnailUrl && <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-sm" loading="lazy" />}
+              <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+                <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin mb-2" />
+                <span className="text-[13px] font-semibold text-white/80">Processing...</span>
+              </div>
+            </>
+          ) : isVideo && videoSrc && isNearViewport ? (
             <>
               {thumbnailUrl && <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-105 opacity-30" />}
               <video ref={videoRef} src={videoSrc} className="relative w-full h-full object-contain" loop playsInline muted preload="auto"

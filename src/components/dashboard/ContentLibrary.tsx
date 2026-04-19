@@ -335,6 +335,7 @@ function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpe
   onAssign: (toPinId: string) => void; onArchive: () => void; onEditCaption: () => void; onEditContent?: () => void
 }) {
   const isVideo = content.type === 'reel' || content.type === 'live' || content.type === 'video_note'
+  const isProcessing = isVideo && (!content.mediaUrl || content.status === 'preparing')
   const thumb = content.thumbnailUrl || content.mediaUrl || ''
   const mediaUrls = content.mediaUrls || (thumb ? [thumb] : [])
   const isCarousel = !isVideo && mediaUrls.length > 1
@@ -352,11 +353,19 @@ function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpe
       <div className={`rounded-[18px] overflow-hidden bg-warm-white shadow-sm ${isLinked ? 'border-2 border-tangerine/25' : 'border border-border-light'}`}>
         {/* Media area */}
         <div className="relative aspect-[9/11] overflow-hidden bg-pearl cursor-pointer" onClick={isVideo ? onPlay : undefined}>
-          {isVideo && (content.mp4Url || (content.mediaUrl && !content.mediaUrl.includes('.m3u8'))) ? (
+          {isVideo && isProcessing ? (
+            <>
+              {thumb && <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-cover blur-sm opacity-60" />}
+              <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+                <div className="w-7 h-7 border-2 border-smoke/30 border-t-smoke rounded-full animate-spin mb-1.5" />
+                <span className="text-[11px] font-semibold text-smoke">Processing...</span>
+              </div>
+            </>
+          ) : isVideo && content.mediaUrl ? (
             <>
               <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-25" />
               {isPlaying ? (
-                <video ref={videoRef} src={content.mp4Url || content.mediaUrl} className="absolute inset-0 w-full h-full object-contain" loop playsInline muted autoPlay />
+                <video ref={videoRef} src={content.mediaUrl} className="absolute inset-0 w-full h-full object-contain" loop playsInline muted autoPlay />
               ) : (
                 <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-contain"
                   onLoad={(e) => { const img = e.currentTarget; if (img.naturalHeight > img.naturalWidth * 1.2) img.style.objectFit = 'cover' }} />

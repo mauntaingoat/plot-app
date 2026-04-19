@@ -351,6 +351,7 @@ export const muxWebhook = onRequest(
             ...content[idx],
             mediaUrl: mp4Url,
             mp4Url,
+            hlsUrl,
             thumbnailUrl: thumbUrl,
             muxPlaybackId: playbackId,
             muxAssetId: assetId,
@@ -359,6 +360,21 @@ export const muxWebhook = onRequest(
           }
           tx.update(pinRef, { content })
         })
+
+        // Also patch the standalone content doc (if it exists).
+        const contentRef = admin.firestore().collection('content').doc(contentId)
+        const contentSnap = await contentRef.get()
+        if (contentSnap.exists) {
+          await contentRef.update({
+            mediaUrl: mp4Url,
+            mp4Url,
+            hlsUrl,
+            thumbnailUrl: thumbUrl,
+            muxPlaybackId: playbackId,
+            muxAssetId: assetId,
+            status: 'ready',
+          })
+        }
 
         logger.info('[mux] asset ready → pin updated', { assetId, pinId, contentId })
       } else if (event.type === 'video.asset.errored') {
