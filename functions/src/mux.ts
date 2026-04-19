@@ -108,9 +108,8 @@ export const createMuxAsset = onCall<CreateMuxAssetRequest, Promise<CreateMuxAss
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         inputs: inputs as any,
         playback_policy: ['public'],
-        // Basic tier = cheaper; Smart tier adds 1080p/instant thumbnails.
         video_quality: 'basic',
-        mp4_support: 'standard',
+        mp4_support: 'capped-1080p',
         passthrough: JSON.stringify({ pinId, contentId, caption: caption ?? '' }),
       })
 
