@@ -430,6 +430,8 @@ export default function AgentProfile() {
             onPinClick={handlePinClick}
             className="absolute inset-0"
             defaultCenter={defaultCenter}
+            showBackButton={isPreview}
+            onBack={() => navigate('/dashboard')}
           />
           </ErrorBoundary>
 
@@ -562,6 +564,8 @@ export default function AgentProfile() {
               onPinClick={handlePinClick}
               className="absolute inset-0"
               defaultCenter={defaultCenter}
+              showBackButton={isPreview}
+              onBack={() => navigate('/dashboard')}
             />
             </ErrorBoundary>
             <MapIndicators

@@ -166,6 +166,7 @@ export async function removeContentFromPin(pinId: string, contentId: string) {
 
 export async function getAgentPins(agentId: string): Promise<Pin[]> {
   if (!db) return []
+  const notArchived = (d: { data: () => Record<string, unknown> }) => d.data().status !== 'archived'
   try {
     const q = query(
       collection(db, 'pins'),
@@ -175,9 +176,8 @@ export async function getAgentPins(agentId: string): Promise<Pin[]> {
       limit(100)
     )
     const snap = await getDocs(q)
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Pin)
+    return snap.docs.filter(notArchived).map((d) => ({ id: d.id, ...d.data() }) as Pin)
   } catch (err) {
-    // Composite index may not exist yet — fall back to simpler query.
     console.warn('[firestore] getAgentPins falling back (no index?):', (err as Error).message)
     const fallbackQ = query(
       collection(db, 'pins'),
@@ -186,13 +186,14 @@ export async function getAgentPins(agentId: string): Promise<Pin[]> {
     )
     const snap = await getDocs(fallbackQ)
     return snap.docs
-      .filter((d) => d.data().enabled !== false)
+      .filter((d) => d.data().enabled !== false && d.data().status !== 'archived')
       .map((d) => ({ id: d.id, ...d.data() }) as Pin)
   }
 }
 
 export function subscribeToAgentPins(agentId: string, callback: (pins: Pin[]) => void): Unsubscribe | null {
   if (!db) return null
+  const notArchived = (d: { data: () => Record<string, unknown> }) => d.data().status !== 'archived'
   const q = query(
     collection(db, 'pins'),
     where('agentId', '==', agentId),
@@ -203,7 +204,7 @@ export function subscribeToAgentPins(agentId: string, callback: (pins: Pin[]) =>
   return onSnapshot(
     q,
     (snap) => {
-      callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Pin))
+      callback(snap.docs.filter(notArchived).map((d) => ({ id: d.id, ...d.data() }) as Pin))
     },
     (err) => {
       console.warn('[firestore] subscribeToAgentPins fallback:', err.message)
@@ -214,7 +215,7 @@ export function subscribeToAgentPins(agentId: string, callback: (pins: Pin[]) =>
       )
       onSnapshot(
         fallbackQ,
-        (snap) => callback(snap.docs.filter((d) => d.data().enabled !== false).map((d) => ({ id: d.id, ...d.data() }) as Pin)),
+        (snap) => callback(snap.docs.filter((d) => d.data().enabled !== false && d.data().status !== 'archived').map((d) => ({ id: d.id, ...d.data() }) as Pin)),
         () => callback([]),
       )
     },
