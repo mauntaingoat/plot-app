@@ -11,5 +11,9 @@ export default defineConfig({
   },
   server: {
     allowedHosts: ['mauricios-macbook-air.local'],
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'credentialless',
+    },
   },
 })
