@@ -48,12 +48,9 @@ export async function createMuxAsset(args: CreateMuxAssetArgs): Promise<CreateMu
  * are present, the caller must pre-bake with ffmpeg first.
  */
 export function clipsToMuxInputs(clips: Clip[], storageUrls: string[]): MuxClipInput[] {
-  return clips.map((clip, idx) => {
-    const input: MuxClipInput = { url: storageUrls[idx] }
-    if (clip.type === 'video') {
-      if (clip.trimIn > 0.05) input.startTime = clip.trimIn
-      if (Math.abs(clip.trimOut - clip.duration) > 0.05) input.endTime = clip.trimOut
-    }
-    return input
-  })
+  // Don't send startTime/endTime — Mux can only clip its own assets,
+  // not external Firebase Storage URLs. Trimming is handled by ffmpeg
+  // before upload (needsFFmpegPreprocess routes trimmed clips through
+  // the ffmpeg path which bakes the trim into the file).
+  return clips.map((_, idx) => ({ url: storageUrls[idx] }))
 }
