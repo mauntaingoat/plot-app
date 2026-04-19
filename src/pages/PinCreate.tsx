@@ -489,6 +489,17 @@ export default function PinCreate() {
       return
     }
 
+    // Duplicate check — don't allow two pins at the same address.
+    try {
+      const { getAgentPins } = await import('@/lib/firestore')
+      const existing = await getAgentPins(userDoc.uid)
+      const duplicate = existing.find((p) => p.address === address)
+      if (duplicate) {
+        alert(`You already have a pin at "${address}". Edit the existing pin instead of creating a duplicate.`)
+        return
+      }
+    } catch { /* proceed if check fails */ }
+
     // Honor an immediate-skip override (from the details step's
     // "Post now, add content later" button) since setState hasn't
     // propagated synchronously when the button fires.
