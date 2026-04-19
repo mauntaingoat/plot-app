@@ -54,16 +54,14 @@ function clipHasAdjustments(c: Clip): boolean {
 
 function needsFFmpegPreprocess(args: Pick<RenderArgs, 'clips' | 'overlays' | 'aspect'>): boolean {
   const { clips, overlays, aspect } = args
+  // Multi-clip reels must concat locally — Mux basic tier only accepts
+  // one video input. Additional URLs get rejected as "invalid input".
+  if (clips.length > 1) return true
   if (clips.some(clipHasAdjustments)) return true
   if (overlays.length > 0) return true
   if (aspect !== '9:16' && aspect !== 'original') return true
   if (clips.some((c) => c.speed !== 1)) return true
   if (clips.some((c) => c.type === 'photo')) return true
-  // Any clip that's been trimmed needs ffmpeg — Mux can't clip external
-  // URLs. Check trimIn > 0 (start was moved) as a simple indicator.
-  // trimOut < duration is harder to check (draft clips have duration=0)
-  // so we handle that by NOT sending trim params to Mux at all (see
-  // clipsToMuxInputs) — the Mux fast path always uploads full files.
   if (clips.some((c) => c.trimIn > 0.05)) return true
   return false
 }
