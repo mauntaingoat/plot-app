@@ -58,9 +58,11 @@ function needsFFmpegPreprocess(args: Pick<RenderArgs, 'clips' | 'overlays' | 'as
   if (overlays.length > 0) return true
   if (aspect !== '9:16' && aspect !== 'original') return true
   if (clips.some((c) => c.speed !== 1)) return true
-  // Photos can't be sent to Mux as raw inputs — they must be converted
-  // to short video clips via ffmpeg first.
   if (clips.some((c) => c.type === 'photo')) return true
+  // Mux can only clip (trim via start_time/end_time) its own assets,
+  // not external URLs like Firebase Storage. Any trimmed clip must go
+  // through ffmpeg to apply the trim locally before uploading.
+  if (clips.some((c) => c.trimIn > 0.05 || (c.duration > 0 && Math.abs(c.trimOut - c.duration) > 0.05))) return true
   return false
 }
 
