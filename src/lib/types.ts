@@ -82,6 +82,8 @@ export interface ContentItem {
   muxPlaybackId?: string
   mp4Url?: string
   status?: 'preparing' | 'ready' | 'errored'
+  /** The aspect ratio chosen in the editor (e.g. '9:16', '1:1', '4:5'). */
+  aspect?: string
 }
 
 // ── Standalone content document (content collection) ──

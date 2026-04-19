@@ -435,6 +435,7 @@ export default function PinCreate() {
             muxAssetId: result.muxAssetId,
             muxPlaybackId: result.muxPlaybackId,
             status: 'preparing',
+            aspect: draft.aspect,
             createdAt: Timestamp.now(),
             views: 0,
             saves: 0,
@@ -461,10 +462,11 @@ export default function PinCreate() {
             pinId: null,
             type: item.type,
             mediaUrl: item.mediaUrl,
-            mediaUrls: item.mediaUrls,
+            ...(item.mediaUrls ? { mediaUrls: item.mediaUrls } : {}),
             thumbnailUrl: item.thumbnailUrl,
             caption: item.caption,
             publishAt: item.publishAt ?? null,
+            ...(item.aspect ? { aspect: item.aspect } : {}),
           })
         }
       }
@@ -659,6 +661,7 @@ export default function PinCreate() {
             muxAssetId: result.muxAssetId,
             muxPlaybackId: result.muxPlaybackId,
             status: 'preparing',
+            aspect: draft.aspect,
             createdAt: Timestamp.now(),
             views: 0,
             saves: 0,

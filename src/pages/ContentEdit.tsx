@@ -53,16 +53,37 @@ export default function ContentEdit() {
     const load = async () => {
       try {
         if (isReel) {
-          // Use mp4Url (direct download) over mediaUrl (might be HLS)
-          const videoUrl = content.mp4Url || content.mediaUrl
-          if (!videoUrl) { setLoading(false); return }
+          // Try mp4Url first (direct download from Mux), then mediaUrl
+          // (Firebase Storage URL). Skip HLS URLs — they can't be fetched as blobs.
+          const candidates = [
+            content.mp4Url,
+            content.mediaUrl && !content.mediaUrl.includes('.m3u8') ? content.mediaUrl : null,
+          ].filter(Boolean) as string[]
+          if (candidates.length === 0) {
+            alert('This content can\'t be edited — the original source is no longer available.')
+            setLoading(false)
+            return
+          }
           editorReset()
-          const res = await fetch(videoUrl)
-          const blob = await res.blob()
-          const file = new File([blob], `edit-${content.id}.mp4`, {
-            type: blob.type || 'video/mp4',
-          })
-          await useEditorStore.getState().importFiles([file])
+          let loaded = false
+          for (const url of candidates) {
+            try {
+              const res = await fetch(url)
+              if (!res.ok) continue
+              const blob = await res.blob()
+              const file = new File([blob], `edit-${content.id}.mp4`, {
+                type: blob.type || 'video/mp4',
+              })
+              await useEditorStore.getState().importFiles([file])
+              loaded = true
+              break
+            } catch {
+              console.warn(`[ContentEdit] failed to fetch from ${url.slice(0, 60)}…`)
+            }
+          }
+          if (!loaded) {
+            alert('This content can\'t be edited — the original source is no longer available.')
+          }
         } else if (isPhoto) {
           // Load ALL carousel photos from mediaUrls (or single from mediaUrl)
           const urls = content.mediaUrls && content.mediaUrls.length > 0
@@ -144,7 +165,8 @@ export default function ContentEdit() {
         // The Mux webhook will patch mediaUrl/thumbnailUrl when ready.
         setSaveProgress('Saving…')
         const { updateContent } = await import('@/lib/firestore')
-        await updateContent(contentId, { status: 'preparing' } as any)
+        const editorAspect = useEditorStore.getState().aspect
+        await updateContent(contentId, { status: 'preparing', aspect: editorAspect } as any)
 
         // If linked to a pin, also update the pin's content array status
         if (pin?.id) {
@@ -172,7 +194,8 @@ export default function ContentEdit() {
         const patch: Partial<ContentItem> = {
           mediaUrl: urls[0] || content.mediaUrl,
           thumbnailUrl: urls[0] || content.thumbnailUrl,
-          mediaUrls: urls.length > 1 ? urls : undefined,
+          ...(urls.length > 1 ? { mediaUrls: urls } : {}),
+          ...(carouselDraft.aspect ? { aspect: carouselDraft.aspect } : {}),
         }
         const { updateContent } = await import('@/lib/firestore')
         await updateContent(contentId, patch as any)

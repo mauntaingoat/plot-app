@@ -649,7 +649,11 @@ export async function updateContent(contentId: string, data: Partial<ContentDoc>
     localStorage.setItem('reelst_content', JSON.stringify(updated))
     return
   }
-  await updateDoc(doc(db, 'content', contentId), data as any)
+  // Strip undefined values — Firestore rejects them.
+  const clean = Object.fromEntries(
+    Object.entries(data).filter(([, v]) => v !== undefined),
+  )
+  await updateDoc(doc(db, 'content', contentId), clean as any)
 }
 
 export async function linkContentToPin(contentId: string, pinId: string | null) {

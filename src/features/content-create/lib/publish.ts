@@ -42,6 +42,7 @@ export async function publishCarouselPhotos(
     mediaUrls: urls,
     thumbnailUrl: urls[0] || '',
     caption: '',
+    aspect: draft.aspect,
     createdAt: Timestamp.now(),
     views: 0,
     saves: 0,

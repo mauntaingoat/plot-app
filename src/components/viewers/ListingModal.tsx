@@ -284,7 +284,10 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
   const thumbnailUrl = content.thumbnailUrl || ('heroPhotoUrl' in pin ? pin.heroPhotoUrl : '') || ''
   const isVideo = content.type === 'reel' || content.type === 'live'
   const isCarousel = content.type === 'photo' && content.mediaUrls && content.mediaUrls.length > 1
-  const videoSrc = content.mp4Url || content.mediaUrl
+  // Prefer mp4Url (direct download). Skip HLS (.m3u8) — Chrome can't play it without hls.js.
+  const rawFallback = content.mediaUrl
+  const fallbackOk = rawFallback && !rawFallback.includes('.m3u8')
+  const videoSrc = content.mp4Url || (fallbackOk ? rawFallback : '') || ''
   const neighborhoodName = pin.type === 'spotlight' && 'name' in pin ? pin.name : pin.neighborhoodId
 
   // Lazy load: only mount video when card is near viewport

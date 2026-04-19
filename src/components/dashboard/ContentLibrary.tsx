@@ -188,11 +188,12 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
                         pinId: null,
                         type: content.type,
                         mediaUrl: content.mediaUrl,
-                        mediaUrls: content.mediaUrls,
+                        ...(content.mediaUrls ? { mediaUrls: content.mediaUrls } : {}),
                         thumbnailUrl: content.thumbnailUrl,
                         caption: content.caption,
-                        duration: content.duration,
-                        publishAt: content.publishAt,
+                        ...(content.duration != null ? { duration: content.duration } : {}),
+                        ...(content.publishAt !== undefined ? { publishAt: content.publishAt } : {}),
+                        ...(content.aspect ? { aspect: content.aspect } : {}),
                       })
                     }
                   }).catch(() => {})
@@ -351,11 +352,11 @@ function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpe
       <div className={`rounded-[18px] overflow-hidden bg-warm-white shadow-sm ${isLinked ? 'border-2 border-tangerine/25' : 'border border-border-light'}`}>
         {/* Media area */}
         <div className="relative aspect-[9/11] overflow-hidden bg-pearl cursor-pointer" onClick={isVideo ? onPlay : undefined}>
-          {isVideo && content.mediaUrl ? (
+          {isVideo && (content.mp4Url || (content.mediaUrl && !content.mediaUrl.includes('.m3u8'))) ? (
             <>
               <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-25" />
               {isPlaying ? (
-                <video ref={videoRef} src={content.mediaUrl} className="absolute inset-0 w-full h-full object-contain" loop playsInline muted autoPlay />
+                <video ref={videoRef} src={content.mp4Url || content.mediaUrl} className="absolute inset-0 w-full h-full object-contain" loop playsInline muted autoPlay />
               ) : (
                 <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-contain"
                   onLoad={(e) => { const img = e.currentTarget; if (img.naturalHeight > img.naturalWidth * 1.2) img.style.objectFit = 'cover' }} />

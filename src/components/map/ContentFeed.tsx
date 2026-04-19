@@ -109,8 +109,10 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
   const isVideo = content.type === 'reel' || content.type === 'live'
   const isCarousel = content.type === 'photo' && content.mediaUrls && content.mediaUrls.length > 1
   // Prefer mp4Url for playback (works in all browsers). HLS (.m3u8)
-  // only plays natively in Safari. Fall back to mediaUrl.
-  const videoSrc = content.mp4Url || content.mediaUrl
+  // only plays natively in Safari — skip it in the fallback chain.
+  const rawFallback = content.mediaUrl
+  const fallbackOk = rawFallback && !rawFallback.includes('.m3u8')
+  const videoSrc = content.mp4Url || (fallbackOk ? rawFallback : '') || ''
   // stories removed
   const neighborhoodName = pin.type === 'spotlight' && 'name' in pin ? pin.name : pin.neighborhoodId
   const hasOpenHouse = pin.type === 'for_sale' && 'openHouse' in pin && pin.openHouse
