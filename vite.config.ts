@@ -11,5 +11,10 @@ export default defineConfig({
   },
   server: {
     allowedHosts: ['mauricios-macbook-air.local'],
+    headers: {
+      // Required for ffmpeg.wasm — SharedArrayBuffer needs these headers.
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'credentialless',
+    },
   },
 })
