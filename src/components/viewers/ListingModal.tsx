@@ -278,11 +278,13 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
   const videoRef = useRef<HTMLVideoElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const [isNearViewport, setIsNearViewport] = useState(false)
+  const [carouselIdx, setCarouselIdx] = useState(0)
   const { isSaved, toggleSave } = useSaves()
   const saved = isSaved(pin.id, content.id)
-  // stories removed
   const thumbnailUrl = content.thumbnailUrl || ('heroPhotoUrl' in pin ? pin.heroPhotoUrl : '') || ''
   const isVideo = content.type === 'reel' || content.type === 'live'
+  const isCarousel = content.type === 'photo' && content.mediaUrls && content.mediaUrls.length > 1
+  const videoSrc = content.mp4Url || content.mediaUrl
   const neighborhoodName = pin.type === 'spotlight' && 'name' in pin ? pin.name : pin.neighborhoodId
 
   // Lazy load: only mount video when card is near viewport
@@ -310,15 +312,26 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
         style={{ width: 'min(100%, calc(100vh * 9 / 16))' }}
       >
         <div className="absolute inset-0 bg-charcoal overflow-hidden">
-          {isVideo && content.mediaUrl && isNearViewport ? (
+          {isVideo && videoSrc && isNearViewport ? (
             <>
               {thumbnailUrl && <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-105 opacity-30" />}
-              <video ref={videoRef} src={content.mediaUrl} className="relative w-full h-full object-contain" loop playsInline muted preload="auto"
+              <video ref={videoRef} src={videoSrc} className="relative w-full h-full object-contain" loop playsInline muted preload="auto"
                 onLoadedMetadata={(e) => { const v = e.currentTarget; if (v.videoHeight > v.videoWidth * 1.2) v.style.objectFit = 'cover' }} />
             </>
-          ) : isVideo && content.mediaUrl && !isNearViewport ? (
+          ) : isVideo && videoSrc && !isNearViewport ? (
             <>
               {thumbnailUrl && <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />}
+            </>
+          ) : isCarousel ? (
+            <>
+              <img src={content.mediaUrls![carouselIdx]} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+              <button className="absolute left-0 top-0 bottom-0 w-1/3 z-10 cursor-pointer" onClick={() => setCarouselIdx((i) => Math.max(0, i - 1))} aria-label="Previous" />
+              <button className="absolute right-0 top-0 bottom-0 w-1/3 z-10 cursor-pointer" onClick={() => setCarouselIdx((i) => Math.min(content.mediaUrls!.length - 1, i + 1))} aria-label="Next" />
+              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">
+                {content.mediaUrls!.map((_, i) => (
+                  <div key={i} className={`w-1.5 h-1.5 rounded-full transition-colors ${i === carouselIdx ? 'bg-white' : 'bg-white/40'}`} />
+                ))}
+              </div>
             </>
           ) : thumbnailUrl ? (
             <>
@@ -329,7 +342,7 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-slate"><p className="text-ghost">{content.type}</p></div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30 pointer-events-none" />
         </div>
       </div>
 

@@ -426,9 +426,15 @@ export default function PinCreate() {
           newContentItems.push({
             id: contentId,
             type: 'reel',
-            mediaUrl: result.mp4Url,
-            thumbnailUrl: `https://image.mux.com/${result.muxPlaybackId}/thumbnail.webp?width=720`,
+            mediaUrl: result.storageUrl || result.mp4Url || '',
+            mp4Url: result.mp4Url,
+            thumbnailUrl: result.muxPlaybackId
+              ? `https://image.mux.com/${result.muxPlaybackId}/thumbnail.webp?width=720`
+              : (draft.thumbnailUrl || ''),
             caption: draft.caption ?? '',
+            muxAssetId: result.muxAssetId,
+            muxPlaybackId: result.muxPlaybackId,
+            status: 'preparing',
             createdAt: Timestamp.now(),
             views: 0,
             saves: 0,

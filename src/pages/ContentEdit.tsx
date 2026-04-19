@@ -52,39 +52,52 @@ export default function ContentEdit() {
 
     const load = async () => {
       try {
-        if (isReel && content.mediaUrl) {
+        if (isReel) {
+          // Use mp4Url (direct download) over mediaUrl (might be HLS)
+          const videoUrl = content.mp4Url || content.mediaUrl
+          if (!videoUrl) { setLoading(false); return }
           editorReset()
-          const res = await fetch(content.mediaUrl)
+          const res = await fetch(videoUrl)
           const blob = await res.blob()
-          const ext = content.mediaUrl.split('.').pop()?.split('?')[0] || 'mp4'
-          const file = new File([blob], `edit-${content.id}.${ext}`, {
+          const file = new File([blob], `edit-${content.id}.mp4`, {
             type: blob.type || 'video/mp4',
           })
           await useEditorStore.getState().importFiles([file])
         } else if (isPhoto) {
-          // Load the photo into a carousel draft
-          const photoUrl = content.mediaUrl || content.thumbnailUrl || ''
-          if (!photoUrl) { setLoading(false); return }
-          const res = await fetch(photoUrl)
-          const blob = await res.blob()
-          const file = new File([blob], `edit-${content.id}.jpg`, {
-            type: blob.type || 'image/jpeg',
-          })
-          const probe = await probePhoto(file)
-          const photo: CarouselPhoto = {
-            id: content.id,
-            file,
-            previewUrl: probe.previewUrl,
-            width: probe.width,
-            height: probe.height,
-            aspect: probe.aspect,
+          // Load ALL carousel photos from mediaUrls (or single from mediaUrl)
+          const urls = content.mediaUrls && content.mediaUrls.length > 0
+            ? content.mediaUrls
+            : [content.mediaUrl || content.thumbnailUrl || ''].filter(Boolean)
+          if (urls.length === 0) { setLoading(false); return }
+          const photos: CarouselPhoto[] = []
+          for (let i = 0; i < urls.length; i++) {
+            try {
+              const res = await fetch(urls[i])
+              const blob = await res.blob()
+              const file = new File([blob], `edit-${content.id}-${i}.jpg`, {
+                type: blob.type || 'image/jpeg',
+              })
+              const probe = await probePhoto(file)
+              photos.push({
+                id: `${content.id}-${i}`,
+                file,
+                previewUrl: probe.previewUrl,
+                width: probe.width,
+                height: probe.height,
+                aspect: probe.aspect,
+              })
+            } catch {
+              console.warn(`[ContentEdit] failed to load photo ${i}`)
+            }
           }
-          setCarouselDraft({
-            id: content.id,
-            kind: 'carousel',
-            photos: [photo],
-            aspect: '4:5',
-          })
+          if (photos.length > 0) {
+            setCarouselDraft({
+              id: content.id,
+              kind: 'carousel',
+              photos,
+              aspect: '4:5',
+            })
+          }
         }
       } catch (err) {
         console.warn('[ContentEdit] failed to load media', err)

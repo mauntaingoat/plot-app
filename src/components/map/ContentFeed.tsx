@@ -104,8 +104,13 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
   const videoRef = useRef<HTMLVideoElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const [isNearViewport, setIsNearViewport] = useState(false)
+  const [carouselIdx, setCarouselIdx] = useState(0)
   const thumbnailUrl = content.thumbnailUrl || ('heroPhotoUrl' in pin ? pin.heroPhotoUrl : '') || ''
   const isVideo = content.type === 'reel' || content.type === 'live'
+  const isCarousel = content.type === 'photo' && content.mediaUrls && content.mediaUrls.length > 1
+  // Prefer mp4Url for playback (works in all browsers). HLS (.m3u8)
+  // only plays natively in Safari. Fall back to mediaUrl.
+  const videoSrc = content.mp4Url || content.mediaUrl
   // stories removed
   const neighborhoodName = pin.type === 'spotlight' && 'name' in pin ? pin.name : pin.neighborhoodId
   const hasOpenHouse = pin.type === 'for_sale' && 'openHouse' in pin && pin.openHouse
@@ -139,15 +144,28 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
         style={{ width: 'min(100%, calc(100vh * 9 / 16))' }}
       >
         <div className="absolute inset-0 bg-charcoal overflow-hidden">
-          {isVideo && content.mediaUrl && isNearViewport ? (
+          {isVideo && videoSrc && isNearViewport ? (
             <>
               {thumbnailUrl && <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-105 opacity-30" />}
-              <video ref={videoRef} src={content.mediaUrl} className="relative w-full h-full object-contain" loop playsInline muted preload="auto"
+              <video ref={videoRef} src={videoSrc} className="relative w-full h-full object-contain" loop playsInline muted preload="auto"
                 onLoadedMetadata={(e) => { const v = e.currentTarget; if (v.videoHeight > v.videoWidth * 1.2) v.style.objectFit = 'cover' }} />
             </>
-          ) : isVideo && content.mediaUrl ? (
+          ) : isVideo && videoSrc ? (
             <>
               {thumbnailUrl && <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />}
+            </>
+          ) : isCarousel ? (
+            <>
+              <img src={content.mediaUrls![carouselIdx]} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+              {/* Swipe zones for carousel */}
+              <button className="absolute left-0 top-0 bottom-0 w-1/3 z-10 cursor-pointer" onClick={() => setCarouselIdx((i) => Math.max(0, i - 1))} aria-label="Previous" />
+              <button className="absolute right-0 top-0 bottom-0 w-1/3 z-10 cursor-pointer" onClick={() => setCarouselIdx((i) => Math.min(content.mediaUrls!.length - 1, i + 1))} aria-label="Next" />
+              {/* Dot indicators */}
+              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">
+                {content.mediaUrls!.map((_, i) => (
+                  <div key={i} className={`w-1.5 h-1.5 rounded-full transition-colors ${i === carouselIdx ? 'bg-white' : 'bg-white/40'}`} />
+                ))}
+              </div>
             </>
           ) : thumbnailUrl ? (
             <>
@@ -156,7 +174,7 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
                 onLoad={(e) => { const img = e.currentTarget; if (img.naturalHeight > img.naturalWidth * 1.2) img.style.objectFit = 'cover' }} />
             </>
           ) : null}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/30" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/30 pointer-events-none" />
         </div>
       </div>
 
