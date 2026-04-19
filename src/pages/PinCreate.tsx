@@ -1533,19 +1533,19 @@ export default function PinCreate() {
                   </motion.div>
                 </div>
                 <p className="text-[16px] font-bold text-ink text-center">
-                  {renderPhase === 'preprocess' ? 'Baking your edits…'
-                    : renderPhase === 'upload' ? 'Uploading your clips…'
-                    : renderPhase === 'queue' ? 'Handing off to Mux…'
-                    : 'Publishing your pin…'}
+                  {renderPhase === 'preprocess' ? 'Preparing your content…'
+                    : renderPhase === 'upload' ? 'Uploading…'
+                    : renderPhase === 'queue' ? 'Almost there…'
+                    : 'Publishing…'}
                 </p>
                 <p className="text-[12px] text-smoke text-center mt-1">
                   {renderPhase === 'preprocess'
-                    ? 'Applying speed, color, and text locally before upload.'
+                    ? 'Getting your content ready.'
                     : renderPhase === 'upload'
-                    ? 'Sending clips to cloud storage.'
+                    ? 'Uploading your content.'
                     : renderPhase === 'queue'
-                    ? 'Mux is processing your video. Your pin will update when it\u2019s ready.'
-                    : 'Uploading to your Reelst.'}
+                    ? 'Processing your video. Your pin will update shortly.'
+                    : 'Adding to your Reelst.'}
                 </p>
                 {((renderPhase !== 'idle' ? renderProgress : uploadProgress) > 0) && (
                   <div className="mt-5">

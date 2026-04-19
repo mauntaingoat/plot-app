@@ -122,8 +122,8 @@ export default function ContentEdit() {
           caption: content.caption || '',
           onProgress: (phase, pct) => {
             if (phase === 'upload') setSaveProgress(`Uploading… ${Math.round(pct * 100)}%`)
-            else if (phase === 'queue') setSaveProgress('Processing with Mux…')
-            else setSaveProgress('Rendering…')
+            else if (phase === 'queue') setSaveProgress('Almost there…')
+            else setSaveProgress('Preparing…')
           },
         })
 

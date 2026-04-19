@@ -58,6 +58,9 @@ function needsFFmpegPreprocess(args: Pick<RenderArgs, 'clips' | 'overlays' | 'as
   if (overlays.length > 0) return true
   if (aspect !== '9:16' && aspect !== 'original') return true
   if (clips.some((c) => c.speed !== 1)) return true
+  // Photos can't be sent to Mux as raw inputs — they must be converted
+  // to short video clips via ffmpeg first.
+  if (clips.some((c) => c.type === 'photo')) return true
   return false
 }
 
