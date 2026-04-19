@@ -153,7 +153,7 @@ export default function ContentEdit() {
         // Update the content doc: clear mediaUrl (Mux webhook will set it),
         // store sourceUrl for future editing, set status to preparing.
         setSaveProgress('Saving…')
-        const { updateContent } = await import('@/lib/firestore')
+        const { updateContent, createContent } = await import('@/lib/firestore')
         const editorAspect = useEditorStore.getState().aspect
         const reelPatch = {
           status: 'ready' as const,
@@ -161,7 +161,25 @@ export default function ContentEdit() {
           sourceUrl: result.storageUrl || '',
           aspect: editorAspect,
         }
-        await updateContent(contentId, reelPatch as any)
+        // Try updating the standalone content doc. If it doesn't exist
+        // (content was only in the pin's array), create it.
+        try {
+          await updateContent(contentId, reelPatch as any)
+        } catch {
+          // Doc doesn't exist — create it
+          const { auth: fbAuth } = await import('@/config/firebase')
+          const uid = fbAuth?.currentUser?.uid
+          if (uid) {
+            await createContent({
+              agentId: uid,
+              pinId: pin?.id || null,
+              type: 'reel',
+              ...reelPatch,
+              caption: content.caption || '',
+              publishAt: null,
+            } as any)
+          }
+        }
 
         // If linked to a pin, also update the pin's content array
         if (pin?.id) {
