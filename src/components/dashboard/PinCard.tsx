@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Eye, MousePointerClick, Bookmark, MapPin, MoreHorizontal, Sparkles } from 'lucide-react'
+import { Eye, MousePointerClick, Bookmark, MapPin, MoreHorizontal, Home, BadgeCheck, Compass } from 'lucide-react'
 import { PIN_CONFIG, type Pin } from '@/lib/types'
 import { formatPrice } from '@/lib/firestore'
 import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
@@ -89,20 +89,37 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
         </div>
       )}
 
-      {/* No image — spotlight gets tangerine placeholder, others get colored bar */}
-      {!heroImage && pin.type === 'spotlight' && (
-        <div className="relative aspect-[16/10] overflow-hidden flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #FF6B3D 0%, #E8522A 100%)' }}>
-          <Sparkles size={40} className="text-white/30" />
-          <div className="absolute top-3 left-3">
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-sm text-[11px] font-bold shadow-sm" style={{ color: config.color }}>
-              {config.label}
-            </span>
+      {/* No image — full colored card with pin-type icon */}
+      {!heroImage && (() => {
+        const gradients: Record<string, string> = {
+          for_sale: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
+          sold: 'linear-gradient(135deg, #34C759 0%, #22A34B 100%)',
+          spotlight: 'linear-gradient(135deg, #FF6B3D 0%, #E8522A 100%)',
+        }
+        const icons: Record<string, typeof Home> = {
+          for_sale: Home,
+          sold: BadgeCheck,
+          spotlight: Compass,
+        }
+        const Icon = icons[pin.type] || Compass
+        return (
+          <div className="relative aspect-[16/10] overflow-hidden flex items-center justify-center" style={{ background: gradients[pin.type] || gradients.spotlight }}>
+            <Icon size={40} className="text-white/30" strokeWidth={1.5} />
+            <div className="absolute top-3 left-3">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-sm text-[11px] font-bold shadow-sm" style={{ color: config.color }}>
+                {config.label}
+              </span>
+            </div>
+            {priceDisplay && (
+              <div className="absolute bottom-3 left-3">
+                <span className="font-mono font-bold text-[18px] text-white drop-shadow-lg">
+                  {priceDisplay}
+                </span>
+              </div>
+            )}
           </div>
-        </div>
-      )}
-      {!heroImage && pin.type !== 'spotlight' && (
-        <div className="h-2 w-full" style={{ background: config.color }} />
-      )}
+        )
+      })()}
 
       {/* Content */}
       <div className="p-3.5 space-y-2">
