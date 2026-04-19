@@ -172,42 +172,70 @@ export const createMuxAsset = onCall<CreateMuxAssetRequest, Promise<CreateMuxAss
       tokenSecret: MUX_TOKEN_SECRET.value(),
     })
 
-    // Preprocess clips that need it (photos, trimmed, speed-adjusted).
-    // Upload preprocessed results to Storage and use those URLs for Mux.
+    // Process clips server-side. Mux only accepts ONE video input URL
+    // from external sources — multi-input concat doesn't work with
+    // Firebase Storage URLs. So for multi-clip reels, we concat
+    // locally via FFmpeg and send a single baked file to Mux.
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reelst-'))
-    const muxInputs: { url: string }[] = []
+    let finalUrl = clips[0].url // default for single untouched clip
 
     try {
-      for (let i = 0; i < clips.length; i++) {
-        const clip = clips[i]
-        if (needsPreprocess(clip)) {
-          logger.info(`[mux] preprocessing clip ${i}`, { type: clip.type, trim: !!clip.startTime })
-          const localPath = await preprocessClip(clip, i, tmpDir)
-          const storagePath = `pins/${pinId}/media/${contentId}-processed-${i}-${Date.now()}.mp4`
-          const url = await uploadToStorage(localPath, storagePath)
-          try { fs.unlinkSync(localPath) } catch { /* noop */ }
-          muxInputs.push({ url })
-        } else {
-          muxInputs.push({ url: clip.url })
+      if (clips.length === 1 && !needsPreprocess(clips[0])) {
+        // Single clip, no processing needed — pass raw URL to Mux.
+        logger.info('[mux] single clip, no preprocessing')
+      } else {
+        // Process each clip (photo→video, trim, speed) then concat.
+        const segments: string[] = []
+        for (let i = 0; i < clips.length; i++) {
+          const clip = clips[i]
+          if (needsPreprocess(clip)) {
+            logger.info(`[mux] preprocessing clip ${i}`, { type: clip.type })
+            segments.push(await preprocessClip(clip, i, tmpDir))
+          } else {
+            // Download the raw video to local for concat
+            const localPath = path.join(tmpDir, `raw_${i}.mp4`)
+            await downloadFile(clip.url, localPath)
+            segments.push(localPath)
+          }
         }
+
+        let outputPath: string
+        if (segments.length === 1) {
+          outputPath = segments[0]
+        } else {
+          // Concat all segments via FFmpeg concat demuxer
+          const listPath = path.join(tmpDir, 'concat.txt')
+          fs.writeFileSync(listPath, segments.map((s) => `file '${s}'`).join('\n'))
+          outputPath = path.join(tmpDir, 'concat_out.mp4')
+          await execFileAsync(ffmpegPath, [
+            '-f', 'concat', '-safe', '0', '-i', listPath,
+            '-c', 'copy', '-movflags', '+faststart',
+            outputPath,
+          ], { timeout: 120_000 })
+          logger.info(`[mux] concat ${segments.length} segments → ${outputPath}`)
+        }
+
+        // Upload the single processed file to Storage
+        const storagePath = `pins/${pinId}/media/${contentId}-final-${Date.now()}.mp4`
+        finalUrl = await uploadToStorage(outputPath, storagePath)
+        logger.info('[mux] processed file uploaded', { storagePath })
       }
     } catch (err) {
-      // Clean up tmp dir on error
       try { fs.rmSync(tmpDir, { recursive: true }) } catch { /* noop */ }
       const message = err instanceof Error ? err.message : String(err)
       logger.error('[mux] preprocessing failed', { error: message })
       throw new HttpsError('internal', `Video processing failed: ${message}`)
     }
 
-    // Clean up tmp dir
     try { fs.rmSync(tmpDir, { recursive: true }) } catch { /* noop */ }
 
+    // Send ONE URL to Mux — always single input, always basic tier.
     try {
       const asset = await mux.video.assets.create({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        inputs: muxInputs as any,
+        inputs: [{ url: finalUrl }] as any,
         playback_policy: ['public'],
-        ...(muxInputs.length === 1 ? { video_quality: 'basic' } : {}),
+        video_quality: 'basic',
         mp4_support: 'capped-1080p',
         passthrough: JSON.stringify({ pinId, contentId, caption: caption ?? '' }),
       })
