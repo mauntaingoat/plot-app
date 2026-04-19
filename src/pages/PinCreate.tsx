@@ -620,9 +620,8 @@ export default function PinCreate() {
             adjustments: draft.clipMeta[idx]?.adjustments ?? { brightness: 0, contrast: 0, saturation: 0 },
           }))
 
-          await runStep(`renderDraft(${i + 1}/${contentDrafts.length})`, () =>
+          const result = await runStep(`renderDraft(${i + 1}/${contentDrafts.length})`, () =>
             renderComposition({
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               clips: draftClips as any,
               aspect: draft.aspect,
               overlays: draft.overlays,
@@ -635,8 +634,27 @@ export default function PinCreate() {
               },
             }),
           )
-          // The editor path writes the content item server-side via the
-          // Mux webhook, so we don't push anything into contentArray here.
+          // Add the reel to contentArray immediately with the Mux URLs.
+          // The mp4/hls URLs work once Mux finishes processing (~30-60s).
+          // The webhook will patch with final URLs later, but the content
+          // item is attached to the pin right away so it's not empty.
+          contentArray.push({
+            id: contentId,
+            type: 'reel',
+            mediaUrl: result.hlsUrl || result.mp4Url || '',
+            mp4Url: result.mp4Url,
+            thumbnailUrl: result.muxPlaybackId
+              ? `https://image.mux.com/${result.muxPlaybackId}/thumbnail.webp?width=720`
+              : (draft.thumbnailUrl || ''),
+            caption: draft.caption ?? '',
+            muxAssetId: result.muxAssetId,
+            muxPlaybackId: result.muxPlaybackId,
+            status: 'preparing',
+            createdAt: Timestamp.now(),
+            views: 0,
+            saves: 0,
+            publishAt: null,
+          })
         }
       }
 
