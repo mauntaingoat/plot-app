@@ -586,7 +586,7 @@ export default function PinCreate() {
       for (let i = 0; i < contentDrafts.length; i++) {
         const draft = contentDrafts[i]
         const contentId = placeholderIds[i]
-        const onDraftProgress = (phase: RenderPhase | 'preprocess' | 'upload', pct: number) => {
+        const onDraftProgress = (phase: RenderPhase, pct: number) => {
           setRenderPhase(phase as RenderPhase)
           setRenderProgress(Math.round(((i + pct) / contentDrafts.length) * 100))
         }
@@ -1565,15 +1565,12 @@ export default function PinCreate() {
                   </motion.div>
                 </div>
                 <p className="text-[16px] font-bold text-ink text-center">
-                  {renderPhase === 'preprocess' ? 'Preparing your content…'
-                    : renderPhase === 'upload' ? 'Uploading…'
+                  {renderPhase === 'upload' ? 'Uploading…'
                     : renderPhase === 'queue' ? 'Almost there…'
                     : 'Publishing…'}
                 </p>
                 <p className="text-[12px] text-smoke text-center mt-1">
-                  {renderPhase === 'preprocess'
-                    ? 'Getting your content ready.'
-                    : renderPhase === 'upload'
+                  {renderPhase === 'upload'
                     ? 'Uploading your content.'
                     : renderPhase === 'queue'
                     ? 'Processing your video. Your pin will update shortly.'
