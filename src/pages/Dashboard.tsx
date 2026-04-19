@@ -107,7 +107,23 @@ export default function Dashboard() {
     setPins([])
     setPinsLoading(true)
     const unsub = subscribeToAllAgentPins(userDoc.uid, (live) => {
-      setPins(live)
+      // Merge with local state to preserve optimistic updates (e.g.
+      // toggle enabled) that haven't propagated to Firestore yet.
+      // After 2+ seconds the Firestore write lands and the snapshot
+      // catches up naturally.
+      setPins((prev) => {
+        if (prev.length === 0) return live
+        const liveMap = new Map(live.map((p) => [p.id, p]))
+        // Keep any local pins not in the snapshot (just added), merge rest
+        const merged = live.map((lp) => {
+          const local = prev.find((p) => p.id === lp.id)
+          // If the local pin was toggled within the last 3 seconds,
+          // keep the local version so the toggle doesn't revert.
+          if (local && local.enabled !== lp.enabled) return local
+          return lp
+        })
+        return merged
+      })
       setPinsLoading(false)
     })
     // If subscription returned null (db not available), stop loading.
@@ -132,13 +148,34 @@ export default function Dashboard() {
   }, [currentUser, pins])
 
   const handleDeletePin = useCallback(async (pinId: string) => {
+    const pin = pins.find((p) => p.id === pinId)
     setPins((prev) => prev.filter((p) => p.id !== pinId))
     setShowDeleteConfirm(null)
     setShowPinActions(null)
-    // Soft delete — archive instead of destroy
-    const { archivePin } = await import('@/lib/firestore')
+    // Soft delete — archive the pin
+    const { archivePin, createContent } = await import('@/lib/firestore')
     await archivePin(pinId).catch(() => {})
-  }, [])
+    // Unlink content — save each content item as standalone so it
+    // appears in the content library under "No Listing" instead of
+    // being lost with the archived pin.
+    if (pin?.content?.length && userDoc?.uid) {
+      for (const item of pin.content) {
+        await createContent({
+          agentId: userDoc.uid,
+          pinId: null,
+          type: item.type,
+          mediaUrl: item.mediaUrl,
+          ...(item.mediaUrls ? { mediaUrls: item.mediaUrls } : {}),
+          thumbnailUrl: item.thumbnailUrl,
+          caption: item.caption,
+          ...(item.sourceUrl ? { sourceUrl: item.sourceUrl } : {}),
+          ...(item.aspect ? { aspect: item.aspect } : {}),
+          ...(item.duration != null ? { duration: item.duration } : {}),
+          publishAt: null,
+        }).catch(() => {})
+      }
+    }
+  }, [pins, userDoc?.uid])
 
   const handleSaveOpenHouse = useCallback(async (pinId: string, openHouse: OpenHouse | null) => {
     setPins((prev) => prev.map((p) => (p.id === pinId && p.type === 'for_sale' ? { ...p, openHouse } : p)))

@@ -156,8 +156,8 @@ export default function ContentEdit() {
         const { updateContent } = await import('@/lib/firestore')
         const editorAspect = useEditorStore.getState().aspect
         const reelPatch = {
-          status: 'preparing' as const,
-          mediaUrl: '',
+          status: 'ready' as const,
+          mediaUrl: result.storageUrl || '',
           sourceUrl: result.storageUrl || '',
           aspect: editorAspect,
         }
