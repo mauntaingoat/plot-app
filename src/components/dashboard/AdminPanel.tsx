@@ -26,8 +26,9 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
       const user = await getUserByUsername(username.trim().toLowerCase().replace('@', ''))
       if (!user) { setError('User not found'); return }
       setLookedUp(user)
-    } catch {
-      setError('Lookup failed')
+    } catch (err) {
+      console.error('[Admin] lookup failed', err)
+      setError(`Lookup failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setSearching(false)
     }
