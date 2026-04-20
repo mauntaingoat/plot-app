@@ -1196,7 +1196,12 @@ function SocialLinksPanel({ isOpen, onClose, existingPlatforms, onAdd, onRemove,
                   type="url"
                   placeholder={meta?.placeholder || 'https://'}
                   value={url}
-                  onChange={(e) => { setUrl(e.target.value); setError(null) }}
+                  onChange={(e) => {
+                    const prefix = meta?.prefix || 'https://'
+                    const v = e.target.value
+                    if (v.length < prefix.length || !v.startsWith(prefix)) { setUrl(prefix); return }
+                    setUrl(v); setError(null)
+                  }}
                   autoFocus
                   className={`w-full px-4 py-3 rounded-[14px] border text-[14px] focus:outline-none focus:ring-2 focus:ring-tangerine/30 ${
                     isDesktop ? 'bg-cream border-border-light text-ink placeholder:text-ash' : 'bg-slate border-border-dark text-white placeholder:text-ghost'
