@@ -49,6 +49,9 @@ export interface UserDoc {
   notificationPrefs?: NotificationPrefs
   suspended?: boolean // admin can suspend an agent
   suspendedReason?: string
+  giftTier?: UserTier
+  giftExpiry?: Timestamp | null
+  lastActiveAt?: Timestamp
 }
 
 // ── Pin types — 2 listing types + spotlight ──

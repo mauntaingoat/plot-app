@@ -3,6 +3,7 @@
 // ════════════════════════════════════════
 
 import type { UserDoc, Pin } from './types'
+import { isAdmin } from './admin'
 
 export type Tier = 'free' | 'pro' | 'studio'
 
@@ -67,7 +68,13 @@ export const TIERS: Record<Tier, TierLimits> = {
 
 export function getUserTier(user: UserDoc | null): Tier {
   if (!user) return 'free'
-  // tier field will be added to UserDoc — fall back to free if not set
+  if (isAdmin(user.uid)) return 'studio'
+  const giftTier = (user as any).giftTier as Tier | undefined
+  const giftExpiry = (user as any).giftExpiry as any
+  if (giftTier && giftExpiry) {
+    const expiryMs = typeof giftExpiry.toMillis === 'function' ? giftExpiry.toMillis() : giftExpiry
+    if (expiryMs > Date.now()) return giftTier
+  }
   return ((user as any).tier as Tier) || 'free'
 }
 

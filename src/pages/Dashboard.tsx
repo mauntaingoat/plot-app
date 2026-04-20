@@ -39,9 +39,11 @@ import { useThemeStore, type ThemePreference } from '@/stores/themeStore'
 import { firebaseConfigured } from '@/config/firebase'
 import { subscribeToAllAgentPins } from '@/lib/firestore'
 import { PLATFORM_LIST, PLATFORM_LOGOS, validatePlatformUrl } from '@/components/icons/PlatformLogos'
+import { AdminPanel } from '@/components/dashboard/AdminPanel'
+import { isAdmin } from '@/lib/admin'
 import { PIN_CONFIG, type Pin, type Platform, type ForSalePin, type OpenHouse, type ContentItem } from '@/lib/types'
 
-type DashTab = 'reelst' | 'insights' | 'inbox' | 'content' | 'settings'
+type DashTab = 'reelst' | 'insights' | 'inbox' | 'content' | 'settings' | 'admin'
 
 function useIsDesktop() {
   const [isDesktop, setIsDesktop] = useState(typeof window !== 'undefined' && window.innerWidth >= 1024)
@@ -97,19 +99,22 @@ export default function Dashboard() {
   }, [loading, userDoc, navigate])
 
   const currentUser = userDoc
+  const [impersonating, setImpersonating] = useState<UserDoc | null>(null)
+  const realUser = userDoc
+  const amAdmin = isAdmin(realUser?.uid)
 
   const [pins, setPins] = useState<Pin[]>([])
   const [pinsLoading, setPinsLoading] = useState(true)
+  const activeUid = impersonating?.uid || userDoc?.uid
   useEffect(() => {
-    if (!userDoc?.uid) {
+    if (!activeUid) {
       setPins([])
       setPinsLoading(false)
       return
     }
-    // Signed in — clear mock data immediately, then subscribe to real.
     setPins([])
     setPinsLoading(true)
-    const unsub = subscribeToAllAgentPins(userDoc.uid, (live) => {
+    const unsub = subscribeToAllAgentPins(activeUid, (live) => {
       // Merge with local state to preserve optimistic updates (e.g.
       // toggle enabled) that haven't propagated to Firestore yet.
       // After 2+ seconds the Firestore write lands and the snapshot
@@ -134,7 +139,7 @@ export default function Dashboard() {
       setPinsLoading(false)
     }
     return () => { unsub?.() }
-  }, [userDoc?.uid])
+  }, [activeUid])
 
   useEffect(() => {
     const urls: string[] = []
@@ -148,6 +153,14 @@ export default function Dashboard() {
     }
     if (urls.length > 0) preloadImages(urls)
   }, [pins, userDoc?.photoURL])
+
+  useEffect(() => {
+    if (!userDoc?.uid || impersonating) return
+    import('@/lib/firestore').then(({ updateUserDoc }) =>
+      updateUserDoc(userDoc.uid, { lastActiveAt: new Date() } as any).catch(() => {})
+    )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userDoc?.uid])
 
   const handleTogglePin = useCallback(async (pinId: string, enabled: boolean) => {
     // Gate activation — block if at active pin cap (tier limits)
@@ -248,7 +261,7 @@ export default function Dashboard() {
     import('@/lib/firestore').then(({ updateUserDoc }) => updateUserDoc(activeUser.uid, { platforms }).catch(() => {}))
   }
 
-  const activeUser = currentUser
+  const activeUser = impersonating || currentUser
   const profileUrl = `reel.st/${activeUser?.username || 'you'}`
 
   // Compute real setup percent to match checklist (fix mismatch)
@@ -274,6 +287,17 @@ export default function Dashboard() {
 
   const renderTabContent = () => (
     <div>
+        {impersonating && (
+          <div className={`flex items-center justify-between gap-3 bg-live-red/10 border-b border-live-red/20 ${isDesktop ? 'px-6 py-2.5' : 'px-5 py-2.5'}`}>
+            <p className="text-[12px] font-semibold text-live-red">
+              Viewing as <span className="font-bold">@{impersonating.username || impersonating.displayName}</span>
+            </p>
+            <button onClick={() => { setImpersonating(null); setActiveTab('admin') }}
+              className="text-[11px] font-bold text-live-red bg-live-red/15 px-3 py-1 rounded-full cursor-pointer hover:bg-live-red/25 transition-colors">
+              Stop
+            </button>
+          </div>
+        )}
 
         {/* ═══ MY PLOT ═══ */}
         {activeTab === 'reelst' && (
@@ -619,6 +643,30 @@ export default function Dashboard() {
               <span className="text-ash text-[10px]">&middot;</span>
               <span className="text-[12px] text-ash">Reelst v1.0.0</span>
             </div>
+
+            {amAdmin && !impersonating && (
+              <>
+                <p className="text-[12px] font-semibold text-live-red uppercase tracking-wider px-1 pb-1 pt-6">Admin</p>
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setActiveTab('admin')}
+                  className="w-full flex items-center gap-3.5 bg-live-red/8 border border-live-red/15 rounded-[14px] p-4 text-left cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-[12px] bg-live-red/15 flex items-center justify-center"><Shield size={18} className="text-live-red" /></div>
+                  <div className="flex-1">
+                    <span className="text-[15px] font-medium text-ink block">Admin Panel</span>
+                    <span className="text-[12px] text-smoke">Impersonate, gift subs, user lookup</span>
+                  </div>
+                  <ChevronRight size={16} className="text-ash" />
+                </motion.button>
+              </>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'admin' && amAdmin && (
+          <div className={isDesktop ? 'space-y-5' : 'px-5 py-5 space-y-4'}>
+            <AdminPanel onImpersonate={(user) => { setImpersonating(user); setActiveTab('reelst') }} />
           </div>
         )}
     </div>
