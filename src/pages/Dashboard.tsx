@@ -29,7 +29,7 @@ import { NotificationSettings } from '@/components/dashboard/NotificationSetting
 import { ContentLibrary } from '@/components/dashboard/ContentLibrary'
 import { useUnreadCount } from '@/components/dashboard/ShowingInbox'
 import { preloadImages } from '@/lib/imageCache'
-import { canActivatePin, hasFeature, type Tier } from '@/lib/tiers'
+import { canActivatePin, hasFeature, getUserTier, type Tier } from '@/lib/tiers'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useScrollLock } from '@/hooks/useScrollLock'
@@ -622,9 +622,9 @@ export default function Dashboard() {
               <div className="w-10 h-10 rounded-[12px] bg-pearl flex items-center justify-center"><CreditCard size={18} className="text-graphite" /></div>
               <div className="flex-1">
                 <span className="text-[15px] font-medium text-ink block">Subscription</span>
-                <span className="text-[12px] text-smoke">{activeUser.tier === 'studio' ? 'Studio plan · $39/mo' : activeUser.tier === 'pro' ? 'Pro plan · $19/mo' : 'Free plan'}</span>
+                <span className="text-[12px] text-smoke">{(() => { const t = getUserTier(activeUser); return t === 'studio' ? 'Studio plan' : t === 'pro' ? 'Pro plan · $19/mo' : 'Free plan' })()}</span>
               </div>
-              <Badge>{activeUser.tier === 'studio' ? 'Studio' : activeUser.tier === 'pro' ? 'Pro' : 'Free'}</Badge>
+              <Badge>{(() => { const t = getUserTier(activeUser); return t === 'studio' ? 'Studio' : t === 'pro' ? 'Pro' : 'Free' })()}</Badge>
             </motion.button>
 
             <div className="flex gap-3 pt-4">

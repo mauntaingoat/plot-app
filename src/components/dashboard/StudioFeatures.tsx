@@ -9,15 +9,8 @@ interface SavedMapInsightsProps {
 }
 
 export function SavedMapInsights({ pins }: SavedMapInsightsProps) {
-  // Mock cross-listing patterns. Real impl: aggregate from saves collection.
   const insights = useMemo(() => {
-    if (pins.length === 0) return []
-    return [
-      { pattern: 'Brickell condos', overlap: 'Coral Gables homes', strength: 78, savers: 142 },
-      { pattern: 'Beachfront listings', overlap: 'Sunny Isles condos', strength: 64, savers: 89 },
-      { pattern: 'Coconut Grove', overlap: 'Wynwood neighborhood content', strength: 52, savers: 67 },
-      { pattern: 'Listings under $1M', overlap: 'First-time buyer reels', strength: 47, savers: 213 },
-    ]
+    return [] as { pattern: string; overlap: string; strength: number; savers: number }[]
   }, [pins])
 
   return (

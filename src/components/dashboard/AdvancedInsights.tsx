@@ -211,15 +211,7 @@ export function GeoHeatmap({ pins }: GeoHeatmapProps) {
   useDismissOnScroll(() => setHoverIdx(null))
 
   const cities = useMemo(() => {
-    if (pins.length === 0) return []
-    return [
-      { city: 'Miami, FL', viewers: 1240, pct: 100, percentage: 38 },
-      { city: 'Fort Lauderdale, FL', viewers: 680, pct: 55, percentage: 21 },
-      { city: 'New York, NY', viewers: 420, pct: 34, percentage: 13 },
-      { city: 'Los Angeles, CA', viewers: 280, pct: 23, percentage: 9 },
-      { city: 'Chicago, IL', viewers: 190, pct: 15, percentage: 6 },
-      { city: 'Boston, MA', viewers: 145, pct: 12, percentage: 4 },
-    ]
+    return [] as { city: string; viewers: number; pct: number; percentage: number }[]
   }, [pins])
 
   return (
@@ -277,16 +269,8 @@ export function TimeOfDay({ pins }: TimeOfDayProps) {
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   useDismissOnScroll(() => setHoverIdx(null))
 
-  // Mock data — 24 hour engagement curve. Real impl would aggregate from event log.
   const hours = useMemo(() => {
-    if (pins.length === 0) return Array(24).fill(0)
-    return Array.from({ length: 24 }, (_, h) => {
-      const peak = 20
-      const dist = Math.abs(h - peak)
-      const baseline = 30
-      const value = baseline + Math.max(0, 100 - dist * dist * 1.5)
-      return Math.round(value + (Math.random() - 0.5) * 20)
-    })
+    return Array(24).fill(0)
   }, [pins])
 
   const max = Math.max(...hours, 1)
@@ -370,15 +354,21 @@ export function FollowerGrowth({ currentFollowers }: FollowerGrowthProps) {
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   useDismissOnScroll(() => setHoverIdx(null))
 
+  // Real follower growth requires a time-series collection (not yet built).
+  // Show empty state until that's implemented.
   const data = useMemo(() => {
-    const days = 30
-    const start = Math.max(0, currentFollowers - Math.round(currentFollowers * 0.4))
-    return Array.from({ length: days }, (_, i) => {
-      const progress = i / (days - 1)
-      const value = Math.round(start + (currentFollowers - start) * progress + (Math.random() - 0.5) * 20)
-      return Math.max(0, value)
-    })
+    if (currentFollowers === 0) return []
+    return Array(30).fill(currentFollowers)
   }, [currentFollowers])
+
+  if (data.length === 0) {
+    return (
+      <div className="bg-warm-white rounded-[18px] border border-border-light p-5">
+        <h3 className="text-[14px] font-bold text-ink mb-1">Follower Growth</h3>
+        <p className="text-[12px] text-smoke">No follower data yet. Growth tracking begins once you gain followers.</p>
+      </div>
+    )
+  }
 
   const max = Math.max(...data, 1)
   const min = Math.min(...data)
