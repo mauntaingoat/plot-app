@@ -96,6 +96,14 @@ const PIN_TYPE_ICONS: Record<string, string> = {
   spotlight: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF6B3D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>`,
 }
 
+function drawImageCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, dx: number, dy: number, dSize: number) {
+  const nw = img.naturalWidth, nh = img.naturalHeight
+  const scale = Math.max(dSize / nw, dSize / nh)
+  const sw = dSize / scale, sh = dSize / scale
+  const sx = (nw - sw) / 2, sy = (nh - sh) / 2
+  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dSize, dSize)
+}
+
 // Pre-load all pin type icons at module init so they're decoded and
 // ready before any pin image is created. Data URIs decode fast but
 // img.complete can be false on the first synchronous access.
@@ -125,7 +133,7 @@ function createPinImage(img: HTMLImageElement | null, ringColor: string, pinType
     try {
       ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, innerR - 2, 0, Math.PI * 2); ctx.clip()
       const imgSize = (innerR - 2) * 2
-      ctx.drawImage(img, cx - innerR + 2, cy - innerR + 2, imgSize, imgSize)
+      drawImageCover(ctx, img, cx - innerR + 2, cy - innerR + 2, imgSize)
       ctx.restore()
       // Test if canvas is tainted before returning
       ctx.getImageData(0, 0, 1, 1)
@@ -364,7 +372,7 @@ function createOpenHouseFrame(img: HTMLImageElement | null, pinType: string, fra
       drawMorphedPath(ctx, cx, cy, innerR - 2, morph, raisedAmount, houseCornerR - 2, 0)
       ctx.clip()
       const imgSize = (innerR - 2) * 2
-      ctx.drawImage(img, cx - innerR + 2, cy - innerR + 2, imgSize, imgSize)
+      drawImageCover(ctx, img, cx - innerR + 2, cy - innerR + 2, imgSize)
       ctx.restore()
     } else {
       const icon = getPinTypeIcon(pinType)
@@ -381,7 +389,7 @@ function createOpenHouseFrame(img: HTMLImageElement | null, pinType: string, fra
       drawMorphedPath(ctx, cx, cy, innerR - 2, morph, raisedAmount, houseCornerR - 2, 0)
       ctx.clip()
       const imgSize = (innerR - 2) * 2
-      ctx.drawImage(img, cx - innerR + 2, cy - innerR + 2, imgSize, imgSize)
+      drawImageCover(ctx, img, cx - innerR + 2, cy - innerR + 2, imgSize)
       ctx.restore()
     } else {
       const icon = getPinTypeIcon(pinType)
@@ -453,7 +461,7 @@ function createLiveFrame(img: HTMLImageElement | null, pinType: string, frame: n
   if (img && img.complete && img.naturalWidth > 0) {
     ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, innerR - 2, 0, Math.PI * 2); ctx.clip()
     const imgSize = (innerR - 2) * 2
-    ctx.drawImage(img, cx - innerR + 2, cy - innerR + 2, imgSize, imgSize)
+    drawImageCover(ctx, img, cx - innerR + 2, cy - innerR + 2, imgSize)
     ctx.restore()
   } else {
     const icon = getPinTypeIcon(pinType)
