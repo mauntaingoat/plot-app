@@ -1514,16 +1514,9 @@ export default function PinCreate() {
                   <textarea value={newCaption} onChange={(e) => setNewCaption(e.target.value)} placeholder="Add a caption..."
                     rows={2} className="w-full rounded-[10px] bg-warm-white border border-border-light px-3 py-2 text-[13px] text-ink resize-none placeholder:text-ash outline-none" />
 
-                  {/* Schedule for later — Pro feature */}
                   <ScheduleField
                     value={newPublishAt}
                     onChange={setNewPublishAt}
-                    locked={!hasFeature(userDoc, 'scheduledContent')}
-                    onLockedClick={() => setPaywall({
-                      open: true,
-                      reason: 'Scheduling content for later is a Pro feature.',
-                      upgradeTo: 'pro',
-                    })}
                   />
 
                   <div className="flex gap-2">

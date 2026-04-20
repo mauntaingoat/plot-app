@@ -10,16 +10,13 @@ export type Tier = 'free' | 'pro' | 'studio'
 export interface TierLimits {
   id: Tier
   name: string
-  price: number // monthly USD, 0 for free
+  price: number
   maxActivePins: number
   maxContentPerPin: number
   maxVideoSeconds: number
-  // Features
   advancedAnalytics: boolean
   liveStreaming: boolean
-  scheduledContent: boolean
   savedMapInsights: boolean
-  customBranding: boolean
 }
 
 export const TIERS: Record<Tier, TierLimits> = {
@@ -27,40 +24,34 @@ export const TIERS: Record<Tier, TierLimits> = {
     id: 'free',
     name: 'Free',
     price: 0,
-    maxActivePins: 5,
+    maxActivePins: 6,
     maxContentPerPin: 3,
-    maxVideoSeconds: 60,
+    maxVideoSeconds: 180,
     advancedAnalytics: false,
     liveStreaming: false,
-    scheduledContent: false,
     savedMapInsights: false,
-    customBranding: false,
   },
   pro: {
     id: 'pro',
     name: 'Pro',
     price: 19,
-    maxActivePins: 20,
-    maxContentPerPin: 5,
+    maxActivePins: 9999,
+    maxContentPerPin: 10,
     maxVideoSeconds: 180,
     advancedAnalytics: true,
-    liveStreaming: true,
-    scheduledContent: true,
+    liveStreaming: false,
     savedMapInsights: false,
-    customBranding: false,
   },
   studio: {
     id: 'studio',
     name: 'Studio',
     price: 39,
-    maxActivePins: 50,
+    maxActivePins: 9999,
     maxContentPerPin: 10,
     maxVideoSeconds: 180,
     advancedAnalytics: true,
     liveStreaming: true,
-    scheduledContent: true,
     savedMapInsights: true,
-    customBranding: true,
   },
 }
 
@@ -82,7 +73,6 @@ export function getTierLimits(user: UserDoc | null): TierLimits {
   return TIERS[getUserTier(user)]
 }
 
-// "Active" = visible on the map. enabled + status:active + has at least 1 content item
 export function isPinActive(pin: Pin): boolean {
   return pin.enabled && (pin as any).status !== 'archived' && pin.content.length > 0
 }
@@ -91,7 +81,7 @@ export function countActivePins(pins: Pin[]): number {
   return pins.filter(isPinActive).length
 }
 
-// ── Gating checks — return true if action is allowed ──
+// ── Gating checks ──
 
 export interface GateResult {
   allowed: boolean
@@ -102,11 +92,11 @@ export interface GateResult {
 export function canActivatePin(user: UserDoc | null, pins: Pin[]): GateResult {
   const limits = getTierLimits(user)
   const activeCount = countActivePins(pins)
-  if (activeCount >= limits.maxActivePins) {
+  if (limits.maxActivePins < 9999 && activeCount >= limits.maxActivePins) {
     return {
       allowed: false,
       reason: `You've reached the ${limits.maxActivePins} active pin limit on the ${limits.name} plan.`,
-      upgradeTo: limits.id === 'free' ? 'pro' : 'studio',
+      upgradeTo: 'pro',
     }
   }
   return { allowed: true }
@@ -127,16 +117,14 @@ export function canAddContent(user: UserDoc | null, pin: Pin): GateResult {
 export function canUploadVideo(user: UserDoc | null, durationSeconds: number): GateResult {
   const limits = getTierLimits(user)
   if (durationSeconds > limits.maxVideoSeconds) {
-    const limitMin = Math.floor(limits.maxVideoSeconds / 60)
     return {
       allowed: false,
-      reason: `Videos on the ${limits.name} plan are limited to ${limitMin} minute${limitMin !== 1 ? 's' : ''}.`,
-      upgradeTo: limits.id === 'free' ? 'pro' : 'studio',
+      reason: 'Videos are limited to 3 minutes.',
     }
   }
   return { allowed: true }
 }
 
-export function hasFeature(user: UserDoc | null, feature: keyof Pick<TierLimits, 'advancedAnalytics' | 'liveStreaming' | 'scheduledContent' | 'savedMapInsights' | 'customBranding'>): boolean {
+export function hasFeature(user: UserDoc | null, feature: keyof Pick<TierLimits, 'advancedAnalytics' | 'liveStreaming' | 'savedMapInsights'>): boolean {
   return getTierLimits(user)[feature]
 }

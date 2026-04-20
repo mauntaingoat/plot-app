@@ -599,20 +599,6 @@ export default function Dashboard() {
               onChange={setThemePreference}
             />
 
-            {/* Custom Branding — Studio only */}
-            {hasFeature(activeUser, 'customBranding') && (
-              <>
-                <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Branding</p>
-                <CustomBranding
-                  user={activeUser}
-                  onSave={(color) => {
-                    setUserDoc({ ...activeUser, brandColor: color })
-                    import('@/lib/firestore').then(({ updateUserDoc }) => updateUserDoc(activeUser.uid, { brandColor: color }).catch(() => {}))
-                  }}
-                />
-              </>
-            )}
-
             <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Plan</p>
             <motion.button
               whileTap={{ scale: 0.98 }}
