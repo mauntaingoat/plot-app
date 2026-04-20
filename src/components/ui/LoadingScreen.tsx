@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Avatar } from '@/components/ui/Avatar'
 
@@ -21,29 +21,29 @@ export function LoadingScreen({ agentName, agentPhoto, onComplete, minDuration =
   const [messageIdx, setMessageIdx] = useState(0)
   const isAgent = !!agentName
 
+  const onCompleteRef = useRef(onComplete)
+  onCompleteRef.current = onComplete
+
   useEffect(() => {
     const startTime = Date.now()
     let raf: number
 
-    // Varying speed progress — fast at start, slow in middle, fast at end
     const tick = () => {
       const elapsed = Date.now() - startTime
       const t = Math.min(elapsed / minDuration, 1)
 
-      // Easing: fast-slow-fast curve
       let p: number
       if (t < 0.3) {
-        p = t * 2.2 * 100 / 3 // fast: 0 → ~22% in first 30%
+        p = t * 2.2 * 100 / 3
       } else if (t < 0.7) {
-        p = 22 + (t - 0.3) * 1.4 * 100 / 3 // slow: 22% → ~40% in middle 40%
+        p = 22 + (t - 0.3) * 1.4 * 100 / 3
       } else {
-        p = 40 + (t - 0.7) * 2.0 * 100 // fast: 40% → 100% in last 30%
+        p = 40 + (t - 0.7) * 2.0 * 100
       }
       p = Math.min(p, 100)
 
       setProgress(p)
 
-      // Update message
       if (p < 25) setMessageIdx(0)
       else if (p < 50) setMessageIdx(1)
       else if (p < 80) setMessageIdx(2)
@@ -52,13 +52,13 @@ export function LoadingScreen({ agentName, agentPhoto, onComplete, minDuration =
       if (p < 100) {
         raf = requestAnimationFrame(tick)
       } else {
-        setTimeout(() => onComplete?.(), 200)
+        setTimeout(() => onCompleteRef.current?.(), 200)
       }
     }
 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [minDuration, onComplete])
+  }, [minDuration])
 
   return (
     <div className="min-h-screen bg-midnight flex flex-col items-center justify-center px-6">
