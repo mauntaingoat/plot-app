@@ -426,10 +426,11 @@ export default function PinCreate() {
           newContentItems.push({
             id: contentId,
             type: 'reel',
-            mediaUrl: result.storageUrl || '',
+            mediaUrl: result.processedUrl || result.storageUrl || '',
             sourceUrl: result.storageUrl || '',
+            sourceUrls: result.storageUrls,
             mp4Url: result.mp4Url,
-            thumbnailUrl: draft.thumbnailUrl || '',
+            thumbnailUrl: result.thumbnailUrl || draft.thumbnailUrl || '',
             caption: draft.caption ?? '',
             muxAssetId: result.muxAssetId,
             muxPlaybackId: result.muxPlaybackId,
@@ -463,6 +464,7 @@ export default function PinCreate() {
             mediaUrl: item.mediaUrl,
             ...(item.mediaUrls ? { mediaUrls: item.mediaUrls } : {}),
             ...(item.sourceUrl ? { sourceUrl: item.sourceUrl } : {}),
+            ...(item.sourceUrls?.length ? { sourceUrls: item.sourceUrls } : {}),
             thumbnailUrl: item.thumbnailUrl,
             caption: item.caption,
             publishAt: item.publishAt ?? null,
@@ -650,12 +652,11 @@ export default function PinCreate() {
           contentArray.push({
             id: contentId,
             type: 'reel',
-            // Use Storage URL as mediaUrl — plays immediately in all
-            // browsers. Mux webhook upgrades to CDN URL later.
-            mediaUrl: result.storageUrl || '',
+            mediaUrl: result.processedUrl || result.storageUrl || '',
             sourceUrl: result.storageUrl || '',
+            sourceUrls: result.storageUrls,
             mp4Url: result.mp4Url,
-            thumbnailUrl: draft.thumbnailUrl || '',
+            thumbnailUrl: result.thumbnailUrl || draft.thumbnailUrl || '',
             caption: draft.caption ?? '',
             muxAssetId: result.muxAssetId,
             muxPlaybackId: result.muxPlaybackId,

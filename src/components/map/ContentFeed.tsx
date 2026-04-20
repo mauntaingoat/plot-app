@@ -3,9 +3,10 @@ import { motion } from 'framer-motion'
 import { Eye, MapPin, Home, X, Bookmark, Share2, MessageCircle, Phone, UserPlus, UserCheck } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { ListingOnlySheet } from '@/components/viewers/ListingOnlySheet'
-import { type Pin, type UserDoc, type ContentItem } from '@/lib/types'
+import { type Pin, type UserDoc, type ContentItem, isTallAspect } from '@/lib/types'
 import { getAllContent } from '@/lib/mock'
 import { useSaves } from '@/hooks/useSaves'
+import { preloadImages } from '@/lib/imageCache'
 
 interface ContentFeedProps {
   pins: Pin[]
@@ -23,6 +24,18 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
   const allContent = getAllContent(pins)
   const [listingSheet, setListingSheet] = useState<Pin | null>(null)
   const [following, setFollowing] = useState(false)
+
+  useEffect(() => {
+    const urls: string[] = []
+    if (agent.photoURL) urls.push(agent.photoURL)
+    for (const { content, pin } of allContent) {
+      if (content.thumbnailUrl) urls.push(content.thumbnailUrl)
+      if (content.mediaUrls) urls.push(...content.mediaUrls)
+      if ('heroPhotoUrl' in pin && pin.heroPhotoUrl) urls.push(pin.heroPhotoUrl)
+    }
+    preloadImages(urls)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allContent.length])
 
   if (allContent.length === 0) {
     return (
@@ -105,6 +118,12 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
   const cardRef = useRef<HTMLDivElement>(null)
   const [isNearViewport, setIsNearViewport] = useState(false)
   const [carouselIdx, setCarouselIdx] = useState(0)
+
+  useEffect(() => {
+    if (!content.mediaUrls) return
+    content.mediaUrls.forEach((url) => { const img = new Image(); img.src = url })
+  }, [content.mediaUrls])
+
   const thumbnailUrl = content.thumbnailUrl || ('heroPhotoUrl' in pin ? pin.heroPhotoUrl : '') || ''
   const isVideo = content.type === 'reel' || content.type === 'live'
   const isCarousel = content.type === 'photo' && content.mediaUrls && content.mediaUrls.length > 1
@@ -161,7 +180,7 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
                 }}
                 src={videoSrc}
                 className={`relative w-full h-full ${
-                  content.aspect === '9:16' || !content.aspect ? 'object-cover' : 'object-contain'
+                  isTallAspect(content.aspect) ? 'object-cover' : 'object-contain'
                 }`}
                 loop playsInline muted preload="auto"
                 autoPlay
@@ -173,7 +192,16 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
             </>
           ) : isCarousel ? (
             <>
-              <img src={content.mediaUrls![carouselIdx]} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+              {!isTallAspect(content.aspect) && (
+                <img src={content.mediaUrls![carouselIdx]} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-105 opacity-30" loading="lazy" />
+              )}
+              <img
+                src={content.mediaUrls![carouselIdx]}
+                alt=""
+                className={`absolute inset-0 w-full h-full ${
+                  isTallAspect(content.aspect) ? 'object-cover' : 'object-contain'
+                }`}
+                             />
               {/* Swipe zones for carousel */}
               <button className="absolute left-0 top-0 bottom-0 w-1/3 z-10 cursor-pointer" onClick={() => setCarouselIdx((i) => Math.max(0, i - 1))} aria-label="Previous" />
               <button className="absolute right-0 top-0 bottom-0 w-1/3 z-10 cursor-pointer" onClick={() => setCarouselIdx((i) => Math.min(content.mediaUrls!.length - 1, i + 1))} aria-label="Next" />
@@ -187,8 +215,7 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
           ) : thumbnailUrl ? (
             <>
               <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-105 opacity-30" loading="lazy" />
-              <img src={thumbnailUrl} alt="" className="relative w-full h-full object-contain" loading="lazy"
-                onLoad={(e) => { const img = e.currentTarget; if (img.naturalHeight > img.naturalWidth * 1.2) img.style.objectFit = 'cover' }} />
+              <img src={thumbnailUrl} alt="" className="relative w-full h-full object-contain"                onLoad={(e) => { const img = e.currentTarget; if (img.naturalHeight > img.naturalWidth * 1.2) img.style.objectFit = 'cover' }} />
             </>
           ) : null}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/30 pointer-events-none" />

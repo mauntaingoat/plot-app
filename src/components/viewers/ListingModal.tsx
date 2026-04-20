@@ -9,7 +9,7 @@ import { formatPrice } from '@/lib/firestore'
 import { useSaves } from '@/hooks/useSaves'
 import { OpenHouseBlock } from '@/components/listing/OpenHouseBlock'
 import { publicContent } from '@/lib/contentVisibility'
-import type { Pin, ForSalePin, SoldPin, ContentItem, UserDoc } from '@/lib/types'
+import { type Pin, type ForSalePin, type SoldPin, type ContentItem, type UserDoc, isTallAspect } from '@/lib/types'
 
 interface ListingModalProps {
   pin: Pin
@@ -279,6 +279,11 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
   const cardRef = useRef<HTMLDivElement>(null)
   const [isNearViewport, setIsNearViewport] = useState(false)
   const [carouselIdx, setCarouselIdx] = useState(0)
+
+  useEffect(() => {
+    if (content.mediaUrls) content.mediaUrls.forEach((url) => { const img = new Image(); img.src = url })
+  }, [content.mediaUrls])
+
   const { isSaved, toggleSave } = useSaves()
   const saved = isSaved(pin.id, content.id)
   const thumbnailUrl = content.thumbnailUrl || ('heroPhotoUrl' in pin ? pin.heroPhotoUrl : '') || ''
@@ -331,7 +336,7 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
                 }}
                 src={videoSrc}
                 className={`relative w-full h-full ${
-                  content.aspect === '9:16' || !content.aspect ? 'object-cover' : 'object-contain'
+                  isTallAspect(content.aspect) ? 'object-cover' : 'object-contain'
                 }`}
                 loop playsInline muted preload="auto"
                 autoPlay
@@ -343,7 +348,16 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
             </>
           ) : isCarousel ? (
             <>
-              <img src={content.mediaUrls![carouselIdx]} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+              {!isTallAspect(content.aspect) && (
+                <img src={content.mediaUrls![carouselIdx]} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-105 opacity-30" loading="lazy" />
+              )}
+              <img
+                src={content.mediaUrls![carouselIdx]}
+                alt=""
+                className={`absolute inset-0 w-full h-full ${
+                  isTallAspect(content.aspect) ? 'object-cover' : 'object-contain'
+                }`}
+                             />
               <button className="absolute left-0 top-0 bottom-0 w-1/3 z-10 cursor-pointer" onClick={() => setCarouselIdx((i) => Math.max(0, i - 1))} aria-label="Previous" />
               <button className="absolute right-0 top-0 bottom-0 w-1/3 z-10 cursor-pointer" onClick={() => setCarouselIdx((i) => Math.min(content.mediaUrls!.length - 1, i + 1))} aria-label="Next" />
               <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">
@@ -355,8 +369,7 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
           ) : thumbnailUrl ? (
             <>
               <img src={thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-105 opacity-30" loading="lazy" />
-              <img src={thumbnailUrl} alt="" className="relative w-full h-full object-contain" loading="lazy"
-                onLoad={(e) => { const img = e.currentTarget; if (img.naturalHeight > img.naturalWidth * 1.2) img.style.objectFit = 'cover' }} />
+              <img src={thumbnailUrl} alt="" className="relative w-full h-full object-contain"                onLoad={(e) => { const img = e.currentTarget; if (img.naturalHeight > img.naturalWidth * 1.2) img.style.objectFit = 'cover' }} />
             </>
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-slate"><p className="text-ghost">{content.type}</p></div>

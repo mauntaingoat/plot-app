@@ -63,6 +63,8 @@ interface CreateMuxAssetResult {
   playbackId: string
   mp4Url: string
   hlsUrl: string
+  processedUrl: string
+  thumbnailUrl: string
 }
 
 /* ─────────── Helpers ─────────── */
@@ -142,9 +144,11 @@ async function preprocessClip(clip: ClipInput, idx: number, tmpDir: string, aspe
       filters.push(`setpts=${(1 / clip.speed).toFixed(4)}*PTS`)
     }
 
+    // Always re-encode — ensures uniform codec/resolution/framerate
+    // across all clips so concat is seamless (no pauses at boundaries).
     args.push('-vf', filters.join(','))
-    args.push('-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '26',
-      '-pix_fmt', 'yuv420p', '-movflags', '+faststart')
+    args.push('-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23',
+      '-pix_fmt', 'yuv420p', '-r', '30', '-movflags', '+faststart')
     args.push('-an', outputPath)
   }
 
@@ -191,40 +195,42 @@ export const createMuxAsset = onCall<CreateMuxAssetRequest, Promise<CreateMuxAss
     // locally via FFmpeg and send a single baked file to Mux.
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reelst-'))
     let finalUrl = clips[0].url // default for single untouched clip
+    let thumbnailUrl = ''
 
     try {
-      if (clips.length === 1 && !needsPreprocess(clips[0], aspect)) {
-        // Single clip, no processing needed — pass raw URL to Mux.
+      // When multiple clips exist OR a non-default aspect is set, ALL clips
+      // get re-encoded to uniform codec/resolution/framerate. This ensures:
+      // 1. Seamless transitions (no pause/glitch at clip boundaries)
+      // 2. Correct aspect ratio crop on every clip
+      const forcePreprocess = clips.length > 1 || (aspect && aspect !== '9:16' && aspect !== 'original')
+
+      if (clips.length === 1 && !forcePreprocess && !needsPreprocess(clips[0], aspect)) {
         logger.info('[mux] single clip, no preprocessing')
       } else {
-        // Process each clip (photo→video, trim, speed, aspect) then concat.
         const segments: string[] = []
         for (let i = 0; i < clips.length; i++) {
           const clip = clips[i]
-          if (needsPreprocess(clip, aspect)) {
-            logger.info(`[mux] preprocessing clip ${i}`, { type: clip.type, aspect })
-            segments.push(await preprocessClip(clip, i, tmpDir, aspect))
-          } else {
-            // Download the raw video to local for concat
-            const localPath = path.join(tmpDir, `raw_${i}.mp4`)
-            await downloadFile(clip.url, localPath)
-            segments.push(localPath)
-          }
+          // Every clip gets preprocessed when forcePreprocess is true
+          logger.info(`[mux] preprocessing clip ${i}`, { type: clip.type, aspect, forced: !!forcePreprocess })
+          segments.push(await preprocessClip(clip, i, tmpDir, aspect))
         }
 
         let outputPath: string
         if (segments.length === 1) {
           outputPath = segments[0]
         } else {
-          // Concat all segments via FFmpeg concat demuxer
           const listPath = path.join(tmpDir, 'concat.txt')
           fs.writeFileSync(listPath, segments.map((s) => `file '${s}'`).join('\n'))
           outputPath = path.join(tmpDir, 'concat_out.mp4')
+          // Re-encode the concat to guarantee seamless playback
+          // (no pause/glitch at clip boundaries from keyframe misalignment)
           await execFileAsync(ffmpegPath, [
             '-f', 'concat', '-safe', '0', '-i', listPath,
-            '-c', 'copy', '-movflags', '+faststart',
-            outputPath,
-          ], { timeout: 120_000 })
+            '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23',
+            '-pix_fmt', 'yuv420p', '-r', '30',
+            '-movflags', '+faststart',
+            '-an', outputPath,
+          ], { timeout: 180_000 })
           logger.info(`[mux] concat ${segments.length} segments → ${outputPath}`)
         }
 
@@ -232,6 +238,17 @@ export const createMuxAsset = onCall<CreateMuxAssetRequest, Promise<CreateMuxAss
         const storagePath = `pins/${pinId}/media/${contentId}-final-${Date.now()}.mp4`
         finalUrl = await uploadToStorage(outputPath, storagePath)
         logger.info('[mux] processed file uploaded', { storagePath })
+
+        // Generate a thumbnail from the first frame
+        const thumbPath = path.join(tmpDir, 'thumb.jpg')
+        try {
+          await execFileAsync(ffmpegPath, [
+            '-i', outputPath, '-vframes', '1', '-q:v', '3',
+            '-vf', 'scale=480:-2', thumbPath,
+          ], { timeout: 15_000 })
+          const thumbStoragePath = `pins/${pinId}/media/${contentId}-thumb-${Date.now()}.jpg`
+          thumbnailUrl = await uploadToStorage(thumbPath, thumbStoragePath)
+        } catch { /* thumbnail is optional */ }
       }
     } catch (err) {
       try { fs.rmSync(tmpDir, { recursive: true }) } catch { /* noop */ }
@@ -279,6 +296,8 @@ export const createMuxAsset = onCall<CreateMuxAssetRequest, Promise<CreateMuxAss
         playbackId,
         mp4Url: `https://stream.mux.com/${playbackId}/capped-1080p.mp4`,
         hlsUrl: `https://stream.mux.com/${playbackId}.m3u8`,
+        processedUrl: finalUrl,
+        thumbnailUrl,
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)

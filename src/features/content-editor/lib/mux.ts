@@ -31,6 +31,8 @@ export interface CreateMuxAssetResult {
   playbackId: string
   mp4Url: string
   hlsUrl: string
+  processedUrl: string
+  thumbnailUrl: string
 }
 
 export async function createMuxAsset(args: CreateMuxAssetArgs): Promise<CreateMuxAssetResult> {

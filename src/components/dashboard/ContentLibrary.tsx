@@ -4,9 +4,9 @@ import { Upload, Play, Image, Film, MapPin, Plus, Eye, Bookmark, MoreHorizontal,
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
-import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
 import { getAgentContent, createContent, updateContent, linkContentToPin, archiveContent as archiveContentDoc } from '@/lib/firestore'
-import type { Pin, ContentItem, ContentDoc } from '@/lib/types'
+import { type Pin, type ContentItem, type ContentDoc, isTallAspect } from '@/lib/types'
+import { preloadImages } from '@/lib/imageCache'
 
 interface ContentLibraryProps {
   pins: Pin[]
@@ -116,6 +116,17 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
     if (filter === 'no_listing') return allContent.filter((i) => i.pin === null)
     return allContent
   }, [allContent, filter])
+
+  useEffect(() => {
+    const urls: string[] = []
+    for (const { content } of allContent) {
+      if (content.thumbnailUrl) urls.push(content.thumbnailUrl)
+      if (content.mediaUrl) urls.push(content.mediaUrl)
+      if (content.mediaUrls) urls.push(...content.mediaUrls)
+    }
+    preloadImages(urls)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allContent.length])
 
   return (
     <div className={isDesktop ? 'space-y-4' : 'px-5 py-5 space-y-4'}>
@@ -344,6 +355,13 @@ function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpe
   const isLinked = !!pin
 
   useEffect(() => {
+    if (content.mediaUrls && content.mediaUrls.length > 1) {
+      content.mediaUrls.forEach((url) => { const el = document.createElement('img'); el.src = url })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content.id])
+
+  useEffect(() => {
     if (isPlaying && videoRef.current) videoRef.current.play().catch(() => {})
     if (!isPlaying && videoRef.current) videoRef.current.pause()
   }, [isPlaying])
@@ -365,10 +383,10 @@ function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpe
             <>
               <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-25" />
               {isPlaying ? (
-                <video ref={videoRef} src={content.mediaUrl} className="absolute inset-0 w-full h-full object-contain" loop playsInline muted autoPlay />
+                <video ref={videoRef} src={content.mediaUrl} className={`absolute inset-0 w-full h-full ${isTallAspect(content.aspect) ? 'object-cover' : 'object-contain'}`} loop playsInline muted autoPlay />
               ) : (
-                <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-contain"
-                  onLoad={(e) => { const img = e.currentTarget; if (img.naturalHeight > img.naturalWidth * 1.2) img.style.objectFit = 'cover' }} />
+                <img src={thumb} alt="" className={`absolute inset-0 w-full h-full ${isTallAspect(content.aspect) ? 'object-cover' : 'object-contain'}`}
+                  onLoad={(e) => { const img = e.currentTarget; if (img.naturalHeight > img.naturalWidth * 1.2) img.style.objectFit = 'cover'; else img.style.objectFit = 'contain' }} />
               )}
               {/* Play/Pause overlay */}
               <div className="absolute inset-0 flex items-center justify-center">
@@ -380,8 +398,8 @@ function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpe
           ) : thumb ? (
             <>
               <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-25" />
-              <img src={isCarousel ? mediaUrls[carouselIdx] : thumb} alt="" className="absolute inset-0 w-full h-full object-contain"
-                onLoad={(e) => { const img = e.currentTarget; if (img.naturalHeight > img.naturalWidth * 1.2) img.style.objectFit = 'cover' }} />
+              <img src={isCarousel ? mediaUrls[carouselIdx] : thumb} alt="" className={`absolute inset-0 w-full h-full ${isTallAspect(content.aspect) ? 'object-cover' : 'object-contain'}`}
+                onLoad={(e) => { const img = e.currentTarget; if (img.naturalHeight > img.naturalWidth * 1.2) img.style.objectFit = 'cover'; else img.style.objectFit = 'contain' }} />
               {/* Carousel arrows */}
               {isCarousel && (
                 <>

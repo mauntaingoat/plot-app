@@ -49,32 +49,39 @@ export default function ContentEdit() {
   // On mount: fetch the media from its URL and load into the editor.
   useEffect(() => {
     if (!content) { setLoading(false); return }
+    let cancelled = false
 
     const load = async () => {
       try {
         if (isReel) {
-          // Use sourceUrl (the original Firebase Storage URL) for editing.
-          const editUrl = content.sourceUrl
-          if (!editUrl) {
+          const urls = content.sourceUrls && content.sourceUrls.length > 0
+            ? content.sourceUrls
+            : content.sourceUrl ? [content.sourceUrl] : []
+          if (urls.length === 0) {
             alert('This content can\'t be edited — the original source is no longer available.')
             setLoading(false)
             return
           }
           editorReset()
           try {
-            const res = await fetch(editUrl)
-            if (!res.ok) throw new Error(`HTTP ${res.status}`)
-            const blob = await res.blob()
-            const file = new File([blob], `edit-${content.id}.mp4`, {
-              type: blob.type || 'video/mp4',
-            })
-            await useEditorStore.getState().importFiles([file])
+            const files: File[] = []
+            for (let i = 0; i < urls.length; i++) {
+              const res = await fetch(urls[i])
+              if (!res.ok) throw new Error(`HTTP ${res.status}`)
+              const blob = await res.blob()
+              const isImage = blob.type.startsWith('image') || /\.(jpg|jpeg|png|webp|gif|heic)(\?|$)/i.test(urls[i])
+              const ext = isImage ? 'jpg' : 'mp4'
+              const mime = isImage ? (blob.type || 'image/jpeg') : (blob.type || 'video/mp4')
+              files.push(new File([blob], `edit-${content.id}-clip-${i}.${ext}`, { type: mime }))
+            }
+            if (!cancelled) {
+              await useEditorStore.getState().importFiles(files)
+            }
           } catch {
-            console.warn(`[ContentEdit] failed to fetch from sourceUrl`)
-            alert('This content can\'t be edited — the original source is no longer available.')
+            console.warn(`[ContentEdit] failed to fetch source clips`)
+            if (!cancelled) alert('This content can\'t be edited — the original source is no longer available.')
           }
         } else if (isPhoto) {
-          // Load ALL carousel photos from mediaUrls (or single from mediaUrl)
           const urls = content.mediaUrls && content.mediaUrls.length > 0
             ? content.mediaUrls
             : [content.mediaUrl || content.thumbnailUrl || ''].filter(Boolean)
@@ -100,23 +107,23 @@ export default function ContentEdit() {
               console.warn(`[ContentEdit] failed to load photo ${i}`)
             }
           }
-          if (photos.length > 0) {
+          if (!cancelled && photos.length > 0) {
             setCarouselDraft({
               id: content.id,
               kind: 'carousel',
               photos,
-              aspect: '4:5',
+              aspect: content.aspect || '4:5',
             })
           }
         }
       } catch (err) {
         console.warn('[ContentEdit] failed to load media', err)
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
     load()
-    return () => { editorReset() }
+    return () => { cancelled = true; editorReset() }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -153,33 +160,25 @@ export default function ContentEdit() {
         // Update the content doc: clear mediaUrl (Mux webhook will set it),
         // store sourceUrl for future editing, set status to preparing.
         setSaveProgress('Saving…')
-        const { updateContent, createContent } = await import('@/lib/firestore')
+        const { upsertContent } = await import('@/lib/firestore')
+        const { auth: fbAuth } = await import('@/config/firebase')
         const editorAspect = useEditorStore.getState().aspect
         const reelPatch = {
+          agentId: fbAuth?.currentUser?.uid || '',
+          pinId: pin?.id || null,
+          type: 'reel' as const,
           status: 'ready' as const,
-          mediaUrl: result.storageUrl || '',
+          mediaUrl: result.processedUrl || result.storageUrl || '',
           sourceUrl: result.storageUrl || '',
+          sourceUrls: result.storageUrls,
+          thumbnailUrl: result.thumbnailUrl || content.thumbnailUrl || '',
+          caption: content.caption || '',
           aspect: editorAspect,
+          muxAssetId: result.muxAssetId,
+          muxPlaybackId: result.muxPlaybackId,
+          mp4Url: result.mp4Url,
         }
-        // Try updating the standalone content doc. If it doesn't exist
-        // (content was only in the pin's array), create it.
-        try {
-          await updateContent(contentId, reelPatch as any)
-        } catch {
-          // Doc doesn't exist — create it
-          const { auth: fbAuth } = await import('@/config/firebase')
-          const uid = fbAuth?.currentUser?.uid
-          if (uid) {
-            await createContent({
-              agentId: uid,
-              pinId: pin?.id || null,
-              type: 'reel',
-              ...reelPatch,
-              caption: content.caption || '',
-              publishAt: null,
-            } as any)
-          }
-        }
+        await upsertContent(contentId, reelPatch as any)
 
         // If linked to a pin, also update the pin's content array
         if (pin?.id) {
@@ -190,9 +189,8 @@ export default function ContentEdit() {
           await updatePin(pin.id, { content: updatedContent } as any)
         }
       } else if (isPhoto && carouselDraft) {
-        // Photo carousel — re-upload photos to Storage and update URLs.
         setSaveProgress('Uploading photos…')
-        const urls: string[] = []
+        const rawUrls: string[] = []
         for (let i = 0; i < carouselDraft.photos.length; i++) {
           const photo = carouselDraft.photos[i]
           const filename = `content-${contentId}-photo-${i}-${Date.now()}.jpg`
@@ -200,19 +198,41 @@ export default function ContentEdit() {
             path: pinMediaPath(pinId, filename),
             file: photo.file,
           })
-          urls.push(url)
+          rawUrls.push(url)
+        }
+
+        let finalUrls = rawUrls
+        const aspect = carouselDraft.aspect || '4:5'
+        if (aspect !== 'original') {
+          setSaveProgress('Cropping…')
+          try {
+            const { cropPhotosServer } = await import('@/features/content-create/lib/crop')
+            finalUrls = await cropPhotosServer({ urls: rawUrls, aspect, pinId, contentId })
+          } catch (err) {
+            console.warn('[ContentEdit] server crop failed, using raw uploads', err)
+          }
         }
 
         setSaveProgress('Saving…')
+        const { auth: fbAuth } = await import('@/config/firebase')
         const patch: Partial<ContentItem> = {
-          mediaUrl: urls[0] || content.mediaUrl,
-          thumbnailUrl: urls[0] || content.thumbnailUrl,
-          status: 'ready',  // Photos don't need Mux transcoding
-          ...(urls.length > 1 ? { mediaUrls: urls } : {}),
-          ...(carouselDraft.aspect ? { aspect: carouselDraft.aspect } : {}),
+          mediaUrl: finalUrls[0] || content.mediaUrl,
+          thumbnailUrl: finalUrls[0] || content.thumbnailUrl,
+          sourceUrl: rawUrls[0],
+          sourceUrls: rawUrls,
+          status: 'ready',
+          ...(finalUrls.length > 1 ? { mediaUrls: finalUrls } : {}),
+          aspect,
         }
-        const { updateContent } = await import('@/lib/firestore')
-        await updateContent(contentId, patch as any)
+        const { upsertContent } = await import('@/lib/firestore')
+        await upsertContent(contentId, {
+          agentId: fbAuth?.currentUser?.uid || '',
+          pinId: pin?.id || null,
+          type: 'photo',
+          ...patch,
+          mediaUrl: patch.mediaUrl || '',
+          caption: content.caption || '',
+        } as any)
 
         if (pin?.id) {
           const { updatePin } = await import('@/lib/firestore')

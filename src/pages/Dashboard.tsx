@@ -27,6 +27,7 @@ import { PinEditModal } from '@/components/dashboard/PinEditModal'
 import { ShowingInbox } from '@/components/dashboard/ShowingInbox'
 import { NotificationSettings } from '@/components/dashboard/NotificationSettings'
 import { ContentLibrary } from '@/components/dashboard/ContentLibrary'
+import { preloadImages } from '@/lib/imageCache'
 import { canActivatePin, hasFeature, type Tier } from '@/lib/tiers'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -132,6 +133,19 @@ export default function Dashboard() {
     }
     return () => { unsub?.() }
   }, [userDoc?.uid])
+
+  useEffect(() => {
+    const urls: string[] = []
+    if (userDoc?.photoURL) urls.push(userDoc.photoURL)
+    for (const pin of pins) {
+      if ('heroPhotoUrl' in pin && pin.heroPhotoUrl) urls.push(pin.heroPhotoUrl)
+      for (const c of pin.content || []) {
+        if (c.thumbnailUrl) urls.push(c.thumbnailUrl)
+        if (c.mediaUrls) urls.push(...c.mediaUrls)
+      }
+    }
+    if (urls.length > 0) preloadImages(urls)
+  }, [pins, userDoc?.photoURL])
 
   const handleTogglePin = useCallback(async (pinId: string, enabled: boolean) => {
     // Gate activation — block if at active pin cap (tier limits)
@@ -460,9 +474,35 @@ export default function Dashboard() {
             onArchiveContent={(contentId, pinId) => {
               const pin = pins.find((p) => p.id === pinId)
               if (!pin) return
+              const removedItem = pin.content.find((c) => c.id === contentId)
               const updated = { ...pin, content: pin.content.filter((c) => c.id !== contentId) }
               setPins((prev) => prev.map((p) => p.id === pinId ? updated as Pin : p))
-              import('@/lib/firestore').then(({ updatePin }) => updatePin(pinId, { content: updated.content })).catch(() => {})
+              import('@/lib/firestore').then(async ({ updatePin, updateContent, createContent }) => {
+                await updatePin(pinId, { content: updated.content })
+                if (removedItem && currentUser?.uid) {
+                  try {
+                    await updateContent(contentId, { pinId: null } as any)
+                  } catch {
+                    await createContent({
+                      agentId: currentUser.uid,
+                      pinId: null,
+                      type: removedItem.type,
+                      mediaUrl: removedItem.mediaUrl,
+                      caption: removedItem.caption || '',
+                      ...(removedItem.thumbnailUrl ? { thumbnailUrl: removedItem.thumbnailUrl } : {}),
+                      ...(removedItem.mediaUrls ? { mediaUrls: removedItem.mediaUrls } : {}),
+                      ...(removedItem.mp4Url ? { mp4Url: removedItem.mp4Url } : {}),
+                      ...(removedItem.sourceUrl ? { sourceUrl: removedItem.sourceUrl } : {}),
+                      ...(removedItem.sourceUrls ? { sourceUrls: removedItem.sourceUrls } : {}),
+                      ...(removedItem.muxAssetId ? { muxAssetId: removedItem.muxAssetId } : {}),
+                      ...(removedItem.muxPlaybackId ? { muxPlaybackId: removedItem.muxPlaybackId } : {}),
+                      ...(removedItem.aspect ? { aspect: removedItem.aspect } : {}),
+                      status: removedItem.status || 'ready',
+                      publishAt: null,
+                    } as any)
+                  }
+                }
+              }).catch(() => {})
             }}
             onAssignContent={(contentId, fromPinId, toPinId, contentItem) => {
               if (fromPinId === toPinId) return
@@ -711,10 +751,36 @@ export default function Dashboard() {
         onAddContent={() => { if (editPin) { navigate(`/dashboard/pin/${editPin.id}/edit?tab=content`); setEditPin(null) } }}
         onArchiveContent={(contentId) => {
           if (!editPin) return
+          const removedItem = editPin.content.find((c) => c.id === contentId)
           const updated = { ...editPin, content: editPin.content.filter((c) => c.id !== contentId) }
           setPins((prev) => prev.map((p) => p.id === editPin.id ? updated as Pin : p))
           setEditPin(updated as Pin)
-          import('@/lib/firestore').then(({ updatePin }) => updatePin(editPin.id, { content: updated.content })).catch(() => {})
+          import('@/lib/firestore').then(async ({ updatePin, updateContent, createContent }) => {
+            await updatePin(editPin.id, { content: updated.content })
+            if (removedItem && currentUser?.uid) {
+              try {
+                await updateContent(contentId, { pinId: null } as any)
+              } catch {
+                await createContent({
+                  agentId: currentUser.uid,
+                  pinId: null,
+                  type: removedItem.type,
+                  mediaUrl: removedItem.mediaUrl,
+                  caption: removedItem.caption || '',
+                  ...(removedItem.thumbnailUrl ? { thumbnailUrl: removedItem.thumbnailUrl } : {}),
+                  ...(removedItem.mediaUrls ? { mediaUrls: removedItem.mediaUrls } : {}),
+                  ...(removedItem.mp4Url ? { mp4Url: removedItem.mp4Url } : {}),
+                  ...(removedItem.sourceUrl ? { sourceUrl: removedItem.sourceUrl } : {}),
+                  ...(removedItem.sourceUrls ? { sourceUrls: removedItem.sourceUrls } : {}),
+                  ...(removedItem.muxAssetId ? { muxAssetId: removedItem.muxAssetId } : {}),
+                  ...(removedItem.muxPlaybackId ? { muxPlaybackId: removedItem.muxPlaybackId } : {}),
+                  ...(removedItem.aspect ? { aspect: removedItem.aspect } : {}),
+                  status: removedItem.status || 'ready',
+                  publishAt: null,
+                } as any)
+              }
+            }
+          }).catch(() => {})
         }}
         onReorderContent={(contentIds) => {
           if (!editPin) return

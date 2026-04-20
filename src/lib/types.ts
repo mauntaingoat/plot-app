@@ -83,6 +83,8 @@ export interface ContentItem {
   mp4Url?: string
   /** Original Firebase Storage URL — preserved for editing. */
   sourceUrl?: string
+  /** All original clip Storage URLs for multi-clip reels. */
+  sourceUrls?: string[]
   status?: 'preparing' | 'ready' | 'errored'
   /** The aspect ratio chosen in the editor (e.g. '9:16', '1:1', '4:5'). */
   aspect?: string
@@ -275,6 +277,24 @@ export interface SaveDoc {
 export interface UsernameDoc {
   uid: string
   createdAt: Timestamp
+}
+
+// ── Aspect helpers ──
+
+const ASPECT_HW: Record<string, number> = {
+  '9:16': 16 / 9,   // 1.78
+  '3:4':  4 / 3,    // 1.33
+  '4:5':  5 / 4,    // 1.25
+  '1:1':  1,         // 1.0
+  '4:3':  3 / 4,    // 0.75
+  '16:9': 9 / 16,   // 0.56
+}
+
+export function isTallAspect(aspect?: string): boolean {
+  if (!aspect) return true
+  const ratio = ASPECT_HW[aspect]
+  if (ratio === undefined) return true
+  return ratio >= 1.2
 }
 
 // ── Pin visual config ──

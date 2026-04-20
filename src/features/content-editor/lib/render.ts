@@ -32,7 +32,10 @@ export interface RenderResult {
   muxPlaybackId: string
   mp4Url: string
   hlsUrl: string
+  processedUrl: string
+  thumbnailUrl: string
   storageUrl?: string
+  storageUrls: string[]
 }
 
 export async function renderComposition(args: RenderArgs): Promise<RenderResult> {
@@ -80,6 +83,9 @@ export async function renderComposition(args: RenderArgs): Promise<RenderResult>
     muxPlaybackId: result.playbackId,
     mp4Url: result.mp4Url,
     hlsUrl: result.hlsUrl,
+    processedUrl: result.processedUrl,
+    thumbnailUrl: result.thumbnailUrl,
     storageUrl: storageUrls[0],
+    storageUrls,
   }
 }

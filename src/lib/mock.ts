@@ -223,6 +223,10 @@ export function getAllContent(pins: Pin[]): { content: ContentItem; pin: Pin }[]
       items.push({ content: c, pin })
     }
   }
-  items.sort((a, b) => b.content.createdAt.toMillis() - a.content.createdAt.toMillis())
+  items.sort((a, b) => {
+    const aMs = typeof a.content.createdAt?.toMillis === 'function' ? a.content.createdAt.toMillis() : 0
+    const bMs = typeof b.content.createdAt?.toMillis === 'function' ? b.content.createdAt.toMillis() : 0
+    return bMs - aMs
+  })
   return items
 }

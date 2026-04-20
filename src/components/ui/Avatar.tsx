@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { preloadImage, isImageCached } from '@/lib/imageCache'
 
 interface AvatarProps {
   src?: string | null
@@ -25,20 +27,32 @@ const ringStyles = {
 }
 
 export function Avatar({ src, name = '', size = 40, ring = 'none', className = '', onClick }: AvatarProps) {
+  const [loaded, setLoaded] = useState(src ? isImageCached(src) : false)
+
+  useEffect(() => {
+    if (!src) return
+    if (isImageCached(src)) { setLoaded(true); return }
+    preloadImage(src).then(() => setLoaded(true))
+  }, [src])
+
   const inner = (
     <div
-      className="rounded-full overflow-hidden bg-charcoal flex items-center justify-center"
+      className="rounded-full overflow-hidden bg-charcoal flex items-center justify-center relative"
       style={{ width: size, height: size }}
     >
-      {src ? (
-        <img src={src} alt={name} className="w-full h-full object-cover" />
-      ) : (
-        <span
-          className="text-white font-semibold select-none"
-          style={{ fontSize: size * 0.36 }}
-        >
-          {getInitials(name || '?')}
-        </span>
+      <span
+        className="text-white font-semibold select-none absolute"
+        style={{ fontSize: size * 0.36, opacity: src && loaded ? 0 : 1 }}
+      >
+        {getInitials(name || '?')}
+      </span>
+      {src && (
+        <img
+          src={src}
+          alt={name}
+          className="w-full h-full object-cover absolute inset-0"
+          style={{ opacity: loaded ? 1 : 0 }}
+        />
       )}
     </div>
   )

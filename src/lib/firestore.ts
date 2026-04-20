@@ -616,6 +616,29 @@ export async function createContent(data: Omit<ContentDoc, 'id' | 'createdAt' | 
   return ref.id
 }
 
+export async function upsertContent(contentId: string, data: Partial<ContentDoc>) {
+  if (!db) {
+    const list = JSON.parse(localStorage.getItem('reelst_content') || '[]')
+    const idx = list.findIndex((c: ContentDoc) => c.id === contentId)
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...data }
+    } else {
+      list.push({ ...data, id: contentId, views: 0, saves: 0, createdAt: { toMillis: () => Date.now() } })
+    }
+    localStorage.setItem('reelst_content', JSON.stringify(list))
+    return
+  }
+  const clean = Object.fromEntries(
+    Object.entries(data).filter(([, v]) => v !== undefined),
+  )
+  await setDoc(doc(db, 'content', contentId), {
+    ...clean,
+    views: (data as any).views ?? 0,
+    saves: (data as any).saves ?? 0,
+    createdAt: serverTimestamp(),
+  }, { merge: true })
+}
+
 export async function getAgentContent(agentId: string): Promise<ContentDoc[]> {
   if (!db) {
     const list = JSON.parse(localStorage.getItem('reelst_content') || '[]')

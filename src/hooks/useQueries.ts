@@ -27,7 +27,6 @@ export function useAgentPins(agent: UserDoc | null | undefined) {
     queryFn: async () => {
       if (!agent) return []
 
-      // Try Firebase
       if (firebaseConfigured) {
         return getAgentPins(agent.uid).catch(() => [])
       }
@@ -35,5 +34,7 @@ export function useAgentPins(agent: UserDoc | null | undefined) {
       return []
     },
     enabled: !!agent,
+    staleTime: 10_000,
+    refetchOnWindowFocus: true,
   })
 }

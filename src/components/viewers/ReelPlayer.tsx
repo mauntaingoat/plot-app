@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from 'framer-motion'
 import { MessageCircle, Bookmark, Share2, Music2, X } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
-import type { Pin, UserDoc, ContentItem } from '@/lib/types'
+import { type Pin, type UserDoc, type ContentItem, isTallAspect } from '@/lib/types'
 
 interface ReelPlayerProps {
   reel: Pin & { mediaUrl?: string; caption?: string }

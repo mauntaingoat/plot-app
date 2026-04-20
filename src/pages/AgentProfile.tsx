@@ -28,6 +28,7 @@ import { useFollow, useFollowingList } from '@/hooks/useFollow'
 import { useSaves } from '@/hooks/useSaves'
 import { firebaseConfigured } from '@/config/firebase'
 import type { UserDoc, Pin } from '@/lib/types'
+import { preloadImages } from '@/lib/imageCache'
 
 // Demo mode: bypass auth gates when Firebase isn't configured
 const DEMO_MODE = !firebaseConfigured
@@ -72,6 +73,20 @@ export default function AgentProfile() {
   // Data fetching via React Query (cached across navigations)
   const { data: agent = null, isLoading: agentLoading } = useAgent(username)
   const { data: allPins = [] } = useAgentPins(agent)
+
+  useEffect(() => {
+    const urls: string[] = []
+    if (agent?.photoURL) urls.push(agent.photoURL)
+    for (const pin of allPins) {
+      if ('heroPhotoUrl' in pin && pin.heroPhotoUrl) urls.push(pin.heroPhotoUrl)
+      for (const c of pin.content || []) {
+        if (c.thumbnailUrl) urls.push(c.thumbnailUrl)
+        if (c.mediaUrls) urls.push(...c.mediaUrls)
+      }
+    }
+    if (urls.length > 0) preloadImages(urls)
+  }, [allPins, agent?.photoURL])
+
   const loading = agentLoading
   const notFound = !agentLoading && !agent
 
