@@ -421,6 +421,7 @@ function ClipTile({ clip, active, onTap, setTrim }: ClipTileProps) {
       clearTimeout(longPressTimer.current)
       longPressTimer.current = null
     }
+    setReorderEnabled(false)
   }
 
   // Visible (trimmed) tile width
@@ -441,8 +442,7 @@ function ClipTile({ clip, active, onTap, setTrim }: ClipTileProps) {
       value={clip}
       dragListener={reorderEnabled}
       onDragEnd={() => setReorderEnabled(false)}
-      whileDrag={{ scale: 1.06, zIndex: 10, boxShadow: '0 0 20px rgba(255,217,61,0.3)' }}
-      animate={reorderEnabled ? { scale: 1.03 } : { scale: 1 }}
+      whileDrag={{ scale: 1.04, zIndex: 10 }}
       layout={reorderEnabled ? "position" : false}
       className="relative"
       style={{ overflow: 'visible' }}
@@ -452,8 +452,9 @@ function ClipTile({ clip, active, onTap, setTrim }: ClipTileProps) {
         onPointerDown={onPointerDown}
         onPointerUp={cancelLongPress}
         onPointerCancel={cancelLongPress}
+        onPointerLeave={cancelLongPress}
         onClick={onTap}
-        className={`relative shrink-0 ${reorderEnabled ? 'cursor-grab' : 'cursor-pointer'}`}
+        className="relative shrink-0 cursor-pointer"
         style={{
           width: tileW,
           height: CLIP_HEIGHT,
