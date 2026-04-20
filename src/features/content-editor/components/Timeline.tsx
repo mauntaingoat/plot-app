@@ -268,7 +268,7 @@ export function Timeline({ simpleMode = false }: { simpleMode?: boolean } = {}) 
         onPointerDown={clips.length > 0 ? onPointerDown : undefined}
         onWheel={clips.length > 0 ? onWheel : undefined}
         className={`relative overflow-hidden ${clips.length > 0 ? 'cursor-grab active:cursor-grabbing' : ''}`}
-        style={{ height: CLIP_HEIGHT + 32, touchAction: 'pan-y' }}
+        style={{ height: CLIP_HEIGHT + 48, touchAction: 'pan-y' }}
       >
         {/* Empty placeholder — only when no clips */}
         {clips.length === 0 && (
