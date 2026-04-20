@@ -10,7 +10,7 @@ import type { NotificationPrefs } from '@/lib/types'
 const DEFAULT_PREFS: NotificationPrefs = {
   newFollower: true,
   showingRequest: true,
-  pinSaved: false,
+  pinSaved: true,
 }
 
 const PREF_ROWS: { id: keyof NotificationPrefs; label: string; desc: string; icon: typeof UserPlus; color: string }[] = [

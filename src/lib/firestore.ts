@@ -691,3 +691,85 @@ export async function archiveContent(contentId: string) {
   }
   await deleteDoc(doc(db, 'content', contentId))
 }
+
+// ══════════════════════════════════════════
+// NOTIFICATIONS
+// ══════════════════════════════════════════
+
+export interface NotificationDoc {
+  id: string
+  agentId: string
+  type: 'follow' | 'save' | 'showing_request'
+  title: string
+  body: string
+  read: boolean
+  createdAt: import('firebase/firestore').Timestamp
+  actorName?: string
+  actorUid?: string
+  pinId?: string
+  pinAddress?: string
+  refId?: string
+}
+
+export async function getNotifications(agentId: string): Promise<NotificationDoc[]> {
+  if (!db) return []
+  try {
+    const q = query(
+      collection(db, 'notifications'),
+      where('agentId', '==', agentId),
+      orderBy('createdAt', 'desc'),
+      limit(200),
+    )
+    const snap = await getDocs(q)
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as NotificationDoc))
+  } catch {
+    const fallbackQ = query(
+      collection(db, 'notifications'),
+      where('agentId', '==', agentId),
+      limit(200),
+    )
+    const snap = await getDocs(fallbackQ)
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as NotificationDoc))
+  }
+}
+
+export function subscribeToNotifications(agentId: string, cb: (docs: NotificationDoc[]) => void): Unsubscribe | null {
+  if (!db) return null
+  try {
+    const q = query(
+      collection(db, 'notifications'),
+      where('agentId', '==', agentId),
+      orderBy('createdAt', 'desc'),
+      limit(200),
+    )
+    return onSnapshot(q, (snap) => {
+      cb(snap.docs.map((d) => ({ id: d.id, ...d.data() } as NotificationDoc)))
+    })
+  } catch {
+    return null
+  }
+}
+
+export async function markNotificationsRead(ids: string[]) {
+  if (!db || ids.length === 0) return
+  const batch = (await import('firebase/firestore')).writeBatch(db)
+  for (const id of ids) {
+    batch.update(doc(db, 'notifications', id), { read: true })
+  }
+  await batch.commit()
+}
+
+export async function getUnreadNotificationCount(agentId: string): Promise<number> {
+  if (!db) return 0
+  try {
+    const q = query(
+      collection(db, 'notifications'),
+      where('agentId', '==', agentId),
+      where('read', '==', false),
+    )
+    const snap = await getDocs(q)
+    return snap.size
+  } catch {
+    return 0
+  }
+}

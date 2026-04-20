@@ -27,6 +27,7 @@ import { PinEditModal } from '@/components/dashboard/PinEditModal'
 import { ShowingInbox } from '@/components/dashboard/ShowingInbox'
 import { NotificationSettings } from '@/components/dashboard/NotificationSettings'
 import { ContentLibrary } from '@/components/dashboard/ContentLibrary'
+import { useUnreadCount } from '@/components/dashboard/ShowingInbox'
 import { preloadImages } from '@/lib/imageCache'
 import { canActivatePin, hasFeature, type Tier } from '@/lib/tiers'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
@@ -57,6 +58,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const { userDoc, setUserDoc, loading } = useAuthStore()
   const [activeTab, setActiveTab] = useState<DashTab>('reelst')
+  const inboxUnread = useUnreadCount(userDoc?.uid)
   const [showSetup, setShowSetup] = useState(false)
   const [showPinActions, setShowPinActions] = useState<Pin | null>(null)
   const [showAddPlatform, setShowAddPlatform] = useState(false)
@@ -436,7 +438,7 @@ export default function Dashboard() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-[16px] font-bold text-ink">Notifications</h3>
-                <p className="text-[12px] text-smoke mt-0.5">Visitors who asked to tour your listings.</p>
+                <p className="text-[12px] text-smoke mt-0.5">Showing requests, followers, and saves.</p>
               </div>
             </div>
             {/* Prompt to enable notifications if not granted */}
@@ -922,8 +924,20 @@ export default function Dashboard() {
                     }
                   `}
                 >
-                  <item.icon size={18} className={isActive ? 'text-white' : 'text-smoke'} />
-                  <span className={`text-[13px] ${isActive ? 'font-bold' : 'font-medium'}`}>{item.label}</span>
+                  <span className="relative">
+                    <item.icon size={18} className={isActive ? 'text-white' : 'text-smoke'} />
+                    {item.id === 'inbox' && inboxUnread > 0 && !isActive && (
+                      <span className="absolute -top-1 -right-1.5 min-w-[14px] h-[14px] rounded-full bg-live-red text-white text-[8px] font-bold flex items-center justify-center px-0.5">
+                        {inboxUnread > 99 ? '99+' : inboxUnread}
+                      </span>
+                    )}
+                  </span>
+                  <span className={`text-[13px] flex-1 ${isActive ? 'font-bold' : 'font-medium'}`}>{item.label}</span>
+                  {item.id === 'inbox' && inboxUnread > 0 && isActive && (
+                    <span className="min-w-[18px] h-[18px] rounded-full bg-white/25 text-white text-[10px] font-bold flex items-center justify-center px-1">
+                      {inboxUnread > 99 ? '99+' : inboxUnread}
+                    </span>
+                  )}
                 </button>
               )
             })}
@@ -1067,7 +1081,7 @@ export default function Dashboard() {
         tabs={[
           { id: 'reelst', label: 'My Reelst', icon: <MapPin size={20} /> },
           { id: 'insights', label: 'Insights', icon: <BarChart3 size={20} /> },
-          { id: 'inbox', label: 'Inbox', icon: <Inbox size={20} /> },
+          { id: 'inbox', label: 'Inbox', icon: <Inbox size={20} />, badge: inboxUnread },
           { id: 'content', label: 'Content', icon: <Film size={20} /> },
           { id: 'settings', label: 'More', icon: <Settings size={20} /> },
         ]}

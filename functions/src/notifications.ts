@@ -1,5 +1,6 @@
 /**
- * Notification triggers — fire push messages on key Firestore events.
+ * Notification triggers — fire push messages and write persistent
+ * notification docs on key Firestore events.
  *
  * Three triggers:
  *   - onNewFollower      : a follow doc is created → notify the followed agent
@@ -23,7 +24,6 @@ interface NotifPayload {
   tag?: string
 }
 
-/** Sends a notification to all of a user's devices, respecting prefs and pruning dead tokens. */
 async function notifyUser(uid: string, prefKey: 'newFollower' | 'showingRequest' | 'pinSaved', payload: NotifPayload) {
   const db = admin.firestore()
   const userSnap = await db.collection('users').doc(uid).get()
@@ -35,11 +35,10 @@ async function notifyUser(uid: string, prefKey: 'newFollower' | 'showingRequest'
   }
 
   const prefs = user.notificationPrefs || {}
-  // Default: newFollower + showingRequest on, pinSaved off
   const defaultsOn: Record<string, boolean> = {
     newFollower: true,
     showingRequest: true,
-    pinSaved: false,
+    pinSaved: true,
   }
   const enabled = prefs[prefKey] ?? defaultsOn[prefKey]
   if (!enabled) {
@@ -70,7 +69,6 @@ async function notifyUser(uid: string, prefKey: 'newFollower' | 'showingRequest'
   const result = await admin.messaging().sendEachForMulticast(message)
   logger.info(`notifyUser: ${prefKey} ${uid} success=${result.successCount} failure=${result.failureCount}`)
 
-  // Prune dead tokens
   if (result.failureCount > 0) {
     const dead: string[] = []
     result.responses.forEach((res, i) => {
@@ -93,30 +91,56 @@ async function notifyUser(uid: string, prefKey: 'newFollower' | 'showingRequest'
   }
 }
 
+async function writeNotification(data: {
+  agentId: string
+  type: 'follow' | 'save' | 'showing_request'
+  title: string
+  body: string
+  actorName?: string
+  actorUid?: string
+  pinId?: string
+  pinAddress?: string
+  refId?: string
+}) {
+  const db = admin.firestore()
+  await db.collection('notifications').add({
+    ...data,
+    read: false,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  })
+}
+
 // ── Trigger: new follower ──
-// Path: follows/{followId} where doc has { followerUid, followedUid }
 export const onNewFollower = onDocumentCreated(
   { document: 'follows/{followId}', region: 'us-central1' },
   async (event) => {
     const data = event.data?.data()
     if (!data?.followedUid || !data?.followerUid) return
 
-    // Fetch follower's display name for the message
     const db = admin.firestore()
     const followerSnap = await db.collection('users').doc(data.followerUid).get()
-    const followerName = (followerSnap.data()?.displayName as string) || 'Someone'
+    const followerData = followerSnap.data()
+    const followerName = (followerData?.displayName as string) || 'Someone'
 
     await notifyUser(data.followedUid, 'newFollower', {
       title: 'New follower',
       body: `${followerName} just followed your Reelst.`,
-      url: '/dashboard',
+      url: '/dashboard?tab=inbox',
       tag: `follow_${data.followerUid}`,
+    })
+
+    await writeNotification({
+      agentId: data.followedUid,
+      type: 'follow',
+      title: 'New follower',
+      body: `${followerName} just followed your Reelst.`,
+      actorName: followerName,
+      actorUid: data.followerUid,
     })
   },
 )
 
 // ── Trigger: new showing request ──
-// Path: showing_requests/{reqId} with { agentId, visitorName, pinAddress }
 export const onNewShowingRequest = onDocumentCreated(
   { document: 'showing_requests/{reqId}', region: 'us-central1' },
   async (event) => {
@@ -129,12 +153,21 @@ export const onNewShowingRequest = onDocumentCreated(
       url: '/dashboard?tab=inbox',
       tag: `req_${event.params.reqId}`,
     })
+
+    await writeNotification({
+      agentId: data.agentId,
+      type: 'showing_request',
+      title: 'New showing request',
+      body: `${data.visitorName || 'Someone'} wants to tour ${data.pinAddress || 'a listing'}.`,
+      actorName: data.visitorName || 'Someone',
+      pinId: data.pinId,
+      pinAddress: data.pinAddress,
+      refId: event.params.reqId,
+    })
   },
 )
 
 // ── Trigger: pin saved ──
-// Path: saves/{saveId} with { userId, pinId, contentId? }
-// agentId is not denormalized on the save doc — look it up from the pin.
 export const onPinSaved = onDocumentCreated(
   { document: 'saves/{saveId}', region: 'us-central1' },
   async (event) => {
@@ -146,12 +179,23 @@ export const onPinSaved = onDocumentCreated(
     if (!pinSnap.exists) return
     const pin = pinSnap.data() as { agentId?: string; address?: string }
     if (!pin.agentId) return
+    if (data.userId === pin.agentId) return
 
     await notifyUser(pin.agentId, 'pinSaved', {
       title: 'Listing saved',
       body: `Someone saved ${pin.address || 'one of your listings'}.`,
-      url: '/dashboard',
+      url: '/dashboard?tab=inbox',
       tag: `save_${data.pinId}`,
+    })
+
+    await writeNotification({
+      agentId: pin.agentId,
+      type: 'save',
+      title: 'Listing saved',
+      body: `Someone saved ${pin.address || 'one of your listings'}.`,
+      actorUid: data.userId,
+      pinId: data.pinId,
+      pinAddress: pin.address,
     })
   },
 )

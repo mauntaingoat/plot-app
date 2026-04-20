@@ -5,7 +5,6 @@ import { useAuthListener } from '@/hooks/useAuth'
 import { SimpleLoadingScreen } from '@/components/ui/LoadingScreen'
 import { AuthSheet } from '@/components/sheets/AuthSheet'
 import { useAuthModalStore } from '@/stores/authModalStore'
-import { NotificationToasts } from '@/components/notifications/NotificationToasts'
 import { OfflineBanner } from '@/components/ui/OfflineBanner'
 
 const queryClient = new QueryClient({
@@ -76,7 +75,6 @@ function AppRoutes() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       <GlobalAuthModal />
-      <NotificationToasts />
       <OfflineBanner />
     </>
   )

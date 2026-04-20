@@ -5,6 +5,7 @@ interface Tab {
   id: string
   label: string
   icon: ReactNode
+  badge?: number
 }
 
 interface TabBarProps {
@@ -37,7 +38,14 @@ export function TabBar({ tabs, active, onChange, centerAction, dark }: TabBarPro
         }
       `}
     >
-      <span className="w-6 h-6 flex items-center justify-center">{tab.icon}</span>
+      <span className="w-6 h-6 flex items-center justify-center relative">
+        {tab.icon}
+        {tab.badge && tab.badge > 0 ? (
+          <span className="absolute -top-1 -right-1.5 min-w-[14px] h-[14px] rounded-full bg-live-red text-white text-[8px] font-bold flex items-center justify-center px-0.5">
+            {tab.badge > 99 ? '99+' : tab.badge}
+          </span>
+        ) : null}
+      </span>
       <span className="text-[10px] font-semibold">{tab.label}</span>
       {active === tab.id && (
         <motion.div
