@@ -32,7 +32,10 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
   const storageKey = `reelst_unlinked_${agentId}`
   const [unlinkedContent, setUnlinkedContent] = useState<ContentItem[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem(storageKey) || '[]')
+      const stored: ContentItem[] = JSON.parse(localStorage.getItem(storageKey) || '[]')
+      const pinIds = new Set<string>()
+      for (const pin of pins) for (const c of pin.content || []) pinIds.add(c.id)
+      return stored.filter((c) => !pinIds.has(c.id))
     } catch { return [] }
   })
   const photoRef = useRef<HTMLInputElement>(null)
@@ -42,18 +45,31 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
   // This picks up content published via the standalone upload flow.
   useEffect(() => {
     if (!agentId) return
+    const pinContentIds = new Set<string>()
+    const pinMediaUrls = new Set<string>()
+    for (const pin of pins) {
+      for (const c of pin.content || []) {
+        pinContentIds.add(c.id)
+        if (c.mediaUrl) pinMediaUrls.add(c.mediaUrl)
+      }
+    }
     import('@/lib/firestore').then(({ getAgentContent }) => {
       getAgentContent(agentId).then((docs) => {
-        if (docs.length > 0) {
+        const unlinked = docs.filter((d) =>
+          d.pinId === null &&
+          !pinContentIds.has(d.id) &&
+          !(d.mediaUrl && pinMediaUrls.has(d.mediaUrl))
+        )
+        if (unlinked.length > 0) {
           setUnlinkedContent((prev) => {
             const existingIds = new Set(prev.map((c) => c.id))
-            const newItems = docs.filter((d) => !existingIds.has(d.id))
+            const newItems = unlinked.filter((d) => !existingIds.has(d.id))
             return newItems.length > 0 ? [...prev, ...newItems] : prev
           })
         }
       }).catch(() => {})
     })
-  }, [agentId])
+  }, [agentId, pins])
 
   // Sync unlinked content to localStorage whenever it changes
   useEffect(() => {
