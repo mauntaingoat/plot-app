@@ -1,6 +1,3 @@
-// Real brand SVGs — scrubbed from official brand assets
-// Each is a proper vector, not an emoji or placeholder
-
 export function InstagramLogo({ size = 20, className = '' }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
@@ -25,9 +22,9 @@ export function TikTokLogo({ size = 20, className = '' }: { size?: number; class
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
       <rect width="24" height="24" rx="6" fill="#000" />
-      <path d="M16.6 8.2c-.8-.5-1.3-1.3-1.5-2.2h-2.3v9.5c0 1.4-1.1 2.5-2.5 2.5s-2.5-1.1-2.5-2.5 1.1-2.5 2.5-2.5c.3 0 .5 0 .8.1V10.7c-.3 0-.5-.1-.8-.1-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5V11c.9.6 2 1 3.2 1V9.5c-1 0-1.9-.5-2.6-1.3h-.3z" fill="white" />
-      <path d="M16.6 8.2c-.8-.5-1.3-1.3-1.5-2.2h-2.3v9.5c0 1.4-1.1 2.5-2.5 2.5s-2.5-1.1-2.5-2.5 1.1-2.5 2.5-2.5c.3 0 .5 0 .8.1V10.7c-.3 0-.5-.1-.8-.1-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5V11c.9.6 2 1 3.2 1V9.5c-1 0-1.9-.5-2.6-1.3h-.3z" fill="none" stroke="#25F4EE" strokeWidth="0.3" transform="translate(-0.5, -0.5)" />
-      <path d="M16.6 8.2c-.8-.5-1.3-1.3-1.5-2.2h-2.3v9.5c0 1.4-1.1 2.5-2.5 2.5s-2.5-1.1-2.5-2.5 1.1-2.5 2.5-2.5c.3 0 .5 0 .8.1V10.7c-.3 0-.5-.1-.8-.1-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5V11c.9.6 2 1 3.2 1V9.5c-1 0-1.9-.5-2.6-1.3h-.3z" fill="none" stroke="#FE2C55" strokeWidth="0.3" transform="translate(0.5, 0.5)" />
+      <path d="M17.07 8.44a4.05 4.05 0 01-2.42-1.68 3.04 3.04 0 01-.4-1.26h-2.5l-.01 10.02a2.33 2.33 0 01-2.32 2.13 2.33 2.33 0 01-2.33-2.33 2.33 2.33 0 012.33-2.33c.24 0 .47.04.69.1v-2.56a4.84 4.84 0 00-.69-.05 4.83 4.83 0 00-4.83 4.84 4.83 4.83 0 004.83 4.83 4.83 4.83 0 004.84-4.83v-5.1a6.52 6.52 0 003.81 1.22V9.1s-.02 0 0 0a4.06 4.06 0 01-1-.66z" fill="white" />
+      <path d="M17.07 8.44a4.05 4.05 0 01-2.42-1.68 3.04 3.04 0 01-.4-1.26h-2.5l-.01 10.02a2.33 2.33 0 01-2.32 2.13 2.33 2.33 0 01-2.33-2.33 2.33 2.33 0 012.33-2.33c.24 0 .47.04.69.1v-2.56a4.84 4.84 0 00-.69-.05 4.83 4.83 0 00-4.83 4.84 4.83 4.83 0 004.83 4.83 4.83 4.83 0 004.84-4.83v-5.1a6.52 6.52 0 003.81 1.22V9.1s-.02 0 0 0a4.06 4.06 0 01-1-.66z" fill="none" stroke="#25F4EE" strokeWidth="0.4" transform="translate(-0.6, -0.6)" />
+      <path d="M17.07 8.44a4.05 4.05 0 01-2.42-1.68 3.04 3.04 0 01-.4-1.26h-2.5l-.01 10.02a2.33 2.33 0 01-2.32 2.13 2.33 2.33 0 01-2.33-2.33 2.33 2.33 0 012.33-2.33c.24 0 .47.04.69.1v-2.56a4.84 4.84 0 00-.69-.05 4.83 4.83 0 00-4.83 4.84 4.83 4.83 0 004.83 4.83 4.83 4.83 0 004.84-4.83v-5.1a6.52 6.52 0 003.81 1.22V9.1s-.02 0 0 0a4.06 4.06 0 01-1-.66z" fill="none" stroke="#FE2C55" strokeWidth="0.4" transform="translate(0.6, 0.6)" />
     </svg>
   )
 }
@@ -35,8 +32,9 @@ export function TikTokLogo({ size = 20, className = '' }: { size?: number; class
 export function YouTubeLogo({ size = 20, className = '' }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
-      <rect width="24" height="24" rx="6" fill="#FF0000" />
-      <path d="M10 15.5v-7l6 3.5-6 3.5z" fill="white" />
+      <rect width="24" height="24" rx="6" fill="white" />
+      <path d="M21.38 7.6a2.47 2.47 0 00-1.74-1.75C18.25 5.5 12 5.5 12 5.5s-6.25 0-7.64.35A2.47 2.47 0 002.62 7.6 25.6 25.6 0 002.25 12c-.01 1.48.11 2.95.37 4.4a2.47 2.47 0 001.74 1.74c1.39.38 7.64.38 7.64.38s6.25 0 7.64-.38a2.47 2.47 0 001.74-1.74c.26-1.45.38-2.92.37-4.4.01-1.48-.11-2.95-.37-4.4z" fill="#FF0000" />
+      <path d="M10 15.25l5-3.25-5-3.25v6.5z" fill="white" />
     </svg>
   )
 }
@@ -116,7 +114,6 @@ export function WebsiteLogo({ size = 20, className = '' }: { size?: number; clas
   )
 }
 
-// Map of platform ID → component
 export const PLATFORM_LOGOS: Record<string, typeof InstagramLogo> = {
   instagram: InstagramLogo,
   tiktok: TikTokLogo,
@@ -130,10 +127,31 @@ export const PLATFORM_LOGOS: Record<string, typeof InstagramLogo> = {
 }
 
 export const PLATFORM_LIST = [
-  { id: 'instagram', name: 'Instagram' },
-  { id: 'tiktok', name: 'TikTok' },
-  { id: 'youtube', name: 'YouTube' },
-  { id: 'facebook', name: 'Facebook' },
-  { id: 'linkedin', name: 'LinkedIn' },
-  { id: 'website', name: 'Personal Site' },
+  { id: 'instagram', name: 'Instagram', prefix: 'https://instagram.com/', placeholder: 'https://instagram.com/yourhandle' },
+  { id: 'tiktok', name: 'TikTok', prefix: 'https://tiktok.com/@', placeholder: 'https://tiktok.com/@yourhandle' },
+  { id: 'youtube', name: 'YouTube', prefix: 'https://youtube.com/@', placeholder: 'https://youtube.com/@yourchannel' },
+  { id: 'facebook', name: 'Facebook', prefix: 'https://facebook.com/', placeholder: 'https://facebook.com/yourpage' },
+  { id: 'linkedin', name: 'LinkedIn', prefix: 'https://linkedin.com/in/', placeholder: 'https://linkedin.com/in/yourprofile' },
+  { id: 'website', name: 'Personal Site', prefix: 'https://', placeholder: 'https://yoursite.com' },
 ]
+
+export function platformUrl(platform: { id: string; username: string }): string {
+  if (platform.username.startsWith('http')) return platform.username
+  const meta = PLATFORM_LIST.find((p) => p.id === platform.id)
+  return meta ? `${meta.prefix}${platform.username}` : platform.username
+}
+
+export function validatePlatformUrl(platformId: string, value: string): string | null {
+  if (!value.trim()) return 'URL is required'
+  if (platformId === 'website') {
+    if (!value.startsWith('https://') && !value.startsWith('http://')) return 'Must start with https://'
+    return null
+  }
+  const meta = PLATFORM_LIST.find((p) => p.id === platformId)
+  if (!meta) return null
+  const domain = meta.prefix.replace('https://', '').split('/')[0]
+  if (value.startsWith('https://') || value.startsWith('http://')) {
+    if (!value.includes(domain)) return `Must be a ${meta.name} link`
+  }
+  return null
+}

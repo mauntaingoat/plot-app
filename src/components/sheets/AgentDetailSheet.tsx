@@ -4,7 +4,7 @@ import { ResponsiveSheet } from '@/components/ui/ResponsiveSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { PLATFORM_LOGOS, PLATFORM_LIST } from '@/components/icons/PlatformLogos'
+import { PLATFORM_LOGOS, PLATFORM_LIST, platformUrl } from '@/components/icons/PlatformLogos'
 import type { UserDoc } from '@/lib/types'
 
 export type AgentMode = 'single' | 'following' | 'explore' | 'saved'
@@ -75,11 +75,11 @@ export function AgentDetailSheet({
                 const Logo = PLATFORM_LOGOS[p.id]
                 const name = PLATFORM_LIST.find((pl) => pl.id === p.id)?.name || p.id
                 return (
-                  <motion.button key={p.id} whileTap={{ scale: 0.95 }} className="flex items-center gap-2 bg-slate rounded-full px-3.5 py-2 cursor-pointer">
+                  <motion.a key={p.id} href={platformUrl(p)} target="_blank" rel="noopener noreferrer" whileTap={{ scale: 0.95 }} className="flex items-center gap-2 bg-slate rounded-full px-3.5 py-2 cursor-pointer hover:bg-charcoal transition-colors">
                     {Logo && <Logo size={18} />}
                     <span className="text-[13px] font-medium text-white">{name}</span>
                     <ExternalLink size={11} className="text-ghost" />
-                  </motion.button>
+                  </motion.a>
                 )
               })}
             </div>

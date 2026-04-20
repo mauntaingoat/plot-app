@@ -37,7 +37,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useThemeStore, type ThemePreference } from '@/stores/themeStore'
 import { firebaseConfigured } from '@/config/firebase'
 import { subscribeToAllAgentPins } from '@/lib/firestore'
-import { PLATFORM_LIST, PLATFORM_LOGOS } from '@/components/icons/PlatformLogos'
+import { PLATFORM_LIST, PLATFORM_LOGOS, validatePlatformUrl } from '@/components/icons/PlatformLogos'
 import { PIN_CONFIG, type Pin, type Platform, type ForSalePin, type OpenHouse, type ContentItem } from '@/lib/types'
 
 type DashTab = 'reelst' | 'insights' | 'inbox' | 'content' | 'settings'
@@ -230,12 +230,20 @@ export default function Dashboard() {
 
   const handleAddPlatform = (platformId: string, username: string) => {
     if (!activeUser || !username.trim()) return
-    const updated = {
-      ...activeUser,
-      platforms: [...activeUser.platforms, { id: platformId, username: username.trim() }],
-    }
+    const existing = activeUser.platforms.find((p) => p.id === platformId)
+    const platforms = existing
+      ? activeUser.platforms.map((p) => p.id === platformId ? { ...p, username: username.trim() } : p)
+      : [...activeUser.platforms, { id: platformId, username: username.trim() }]
+    const updated = { ...activeUser, platforms }
     setUserDoc(updated)
-    setShowAddPlatform(false)
+    import('@/lib/firestore').then(({ updateUserDoc }) => updateUserDoc(activeUser.uid, { platforms }).catch(() => {}))
+  }
+
+  const handleRemovePlatform = (platformId: string) => {
+    if (!activeUser) return
+    const platforms = activeUser.platforms.filter((p) => p.id !== platformId)
+    setUserDoc({ ...activeUser, platforms })
+    import('@/lib/firestore').then(({ updateUserDoc }) => updateUserDoc(activeUser.uid, { platforms }).catch(() => {}))
   }
 
   const activeUser = currentUser
@@ -699,12 +707,7 @@ export default function Dashboard() {
         </DarkBottomSheet>
       )}
 
-      {/* Platform connect — modal on desktop, bottom sheet on mobile */}
-      {isDesktop ? (
-        <PlatformModal isOpen={showAddPlatform} onClose={() => setShowAddPlatform(false)} onAdd={handleAddPlatform} existingPlatforms={activeUser.platforms} />
-      ) : (
-        <AddPlatformSheet isOpen={showAddPlatform} onClose={() => setShowAddPlatform(false)} onAdd={handleAddPlatform} existingPlatforms={activeUser.platforms} />
-      )}
+      <SocialLinksPanel isOpen={showAddPlatform} onClose={() => setShowAddPlatform(false)} onAdd={handleAddPlatform} onRemove={handleRemovePlatform} existingPlatforms={activeUser.platforms} isDesktop={isDesktop} />
 
       <PaywallPrompt
         isOpen={paywall.open}
@@ -1090,13 +1093,18 @@ function EditProfileContent({ data, setData, onPhoto, onSave, dark }: {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
-        {data.photoURL ? (
-          <img src={data.photoURL} alt="" className="w-14 h-14 rounded-full object-cover" />
-        ) : (
-          <div className={`w-14 h-14 rounded-full flex items-center justify-center ${dark ? 'bg-charcoal' : 'bg-pearl'}`}>
-            <Camera size={20} className={dark ? 'text-ghost' : 'text-smoke'} />
+        <button onClick={onPhoto} className="cursor-pointer relative group">
+          {data.photoURL ? (
+            <img src={data.photoURL} alt="" className="w-14 h-14 rounded-full object-cover" />
+          ) : (
+            <div className={`w-14 h-14 rounded-full flex items-center justify-center ${dark ? 'bg-charcoal' : 'bg-pearl'}`}>
+              <Camera size={20} className={dark ? 'text-ghost' : 'text-smoke'} />
+            </div>
+          )}
+          <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <Camera size={16} className="text-white" />
           </div>
-        )}
+        </button>
         <button onClick={onPhoto} className="text-[13px] font-bold text-tangerine cursor-pointer hover:underline">Change photo</button>
       </div>
       <div>
@@ -1123,145 +1131,163 @@ function EditProfileContent({ data, setData, onPhoto, onSave, dark }: {
 
 // ── Platform Modal (desktop — centered ease-in) ──
 
-function PlatformModal({ isOpen, onClose, onAdd, existingPlatforms }: {
+function SocialLinksPanel({ isOpen, onClose, existingPlatforms, onAdd, onRemove, isDesktop }: {
   isOpen: boolean; onClose: () => void
-  onAdd: (platformId: string, username: string) => void
   existingPlatforms: Platform[]
+  onAdd: (platformId: string, username: string) => void
+  onRemove: (platformId: string) => void
+  isDesktop: boolean
 }) {
-  const [selected, setSelected] = useState<string | null>(null)
-  const [username, setUsername] = useState('')
+  const [adding, setAdding] = useState<string | null>(null)
+  const [editing, setEditing] = useState<string | null>(null)
+  const [url, setUrl] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
   const available = PLATFORM_LIST.filter((p) => !existingPlatforms.some((ep) => ep.id === p.id))
 
-  // Reset state when closing
   useEffect(() => {
-    if (!isOpen) {
-      setTimeout(() => { setSelected(null); setUsername('') }, 200)
-    }
+    if (!isOpen) setTimeout(() => { setAdding(null); setEditing(null); setUrl(''); setError(null) }, 200)
   }, [isOpen])
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[200] flex items-center justify-center"
-          onClick={onClose}
-        >
-          {/* Backdrop — darkened, no blur */}
-          <div className="absolute inset-0 bg-black/50" />
+  const handleStartEdit = (p: Platform) => {
+    setEditing(p.id)
+    setUrl(p.username)
+    setAdding(null)
+    setError(null)
+  }
 
-          {/* Modal */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
-            onClick={(e) => e.stopPropagation()}
-            className="relative bg-warm-white rounded-2xl shadow-2xl w-[440px] max-h-[80vh] overflow-hidden"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 pt-5 pb-3">
-              <h2 className="text-[18px] font-bold text-ink">Connect a platform</h2>
-              <button onClick={onClose} className="w-8 h-8 rounded-full bg-cream flex items-center justify-center cursor-pointer hover:bg-pearl transition-colors">
-                <X size={16} className="text-smoke" />
-              </button>
-            </div>
+  const handleStartAdd = (id: string) => {
+    setAdding(id)
+    setEditing(null)
+    const meta = PLATFORM_LIST.find((p) => p.id === id)
+    setUrl(meta?.prefix || '')
+    setError(null)
+  }
 
-            <div className="px-6 pb-6">
-              {!selected ? (
-                <div className="grid grid-cols-3 gap-3">
-                  {available.map((platform) => {
-                    const Logo = PLATFORM_LOGOS[platform.id]
-                    return (
-                      <motion.button
-                        key={platform.id}
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => setSelected(platform.id)}
-                        className="flex flex-col items-center gap-2.5 p-5 rounded-2xl bg-cream border border-transparent hover:border-tangerine/20 cursor-pointer transition-colors"
-                      >
-                        {Logo && <Logo size={32} />}
-                        <span className="text-[12px] font-semibold text-graphite">{platform.name}</span>
-                      </motion.button>
-                    )
-                  })}
+  const handleSave = () => {
+    const platformId = adding || editing
+    if (!platformId || !url.trim()) return
+    const err = validatePlatformUrl(platformId, url.trim())
+    if (err) { setError(err); return }
+    onAdd(platformId, url.trim())
+    setAdding(null)
+    setEditing(null)
+    setUrl('')
+    setError(null)
+  }
+
+  const content = (
+    <div className={isDesktop ? 'px-6 pb-6' : 'px-5 pb-8'}>
+      {(adding || editing) ? (
+        <div className="space-y-4">
+          {(() => {
+            const id = adding || editing
+            const meta = PLATFORM_LIST.find((p) => p.id === id)
+            const Logo = PLATFORM_LOGOS[id!]
+            return (
+              <>
+                <div className="flex items-center gap-3">
+                  {Logo && <Logo size={24} />}
+                  <span className={`text-[15px] font-semibold ${isDesktop ? 'text-ink' : 'text-white'}`}>
+                    {editing ? 'Edit' : 'Add'} {meta?.name}
+                  </span>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <p className="text-[14px] text-smoke">Enter your {PLATFORM_LIST.find((p) => p.id === selected)?.name} {selected === 'website' ? 'URL' : 'username'}</p>
-                  <Input
-                    placeholder={selected === 'website' ? 'https://yoursite.com' : `@${selected} username`}
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    autoFocus
-                  />
-                  <div className="flex gap-3">
-                    <Button variant="secondary" size="lg" fullWidth onClick={() => { setSelected(null); setUsername('') }}>Back</Button>
-                    <Button variant="primary" size="lg" fullWidth onClick={() => { onAdd(selected, username); setSelected(null); setUsername('') }}>Connect</Button>
+                <input
+                  type="url"
+                  placeholder={meta?.placeholder || 'https://'}
+                  value={url}
+                  onChange={(e) => { setUrl(e.target.value); setError(null) }}
+                  autoFocus
+                  className={`w-full px-4 py-3 rounded-[14px] border text-[14px] focus:outline-none focus:ring-2 focus:ring-tangerine/30 ${
+                    isDesktop ? 'bg-cream border-border-light text-ink placeholder:text-ash' : 'bg-slate border-border-dark text-white placeholder:text-ghost'
+                  }`}
+                />
+                {error && <p className="text-[12px] text-live-red">{error}</p>}
+                <div className="flex gap-3">
+                  <Button variant={isDesktop ? 'secondary' : 'glass'} size="lg" fullWidth onClick={() => { setAdding(null); setEditing(null); setUrl(''); setError(null) }}>Cancel</Button>
+                  <Button variant="primary" size="lg" fullWidth onClick={handleSave}>Save</Button>
+                </div>
+              </>
+            )
+          })()}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {existingPlatforms.length > 0 && (
+            <div className="space-y-2">
+              {existingPlatforms.map((p) => {
+                const Logo = PLATFORM_LOGOS[p.id]
+                const name = PLATFORM_LIST.find((pl) => pl.id === p.id)?.name || p.id
+                return (
+                  <div key={p.id} className={`flex items-center gap-3 px-4 py-3 rounded-[14px] ${isDesktop ? 'bg-cream' : 'bg-slate'}`}>
+                    {Logo && <Logo size={22} />}
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-[13px] font-semibold ${isDesktop ? 'text-ink' : 'text-white'}`}>{name}</p>
+                      <p className={`text-[11px] truncate ${isDesktop ? 'text-smoke' : 'text-ghost'}`}>{p.username}</p>
+                    </div>
+                    <button onClick={() => handleStartEdit(p)} className="text-[12px] font-semibold text-tangerine cursor-pointer hover:underline">Edit</button>
+                    <button onClick={() => onRemove(p.id)} className="text-[12px] font-semibold text-live-red/70 cursor-pointer hover:underline ml-1">Remove</button>
                   </div>
-                </div>
-              )}
+                )
+              })}
             </div>
-          </motion.div>
-        </motion.div>
+          )}
+
+          {available.length > 0 && (
+            <>
+              <p className={`text-[12px] font-semibold uppercase tracking-wider ${isDesktop ? 'text-smoke' : 'text-ghost'}`}>Add a platform</p>
+              <div className="grid grid-cols-3 gap-3">
+                {available.map((platform) => {
+                  const Logo = PLATFORM_LOGOS[platform.id]
+                  return (
+                    <motion.button
+                      key={platform.id}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => handleStartAdd(platform.id)}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-[16px] cursor-pointer transition-colors ${
+                        isDesktop ? 'bg-cream hover:border-tangerine/20 border border-transparent' : 'bg-slate'
+                      }`}
+                    >
+                      {Logo && <Logo size={28} />}
+                      <span className={`text-[12px] font-semibold ${isDesktop ? 'text-graphite' : 'text-mist'}`}>{platform.name}</span>
+                    </motion.button>
+                  )
+                })}
+              </div>
+            </>
+          )}
+        </div>
       )}
-    </AnimatePresence>
+    </div>
   )
-}
 
-// ── Add Platform Bottom Sheet (mobile) ──
-
-function AddPlatformSheet({ isOpen, onClose, onAdd, existingPlatforms }: {
-  isOpen: boolean; onClose: () => void
-  onAdd: (platformId: string, username: string) => void
-  existingPlatforms: Platform[]
-}) {
-  const [selected, setSelected] = useState<string | null>(null)
-  const [username, setUsername] = useState('')
-
-  const available = PLATFORM_LIST.filter((p) => !existingPlatforms.some((ep) => ep.id === p.id))
+  if (isDesktop) {
+    return (
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center" onClick={onClose}>
+            <div className="absolute inset-0 bg-black/50" />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }} onClick={(e) => e.stopPropagation()}
+              className="relative bg-warm-white rounded-2xl shadow-2xl w-[440px] max-h-[80vh] overflow-hidden">
+              <div className="flex items-center justify-between px-6 pt-5 pb-3">
+                <h2 className="text-[18px] font-bold text-ink">Social Links</h2>
+                <button onClick={onClose} className="w-8 h-8 rounded-full bg-cream flex items-center justify-center cursor-pointer hover:bg-pearl transition-colors">
+                  <X size={16} className="text-smoke" />
+                </button>
+              </div>
+              {content}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    )
+  }
 
   return (
-    <DarkBottomSheet isOpen={isOpen} onClose={onClose} title="Connect a platform">
-      <div className="px-5 pb-8">
-        {!selected ? (
-          <div className="grid grid-cols-3 gap-3">
-            {available.map((platform) => {
-              const Logo = PLATFORM_LOGOS[platform.id]
-              return (
-                <motion.button
-                  key={platform.id}
-                  whileTap={{ scale: 0.93 }}
-                  onClick={() => setSelected(platform.id)}
-                  className="flex flex-col items-center gap-2 p-4 rounded-[16px] bg-slate cursor-pointer"
-                >
-                  {Logo && <Logo size={28} />}
-                  <span className="text-[12px] font-semibold text-mist">{platform.name}</span>
-                </motion.button>
-              )
-            })}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-[14px] text-mist">Enter your {PLATFORM_LIST.find((p) => p.id === selected)?.name} username or URL</p>
-            <Input
-              dark
-              placeholder={`@${selected} username`}
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoFocus
-            />
-            <div className="flex gap-3">
-              <Button variant="glass" size="lg" fullWidth onClick={() => { setSelected(null); setUsername('') }}>Back</Button>
-              <Button variant="primary" size="lg" fullWidth onClick={() => { onAdd(selected, username); setSelected(null); setUsername('') }}>Connect</Button>
-            </div>
-          </div>
-        )}
-      </div>
+    <DarkBottomSheet isOpen={isOpen} onClose={onClose} title="Social Links">
+      {content}
     </DarkBottomSheet>
   )
 }
