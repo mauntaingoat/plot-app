@@ -443,11 +443,7 @@ function ClipTile({ clip, active, onTap, setTrim }: ClipTileProps) {
       dragListener={reorderEnabled}
       onDragEnd={() => setReorderEnabled(false)}
       whileDrag={{ scale: 1.04, zIndex: 10 }}
-      // CRITICAL: layout={false} disables framer's automatic layout
-      // animation. Without this, every trim drag (which changes the tile
-      // width) gets smoothly interpolated by framer, causing the lag and
-      // distortion the user has been seeing for three rounds.
-      layout="position"
+      layout={reorderEnabled ? "position" : false}
       className="relative"
       style={{ overflow: 'visible' }}
     >

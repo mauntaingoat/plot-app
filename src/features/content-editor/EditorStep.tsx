@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { AlertTriangle, X } from 'lucide-react'
 import { PreviewCanvas } from './components/PreviewCanvas'
 import { TransportBar } from './components/TransportBar'
 import { Timeline } from './components/Timeline'
@@ -41,6 +42,8 @@ interface EditorStepProps {
 export function EditorStep({ direction, simpleMode = false, footer }: EditorStepProps) {
   const view = useEditorStore((s) => s.view)
   const reset = useEditorStore((s) => s.reset)
+  const rejectedFiles = useEditorStore((s) => s.rejectedFiles)
+  const clearRejected = useEditorStore((s) => s.clearRejected)
   const resolvedTheme = useThemeStore((s) => s.resolved)
   const isLight = resolvedTheme === 'light'
   const stripActive = view === 'adjust' || view === 'crop' || view === 'speed'
@@ -113,6 +116,36 @@ export function EditorStep({ direction, simpleMode = false, footer }: EditorStep
           </div>
         </div>
       </EditorErrorBoundary>
+
+      <AnimatePresence>
+        {rejectedFiles.length > 0 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] flex items-center justify-center" onClick={clearRejected}>
+            <div className="absolute inset-0 bg-black/60" />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative bg-obsidian rounded-2xl shadow-2xl w-[360px] p-6 text-center">
+              <button onClick={clearRejected} className="absolute top-4 right-4 w-7 h-7 rounded-full bg-charcoal flex items-center justify-center cursor-pointer">
+                <X size={14} className="text-ghost" />
+              </button>
+              <div className="w-12 h-12 rounded-full bg-live-red/15 flex items-center justify-center mx-auto mb-3">
+                <AlertTriangle size={22} className="text-live-red" />
+              </div>
+              <h3 className="text-[16px] font-bold text-white mb-1">Video too long</h3>
+              <p className="text-[13px] text-ghost mb-4">
+                {rejectedFiles.length === 1
+                  ? `"${rejectedFiles[0].name}" is ${Math.floor(rejectedFiles[0].duration / 60)}m ${Math.round(rejectedFiles[0].duration % 60)}s.`
+                  : `${rejectedFiles.length} videos exceed the limit.`}
+                {' '}Individual clips can't be longer than 5 minutes. Trim the video before importing, or use a shorter clip.
+              </p>
+              <button onClick={clearRejected}
+                className="w-full px-4 py-3 rounded-full bg-tangerine text-white text-[14px] font-bold cursor-pointer hover:brightness-110 transition-all">
+                Got it
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }

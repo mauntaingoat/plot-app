@@ -81,6 +81,8 @@ interface EditorState {
   timelineStripEl: HTMLDivElement | null
   setTimelineEls: (wrapper: HTMLDivElement | null, strip: HTMLDivElement | null) => void
 
+  rejectedFiles: { name: string; duration: number }[]
+  clearRejected: () => void
   importFiles: (files: FileList | File[]) => Promise<void>
   selectClip: (id: string | null) => void
   removeClip: (id: string) => void
@@ -196,6 +198,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   currentTime: 0,
   composedTime: 0,
   importingCount: 0,
+  rejectedFiles: [],
+  clearRejected: () => set({ rejectedFiles: [] }),
   playing: false,
   setPlaying: (v) => set({ playing: v }),
   past: [],
@@ -257,14 +261,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setTimelineEls: (wrapper, strip) => set({ timelineWrapperEl: wrapper, timelineStripEl: strip }),
 
   importFiles: async (files) => {
+    const MAX_CLIP_SECONDS = 300
     const arr = Array.from(files)
     pushHistory(set)
     set((state) => ({ importingCount: state.importingCount + arr.length }))
 
+    const rejected: { name: string; duration: number }[] = []
     const settled = await Promise.allSettled(
       arr.map(async (file) => {
         const isVideo = isVideoFile(file)
         const probed = isVideo ? await probeVideo(file) : await probePhoto(file)
+        if (isVideo && probed.duration > MAX_CLIP_SECONDS) {
+          rejected.push({ name: file.name, duration: probed.duration })
+          return null
+        }
         const clip: Clip = {
           id: makeId(),
           file,
@@ -273,9 +283,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           frames: isVideo ? [] : [probed.thumbnailUrl],
           nativeAspect: probed.nativeAspect,
           type: isVideo ? 'video' : 'photo',
-          // For photos, `duration` is the MAX extensible length (10s from
-          // probePhoto). The visible length defaults to 3s; user can drag
-          // the right trim handle to extend up to `duration`.
           duration: probed.duration,
           trimIn: 0,
           trimOut: isVideo ? probed.duration : 3,
@@ -288,9 +295,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     )
     const next: Clip[] = []
     for (const r of settled) {
-      if (r.status === 'fulfilled') next.push(r.value)
-      else console.warn('clip import failed', r.reason)
+      if (r.status === 'fulfilled' && r.value) next.push(r.value)
+      else if (r.status === 'rejected') console.warn('clip import failed', r.reason)
     }
+    if (rejected.length > 0) set({ rejectedFiles: rejected })
 
     set((state) => {
       const clips = [...state.clips, ...next]
@@ -497,6 +505,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       currentTime: 0,
       composedTime: 0,
       importingCount: 0,
+      rejectedFiles: [],
       playing: false,
       past: [],
       future: [],
