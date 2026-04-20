@@ -477,30 +477,25 @@ export default function Dashboard() {
               const removedItem = pin.content.find((c) => c.id === contentId)
               const updated = { ...pin, content: pin.content.filter((c) => c.id !== contentId) }
               setPins((prev) => prev.map((p) => p.id === pinId ? updated as Pin : p))
-              import('@/lib/firestore').then(async ({ updatePin, updateContent, createContent }) => {
+              import('@/lib/firestore').then(async ({ updatePin, upsertContent }) => {
                 await updatePin(pinId, { content: updated.content })
                 if (removedItem && currentUser?.uid) {
-                  try {
-                    await updateContent(contentId, { pinId: null } as any)
-                  } catch {
-                    await createContent({
-                      agentId: currentUser.uid,
-                      pinId: null,
-                      type: removedItem.type,
-                      mediaUrl: removedItem.mediaUrl,
-                      caption: removedItem.caption || '',
-                      ...(removedItem.thumbnailUrl ? { thumbnailUrl: removedItem.thumbnailUrl } : {}),
-                      ...(removedItem.mediaUrls ? { mediaUrls: removedItem.mediaUrls } : {}),
-                      ...(removedItem.mp4Url ? { mp4Url: removedItem.mp4Url } : {}),
-                      ...(removedItem.sourceUrl ? { sourceUrl: removedItem.sourceUrl } : {}),
-                      ...(removedItem.sourceUrls ? { sourceUrls: removedItem.sourceUrls } : {}),
-                      ...(removedItem.muxAssetId ? { muxAssetId: removedItem.muxAssetId } : {}),
-                      ...(removedItem.muxPlaybackId ? { muxPlaybackId: removedItem.muxPlaybackId } : {}),
-                      ...(removedItem.aspect ? { aspect: removedItem.aspect } : {}),
-                      status: removedItem.status || 'ready',
-                      publishAt: null,
-                    } as any)
-                  }
+                  await upsertContent(contentId, {
+                    agentId: currentUser.uid,
+                    pinId: null,
+                    type: removedItem.type,
+                    mediaUrl: removedItem.mediaUrl,
+                    caption: removedItem.caption || '',
+                    ...(removedItem.thumbnailUrl ? { thumbnailUrl: removedItem.thumbnailUrl } : {}),
+                    ...(removedItem.mediaUrls ? { mediaUrls: removedItem.mediaUrls } : {}),
+                    ...(removedItem.mp4Url ? { mp4Url: removedItem.mp4Url } : {}),
+                    ...(removedItem.sourceUrl ? { sourceUrl: removedItem.sourceUrl } : {}),
+                    ...(removedItem.sourceUrls ? { sourceUrls: removedItem.sourceUrls } : {}),
+                    ...(removedItem.muxAssetId ? { muxAssetId: removedItem.muxAssetId } : {}),
+                    ...(removedItem.muxPlaybackId ? { muxPlaybackId: removedItem.muxPlaybackId } : {}),
+                    ...(removedItem.aspect ? { aspect: removedItem.aspect } : {}),
+                    status: removedItem.status || 'ready',
+                  } as any)
                 }
               }).catch(() => {})
             }}
@@ -755,30 +750,25 @@ export default function Dashboard() {
           const updated = { ...editPin, content: editPin.content.filter((c) => c.id !== contentId) }
           setPins((prev) => prev.map((p) => p.id === editPin.id ? updated as Pin : p))
           setEditPin(updated as Pin)
-          import('@/lib/firestore').then(async ({ updatePin, updateContent, createContent }) => {
+          import('@/lib/firestore').then(async ({ updatePin, upsertContent }) => {
             await updatePin(editPin.id, { content: updated.content })
             if (removedItem && currentUser?.uid) {
-              try {
-                await updateContent(contentId, { pinId: null } as any)
-              } catch {
-                await createContent({
-                  agentId: currentUser.uid,
-                  pinId: null,
-                  type: removedItem.type,
-                  mediaUrl: removedItem.mediaUrl,
-                  caption: removedItem.caption || '',
-                  ...(removedItem.thumbnailUrl ? { thumbnailUrl: removedItem.thumbnailUrl } : {}),
-                  ...(removedItem.mediaUrls ? { mediaUrls: removedItem.mediaUrls } : {}),
-                  ...(removedItem.mp4Url ? { mp4Url: removedItem.mp4Url } : {}),
-                  ...(removedItem.sourceUrl ? { sourceUrl: removedItem.sourceUrl } : {}),
-                  ...(removedItem.sourceUrls ? { sourceUrls: removedItem.sourceUrls } : {}),
-                  ...(removedItem.muxAssetId ? { muxAssetId: removedItem.muxAssetId } : {}),
-                  ...(removedItem.muxPlaybackId ? { muxPlaybackId: removedItem.muxPlaybackId } : {}),
-                  ...(removedItem.aspect ? { aspect: removedItem.aspect } : {}),
-                  status: removedItem.status || 'ready',
-                  publishAt: null,
-                } as any)
-              }
+              await upsertContent(contentId, {
+                agentId: currentUser.uid,
+                pinId: null,
+                type: removedItem.type,
+                mediaUrl: removedItem.mediaUrl,
+                caption: removedItem.caption || '',
+                ...(removedItem.thumbnailUrl ? { thumbnailUrl: removedItem.thumbnailUrl } : {}),
+                ...(removedItem.mediaUrls ? { mediaUrls: removedItem.mediaUrls } : {}),
+                ...(removedItem.mp4Url ? { mp4Url: removedItem.mp4Url } : {}),
+                ...(removedItem.sourceUrl ? { sourceUrl: removedItem.sourceUrl } : {}),
+                ...(removedItem.sourceUrls ? { sourceUrls: removedItem.sourceUrls } : {}),
+                ...(removedItem.muxAssetId ? { muxAssetId: removedItem.muxAssetId } : {}),
+                ...(removedItem.muxPlaybackId ? { muxPlaybackId: removedItem.muxPlaybackId } : {}),
+                ...(removedItem.aspect ? { aspect: removedItem.aspect } : {}),
+                status: removedItem.status || 'ready',
+              } as any)
             }
           }).catch(() => {})
         }}
