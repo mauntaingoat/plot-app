@@ -328,13 +328,25 @@ export function Timeline({ simpleMode = false }: { simpleMode?: boolean } = {}) 
                   style={{ gap: CLIP_GAP }}
                 >
                   <AnimatePresence initial={false}>
-                    {clips.map((clip) => (
+                    {clips.map((clip, idx) => (
                       <ClipTile
                         key={clip.id}
                         clip={clip}
                         active={clip.id === selectedId}
                         onTap={() => selectClip(clip.id)}
                         setTrim={setTrim}
+                        canMoveLeft={idx > 0}
+                        canMoveRight={idx < clips.length - 1}
+                        onMoveLeft={() => {
+                          const ids = clips.map((c) => c.id)
+                          ;[ids[idx - 1], ids[idx]] = [ids[idx], ids[idx - 1]]
+                          reorderClips(ids)
+                        }}
+                        onMoveRight={() => {
+                          const ids = clips.map((c) => c.id)
+                          ;[ids[idx], ids[idx + 1]] = [ids[idx + 1], ids[idx]]
+                          reorderClips(ids)
+                        }}
                       />
                     ))}
                   </AnimatePresence>
@@ -404,9 +416,13 @@ interface ClipTileProps {
   active: boolean
   onTap: () => void
   setTrim: (id: string, trimIn: number, trimOut: number) => void
+  canMoveLeft: boolean
+  canMoveRight: boolean
+  onMoveLeft: () => void
+  onMoveRight: () => void
 }
 
-function ClipTile({ clip, active, onTap, setTrim }: ClipTileProps) {
+function ClipTile({ clip, active, onTap, setTrim, canMoveLeft, canMoveRight, onMoveLeft, onMoveRight }: ClipTileProps) {
   const [reorderEnabled, setReorderEnabled] = useState(false)
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -563,6 +579,27 @@ function ClipTile({ clip, active, onTap, setTrim }: ClipTileProps) {
           tileW={tileW}
           rightOnly={clip.type === 'photo'}
         />
+      )}
+
+      {active && (canMoveLeft || canMoveRight) && (
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2" style={{ top: CLIP_HEIGHT + 6 }}>
+          {canMoveLeft && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onMoveLeft() }}
+              className="w-6 h-6 rounded-full bg-[#FFD93D] flex items-center justify-center cursor-pointer hover:brightness-110 transition-all"
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M6.5 2L3.5 5L6.5 8" stroke="#1A1D26" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+          )}
+          {canMoveRight && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onMoveRight() }}
+              className="w-6 h-6 rounded-full bg-[#FFD93D] flex items-center justify-center cursor-pointer hover:brightness-110 transition-all"
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3.5 2L6.5 5L3.5 8" stroke="#1A1D26" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+          )}
+        </div>
       )}
     </Reorder.Item>
   )
