@@ -2,15 +2,22 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, UserCheck, Eye, Gift, Clock, Users, Bookmark, Shield, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { getUserByUsername, updateUserDoc } from '@/lib/firestore'
-import { resetFirestore } from '@/config/firebase'
+import { getUserByUsername } from '@/lib/firestore'
+import { resetFirestore, app } from '@/config/firebase'
+import { getFunctions, httpsCallable } from 'firebase/functions'
 import { Timestamp } from 'firebase/firestore'
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore'
+import { collection, query, where, getDocs, limit } from 'firebase/firestore'
 import { db } from '@/config/firebase'
 import type { UserDoc, UserTier, VerificationStatus } from '@/lib/types'
 
 interface AdminPanelProps {
   onImpersonate: (user: UserDoc) => void
+}
+
+async function callAdmin(data: { action: string; targetUid: string; giftTier?: string; giftExpiry?: number }) {
+  const functions = getFunctions(app ?? undefined)
+  const fn = httpsCallable(functions, 'adminAction')
+  await fn(data)
 }
 
 export function AdminPanel({ onImpersonate }: AdminPanelProps) {
@@ -77,7 +84,7 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
   const handleVerify = async (user: UserDoc) => {
     if (!window.confirm(`Verify @${user.username || user.displayName}? Their profile will go live.`)) return
     try {
-      await updateUserDoc(user.uid, { verificationStatus: 'verified' } as any)
+      await callAdmin({ action: 'verify', targetUid: user.uid })
       if (lookedUp?.uid === user.uid) setLookedUp({ ...user, verificationStatus: 'verified' })
       setUnverifiedAgents((prev) => prev.filter((u) => u.uid !== user.uid))
     } catch (err) {
@@ -87,28 +94,38 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
   }
 
   const handleReject = async (user: UserDoc) => {
-    await updateUserDoc(user.uid, { verificationStatus: 'rejected' } as any)
-    if (lookedUp?.uid === user.uid) setLookedUp({ ...user, verificationStatus: 'rejected' as VerificationStatus })
-    setUnverifiedAgents((prev) => prev.filter((u) => u.uid !== user.uid))
+    try {
+      await callAdmin({ action: 'reject', targetUid: user.uid })
+      if (lookedUp?.uid === user.uid) setLookedUp({ ...user, verificationStatus: 'rejected' as VerificationStatus })
+      setUnverifiedAgents((prev) => prev.filter((u) => u.uid !== user.uid))
+    } catch (err) {
+      console.error('[Admin] reject failed', err)
+    }
   }
 
   const handleGift = async (tier: UserTier, days: number | null) => {
     if (!lookedUp) return
-    const expiry = days
-      ? Timestamp.fromMillis(Date.now() + days * 86400000)
-      : Timestamp.fromMillis(Date.now() + 365 * 10 * 86400000)
-    await updateUserDoc(lookedUp.uid, { giftTier: tier, giftExpiry: expiry } as any)
-    setLookedUp({ ...lookedUp, giftTier: tier, giftExpiry: expiry } as UserDoc)
-    setGiftSuccess(`Gifted ${tier} for ${days ? `${days} days` : 'indefinitely'}`)
-    setTimeout(() => setGiftSuccess(''), 3000)
+    const expiryMs = days ? Date.now() + days * 86400000 : Date.now() + 365 * 10 * 86400000
+    try {
+      await callAdmin({ action: 'gift', targetUid: lookedUp.uid, giftTier: tier, giftExpiry: expiryMs })
+      setLookedUp({ ...lookedUp, giftTier: tier, giftExpiry: Timestamp.fromMillis(expiryMs) } as UserDoc)
+      setGiftSuccess(`Gifted ${tier} for ${days ? `${days} days` : 'indefinitely'}`)
+      setTimeout(() => setGiftSuccess(''), 3000)
+    } catch (err) {
+      console.error('[Admin] gift failed', err)
+    }
   }
 
   const handleRevokeGift = async () => {
     if (!lookedUp) return
-    await updateUserDoc(lookedUp.uid, { giftTier: null, giftExpiry: null } as any)
-    setLookedUp({ ...lookedUp, giftTier: undefined, giftExpiry: undefined } as UserDoc)
-    setGiftSuccess('Gift revoked')
-    setTimeout(() => setGiftSuccess(''), 3000)
+    try {
+      await callAdmin({ action: 'revokeGift', targetUid: lookedUp.uid })
+      setLookedUp({ ...lookedUp, giftTier: undefined, giftExpiry: undefined } as UserDoc)
+      setGiftSuccess('Gift revoked')
+      setTimeout(() => setGiftSuccess(''), 3000)
+    } catch (err) {
+      console.error('[Admin] revoke failed', err)
+    }
   }
 
   const fmtDate = (ts: any) => {
