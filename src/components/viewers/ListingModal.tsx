@@ -379,21 +379,20 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
       </div>
 
       {/* Right sidebar */}
-      {!isPreview && (
-        <div className="absolute right-3 bottom-[20%] z-10 flex flex-col items-center gap-4" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }}>
-          {!isOwnProfile && (
-            <motion.button whileTap={{ scale: 0.75 }}
-              onClick={() => toggleSave(pin.id, content.id, content.type)}
-              className="cursor-pointer">
-              <Bookmark size={24} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
-              <span className="text-[9px] text-white font-semibold block mt-0.5">{content.saves + (saved ? 1 : 0)}</span>
-            </motion.button>
-          )}
-          <motion.button whileTap={{ scale: 0.75 }} className="cursor-pointer">
-            <Share2 size={20} className="text-white" />
+      <div className="absolute right-3 bottom-[20%] z-10 flex flex-col items-center gap-4" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }}>
+        {!isOwnProfile && (
+          <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
+            onClick={!isPreview ? () => toggleSave(pin.id, content.id, content.type) : undefined}
+            className={isPreview ? 'opacity-40' : 'cursor-pointer'}>
+            <Bookmark size={24} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
+            <span className="text-[9px] text-white font-semibold block mt-0.5">{content.saves + (saved ? 1 : 0)}</span>
           </motion.button>
-        </div>
-      )}
+        )}
+        <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
+          className={isPreview ? 'opacity-40' : 'cursor-pointer'}>
+          <Share2 size={20} className="text-white" />
+        </motion.button>
+      </div>
 
       {/* Bottom caption — type label inline with location */}
       <div className="absolute bottom-0 left-0 right-14 z-10 pb-[calc(env(safe-area-inset-bottom,8px)+16px)] px-4">

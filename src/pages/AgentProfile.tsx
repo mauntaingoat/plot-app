@@ -391,41 +391,39 @@ export default function AgentProfile() {
               )}
             </SidebarNavButton>
 
-            {!isPreview && (
-              <>
-                <SidebarNavButton
-                  active={agentMode === 'following'}
-                  onClick={() => {
-                    setAgentMode('following')
-                    setSidebarPanel(sidebarPanel === 'following' ? null : 'following')
-                  }}
-                >
-                  <Users size={18} /> Following
-                </SidebarNavButton>
+            <div className={isPreview ? 'opacity-40 pointer-events-none' : ''}>
+              <SidebarNavButton
+                active={agentMode === 'following'}
+                onClick={() => {
+                  setAgentMode('following')
+                  setSidebarPanel(sidebarPanel === 'following' ? null : 'following')
+                }}
+              >
+                <Users size={18} /> Following
+              </SidebarNavButton>
 
-                <SidebarNavButton
-                  active={agentMode === 'explore'}
-                  onClick={() => {
-                    setAgentMode('explore')
-                    setSidebarPanel(sidebarPanel === 'exploreAll' ? null : 'exploreAll')
-                  }}
-                >
-                  <Globe size={18} /> Explore All
-                </SidebarNavButton>
+              <SidebarNavButton
+                active={agentMode === 'explore'}
+                onClick={() => {
+                  setAgentMode('explore')
+                  setSidebarPanel(sidebarPanel === 'exploreAll' ? null : 'exploreAll')
+                }}
+              >
+                <Globe size={18} /> Explore All
+              </SidebarNavButton>
 
-                <div className="h-px bg-white/6 !my-3" />
+              <div className="h-px bg-white/6 !my-3" />
 
-                <SidebarNavButton
-                  active={agentMode === 'saved'}
-                  onClick={() => {
-                    setAgentMode('saved')
-                    setSidebarPanel(sidebarPanel === 'saved' ? null : 'saved')
-                  }}
-                >
-                  <Bookmark size={18} /> Saved
-                </SidebarNavButton>
-              </>
-            )}
+              <SidebarNavButton
+                active={agentMode === 'saved'}
+                onClick={() => {
+                  setAgentMode('saved')
+                  setSidebarPanel(sidebarPanel === 'saved' ? null : 'saved')
+                }}
+              >
+                <Bookmark size={18} /> Saved
+              </SidebarNavButton>
+            </div>
           </div>
 
           {/* Bottom: account / auth */}

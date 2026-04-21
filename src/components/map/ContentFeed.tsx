@@ -155,6 +155,8 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
   const { isSaved, toggleSave } = useSaves()
   const saved = isSaved(pin.id, content.id)
 
+  const viewTracked = useRef(false)
+
   // Lazy load video: only mount when near viewport, preload 200px ahead
   useEffect(() => {
     const el = cardRef.current
@@ -163,6 +165,10 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
       if (entry.isIntersecting) {
         setIsNearViewport(true)
         if (videoRef.current) videoRef.current.play().catch(() => {})
+        if (!viewTracked.current && !isPreview) {
+          viewTracked.current = true
+          import('@/lib/firestore').then(({ incrementContentView }) => incrementContentView(pin.id, content.id)).catch(() => {})
+        }
       } else {
         if (videoRef.current) videoRef.current.pause()
       }
@@ -249,37 +255,36 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
         {/* Agent avatar */}
         <div className="relative w-10 h-10">
           <Avatar src={agent.photoURL} name={agent.displayName} size={40} ring="none" />
-          {!isOwnProfile && !isPreview && (
-            <motion.button whileTap={{ scale: 0.9 }} onClick={onFollowToggle}
-              className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-[18px] h-[18px] rounded-full flex items-center justify-center cursor-pointer"
+          {!isOwnProfile && (
+            <motion.button whileTap={!isPreview ? { scale: 0.9 } : undefined}
+              onClick={!isPreview ? onFollowToggle : undefined}
+              className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-[18px] h-[18px] rounded-full flex items-center justify-center ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}
               style={{ background: following ? '#34C759' : '#FF6B3D' }}>
               {following ? <UserCheck size={9} className="text-white" /> : <UserPlus size={9} className="text-white" />}
             </motion.button>
           )}
         </div>
 
-        {!isOwnProfile && !isPreview && (
-          <motion.button whileTap={{ scale: 0.75 }}
-            onClick={() => toggleSave(pin.id, content.id, content.type)}
-            className="flex flex-col items-center gap-0.5 cursor-pointer">
+        {!isOwnProfile && (
+          <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
+            onClick={!isPreview ? () => toggleSave(pin.id, content.id, content.type) : undefined}
+            className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}>
             <Bookmark size={26} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
             <span className="text-[10px] text-white font-semibold">{content.saves + (saved ? 1 : 0)}</span>
           </motion.button>
         )}
 
-        {!isPreview && (
-          <>
-            <motion.button whileTap={{ scale: 0.75 }} onClick={requireAuth}
-              className="flex flex-col items-center gap-0.5 cursor-pointer">
-              <MessageCircle size={24} className="text-white" />
-              <span className="text-[10px] text-white font-semibold">0</span>
-            </motion.button>
-            <motion.button whileTap={{ scale: 0.75 }}
-              className="flex flex-col items-center gap-0.5 cursor-pointer">
-              <Share2 size={22} className="text-white" />
-            </motion.button>
-          </>
-        )}
+        <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
+          onClick={!isPreview ? requireAuth : undefined}
+          className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}>
+          <MessageCircle size={24} className="text-white" />
+          <span className="text-[10px] text-white font-semibold">0</span>
+        </motion.button>
+
+        <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
+          className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}>
+          <Share2 size={22} className="text-white" />
+        </motion.button>
 
         {/* House icon — listing only (no content tab) */}
         {pin.type !== 'spotlight' && (

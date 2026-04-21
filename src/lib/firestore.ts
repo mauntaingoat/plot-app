@@ -459,6 +459,20 @@ export async function incrementPinTap(pinId: string) {
   await updateDoc(doc(db, 'pins', pinId), { taps: increment(1) }).catch(() => {})
 }
 
+export async function incrementContentView(pinId: string, contentId: string) {
+  if (!db) return
+  incrementPinView(pinId)
+  // Increment the content item's views inside the pin's content array
+  const pinRef = doc(db, 'pins', pinId)
+  const pinSnap = await getDoc(pinRef).catch(() => null)
+  if (!pinSnap?.exists()) return
+  const content: any[] = pinSnap.get('content') ?? []
+  const idx = content.findIndex((c) => c.id === contentId)
+  if (idx === -1) return
+  content[idx] = { ...content[idx], views: (content[idx].views || 0) + 1 }
+  await updateDoc(pinRef, { content }).catch(() => {})
+}
+
 // ══════════════════════════════════════════
 // FEATURED AGENTS (for explore page)
 // ══════════════════════════════════════════
