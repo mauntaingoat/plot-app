@@ -51,6 +51,18 @@ function GlobalAuthModal() {
   return <AuthSheet isOpen={isOpen} onClose={close} mode={mode} />
 }
 
+// Suppress Firestore internal assertion errors that leak as unhandled
+// promise rejections during rapid navigation. These are a Firebase SDK
+// bug, not an app error — the SDK recovers on the next operation.
+if (typeof window !== 'undefined') {
+  window.addEventListener('unhandledrejection', (e) => {
+    if (e.reason?.message?.includes?.('INTERNAL ASSERTION FAILED')) {
+      e.preventDefault()
+      console.warn('[Firestore] suppressed internal assertion (SDK bug)')
+    }
+  })
+}
+
 function AppRoutes() {
   useAuthListener()
 
