@@ -28,6 +28,7 @@ const About = lazy(() => import('@/pages/About'))
 const Terms = lazy(() => import('@/pages/Terms'))
 const Privacy = lazy(() => import('@/pages/Privacy'))
 const SignUp = lazy(() => import('@/pages/SignUp'))
+const Welcome = lazy(() => import('@/pages/Welcome'))
 const SignIn = lazy(() => import('@/pages/SignIn'))
 const AgentProfile = lazy(() => import('@/pages/AgentProfile'))
 const Dashboard = lazy(() => import('@/pages/Dashboard'))
@@ -86,7 +87,8 @@ function AppRoutes() {
         <Route path="/about" element={<About />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
-        <Route path="/sign-up" element={<SignUp />} />
+        <Route path="/sign-up" element={<Welcome />} />
+        <Route path="/welcome" element={<Welcome />} />
         <Route path="/sign-in" element={<SignIn />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/dashboard/pin/new" element={<PinCreate />} />
