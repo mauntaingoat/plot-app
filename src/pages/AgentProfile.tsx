@@ -219,7 +219,7 @@ export default function AgentProfile() {
       return followingPins.filter((p) => enabledAgentIds.has(p.agentId))
     }
     return allPins
-  }, [allPins, agentMode, explorePins, followingPins, savedPinsFull, followingIds, saves, agent])
+  }, [allPins, agentMode, explorePins, followingPins, savedPinsFull, followingIds, saves, agent, enabledAgentIds])
 
   const filteredPins = useMemo(() => {
     let result = visiblePins

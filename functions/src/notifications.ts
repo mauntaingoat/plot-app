@@ -11,7 +11,7 @@
  * Tokens that fail to deliver (unregistered, invalid) are pruned.
  */
 
-import { onDocumentCreated } from 'firebase-functions/v2/firestore'
+import { onDocumentCreated, onDocumentDeleted } from 'firebase-functions/v2/firestore'
 import { logger } from 'firebase-functions/v2'
 import * as admin from 'firebase-admin'
 
@@ -138,6 +138,14 @@ export const onNewFollower = onDocumentCreated(
       actorUid: data.followerUid,
     })
 
+    // Increment follower/following counts server-side
+    await db.collection('users').doc(data.followedUid).update({
+      followerCount: admin.firestore.FieldValue.increment(1),
+    }).catch(() => {})
+    await db.collection('users').doc(data.followerUid).update({
+      followingCount: admin.firestore.FieldValue.increment(1),
+    }).catch(() => {})
+
     // Log follow event for analytics
     await db.collection('events').add({
       type: 'follow',
@@ -207,5 +215,22 @@ export const onPinSaved = onDocumentCreated(
       pinId: data.pinId,
       pinAddress: pin.address,
     })
+  },
+)
+
+// ── Trigger: unfollow (decrement counts) ──
+export const onUnfollow = onDocumentDeleted(
+  { document: 'follows/{followId}', region: 'us-central1' },
+  async (event) => {
+    const data = event.data?.data()
+    if (!data?.followedUid || !data?.followerUid) return
+
+    const db = admin.firestore()
+    await db.collection('users').doc(data.followedUid).update({
+      followerCount: admin.firestore.FieldValue.increment(-1),
+    }).catch(() => {})
+    await db.collection('users').doc(data.followerUid).update({
+      followingCount: admin.firestore.FieldValue.increment(-1),
+    }).catch(() => {})
   },
 )

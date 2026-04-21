@@ -308,16 +308,14 @@ export async function followAgent(followerUid: string, agentUid: string) {
     followedUid: agentUid,
     createdAt: serverTimestamp(),
   })
-  await updateDoc(doc(db, 'users', agentUid), { followerCount: increment(1) }).catch(() => {})
-  await updateDoc(doc(db, 'users', followerUid), { followingCount: increment(1) }).catch(() => {})
+  // Counter increments handled server-side by onNewFollower Cloud Function
 }
 
 export async function unfollowAgent(followerUid: string, agentUid: string) {
   if (!db) return
   const followId = `${followerUid}_${agentUid}`
   await deleteDoc(doc(db, 'follows', followId))
-  await updateDoc(doc(db, 'users', agentUid), { followerCount: increment(-1) }).catch(() => {})
-  await updateDoc(doc(db, 'users', followerUid), { followingCount: increment(-1) }).catch(() => {})
+  // Counter decrements handled server-side by onUnfollow Cloud Function
 }
 
 export async function isFollowing(followerUid: string, agentUid: string): Promise<boolean> {
