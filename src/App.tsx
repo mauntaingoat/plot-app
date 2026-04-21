@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuthListener } from '@/hooks/useAuth'
 import { SimpleLoadingScreen } from '@/components/ui/LoadingScreen'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { AuthSheet } from '@/components/sheets/AuthSheet'
 import { useAuthModalStore } from '@/stores/authModalStore'
 import { OfflineBanner } from '@/components/ui/OfflineBanner'
@@ -84,9 +85,11 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <Suspense fallback={<SimpleLoadingScreen />}>
-          <AppRoutes />
-        </Suspense>
+        <ErrorBoundary label="App">
+          <Suspense fallback={<SimpleLoadingScreen />}>
+            <AppRoutes />
+          </Suspense>
+        </ErrorBoundary>
       </BrowserRouter>
     </QueryClientProvider>
   )

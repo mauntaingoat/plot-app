@@ -23,14 +23,16 @@ export function LoadingScreen({ agentName, agentPhoto, onComplete, minDuration =
 
   const onCompleteRef = useRef(onComplete)
   onCompleteRef.current = onComplete
+  const durationRef = useRef(minDuration)
 
   useEffect(() => {
+    const dur = durationRef.current
     const startTime = Date.now()
     let raf: number
 
     const tick = () => {
       const elapsed = Date.now() - startTime
-      const t = Math.min(elapsed / minDuration, 1)
+      const t = Math.min(elapsed / dur, 1)
 
       let p: number
       if (t < 0.3) {
@@ -58,7 +60,8 @@ export function LoadingScreen({ agentName, agentPhoto, onComplete, minDuration =
 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [minDuration])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="min-h-screen bg-midnight flex flex-col items-center justify-center px-6">

@@ -263,7 +263,7 @@ export default function AgentProfile() {
         agentName={agent?.displayName}
         agentPhoto={agent?.photoURL}
         onComplete={() => setLoadingComplete(true)}
-        minDuration={loading ? 3000 : 1800}
+        minDuration={2000}
       />
     )
   }
