@@ -3,22 +3,30 @@ import { AlertTriangle, RefreshCw } from 'lucide-react'
 
 interface Props {
   children: ReactNode
-  /** Short label shown in the fallback card, e.g. "Map", "Feed". */
   label?: string
 }
 
 interface State {
   error: Error | null
+  retryCount: number
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { error: null }
+  state: State = { error: null, retryCount: 0 }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
+    if (error.message?.includes('INTERNAL ASSERTION FAILED')) {
+      return { error: null }
+    }
     return { error }
   }
 
   componentDidCatch(error: Error, info: { componentStack?: string }) {
+    if (error.message?.includes('INTERNAL ASSERTION FAILED')) {
+      console.warn('[ErrorBoundary] suppressed Firestore internal assertion, auto-retrying')
+      this.setState((s) => ({ error: null, retryCount: s.retryCount + 1 }))
+      return
+    }
     console.error(`[ErrorBoundary${this.props.label ? `: ${this.props.label}` : ''}]`, error, info)
   }
 

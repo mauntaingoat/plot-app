@@ -61,6 +61,12 @@ if (typeof window !== 'undefined') {
       console.warn('[Firestore] suppressed internal assertion (SDK bug)')
     }
   })
+  window.addEventListener('error', (e) => {
+    if (e.message?.includes?.('INTERNAL ASSERTION FAILED')) {
+      e.preventDefault()
+      console.warn('[Firestore] suppressed internal assertion (SDK bug)')
+    }
+  })
 }
 
 function AppRoutes() {
