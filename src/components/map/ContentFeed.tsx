@@ -167,7 +167,12 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
         if (videoRef.current) videoRef.current.play().catch(() => {})
         if (!viewTracked.current && !isPreview) {
           viewTracked.current = true
-          import('@/lib/firestore').then(({ incrementContentView }) => incrementContentView(pin.id, content.id)).catch(() => {})
+          import('firebase/functions').then(({ getFunctions, httpsCallable }) => {
+            import('@/config/firebase').then(({ app }) => {
+              const fn = httpsCallable(getFunctions(app ?? undefined), 'trackView')
+              fn({ pinId: pin.id, contentId: content.id }).catch(() => {})
+            })
+          })
         }
       } else {
         if (videoRef.current) videoRef.current.pause()

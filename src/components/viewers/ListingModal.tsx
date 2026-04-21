@@ -505,7 +505,6 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isFullScreen, 
           <div className="flex items-center gap-3">
             <Avatar src={agent.photoURL} name={agent.displayName} size={48} />
             <div className="flex-1 min-w-0"><p className="text-[15px] font-bold text-white">{agent.displayName}</p>{agent.brokerage && <p className="text-[12px] text-ghost">{agent.brokerage}</p>}</div>
-            <Button variant="glass" size="sm" icon={<Phone size={14} />} disabled={isPreview} onClick={!isPreview ? requireAuth : undefined}>Contact</Button>
           </div>
           {pin.type === 'for_sale' && !showRequestForm && (
             <Button
