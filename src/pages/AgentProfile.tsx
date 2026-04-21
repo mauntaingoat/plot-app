@@ -142,16 +142,16 @@ export default function AgentProfile() {
   const [savedPinsFull, setSavedPinsFull] = useState<Pin[]>([])
 
   useEffect(() => {
-    if (agentMode === 'explore') {
-      import('@/lib/firestore').then(({ getExplorePins }) => getExplorePins().then(setExplorePins).catch(() => {}))
-    }
-  }, [agentMode])
+    import('@/lib/firestore').then(({ getExplorePins }) => getExplorePins().then(setExplorePins).catch(() => {}))
+  }, [])
 
   useEffect(() => {
-    if (agentMode === 'following' && followingIds.length > 0) {
+    if (followingIds.length > 0) {
       import('@/lib/firestore').then(({ getPinsByAgentIds }) => getPinsByAgentIds(followingIds).then(setFollowingPins).catch(() => {}))
+    } else {
+      setFollowingPins([])
     }
-  }, [agentMode, followingIds])
+  }, [followingIds])
 
   useEffect(() => {
     if (saves.length > 0) {

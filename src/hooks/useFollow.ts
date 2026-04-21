@@ -83,7 +83,6 @@ export function useFollowingList(): { followingIds: string[]; loaded: boolean } 
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    // Demo mode (or signed out) — read from localStorage
     if (!userDoc || !firebaseConfigured) {
       try {
         const raw = localStorage.getItem(DEMO_KEY)
@@ -95,17 +94,19 @@ export function useFollowingList(): { followingIds: string[]; loaded: boolean } 
       return
     }
 
-    // Firestore — query follows where followerUid == userDoc.uid
+    let unsub: (() => void) | null = null
     import('@/config/firebase').then(({ db }) => {
       if (!db) { setLoaded(true); return }
-      import('firebase/firestore').then(({ collection, query, where, getDocs, limit }) => {
-        const q = query(collection(db, 'follows'), where('followerUid', '==', userDoc.uid), limit(200))
-        getDocs(q).then((snap) => {
+      import('firebase/firestore').then(({ collection, query, where, onSnapshot, limit }) => {
+        const q = query(collection(db, 'follows'), where('followerUid', '==', userDoc.uid), limit(1000))
+        unsub = onSnapshot(q, (snap) => {
           setFollowingIds(snap.docs.map((d) => d.data().followedUid as string))
           setLoaded(true)
-        }).catch(() => setLoaded(true))
+        }, () => setLoaded(true))
       })
     })
+
+    return () => { unsub?.() }
   }, [userDoc])
 
   return { followingIds, loaded }

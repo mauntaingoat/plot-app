@@ -35,10 +35,18 @@ export function useSaves() {
       return
     }
     if (firebaseConfigured) {
-      getUserSaves(userDoc.uid).then((data) => {
-        setSaves(data as SaveEntry[])
-        setLoaded(true)
-      }).catch(() => setLoaded(true))
+      let unsub: (() => void) | null = null
+      import('@/config/firebase').then(({ db }) => {
+        if (!db) { setLoaded(true); return }
+        import('firebase/firestore').then(({ collection, query, where, onSnapshot, limit }) => {
+          const q = query(collection(db, 'saves'), where('userId', '==', userDoc.uid), limit(1000))
+          unsub = onSnapshot(q, (snap) => {
+            setSaves(snap.docs.map((d) => ({ pinId: d.data().pinId, contentId: d.data().contentId || undefined } as SaveEntry)))
+            setLoaded(true)
+          }, () => setLoaded(true))
+        })
+      })
+      return () => { unsub?.() }
     } else {
       try {
         const raw = localStorage.getItem(DEMO_KEY)
