@@ -22,21 +22,22 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
     setSearching(true)
     setError('')
     setLookedUp(null)
-    try {
-      const user = await getUserByUsername(username.trim().toLowerCase().replace('@', ''))
-      if (!user) { setError('User not found'); return }
-      setLookedUp(user)
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      if (msg.includes('INTERNAL ASSERTION')) {
-        setError('Firestore connection reset — try again.')
-      } else {
+    const attempt = async (retries: number): Promise<void> => {
+      try {
+        const user = await getUserByUsername(username.trim().toLowerCase().replace('@', ''))
+        if (!user) { setError('User not found'); return }
+        setLookedUp(user)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        if (msg.includes('INTERNAL ASSERTION') && retries > 0) {
+          await new Promise((r) => setTimeout(r, 500))
+          return attempt(retries - 1)
+        }
         console.error('[Admin] lookup failed', err)
-        setError(`Lookup failed: ${msg}`)
+        setError(`Lookup failed: ${msg.includes('INTERNAL ASSERTION') ? 'Connection issue — try again.' : msg}`)
       }
-    } finally {
-      setSearching(false)
     }
+    await attempt(2).finally(() => setSearching(false))
   }
 
   const handleGift = async (tier: UserTier, days: number | null) => {

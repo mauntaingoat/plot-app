@@ -1,6 +1,6 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
 import { getAuth, connectAuthEmulator, type Auth } from 'firebase/auth'
-import { initializeFirestore, connectFirestoreEmulator, persistentLocalCache, persistentMultipleTabManager, type Firestore } from 'firebase/firestore'
+import { initializeFirestore, connectFirestoreEmulator, memoryLocalCache, type Firestore } from 'firebase/firestore'
 import { getStorage, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage'
 import { initializeAppCheck, ReCaptchaV3Provider, type AppCheck } from 'firebase/app-check'
 
@@ -50,7 +50,7 @@ if (firebaseConfigured) {
     auth = getAuth(app)
     db = initializeFirestore(app, {
       experimentalAutoDetectLongPolling: true,
-      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+      localCache: memoryLocalCache(),
     })
     storage = getStorage(app)
 
