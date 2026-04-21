@@ -115,6 +115,7 @@ export const onNewFollower = onDocumentCreated(
   { document: 'follows/{followId}', region: 'us-central1' },
   async (event) => {
     const data = event.data?.data()
+    logger.info('[onNewFollower] triggered', { hasData: !!data, followedUid: data?.followedUid, followerUid: data?.followerUid })
     if (!data?.followedUid || !data?.followerUid) return
 
     const db = admin.firestore()
