@@ -191,6 +191,46 @@ export async function getAgentPins(agentId: string): Promise<Pin[]> {
   }
 }
 
+export async function getExplorePins(): Promise<Pin[]> {
+  if (!db) return []
+  try {
+    const q = query(collection(db, 'pins'), where('enabled', '==', true), orderBy('createdAt', 'desc'), limit(1000))
+    const snap = await getDocs(q)
+    return snap.docs.filter((d) => d.data().status !== 'archived').map((d) => ({ id: d.id, ...d.data() } as Pin))
+  } catch {
+    const q = query(collection(db, 'pins'), where('enabled', '==', true), limit(1000))
+    const snap = await getDocs(q)
+    return snap.docs.filter((d) => d.data().status !== 'archived').map((d) => ({ id: d.id, ...d.data() } as Pin))
+  }
+}
+
+export async function getPinsByAgentIds(agentIds: string[]): Promise<Pin[]> {
+  if (!db || agentIds.length === 0) return []
+  const results: Pin[] = []
+  const chunks = []
+  for (let i = 0; i < agentIds.length; i += 10) chunks.push(agentIds.slice(i, i + 10))
+  for (const chunk of chunks) {
+    const q = query(collection(db, 'pins'), where('agentId', 'in', chunk), where('enabled', '==', true), limit(1000))
+    const snap = await getDocs(q)
+    results.push(...snap.docs.filter((d) => d.data().status !== 'archived').map((d) => ({ id: d.id, ...d.data() } as Pin)))
+  }
+  return results
+}
+
+export async function getPinsByIds(pinIds: string[]): Promise<Pin[]> {
+  if (!db || pinIds.length === 0) return []
+  const results: Pin[] = []
+  const chunks = []
+  for (let i = 0; i < pinIds.length; i += 10) chunks.push(pinIds.slice(i, i + 10))
+  for (const chunk of chunks) {
+    const { documentId } = await import('firebase/firestore')
+    const q = query(collection(db!, 'pins'), where(documentId(), 'in', chunk))
+    const snap = await getDocs(q)
+    results.push(...snap.docs.map((d) => ({ id: d.id, ...d.data() } as Pin)))
+  }
+  return results
+}
+
 export function subscribeToAgentPins(agentId: string, callback: (pins: Pin[]) => void): Unsubscribe | null {
   if (!db) return null
   const notArchived = (d: { data: () => Record<string, unknown> }) => d.data().status !== 'archived'

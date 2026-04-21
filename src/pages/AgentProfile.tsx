@@ -136,8 +136,31 @@ export default function AgentProfile() {
   // profile but doesn't share auth state across the iframe boundary).
   const isOwnProfile = isPreview || !!(currentUser?.uid && agent?.uid && currentUser.uid === agent.uid)
 
-  // Nearby agents: empty until follows/explore are wired to Firestore.
   const nearbyAgents = useMemo<UserDoc[]>(() => [], [])
+  const [explorePins, setExplorePins] = useState<Pin[]>([])
+  const [followingPins, setFollowingPins] = useState<Pin[]>([])
+  const [savedPinsFull, setSavedPinsFull] = useState<Pin[]>([])
+
+  useEffect(() => {
+    if (agentMode === 'explore') {
+      import('@/lib/firestore').then(({ getExplorePins }) => getExplorePins().then(setExplorePins).catch(() => {}))
+    }
+  }, [agentMode])
+
+  useEffect(() => {
+    if (agentMode === 'following' && followingIds.length > 0) {
+      import('@/lib/firestore').then(({ getPinsByAgentIds }) => getPinsByAgentIds(followingIds).then(setFollowingPins).catch(() => {}))
+    }
+  }, [agentMode, followingIds])
+
+  useEffect(() => {
+    if (saves.length > 0) {
+      const pinIds = [...new Set(saves.map((s) => s.pinId))]
+      import('@/lib/firestore').then(({ getPinsByIds }) => getPinsByIds(pinIds).then(setSavedPinsFull).catch(() => {}))
+    } else {
+      setSavedPinsFull([])
+    }
+  }, [saves])
 
   // Default map center: agent's licensed state when no pins exist
   const defaultCenter = useMemo<[number, number] | undefined>(() => {
@@ -176,24 +199,20 @@ export default function AgentProfile() {
   // Merge pins based on agent mode
   const visiblePins = useMemo(() => {
     if (agentMode === 'saved') {
-      // Saved mode: show all pins the user has saved across all agents
-      if (saves.length === 0) return []
-      const savedPinIds = new Set(saves.map((s) => s.pinId))
-      return allPins.filter((p) => savedPinIds.has(p.id))
+      return savedPinsFull.length > 0 ? savedPinsFull : allPins.filter((p) => saves.some((s) => s.pinId === p.id))
     }
     if (agentMode === 'explore') {
-      // All agents' pins — currently just the profile owner's pins until
-      // explore is wired to Firestore.
-      return [...allPins]
+      return explorePins.length > 0 ? explorePins : allPins
     }
     if (agentMode === 'following') {
-      if (enabledAgentIds.size === 0) return []
-      // Only show current agent's pins if they're in the enabled set
-      if (agent && enabledAgentIds.has(agent.uid)) return [...allPins]
-      return []
+      const combined = [...followingPins]
+      if (agent && followingIds.includes(agent.uid)) {
+        for (const p of allPins) { if (!combined.some((c) => c.id === p.id)) combined.push(p) }
+      }
+      return combined
     }
     return allPins
-  }, [allPins, agentMode, nearbyAgents, enabledAgentIds, saves])
+  }, [allPins, agentMode, explorePins, followingPins, savedPinsFull, followingIds, saves, agent])
 
   const filteredPins = useMemo(() => {
     let result = visiblePins
