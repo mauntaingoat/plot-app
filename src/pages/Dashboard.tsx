@@ -58,7 +58,7 @@ function useIsDesktop() {
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { userDoc, setUserDoc, loading } = useAuthStore()
+  const { userDoc, setUserDoc, loading, initialized } = useAuthStore()
   const [activeTab, setActiveTab] = useState<DashTab>('reelst')
   const inboxUnread = useUnreadCount(userDoc?.uid)
   const [showSetup, setShowSetup] = useState(false)
@@ -93,10 +93,10 @@ export default function Dashboard() {
 
   // Redirect to sign-in if not authenticated (after auth finishes loading)
   useEffect(() => {
-    if (!loading && !userDoc) {
+    if (initialized && !loading && !userDoc) {
       navigate('/sign-in')
     }
-  }, [loading, userDoc, navigate])
+  }, [initialized, loading, userDoc, navigate])
 
   const currentUser = userDoc
   const [impersonating, setImpersonating] = useState<UserDoc | null>(null)
@@ -107,9 +107,8 @@ export default function Dashboard() {
   const [pinsLoading, setPinsLoading] = useState(true)
   const activeUid = impersonating?.uid || userDoc?.uid
   useEffect(() => {
-    if (!activeUid) {
-      setPins([])
-      setPinsLoading(false)
+    if (!initialized || !activeUid) {
+      if (!activeUid) { setPins([]); setPinsLoading(false) }
       return
     }
     setPins([])
@@ -139,7 +138,7 @@ export default function Dashboard() {
       setPinsLoading(false)
     }
     return () => { unsub?.() }
-  }, [activeUid])
+  }, [activeUid, initialized])
 
   useEffect(() => {
     const urls: string[] = []
