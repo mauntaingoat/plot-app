@@ -19,23 +19,43 @@ interface ContentFeedProps {
   isOwnProfile?: boolean
 }
 
+const PAGE_SIZE = 6
+
 export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAuthRequired, agentMode = 'single', isOwnProfile }: ContentFeedProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const allContent = getAllContent(pins)
   const [listingSheet, setListingSheet] = useState<Pin | null>(null)
   const [following, setFollowing] = useState(false)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [allContent.length])
+
+  const visibleContent = allContent.slice(0, visibleCount)
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const onScroll = () => {
+      const scrollPct = el.scrollTop / (el.scrollHeight - el.clientHeight || 1)
+      if (scrollPct > 0.5 && visibleCount < allContent.length) {
+        setVisibleCount((v) => Math.min(v + PAGE_SIZE, allContent.length))
+      }
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [visibleCount, allContent.length])
 
   useEffect(() => {
     const urls: string[] = []
     if (agent.photoURL) urls.push(agent.photoURL)
-    for (const { content, pin } of allContent) {
+    for (const { content, pin } of visibleContent) {
       if (content.thumbnailUrl) urls.push(content.thumbnailUrl)
       if (content.mediaUrls) urls.push(...content.mediaUrls)
       if ('heroPhotoUrl' in pin && pin.heroPhotoUrl) urls.push(pin.heroPhotoUrl)
     }
     preloadImages(urls)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allContent.length])
+  }, [visibleContent.length])
 
   if (allContent.length === 0) {
     return (
@@ -52,7 +72,7 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
     <>
       <div ref={scrollRef} className="absolute inset-0 bg-midnight overflow-y-auto"
         style={{ scrollSnapType: 'y mandatory', overscrollBehavior: 'none', WebkitOverflowScrolling: 'touch' }}>
-        {allContent.map(({ content, pin }) => (
+        {visibleContent.map(({ content, pin }) => (
           <FeedCard key={content.id} content={content} pin={pin} agent={agent}
             isPreview={isPreview} following={following}
             showFollowButton={agentMode === 'single'}

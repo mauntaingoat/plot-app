@@ -173,7 +173,7 @@ export async function getAgentPins(agentId: string): Promise<Pin[]> {
       where('agentId', '==', agentId),
       where('enabled', '==', true),
       orderBy('createdAt', 'desc'),
-      limit(100)
+      limit(1000)
     )
     const snap = await getDocs(q)
     return snap.docs.filter(notArchived).map((d) => ({ id: d.id, ...d.data() }) as Pin)
@@ -182,7 +182,7 @@ export async function getAgentPins(agentId: string): Promise<Pin[]> {
     const fallbackQ = query(
       collection(db, 'pins'),
       where('agentId', '==', agentId),
-      limit(100)
+      limit(1000)
     )
     const snap = await getDocs(fallbackQ)
     return snap.docs
@@ -199,7 +199,7 @@ export function subscribeToAgentPins(agentId: string, callback: (pins: Pin[]) =>
     where('agentId', '==', agentId),
     where('enabled', '==', true),
     orderBy('createdAt', 'desc'),
-    limit(100)
+    limit(1000)
   )
   return onSnapshot(
     q,
@@ -211,7 +211,7 @@ export function subscribeToAgentPins(agentId: string, callback: (pins: Pin[]) =>
       const fallbackQ = query(
         collection(db!, 'pins'),
         where('agentId', '==', agentId),
-        limit(100)
+        limit(1000)
       )
       onSnapshot(
         fallbackQ,
@@ -233,7 +233,7 @@ export function subscribeToAllAgentPins(agentId: string, callback: (pins: Pin[])
     collection(db, 'pins'),
     where('agentId', '==', agentId),
     orderBy('createdAt', 'desc'),
-    limit(200)
+    limit(1000)
   )
   return onSnapshot(
     q,
@@ -245,7 +245,7 @@ export function subscribeToAllAgentPins(agentId: string, callback: (pins: Pin[])
       const fallbackQ = query(
         collection(db!, 'pins'),
         where('agentId', '==', agentId),
-        limit(200)
+        limit(1000)
       )
       onSnapshot(
         fallbackQ,
@@ -320,7 +320,7 @@ export async function unsavePin(userId: string, pinId: string, contentId?: strin
 
 export async function getUserSaves(userId: string): Promise<{ pinId: string; contentId?: string }[]> {
   if (!db) return []
-  const q = query(collection(db, 'saves'), where('userId', '==', userId), limit(200))
+  const q = query(collection(db, 'saves'), where('userId', '==', userId), limit(1000))
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ pinId: d.data().pinId, contentId: d.data().contentId }))
 }
@@ -386,7 +386,7 @@ export async function listShowingRequests(agentId: string): Promise<ShowingReque
     collection(db, 'showing_requests'),
     where('agentId', '==', agentId),
     orderBy('createdAt', 'desc'),
-    limit(100),
+    limit(1000),
   )
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as ShowingRequest))
@@ -500,8 +500,8 @@ export async function listReports(status?: string): Promise<ContentReport[]> {
     return status ? list.filter((r: ContentReport) => r.status === status) : list
   }
   const q = status
-    ? query(collection(db, 'reports'), where('status', '==', status), orderBy('createdAt', 'desc'), limit(100))
-    : query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(100))
+    ? query(collection(db, 'reports'), where('status', '==', status), orderBy('createdAt', 'desc'), limit(1000))
+    : query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(1000))
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as ContentReport))
 }
@@ -557,7 +557,7 @@ export function subscribeToGeoPins(
     where('geohash', '>=', geohashPrefix),
     where('geohash', '<=', geohashPrefix + '\uf8ff'),
     where('enabled', '==', true),
-    limit(200),
+    limit(1000),
   )
   return onSnapshot(q, (snap) => {
     callback(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Pin)))
@@ -649,7 +649,7 @@ export async function getAgentContent(agentId: string): Promise<ContentDoc[]> {
       collection(db, 'content'),
       where('agentId', '==', agentId),
       orderBy('createdAt', 'desc'),
-      limit(200),
+      limit(1000),
     )
     const snap = await getDocs(q)
     return snap.docs.map((d) => ({ id: d.id, ...d.data() } as ContentDoc))
@@ -658,7 +658,7 @@ export async function getAgentContent(agentId: string): Promise<ContentDoc[]> {
     const fallbackQ = query(
       collection(db, 'content'),
       where('agentId', '==', agentId),
-      limit(200),
+      limit(1000),
     )
     const snap = await getDocs(fallbackQ)
     return snap.docs.map((d) => ({ id: d.id, ...d.data() } as ContentDoc))
@@ -718,7 +718,7 @@ export async function getNotifications(agentId: string): Promise<NotificationDoc
       collection(db, 'notifications'),
       where('agentId', '==', agentId),
       orderBy('createdAt', 'desc'),
-      limit(200),
+      limit(1000),
     )
     const snap = await getDocs(q)
     return snap.docs.map((d) => ({ id: d.id, ...d.data() } as NotificationDoc))
@@ -726,7 +726,7 @@ export async function getNotifications(agentId: string): Promise<NotificationDoc
     const fallbackQ = query(
       collection(db, 'notifications'),
       where('agentId', '==', agentId),
-      limit(200),
+      limit(1000),
     )
     const snap = await getDocs(fallbackQ)
     return snap.docs.map((d) => ({ id: d.id, ...d.data() } as NotificationDoc))
@@ -740,7 +740,7 @@ export function subscribeToNotifications(agentId: string, cb: (docs: Notificatio
       collection(db, 'notifications'),
       where('agentId', '==', agentId),
       orderBy('createdAt', 'desc'),
-      limit(200),
+      limit(1000),
     )
     return onSnapshot(q, (snap) => {
       cb(snap.docs.map((d) => ({ id: d.id, ...d.data() } as NotificationDoc)))
