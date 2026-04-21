@@ -347,15 +347,18 @@ export async function savePin(userId: string, pinId: string, contentId?: string)
     contentId: contentId || null,
     createdAt: serverTimestamp(),
   })
-  // Increment pin save count
-  await updateDoc(doc(db, 'pins', pinId), { saves: increment(1) }).catch(() => {})
+  const { getFunctions, httpsCallable } = await import('firebase/functions')
+  const { app } = await import('@/config/firebase')
+  httpsCallable(getFunctions(app ?? undefined), 'trackEngagement')({ pinId, action: 'save', contentId }).catch(() => {})
 }
 
 export async function unsavePin(userId: string, pinId: string, contentId?: string) {
   if (!db) return
   const saveId = contentId ? `${userId}_${pinId}_${contentId}` : `${userId}_${pinId}`
   await deleteDoc(doc(db, 'saves', saveId))
-  await updateDoc(doc(db, 'pins', pinId), { saves: increment(-1) }).catch(() => {})
+  const { getFunctions, httpsCallable } = await import('firebase/functions')
+  const { app } = await import('@/config/firebase')
+  httpsCallable(getFunctions(app ?? undefined), 'trackEngagement')({ pinId, action: 'unsave', contentId }).catch(() => {})
 }
 
 export async function getUserSaves(userId: string): Promise<{ pinId: string; contentId?: string }[]> {
@@ -449,28 +452,11 @@ export async function updateShowingRequestStatus(
 // PIN VIEWS (increment on tap)
 // ══════════════════════════════════════════
 
-export async function incrementPinView(pinId: string) {
-  if (!db) return
-  await updateDoc(doc(db, 'pins', pinId), { views: increment(1) }).catch(() => {})
-}
-
 export async function incrementPinTap(pinId: string) {
-  if (!db) return
-  await updateDoc(doc(db, 'pins', pinId), { taps: increment(1) }).catch(() => {})
-}
-
-export async function incrementContentView(pinId: string, contentId: string) {
-  if (!db) return
-  incrementPinView(pinId)
-  // Increment the content item's views inside the pin's content array
-  const pinRef = doc(db, 'pins', pinId)
-  const pinSnap = await getDoc(pinRef).catch(() => null)
-  if (!pinSnap?.exists()) return
-  const content: any[] = pinSnap.get('content') ?? []
-  const idx = content.findIndex((c) => c.id === contentId)
-  if (idx === -1) return
-  content[idx] = { ...content[idx], views: (content[idx].views || 0) + 1 }
-  await updateDoc(pinRef, { content }).catch(() => {})
+  const { getFunctions, httpsCallable } = await import('firebase/functions')
+  const { app } = await import('@/config/firebase')
+  const fn = httpsCallable(getFunctions(app ?? undefined), 'trackEngagement')
+  fn({ pinId, action: 'tap' }).catch(() => {})
 }
 
 // ══════════════════════════════════════════
