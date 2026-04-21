@@ -215,11 +215,8 @@ export default function AgentProfile() {
       return explorePins.length > 0 ? explorePins : allPins
     }
     if (agentMode === 'following') {
-      const combined = [...followingPins]
-      if (agent && followingIds.includes(agent.uid)) {
-        for (const p of allPins) { if (!combined.some((c) => c.id === p.id)) combined.push(p) }
-      }
-      return combined
+      if (enabledAgentIds.size === 0) return []
+      return followingPins.filter((p) => enabledAgentIds.has(p.agentId))
     }
     return allPins
   }, [allPins, agentMode, explorePins, followingPins, savedPinsFull, followingIds, saves, agent])

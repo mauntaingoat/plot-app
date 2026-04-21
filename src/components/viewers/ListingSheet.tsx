@@ -166,12 +166,6 @@ export function ListingSheet({ pin, agent, isOpen, onClose }: ListingSheetProps)
                 <p className="text-[12px] text-ghost">{agent.brokerage}</p>
               )}
             </div>
-            <div className="flex gap-2">
-              <Button variant="glass" size="sm" icon={<Phone size={14} />} />
-              <Button variant="primary" size="sm" icon={<MessageSquare size={14} />}>
-                Contact
-              </Button>
-            </div>
           </div>
         </div>
       </div>
