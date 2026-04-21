@@ -7,7 +7,7 @@ import {
   ExternalLink, LogOut, ChevronRight, CreditCard,
   User, Trash2, Edit3, EyeOff, Link2, Shield,
   Film, Share2, Copy, Check, X, QrCode, CalendarDays, Inbox,
-  Bell, Camera, Sun, Moon, RefreshCw,
+  Bell, Camera, Sun, Moon, RefreshCw, AlertTriangle,
 } from 'lucide-react'
 import { TabBar } from '@/components/ui/TabBar'
 import { Button } from '@/components/ui/Button'
@@ -66,6 +66,9 @@ export default function Dashboard() {
   const [showAddPlatform, setShowAddPlatform] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Pin | null>(null)
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false)
+  const [deleteInput, setDeleteInput] = useState('')
+  const [deleting, setDeleting] = useState(false)
   const [copied, setCopied] = useState(false)
   const [paywall, setPaywall] = useState<{ open: boolean; reason: string; upgradeTo?: Tier }>({ open: false, reason: '' })
   const [qrPin, setQrPin] = useState<Pin | null>(null)
@@ -625,6 +628,14 @@ export default function Dashboard() {
             <div className="pt-2">
               <Button variant="danger" size="lg" fullWidth icon={<LogOut size={16} />} onClick={requestSignOut}>Sign out</Button>
             </div>
+
+            <p className="text-[12px] font-semibold text-live-red/60 uppercase tracking-wider px-1 pb-1 pt-6">Danger Zone</p>
+            <button
+              onClick={() => setShowDeleteAccount(true)}
+              className="w-full text-left px-4 py-3 rounded-[14px] border border-live-red/15 text-[13px] text-live-red/70 hover:bg-live-red/5 cursor-pointer transition-colors"
+            >
+              Delete my account
+            </button>
             <div className="flex items-center justify-center gap-3 pt-4">
               <button className="text-[12px] text-ash">Privacy</button>
               <span className="text-ash text-[10px]">&middot;</span>
@@ -765,6 +776,65 @@ export default function Dashboard() {
         confirmLabel="Sign out"
         confirmVariant="danger"
       />
+
+      {/* Delete account modal */}
+      <AnimatePresence>
+        {showDeleteAccount && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] flex items-center justify-center" onClick={() => { setShowDeleteAccount(false); setDeleteInput('') }}>
+            <div className="absolute inset-0 bg-black/60" />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative bg-warm-white rounded-2xl shadow-2xl w-[400px] max-w-[90vw] p-6 space-y-4">
+              <div className="w-12 h-12 rounded-full bg-live-red/10 flex items-center justify-center mx-auto">
+                <AlertTriangle size={22} className="text-live-red" />
+              </div>
+              <h3 className="text-[18px] font-bold text-ink text-center">Delete your account?</h3>
+              <p className="text-[13px] text-smoke text-center">
+                This permanently deletes your profile, pins, content, followers, and all data. This cannot be undone.
+              </p>
+              <div>
+                <label className="text-[12px] font-semibold text-smoke uppercase tracking-wider block mb-1.5">Type DELETE to confirm</label>
+                <input
+                  type="text"
+                  value={deleteInput}
+                  onChange={(e) => setDeleteInput(e.target.value)}
+                  placeholder="DELETE"
+                  className="w-full px-4 py-3 rounded-[12px] bg-cream border border-border-light text-[14px] text-ink focus:outline-none focus:ring-2 focus:ring-live-red/30"
+                />
+              </div>
+              <div className="flex gap-3">
+                <Button variant="secondary" size="lg" fullWidth onClick={() => { setShowDeleteAccount(false); setDeleteInput('') }}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="danger" size="lg" fullWidth
+                  disabled={deleteInput !== 'DELETE'}
+                  loading={deleting}
+                  onClick={async () => {
+                    if (deleteInput !== 'DELETE' || !realUser?.uid) return
+                    setDeleting(true)
+                    try {
+                      const { deleteAccount } = await import('@/lib/firestore')
+                      await deleteAccount(realUser.uid)
+                      const { auth: fbAuth } = await import('@/config/firebase')
+                      await fbAuth?.signOut()
+                      navigate('/')
+                    } catch (err) {
+                      console.error('Delete failed:', err)
+                      alert('Delete failed. Please try again.')
+                    } finally {
+                      setDeleting(false)
+                    }
+                  }}
+                >
+                  Delete forever
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <QRCodeModal
         isOpen={!!qrPin}

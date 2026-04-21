@@ -1,7 +1,7 @@
 import {
   doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc,
   collection, query, where, getDocs, orderBy, limit,
-  serverTimestamp, increment, onSnapshot,
+  serverTimestamp, increment, onSnapshot, writeBatch,
   type DocumentData, type Unsubscribe,
 } from 'firebase/firestore'
 import { db, firebaseConfigured } from '@/config/firebase'
@@ -772,4 +772,55 @@ export async function getUnreadNotificationCount(agentId: string): Promise<numbe
   } catch {
     return 0
   }
+}
+
+// ══════════════════════════════════════════
+// DELETE ACCOUNT
+// ══════════════════════════════════════════
+
+export async function deleteAccount(uid: string) {
+  if (!db) return
+
+  const batch = writeBatch(db)
+
+  // Delete user doc
+  batch.delete(doc(db, 'users', uid))
+
+  // Delete username claim
+  const userSnap = await getDoc(doc(db, 'users', uid))
+  const username = userSnap.data()?.username
+  if (username) batch.delete(doc(db, 'usernames', username.toLowerCase()))
+
+  await batch.commit()
+
+  // Delete related collections in smaller batches
+  const collections = [
+    { name: 'pins', field: 'agentId' },
+    { name: 'content', field: 'agentId' },
+    { name: 'notifications', field: 'agentId' },
+    { name: 'showing_requests', field: 'agentId' },
+  ]
+  for (const col of collections) {
+    const q = query(collection(db, col.name), where(col.field, '==', uid))
+    const snap = await getDocs(q)
+    const b = writeBatch(db)
+    snap.docs.forEach((d) => b.delete(d.ref))
+    if (snap.docs.length > 0) await b.commit()
+  }
+
+  // Delete follows (both directions)
+  for (const field of ['followerUid', 'followedUid']) {
+    const q = query(collection(db, 'follows'), where(field, '==', uid))
+    const snap = await getDocs(q)
+    const b = writeBatch(db)
+    snap.docs.forEach((d) => b.delete(d.ref))
+    if (snap.docs.length > 0) await b.commit()
+  }
+
+  // Delete saves
+  const savesQ = query(collection(db, 'saves'), where('userId', '==', uid))
+  const savesSnap = await getDocs(savesQ)
+  const sb = writeBatch(db)
+  savesSnap.docs.forEach((d) => sb.delete(d.ref))
+  if (savesSnap.docs.length > 0) await sb.commit()
 }
