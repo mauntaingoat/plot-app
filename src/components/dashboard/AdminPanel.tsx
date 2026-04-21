@@ -306,7 +306,7 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
         message={`Verify @${confirmVerify?.username || confirmVerify?.displayName}? Their profile will go live at reel.st/${confirmVerify?.username}.`}
         confirmLabel="Verify"
         confirmVariant="primary"
-        onConfirm={() => confirmVerify && handleVerify(confirmVerify)}
+        onConfirm={async () => { if (confirmVerify) await handleVerify(confirmVerify) }}
         onClose={() => setConfirmVerify(null)}
       />
     </div>
