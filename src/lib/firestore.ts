@@ -561,7 +561,7 @@ export function subscribeToGeoPins(
   )
   return onSnapshot(q, (snap) => {
     callback(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Pin)))
-  })
+  }, (err) => { console.warn('[firestore] geohash subscription error:', err.message) })
 }
 
 export async function listDisputes(): Promise<LicenseDispute[]> {
@@ -744,7 +744,7 @@ export function subscribeToNotifications(agentId: string, cb: (docs: Notificatio
     )
     return onSnapshot(q, (snap) => {
       cb(snap.docs.map((d) => ({ id: d.id, ...d.data() } as NotificationDoc)))
-    })
+    }, (err) => { console.warn('[firestore] notifications subscription error:', err.message) })
   } catch {
     return null
   }

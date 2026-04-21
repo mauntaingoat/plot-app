@@ -38,7 +38,8 @@ export function useAuthListener() {
             setLoading(false)
             setInitialized(true)
           },
-          () => {
+          (err) => {
+            console.warn('[auth] user doc subscription error:', err.message)
             setLoading(false)
             setInitialized(true)
           }

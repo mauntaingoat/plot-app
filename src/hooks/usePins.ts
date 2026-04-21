@@ -23,7 +23,7 @@ export function useAgentPins(agentId: string | null) {
     const unsub = onSnapshot(q, (snap) => {
       const pinDocs = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Pin)
       setPins(pinDocs)
-    })
+    }, (err) => { console.warn('[usePins] subscription error:', err.message) })
 
     return unsub
   }, [agentId, setPins])
