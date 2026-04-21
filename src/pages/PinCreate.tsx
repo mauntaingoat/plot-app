@@ -127,8 +127,39 @@ export default function PinCreate() {
   // (see the AnimatePresence below) so the page doesn't jarringly jump
   // BEFORE the fade-out animation runs.
 
-  const selectAddress = (result: { placeName: string; center: [number, number] }) => {
+  const [lookingUpProperty, setLookingUpProperty] = useState(false)
+
+  const selectAddress = async (result: { placeName: string; center: [number, number] }) => {
     setAddress(result.placeName); setCoords({ lat: result.center[1], lng: result.center[0] }); clear()
+
+    if (pinType === 'for_sale' || pinType === 'sold') {
+      setLookingUpProperty(true)
+      try {
+        const { getFunctions, httpsCallable } = await import('firebase/functions')
+        const { app } = await import('@/config/firebase')
+        const functions = getFunctions(app ?? undefined)
+        const fn = httpsCallable(functions, 'propertyLookup')
+        const res = await fn({ address: result.placeName })
+        const data = res.data as any
+        if (data.bedrooms != null) setBeds(data.bedrooms)
+        if (data.bathrooms != null) setBaths(data.bathrooms)
+        if (data.squareFootage != null) setSqft(String(data.squareFootage))
+        if (data.yearBuilt != null) setYearBuilt(String(data.yearBuilt))
+        if (data.propertyType) {
+          const typeMap: Record<string, string> = {
+            'Single Family': 'single_family', 'Condo/Co-op': 'condo', 'Condo': 'condo',
+            'Townhouse': 'townhouse', 'Multi Family': 'multi_family', 'Land': 'land',
+            'Commercial': 'commercial',
+          }
+          const mapped = typeMap[data.propertyType] || typeMap[Object.keys(typeMap).find((k) => data.propertyType?.includes(k)) || '']
+          if (mapped) setHomeType(mapped)
+        }
+      } catch (err) {
+        console.warn('[PinCreate] property lookup failed:', err)
+      } finally {
+        setLookingUpProperty(false)
+      }
+    }
   }
 
   const handleMediaFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -859,6 +890,12 @@ export default function PinCreate() {
                 {(pinType === 'for_sale' || pinType === 'sold') && (
                   <>
                     <Input label={pinType === 'sold' ? 'Sold price' : 'Listing price'} placeholder="500000" type="number" value={price} onChange={(e) => setPrice(e.target.value)} icon={<DollarSign size={16} />} />
+                    {lookingUpProperty && (
+                      <div className="flex items-center gap-2 py-2">
+                        <div className="w-4 h-4 border-2 border-tangerine/30 border-t-tangerine rounded-full animate-spin" />
+                        <span className="text-[12px] text-smoke">Auto-filling property details...</span>
+                      </div>
+                    )}
                     <div className="grid grid-cols-3 gap-3">
                       <div>
                         <label className="text-[11px] font-medium text-smoke uppercase tracking-wider mb-1 block">Beds</label>
