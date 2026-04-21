@@ -281,6 +281,21 @@ export default function AgentProfile() {
     )
   }
 
+  if (agent.verificationStatus !== 'verified' && !isPreview) {
+    return (
+      <div className="map-page flex flex-col items-center justify-center text-center px-6 bg-midnight">
+        <div className="w-16 h-16 rounded-full bg-tangerine/15 flex items-center justify-center mb-4">
+          <span className="text-[28px]">🔒</span>
+        </div>
+        <h1 className="text-[22px] font-extrabold text-white mb-2">Profile pending verification</h1>
+        <p className="text-[14px] text-ghost mb-6 max-w-[300px]">
+          @{username}'s Reelst is being reviewed and will be live soon.
+        </p>
+        <motion.button whileTap={{ scale: 0.96 }} onClick={() => navigate('/')} className="text-tangerine font-semibold text-[14px]">Go home</motion.button>
+      </div>
+    )
+  }
+
   const totalPins = Object.values(pinCounts).reduce((a, b) => a + b, 0)
 
   // ═══════════════════════════════════════════

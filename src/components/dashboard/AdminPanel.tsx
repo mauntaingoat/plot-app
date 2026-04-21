@@ -1,11 +1,14 @@
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Search, UserCheck, Eye, Gift, Clock, Users, Bookmark, MousePointerClick, LogOut, Shield } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Search, UserCheck, Eye, Gift, Clock, Users, Bookmark, Shield, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { getUserByUsername, updateUserDoc } from '@/lib/firestore'
 import { resetFirestore } from '@/config/firebase'
 import { Timestamp } from 'firebase/firestore'
-import type { UserDoc, UserTier } from '@/lib/types'
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore'
+import { db } from '@/config/firebase'
+import type { UserDoc, UserTier, VerificationStatus } from '@/lib/types'
 
 interface AdminPanelProps {
   onImpersonate: (user: UserDoc) => void
@@ -17,6 +20,39 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
   const [lookedUp, setLookedUp] = useState<UserDoc | null>(null)
   const [error, setError] = useState('')
   const [giftSuccess, setGiftSuccess] = useState('')
+  const [confirmVerify, setConfirmVerify] = useState<UserDoc | null>(null)
+  const [unverifiedAgents, setUnverifiedAgents] = useState<UserDoc[]>([])
+  const [loadingQueue, setLoadingQueue] = useState(true)
+
+  useEffect(() => {
+    loadUnverifiedQueue()
+  }, [])
+
+  const loadUnverifiedQueue = async () => {
+    if (!db) return
+    setLoadingQueue(true)
+    try {
+      const q = query(
+        collection(db, 'users'),
+        where('role', '==', 'agent'),
+        where('verificationStatus', '==', 'unverified'),
+        limit(50),
+      )
+      const snap = await getDocs(q)
+      setUnverifiedAgents(snap.docs.map((d) => ({ uid: d.id, ...d.data() } as UserDoc)))
+    } catch (err) {
+      console.warn('[Admin] queue load failed:', err)
+      try {
+        const q = query(collection(db!, 'users'), where('role', '==', 'agent'), limit(100))
+        const snap = await getDocs(q)
+        setUnverifiedAgents(snap.docs
+          .map((d) => ({ uid: d.id, ...d.data() } as UserDoc))
+          .filter((u) => u.verificationStatus !== 'verified'))
+      } catch { /* ignore */ }
+    } finally {
+      setLoadingQueue(false)
+    }
+  }
 
   const handleLookup = async () => {
     if (!username.trim()) return
@@ -34,11 +70,23 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
           await resetFirestore()
           return attempt(retries - 1)
         }
-        console.error('[Admin] lookup failed', err)
         setError(`Lookup failed: ${msg.includes('INTERNAL ASSERTION') ? 'Connection issue — try again.' : msg}`)
       }
     }
     await attempt(2).finally(() => setSearching(false))
+  }
+
+  const handleVerify = async (user: UserDoc) => {
+    await updateUserDoc(user.uid, { verificationStatus: 'verified' } as any)
+    if (lookedUp?.uid === user.uid) setLookedUp({ ...user, verificationStatus: 'verified' })
+    setUnverifiedAgents((prev) => prev.filter((u) => u.uid !== user.uid))
+    setConfirmVerify(null)
+  }
+
+  const handleReject = async (user: UserDoc) => {
+    await updateUserDoc(user.uid, { verificationStatus: 'rejected' } as any)
+    if (lookedUp?.uid === user.uid) setLookedUp({ ...user, verificationStatus: 'rejected' as VerificationStatus })
+    setUnverifiedAgents((prev) => prev.filter((u) => u.uid !== user.uid))
   }
 
   const handleGift = async (tier: UserTier, days: number | null) => {
@@ -66,6 +114,17 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
     return d.toLocaleString()
   }
 
+  const verificationBadge = (status: VerificationStatus) => {
+    const map = {
+      verified: { bg: 'bg-sold-green/15', text: 'text-sold-green', label: 'Verified' },
+      pending: { bg: 'bg-tangerine/15', text: 'text-tangerine', label: 'Pending' },
+      unverified: { bg: 'bg-smoke/15', text: 'text-smoke', label: 'Unverified' },
+      rejected: { bg: 'bg-live-red/15', text: 'text-live-red', label: 'Rejected' },
+    }
+    const s = map[status] || map.unverified
+    return <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${s.bg} ${s.text}`}>{s.label}</span>
+  }
+
   return (
     <div className="space-y-5">
       <div className="bg-live-red/8 border border-live-red/20 rounded-2xl p-4 flex items-center gap-3">
@@ -73,7 +132,7 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
         <p className="text-[13px] font-semibold text-ink">Admin panel — only visible to you.</p>
       </div>
 
-      {/* User Lookup */}
+      {/* ── User Lookup ── */}
       <div className="bg-warm-white border border-border-light rounded-[18px] p-5 space-y-4">
         <h3 className="text-[15px] font-bold text-ink">User Lookup</h3>
         <div className="flex gap-2">
@@ -93,7 +152,6 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
 
         {lookedUp && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-            {/* User info card */}
             <div className="bg-cream rounded-[14px] p-4 space-y-3">
               <div className="flex items-center gap-3">
                 {lookedUp.photoURL ? (
@@ -103,9 +161,12 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
                     {(lookedUp.displayName || '?')[0]}
                   </div>
                 )}
-                <div>
-                  <p className="text-[14px] font-bold text-ink">{lookedUp.displayName || 'No name'}</p>
-                  <p className="text-[12px] text-smoke">@{lookedUp.username || 'no-username'} · {lookedUp.email}</p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-[14px] font-bold text-ink">{lookedUp.displayName || 'No name'}</p>
+                    {verificationBadge(lookedUp.verificationStatus)}
+                  </div>
+                  <p className="text-[12px] text-smoke truncate">@{lookedUp.username || 'no-username'} · {lookedUp.email}</p>
                 </div>
               </div>
 
@@ -114,11 +175,16 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
                 <Stat icon={<Clock size={12} />} label="Last active" value={fmtDate((lookedUp as any).lastActiveAt)} />
                 <Stat icon={<Users size={12} />} label="Followers" value={String(lookedUp.followerCount)} />
                 <Stat icon={<Users size={12} />} label="Following" value={String(lookedUp.followingCount)} />
-                <Stat icon={<Eye size={12} />} label="Role" value={lookedUp.role} />
-                <Stat icon={<UserCheck size={12} />} label="Verified" value={lookedUp.verificationStatus} />
               </div>
 
-              {/* Tier info */}
+              {lookedUp.licenseNumber && (
+                <div className="flex items-center gap-2 pt-2 border-t border-border-light text-[12px] text-graphite">
+                  <Shield size={12} className="text-ash" />
+                  <span>License: {lookedUp.licenseState} #{lookedUp.licenseNumber}</span>
+                  {lookedUp.licenseName && <span className="text-smoke">({lookedUp.licenseName})</span>}
+                </div>
+              )}
+
               <div className="flex items-center gap-2 pt-2 border-t border-border-light">
                 <span className="text-[12px] text-smoke">Tier:</span>
                 <span className="text-[12px] font-bold text-ink">{lookedUp.tier || 'free'}</span>
@@ -135,6 +201,18 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
               <Button variant="primary" size="sm" icon={<Eye size={13} />} onClick={() => onImpersonate(lookedUp)}>
                 Impersonate
               </Button>
+              {lookedUp.verificationStatus !== 'verified' && (
+                <Button variant="primary" size="sm" icon={<CheckCircle size={13} />}
+                  onClick={() => setConfirmVerify(lookedUp)}
+                  className="!bg-sold-green hover:!brightness-110">
+                  Verify
+                </Button>
+              )}
+              {lookedUp.verificationStatus !== 'rejected' && lookedUp.verificationStatus !== 'verified' && (
+                <Button variant="danger" size="sm" icon={<XCircle size={13} />} onClick={() => handleReject(lookedUp)}>
+                  Reject
+                </Button>
+              )}
             </div>
 
             {/* Gift subscription */}
@@ -164,13 +242,80 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
           </motion.div>
         )}
       </div>
+
+      {/* ── Unverified Queue ── */}
+      <div className="bg-warm-white border border-border-light rounded-[18px] p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[15px] font-bold text-ink">Pending Verification</h3>
+          {!loadingQueue && (
+            <span className="text-[11px] font-bold text-smoke bg-cream px-2.5 py-1 rounded-full">
+              {unverifiedAgents.length}
+            </span>
+          )}
+        </div>
+
+        {loadingQueue ? (
+          <div className="space-y-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="bg-cream rounded-[12px] p-3 animate-pulse">
+                <div className="h-3 w-1/3 bg-pearl rounded" />
+              </div>
+            ))}
+          </div>
+        ) : unverifiedAgents.length === 0 ? (
+          <div className="bg-cream rounded-[14px] p-6 text-center">
+            <CheckCircle size={24} className="text-sold-green mx-auto mb-2" />
+            <p className="text-[13px] text-smoke">All caught up — no pending agents.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {unverifiedAgents.map((agent) => (
+              <div key={agent.uid} className="flex items-center gap-3 bg-cream rounded-[14px] px-4 py-3">
+                {agent.photoURL ? (
+                  <img src={agent.photoURL} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-pearl flex items-center justify-center text-smoke text-[12px] font-bold shrink-0">
+                    {(agent.displayName || '?')[0]}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold text-ink truncate">{agent.displayName || 'No name'}</p>
+                  <p className="text-[11px] text-smoke truncate">
+                    @{agent.username || '—'}
+                    {agent.licenseNumber ? ` · ${agent.licenseState} #${agent.licenseNumber}` : ' · No license'}
+                  </p>
+                </div>
+                <button onClick={() => setConfirmVerify(agent)}
+                  className="px-3 py-1.5 rounded-full bg-sold-green/15 text-[11px] font-bold text-sold-green hover:bg-sold-green/25 cursor-pointer transition-colors shrink-0">
+                  Verify
+                </button>
+                <button onClick={() => handleReject(agent)}
+                  className="px-2 py-1.5 rounded-full text-[11px] font-semibold text-smoke hover:text-live-red cursor-pointer transition-colors shrink-0">
+                  Reject
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Verify confirmation modal */}
+      <ConfirmDialog
+        isOpen={!!confirmVerify}
+        title="Verify agent"
+        message={`Verify @${confirmVerify?.username || confirmVerify?.displayName}? Their profile will go live at reel.st/${confirmVerify?.username}.`}
+        confirmLabel="Verify"
+        confirmVariant="primary"
+        onConfirm={() => confirmVerify && handleVerify(confirmVerify)}
+        onClose={() => setConfirmVerify(null)}
+      />
     </div>
   )
 }
 
 function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-1.5 text-graphite">
+    <div className="flex items-center gap-1.5 text-graphite text-[12px]">
       <span className="text-ash shrink-0">{icon}</span>
       <span className="text-smoke">{label}:</span>
       <span className="font-medium truncate">{value}</span>
