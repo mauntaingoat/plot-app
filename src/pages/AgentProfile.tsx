@@ -136,7 +136,17 @@ export default function AgentProfile() {
   // profile but doesn't share auth state across the iframe boundary).
   const isOwnProfile = isPreview || !!(currentUser?.uid && agent?.uid && currentUser.uid === agent.uid)
 
-  const nearbyAgents = useMemo<UserDoc[]>(() => [], [])
+  const [followingAgents, setFollowingAgents] = useState<UserDoc[]>([])
+  const nearbyAgents = followingAgents
+
+  useEffect(() => {
+    if (followingIds.length === 0) { setFollowingAgents([]); return }
+    Promise.all(followingIds.map((uid) =>
+      import('@/lib/firestore').then(({ getUserById }) => getUserById(uid))
+    )).then((results) => {
+      setFollowingAgents(results.filter(Boolean) as UserDoc[])
+    }).catch(() => {})
+  }, [followingIds])
   const [explorePins, setExplorePins] = useState<Pin[]>([])
   const [followingPins, setFollowingPins] = useState<Pin[]>([])
   const [savedPinsFull, setSavedPinsFull] = useState<Pin[]>([])
@@ -381,41 +391,41 @@ export default function AgentProfile() {
               )}
             </SidebarNavButton>
 
-            {/* Following (multi-select) */}
-            <SidebarNavButton
-              active={agentMode === 'following'}
-              onClick={() => {
-                setAgentMode('following')
-                setSidebarPanel(sidebarPanel === 'following' ? null : 'following')
-              }}
-            >
-              <Users size={18} /> Following
-            </SidebarNavButton>
+            {!isPreview && (
+              <>
+                <SidebarNavButton
+                  active={agentMode === 'following'}
+                  onClick={() => {
+                    setAgentMode('following')
+                    setSidebarPanel(sidebarPanel === 'following' ? null : 'following')
+                  }}
+                >
+                  <Users size={18} /> Following
+                </SidebarNavButton>
 
-            {/* Explore All */}
-            <SidebarNavButton
-              active={agentMode === 'explore'}
-              onClick={() => {
-                setAgentMode('explore')
-                setSidebarPanel(sidebarPanel === 'exploreAll' ? null : 'exploreAll')
-              }}
-            >
-              <Globe size={18} /> Explore All
-            </SidebarNavButton>
+                <SidebarNavButton
+                  active={agentMode === 'explore'}
+                  onClick={() => {
+                    setAgentMode('explore')
+                    setSidebarPanel(sidebarPanel === 'exploreAll' ? null : 'exploreAll')
+                  }}
+                >
+                  <Globe size={18} /> Explore All
+                </SidebarNavButton>
 
-            {/* Divider */}
-            <div className="h-px bg-white/6 !my-3" />
+                <div className="h-px bg-white/6 !my-3" />
 
-            {/* Saved */}
-            <SidebarNavButton
-              active={agentMode === 'saved'}
-              onClick={() => {
-                setAgentMode('saved')
-                setSidebarPanel(sidebarPanel === 'saved' ? null : 'saved')
-              }}
-            >
-              <Bookmark size={18} /> Saved
-            </SidebarNavButton>
+                <SidebarNavButton
+                  active={agentMode === 'saved'}
+                  onClick={() => {
+                    setAgentMode('saved')
+                    setSidebarPanel(sidebarPanel === 'saved' ? null : 'saved')
+                  }}
+                >
+                  <Bookmark size={18} /> Saved
+                </SidebarNavButton>
+              </>
+            )}
           </div>
 
           {/* Bottom: account / auth */}

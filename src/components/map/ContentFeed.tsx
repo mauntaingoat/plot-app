@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Eye, MapPin, Home, X, Bookmark, Share2, MessageCircle, Phone, UserPlus, UserCheck } from 'lucide-react'
+import { Eye, MapPin, Home, X, Bookmark, Share2, MessageCircle, UserPlus, UserCheck } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { ListingOnlySheet } from '@/components/viewers/ListingOnlySheet'
 import { type Pin, type UserDoc, type ContentItem, isTallAspect } from '@/lib/types'
@@ -246,44 +246,40 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
 
       {/* Right sidebar */}
       <div className="absolute right-3 bottom-[22%] z-10 flex flex-col items-center gap-5" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }}>
-        {/* Agent avatar — tap to follow/unfollow (fixed size, no shift) */}
-        <div className={`relative w-10 ${isOwnProfile ? 'h-10' : 'h-12'}`}>
-          <motion.button whileTap={!isPreview && !isOwnProfile ? { scale: 0.9 } : undefined}
-            onClick={!isPreview && !isOwnProfile ? onFollowToggle : undefined}
-            className="w-10 h-10">
-            <Avatar src={agent.photoURL} name={agent.displayName} size={40} ring="none" />
-          </motion.button>
-          {!isOwnProfile && (
-            <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-[18px] h-[18px] rounded-full flex items-center justify-center"
+        {/* Agent avatar */}
+        <div className="relative w-10 h-10">
+          <Avatar src={agent.photoURL} name={agent.displayName} size={40} ring="none" />
+          {!isOwnProfile && !isPreview && (
+            <motion.button whileTap={{ scale: 0.9 }} onClick={onFollowToggle}
+              className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-[18px] h-[18px] rounded-full flex items-center justify-center cursor-pointer"
               style={{ background: following ? '#34C759' : '#FF6B3D' }}>
               {following ? <UserCheck size={9} className="text-white" /> : <UserPlus size={9} className="text-white" />}
-            </div>
+            </motion.button>
           )}
         </div>
 
-        {!isOwnProfile && (
-          <motion.button
-            whileTap={!isPreview ? { scale: 0.75 } : undefined}
-            onClick={!isPreview ? () => toggleSave(pin.id, content.id, content.type) : undefined}
-            className={`flex flex-col items-center gap-0.5 ${(isPreview) ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
-            title={undefined}
-          >
+        {!isOwnProfile && !isPreview && (
+          <motion.button whileTap={{ scale: 0.75 }}
+            onClick={() => toggleSave(pin.id, content.id, content.type)}
+            className="flex flex-col items-center gap-0.5 cursor-pointer">
             <Bookmark size={26} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
             <span className="text-[10px] text-white font-semibold">{content.saves + (saved ? 1 : 0)}</span>
           </motion.button>
         )}
 
-        <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
-          onClick={!isPreview ? requireAuth : undefined}
-          className={`flex flex-col items-center gap-0.5 cursor-pointer ${isPreview ? 'opacity-40' : ''}`}>
-          <MessageCircle size={24} className="text-white" />
-          <span className="text-[10px] text-white font-semibold">0</span>
-        </motion.button>
-
-        <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
-          className={`flex flex-col items-center gap-0.5 cursor-pointer ${isPreview ? 'opacity-40' : ''}`}>
-          <Share2 size={22} className="text-white" />
-        </motion.button>
+        {!isPreview && (
+          <>
+            <motion.button whileTap={{ scale: 0.75 }} onClick={requireAuth}
+              className="flex flex-col items-center gap-0.5 cursor-pointer">
+              <MessageCircle size={24} className="text-white" />
+              <span className="text-[10px] text-white font-semibold">0</span>
+            </motion.button>
+            <motion.button whileTap={{ scale: 0.75 }}
+              className="flex flex-col items-center gap-0.5 cursor-pointer">
+              <Share2 size={22} className="text-white" />
+            </motion.button>
+          </>
+        )}
 
         {/* House icon — listing only (no content tab) */}
         {pin.type !== 'spotlight' && (
@@ -296,15 +292,6 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
           </motion.button>
         )}
 
-        {/* Contact */}
-        <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
-          onClick={!isPreview ? requireAuth : undefined}
-          className={`flex flex-col items-center gap-0.5 cursor-pointer ${isPreview ? 'opacity-40' : ''}`}>
-          <div className="w-10 h-10 rounded-full bg-tangerine flex items-center justify-center">
-            <Phone size={18} className="text-white" />
-          </div>
-          <span className="text-[10px] text-white font-semibold">Contact</span>
-        </motion.button>
       </div>
 
       {/* Bottom caption — type label inline with location */}
