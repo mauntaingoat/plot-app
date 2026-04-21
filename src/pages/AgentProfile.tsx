@@ -96,6 +96,10 @@ export default function AgentProfile() {
   const { saves } = useSaves()
   const [viewMode, setViewMode] = useState<'map' | 'feed'>('map')
   const [loadingComplete, setLoadingComplete] = useState(false)
+
+  useEffect(() => {
+    setLoadingComplete(false)
+  }, [username])
   const [feedExpanded, setFeedExpanded] = useState(false)
   const [mapDims, setMapDims] = useState({ w: 0, h: 0 })
   const [winSize, setWinSize] = useState(0) // triggers re-render on window resize

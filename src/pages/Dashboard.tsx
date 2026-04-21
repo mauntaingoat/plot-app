@@ -281,7 +281,11 @@ export default function Dashboard() {
   }, [activeUser, pins])
 
   // If not authenticated, show nothing while redirect fires
-  if (!activeUser) return null
+  if (!activeUser) return (
+    <div className="min-h-screen bg-ivory flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-tangerine/30 border-t-tangerine rounded-full animate-spin" />
+    </div>
+  )
 
   // ── Tab content (shared between mobile and desktop) ──
 
