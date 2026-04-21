@@ -27,8 +27,13 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
       if (!user) { setError('User not found'); return }
       setLookedUp(user)
     } catch (err) {
-      console.error('[Admin] lookup failed', err)
-      setError(`Lookup failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('INTERNAL ASSERTION')) {
+        setError('Firestore connection reset — try again.')
+      } else {
+        console.error('[Admin] lookup failed', err)
+        setError(`Lookup failed: ${msg}`)
+      }
     } finally {
       setSearching(false)
     }
