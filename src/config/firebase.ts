@@ -1,6 +1,6 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
 import { getAuth, connectAuthEmulator, type Auth } from 'firebase/auth'
-import { initializeFirestore, connectFirestoreEmulator, memoryLocalCache, type Firestore } from 'firebase/firestore'
+import { initializeFirestore, terminate, connectFirestoreEmulator, memoryLocalCache, type Firestore } from 'firebase/firestore'
 import { getStorage, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage'
 import { initializeAppCheck, ReCaptchaV3Provider, type AppCheck } from 'firebase/app-check'
 
@@ -62,6 +62,16 @@ if (firebaseConfigured) {
   } catch (e) {
     console.warn('Firebase init failed:', e)
   }
+}
+
+export async function resetFirestore(): Promise<void> {
+  if (!app || !db) return
+  try { await terminate(db) } catch { /* already terminated */ }
+  db = initializeFirestore(app, {
+    experimentalAutoDetectLongPolling: true,
+    localCache: memoryLocalCache(),
+  })
+  console.warn('[firebase] Firestore instance reset')
 }
 
 export { app, auth, db, storage, appCheck }

@@ -7,6 +7,7 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { AuthSheet } from '@/components/sheets/AuthSheet'
 import { useAuthModalStore } from '@/stores/authModalStore'
 import { OfflineBanner } from '@/components/ui/OfflineBanner'
+import { resetFirestore } from '@/config/firebase'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -58,13 +59,15 @@ if (typeof window !== 'undefined') {
   window.addEventListener('unhandledrejection', (e) => {
     if (e.reason?.message?.includes?.('INTERNAL ASSERTION FAILED')) {
       e.preventDefault()
-      console.warn('[Firestore] suppressed internal assertion (SDK bug)')
+      console.warn('[Firestore] suppressed internal assertion — resetting SDK')
+      resetFirestore()
     }
   })
   window.addEventListener('error', (e) => {
     if (e.message?.includes?.('INTERNAL ASSERTION FAILED')) {
       e.preventDefault()
-      console.warn('[Firestore] suppressed internal assertion (SDK bug)')
+      console.warn('[Firestore] suppressed internal assertion — resetting SDK')
+      resetFirestore()
     }
   })
 }

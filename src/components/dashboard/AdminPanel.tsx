@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Search, UserCheck, Eye, Gift, Clock, Users, Bookmark, MousePointerClick, LogOut, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { getUserByUsername, updateUserDoc } from '@/lib/firestore'
+import { resetFirestore } from '@/config/firebase'
 import { Timestamp } from 'firebase/firestore'
 import type { UserDoc, UserTier } from '@/lib/types'
 
@@ -30,7 +31,7 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
         if (msg.includes('INTERNAL ASSERTION') && retries > 0) {
-          await new Promise((r) => setTimeout(r, 500))
+          await resetFirestore()
           return attempt(retries - 1)
         }
         console.error('[Admin] lookup failed', err)
