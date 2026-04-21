@@ -128,6 +128,7 @@ export default function PinCreate() {
   // BEFORE the fade-out animation runs.
 
   const [lookingUpProperty, setLookingUpProperty] = useState(false)
+  const [showEditDetails, setShowEditDetails] = useState(false)
 
   const selectAddress = async (result: { placeName: string; center: [number, number] }) => {
     setAddress(result.placeName); setCoords({ lat: result.center[1], lng: result.center[0] }); clear()
@@ -145,6 +146,7 @@ export default function PinCreate() {
         if (data.bathrooms != null) setBaths(data.bathrooms)
         if (data.squareFootage != null) setSqft(String(data.squareFootage))
         if (data.yearBuilt != null) setYearBuilt(String(data.yearBuilt))
+        if (data.lastSalePrice && pinType === 'sold' && !price) setPrice(String(data.lastSalePrice))
         if (data.propertyType) {
           const typeMap: Record<string, string> = {
             'Single Family': 'single_family', 'Condo/Co-op': 'condo', 'Condo': 'condo',
@@ -889,53 +891,96 @@ export default function PinCreate() {
               <div className="space-y-4 mb-8">
                 {(pinType === 'for_sale' || pinType === 'sold') && (
                   <>
-                    <Input label={pinType === 'sold' ? 'Sold price' : 'Listing price'} placeholder="500000" type="number" value={price} onChange={(e) => setPrice(e.target.value)} icon={<DollarSign size={16} />} />
-                    {lookingUpProperty && (
-                      <div className="flex items-center gap-2 py-2">
-                        <div className="w-4 h-4 border-2 border-tangerine/30 border-t-tangerine rounded-full animate-spin" />
-                        <span className="text-[12px] text-smoke">Auto-filling property details...</span>
+                    {/* Price — primary required input */}
+                    <div className="bg-tangerine/5 border-2 border-tangerine/20 rounded-[18px] p-5">
+                      <label className="text-[12px] font-bold text-tangerine uppercase tracking-wider block mb-2">
+                        {pinType === 'sold' ? 'Sold Price' : 'Listing Price'} *
+                      </label>
+                      <div className="flex items-center gap-1">
+                        <DollarSign size={22} className="text-ink shrink-0" />
+                        <input type="number" placeholder="0" value={price} onChange={(e) => setPrice(e.target.value)}
+                          className="w-full text-[28px] font-extrabold text-ink bg-transparent outline-none placeholder:text-ash/40" />
+                      </div>
+                    </div>
+
+                    {/* Auto-filled property details */}
+                    {lookingUpProperty ? (
+                      <div className="flex items-center justify-center gap-2 py-6 bg-cream rounded-[16px]">
+                        <div className="w-5 h-5 border-2 border-tangerine/30 border-t-tangerine rounded-full animate-spin" />
+                        <span className="text-[13px] text-smoke font-medium">Looking up property details...</span>
+                      </div>
+                    ) : (
+                      <div className="bg-cream rounded-[16px] p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-smoke uppercase tracking-wider">Property Details</span>
+                          <button onClick={() => setShowEditDetails(!showEditDetails)}
+                            className="text-[11px] font-semibold text-tangerine cursor-pointer hover:underline">
+                            {showEditDetails ? 'Done' : 'Edit'}
+                          </button>
+                        </div>
+                        {showEditDetails ? (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <label className="text-[10px] font-medium text-smoke uppercase mb-1 block">Beds</label>
+                                <div className="flex items-center bg-warm-white rounded-[10px] border border-border-light">
+                                  <button onClick={() => setBeds(Math.max(0, beds - 1))} className="px-2.5 py-2 text-smoke cursor-pointer">-</button>
+                                  <span className="flex-1 text-center font-bold text-ink text-[14px]">{beds}</span>
+                                  <button onClick={() => setBeds(beds + 1)} className="px-2.5 py-2 text-smoke cursor-pointer">+</button>
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-medium text-smoke uppercase mb-1 block">Baths</label>
+                                <div className="flex items-center bg-warm-white rounded-[10px] border border-border-light">
+                                  <button onClick={() => setBaths(Math.max(0, baths - 1))} className="px-2.5 py-2 text-smoke cursor-pointer">-</button>
+                                  <span className="flex-1 text-center font-bold text-ink text-[14px]">{baths}</span>
+                                  <button onClick={() => setBaths(baths + 1)} className="px-2.5 py-2 text-smoke cursor-pointer">+</button>
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-medium text-smoke uppercase mb-1 block">Sqft</label>
+                                <input type="number" value={sqft} onChange={(e) => setSqft(e.target.value)} placeholder="—"
+                                  className="w-full px-3 py-2 rounded-[10px] bg-warm-white border border-border-light text-[14px] font-bold text-ink text-center outline-none" />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-[10px] font-medium text-smoke uppercase mb-1 block">Type</label>
+                                <select value={homeType} onChange={(e) => setHomeType(e.target.value)}
+                                  className="w-full px-3 py-2 rounded-[10px] bg-warm-white border border-border-light text-[13px] text-ink outline-none cursor-pointer">
+                                  <option value="condo">Condo</option>
+                                  <option value="single_family">Single Family</option>
+                                  <option value="townhouse">Townhouse</option>
+                                  <option value="multi_family">Multi-Family</option>
+                                  <option value="land">Land</option>
+                                  <option value="commercial">Commercial</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-medium text-smoke uppercase mb-1 block">Year Built</label>
+                                <input type="number" value={yearBuilt} onChange={(e) => setYearBuilt(e.target.value)} placeholder="—"
+                                  className="w-full px-3 py-2 rounded-[10px] bg-warm-white border border-border-light text-[13px] text-ink text-center outline-none" />
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-graphite">
+                            <span><span className="font-bold text-ink">{beds}</span> bd</span>
+                            <span><span className="font-bold text-ink">{baths}</span> ba</span>
+                            {sqft && <span><span className="font-bold text-ink">{Number(sqft).toLocaleString()}</span> sqft</span>}
+                            <span className="capitalize">{homeType.replace('_', ' ')}</span>
+                            {yearBuilt && <span>Built {yearBuilt}</span>}
+                          </div>
+                        )}
                       </div>
                     )}
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <label className="text-[11px] font-medium text-smoke uppercase tracking-wider mb-1 block">Beds</label>
-                        <div className="flex items-center bg-cream rounded-[12px] border border-border-light">
-                          <button onClick={() => setBeds(Math.max(0, beds - 1))} className="px-3 py-2.5 text-smoke">-</button>
-                          <span className="flex-1 text-center font-bold text-ink text-[15px]">{beds}</span>
-                          <button onClick={() => setBeds(beds + 1)} className="px-3 py-2.5 text-smoke">+</button>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-[11px] font-medium text-smoke uppercase tracking-wider mb-1 block">Baths</label>
-                        <div className="flex items-center bg-cream rounded-[12px] border border-border-light">
-                          <button onClick={() => setBaths(Math.max(0, baths - 1))} className="px-3 py-2.5 text-smoke">-</button>
-                          <span className="flex-1 text-center font-bold text-ink text-[15px]">{baths}</span>
-                          <button onClick={() => setBaths(baths + 1)} className="px-3 py-2.5 text-smoke">+</button>
-                        </div>
-                      </div>
-                      <Input label="Sqft" placeholder="2000" type="number" value={sqft} onChange={(e) => setSqft(e.target.value)} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-[11px] font-medium text-smoke uppercase tracking-wider mb-1 block">Home type</label>
-                        <select value={homeType} onChange={(e) => setHomeType(e.target.value)}
-                          className="w-full h-12 rounded-[14px] bg-cream border border-border-light px-3 text-[14px] text-ink">
-                          <option value="condo">Condo</option>
-                          <option value="single_family">Single Family</option>
-                          <option value="townhouse">Townhouse</option>
-                          <option value="multi_family">Multi-Family</option>
-                          <option value="land">Land</option>
-                          <option value="commercial">Commercial</option>
-                        </select>
-                      </div>
-                      <Input label="Year built" placeholder="2020" type="number" value={yearBuilt} onChange={(e) => setYearBuilt(e.target.value)} />
-                    </div>
+
                     {/* Photos */}
                     <div>
                       <input ref={photosRef} type="file" accept="image/*" multiple onChange={handlePhotos} className="hidden" />
                       <button onClick={() => photosRef.current?.click()}
-                        className="w-full py-6 border-2 border-dashed border-pearl rounded-[16px] flex flex-col items-center gap-1.5 text-smoke hover:bg-cream cursor-pointer transition-colors">
-                        <Camera size={24} />
+                        className="w-full py-5 border-2 border-dashed border-pearl rounded-[16px] flex flex-col items-center gap-1.5 text-smoke hover:bg-cream cursor-pointer transition-colors">
+                        <Camera size={22} />
                         <span className="text-[13px] font-medium">{photos.length > 0 ? `${photos.length} photos selected` : 'Upload listing photos'}</span>
                       </button>
                     </div>
@@ -950,7 +995,11 @@ export default function PinCreate() {
               </div>
 
               <div className="flex flex-col gap-2.5">
-                <Button variant="primary" size="xl" onClick={() => setStep('content-type')} fullWidth>Add content</Button>
+                <Button variant="primary" size="xl"
+                  disabled={(pinType === 'for_sale' || pinType === 'sold') && !price}
+                  onClick={() => setStep('content-type')} fullWidth>
+                  {(pinType === 'for_sale' || pinType === 'sold') && !price ? 'Enter price to continue' : 'Add content'}
+                </Button>
                 {/* Spotlights require content; hide the skip option for them */}
                 {pinType !== 'spotlight' && (
                   <Button

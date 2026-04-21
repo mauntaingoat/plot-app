@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, UserCheck, Eye, Gift, Clock, Users, Bookmark, Shield, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { getUserByUsername, updateUserDoc } from '@/lib/firestore'
 import { resetFirestore } from '@/config/firebase'
 import { Timestamp } from 'firebase/firestore'
@@ -20,7 +19,6 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
   const [lookedUp, setLookedUp] = useState<UserDoc | null>(null)
   const [error, setError] = useState('')
   const [giftSuccess, setGiftSuccess] = useState('')
-  const [confirmVerify, setConfirmVerify] = useState<UserDoc | null>(null)
   const [unverifiedAgents, setUnverifiedAgents] = useState<UserDoc[]>([])
   const [loadingQueue, setLoadingQueue] = useState(true)
 
@@ -77,10 +75,15 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
   }
 
   const handleVerify = async (user: UserDoc) => {
-    await updateUserDoc(user.uid, { verificationStatus: 'verified' } as any)
-    if (lookedUp?.uid === user.uid) setLookedUp({ ...user, verificationStatus: 'verified' })
-    setUnverifiedAgents((prev) => prev.filter((u) => u.uid !== user.uid))
-    setConfirmVerify(null)
+    if (!window.confirm(`Verify @${user.username || user.displayName}? Their profile will go live.`)) return
+    try {
+      await updateUserDoc(user.uid, { verificationStatus: 'verified' } as any)
+      if (lookedUp?.uid === user.uid) setLookedUp({ ...user, verificationStatus: 'verified' })
+      setUnverifiedAgents((prev) => prev.filter((u) => u.uid !== user.uid))
+    } catch (err) {
+      console.error('[Admin] verify failed', err)
+      alert('Verify failed — try again.')
+    }
   }
 
   const handleReject = async (user: UserDoc) => {
@@ -203,7 +206,7 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
               </Button>
               {lookedUp.verificationStatus !== 'verified' && (
                 <Button variant="primary" size="sm" icon={<CheckCircle size={13} />}
-                  onClick={() => setConfirmVerify(lookedUp)}
+                  onClick={() => handleVerify(lookedUp)}
                   className="!bg-sold-green hover:!brightness-110">
                   Verify
                 </Button>
@@ -285,7 +288,7 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
                     {agent.licenseNumber ? ` · ${agent.licenseState} #${agent.licenseNumber}` : ' · No license'}
                   </p>
                 </div>
-                <button onClick={() => setConfirmVerify(agent)}
+                <button onClick={() => handleVerify(agent)}
                   className="px-3 py-1.5 rounded-full bg-sold-green/15 text-[11px] font-bold text-sold-green hover:bg-sold-green/25 cursor-pointer transition-colors shrink-0">
                   Verify
                 </button>
@@ -299,16 +302,6 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
         )}
       </div>
 
-      {/* Verify confirmation modal */}
-      <ConfirmDialog
-        isOpen={!!confirmVerify}
-        title="Verify agent"
-        message={`Verify @${confirmVerify?.username || confirmVerify?.displayName}? Their profile will go live at reel.st/${confirmVerify?.username}.`}
-        confirmLabel="Verify"
-        confirmVariant="primary"
-        onConfirm={async () => { if (confirmVerify) await handleVerify(confirmVerify) }}
-        onClose={() => setConfirmVerify(null)}
-      />
     </div>
   )
 }
