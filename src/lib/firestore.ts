@@ -864,3 +864,107 @@ export async function deleteAccount(uid: string) {
   savesSnap.docs.forEach((d) => sb.delete(d.ref))
   if (savesSnap.docs.length > 0) await sb.commit()
 }
+
+// ══════════════════════════════════════════
+// ANALYTICS QUERIES
+// ══════════════════════════════════════════
+
+export interface AnalyticsEvent {
+  type: string
+  agentId: string
+  pinId?: string
+  contentId?: string
+  actorUid?: string
+  city?: string
+  region?: string
+  country?: string
+  hour: number
+  date: string
+  createdAt: import('firebase/firestore').Timestamp
+}
+
+export async function getAgentEvents(agentId: string, days = 30): Promise<AnalyticsEvent[]> {
+  if (!db) return []
+  const since = new Date()
+  since.setDate(since.getDate() - days)
+  const sinceStr = since.toISOString().slice(0, 10)
+  try {
+    const q = query(
+      collection(db, 'events'),
+      where('agentId', '==', agentId),
+      where('date', '>=', sinceStr),
+      orderBy('date', 'desc'),
+      limit(5000),
+    )
+    const snap = await getDocs(q)
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as unknown as AnalyticsEvent))
+  } catch {
+    const q = query(collection(db, 'events'), where('agentId', '==', agentId), limit(5000))
+    const snap = await getDocs(q)
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as unknown as AnalyticsEvent))
+  }
+}
+
+export interface FollowerSnapshot {
+  agentId: string
+  date: string
+  count: number
+}
+
+export async function getFollowerSnapshots(agentId: string, days = 30): Promise<FollowerSnapshot[]> {
+  if (!db) return []
+  const since = new Date()
+  since.setDate(since.getDate() - days)
+  const sinceStr = since.toISOString().slice(0, 10)
+  try {
+    const q = query(
+      collection(db, 'follower_snapshots'),
+      where('agentId', '==', agentId),
+      where('date', '>=', sinceStr),
+      orderBy('date', 'asc'),
+      limit(90),
+    )
+    const snap = await getDocs(q)
+    return snap.docs.map((d) => d.data() as FollowerSnapshot)
+  } catch {
+    const q = query(collection(db, 'follower_snapshots'), where('agentId', '==', agentId), limit(90))
+    const snap = await getDocs(q)
+    return snap.docs.map((d) => d.data() as FollowerSnapshot)
+  }
+}
+
+export async function getSavedMapInsights(agentId: string): Promise<{ pattern: string; overlap: string; strength: number; savers: number }[]> {
+  if (!db) return []
+  const pinsSnap = await getDocs(query(collection(db, 'pins'), where('agentId', '==', agentId), where('enabled', '==', true), limit(100)))
+  const pinIds = pinsSnap.docs.map((d) => d.id)
+  if (pinIds.length < 2) return []
+
+  const savesMap = new Map<string, Set<string>>()
+  for (const pid of pinIds) {
+    const savesSnap = await getDocs(query(collection(db, 'saves'), where('pinId', '==', pid), limit(500)))
+    const userIds = new Set(savesSnap.docs.map((d) => d.data().userId as string))
+    savesMap.set(pid, userIds)
+  }
+
+  const insights: { pattern: string; overlap: string; strength: number; savers: number }[] = []
+  const pinAddrs = new Map(pinsSnap.docs.map((d) => [d.id, (d.data().address as string || '').split(',')[0]]))
+  const entries = Array.from(savesMap.entries())
+
+  for (let i = 0; i < entries.length; i++) {
+    for (let j = i + 1; j < entries.length; j++) {
+      const [pidA, usersA] = entries[i]
+      const [pidB, usersB] = entries[j]
+      const overlap = [...usersA].filter((u) => usersB.has(u)).length
+      if (overlap === 0) continue
+      const strength = Math.round((overlap / Math.min(usersA.size, usersB.size)) * 100)
+      insights.push({
+        pattern: pinAddrs.get(pidA) || pidA,
+        overlap: pinAddrs.get(pidB) || pidB,
+        strength,
+        savers: overlap,
+      })
+    }
+  }
+
+  return insights.sort((a, b) => b.strength - a.strength).slice(0, 6)
+}

@@ -446,11 +446,10 @@ export default function Dashboard() {
               <>
                 <PinBreakdown pins={pins} metric="views" />
                 <ContentConversion pins={pins} />
-                <FollowerGrowth currentFollowers={activeUser.followerCount} />
-                <TimeOfDay pins={pins} />
-                <GeoHeatmap pins={pins} />
-                {/* Saved map insights — Studio only */}
-                {hasFeature(activeUser, 'savedMapInsights') && <SavedMapInsights pins={pins} />}
+                <FollowerGrowth currentFollowers={activeUser.followerCount} agentId={activeUser.uid} />
+                <TimeOfDay pins={pins} agentId={activeUser.uid} />
+                <GeoHeatmap pins={pins} agentId={activeUser.uid} />
+                {hasFeature(activeUser, 'savedMapInsights') && <SavedMapInsights pins={pins} agentId={activeUser.uid} />}
               </>
             ) : (
               <LockedFeature

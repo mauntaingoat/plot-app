@@ -1,17 +1,21 @@
 import { useMemo, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Bookmark, Palette, Check, Sparkles, TrendingUp } from 'lucide-react'
+import { getSavedMapInsights } from '@/lib/firestore'
 import type { Pin, UserDoc } from '@/lib/types'
 
 // ── Saved Map Insights ──
 interface SavedMapInsightsProps {
   pins: Pin[]
+  agentId?: string
 }
 
-export function SavedMapInsights({ pins }: SavedMapInsightsProps) {
-  const insights = useMemo(() => {
-    return [] as { pattern: string; overlap: string; strength: number; savers: number }[]
-  }, [pins])
+export function SavedMapInsights({ pins, agentId }: SavedMapInsightsProps) {
+  const [insights, setInsights] = useState<{ pattern: string; overlap: string; strength: number; savers: number }[]>([])
+
+  useEffect(() => {
+    if (agentId) getSavedMapInsights(agentId).then(setInsights).catch(() => {})
+  }, [agentId])
 
   return (
     <div className="bg-warm-white rounded-[18px] border border-border-light p-5">

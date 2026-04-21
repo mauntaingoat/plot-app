@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { TrendingUp, Eye, MousePointerClick, Bookmark, Lock, Sparkles, MapPin, Clock, Film, Image, Radio, CalendarClock } from 'lucide-react'
+import { getAgentEvents, getFollowerSnapshots, type AnalyticsEvent, type FollowerSnapshot } from '@/lib/firestore'
 import type { Pin } from '@/lib/types'
 
 // Dismiss tooltip on scroll (mobile fix)
@@ -203,16 +204,34 @@ export function ContentConversion({ pins }: ContentConversionProps) {
 // ── Geographic Heatmap (placeholder bars showing top cities) ──
 interface GeoHeatmapProps {
   pins: Pin[]
+  agentId?: string
 }
 
-export function GeoHeatmap({ pins }: GeoHeatmapProps) {
+export function GeoHeatmap({ pins, agentId }: GeoHeatmapProps) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const [events, setEvents] = useState<AnalyticsEvent[]>([])
   useDismissOnScroll(() => setHoverIdx(null))
 
+  useEffect(() => {
+    if (agentId) getAgentEvents(agentId, 30).then(setEvents).catch(() => {})
+  }, [agentId])
+
   const cities = useMemo(() => {
-    return [] as { city: string; viewers: number; pct: number; percentage: number }[]
-  }, [pins])
+    const cityMap = new Map<string, number>()
+    events.forEach((e) => {
+      if (e.city) cityMap.set(e.city, (cityMap.get(e.city) || 0) + 1)
+    })
+    const sorted = Array.from(cityMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6)
+    const topCount = sorted[0]?.[1] || 1
+    const total = sorted.reduce((s, [, c]) => s + c, 0) || 1
+    return sorted.map(([city, viewers]) => ({
+      city: `${city}`,
+      viewers,
+      pct: Math.round((viewers / topCount) * 100),
+      percentage: Math.round((viewers / total) * 100),
+    }))
+  }, [events])
 
   return (
     <div className="bg-warm-white rounded-[18px] border border-border-light p-5 relative">
@@ -262,16 +281,24 @@ export function GeoHeatmap({ pins }: GeoHeatmapProps) {
 // ── Time-of-Day Engagement ──
 interface TimeOfDayProps {
   pins: Pin[]
+  agentId?: string
 }
 
-export function TimeOfDay({ pins }: TimeOfDayProps) {
+export function TimeOfDay({ pins, agentId }: TimeOfDayProps) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const [events, setEvents] = useState<AnalyticsEvent[]>([])
   useDismissOnScroll(() => setHoverIdx(null))
 
+  useEffect(() => {
+    if (agentId) getAgentEvents(agentId, 30).then(setEvents).catch(() => {})
+  }, [agentId])
+
   const hours = useMemo(() => {
-    return Array(24).fill(0)
-  }, [pins])
+    const counts = Array(24).fill(0)
+    events.forEach((e) => { if (e.hour >= 0 && e.hour < 24) counts[e.hour]++ })
+    return counts
+  }, [events])
 
   const max = Math.max(...hours, 1)
   const peakHour = hours.indexOf(Math.max(...hours))
@@ -347,19 +374,24 @@ export function TimeOfDay({ pins }: TimeOfDayProps) {
 // ── Follower Growth Chart ──
 interface FollowerGrowthProps {
   currentFollowers: number
+  agentId?: string
 }
 
-export function FollowerGrowth({ currentFollowers }: FollowerGrowthProps) {
+export function FollowerGrowth({ currentFollowers, agentId }: FollowerGrowthProps) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const [snapshots, setSnapshots] = useState<FollowerSnapshot[]>([])
   useDismissOnScroll(() => setHoverIdx(null))
 
-  // Real follower growth requires a time-series collection (not yet built).
-  // Show empty state until that's implemented.
+  useEffect(() => {
+    if (agentId) getFollowerSnapshots(agentId, 30).then(setSnapshots).catch(() => {})
+  }, [agentId])
+
   const data = useMemo(() => {
+    if (snapshots.length > 0) return snapshots.map((s) => s.count)
     if (currentFollowers === 0) return []
-    return Array(30).fill(currentFollowers)
-  }, [currentFollowers])
+    return [currentFollowers]
+  }, [snapshots, currentFollowers])
 
   if (data.length === 0) {
     return (

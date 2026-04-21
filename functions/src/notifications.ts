@@ -137,6 +137,16 @@ export const onNewFollower = onDocumentCreated(
       actorName: followerName,
       actorUid: data.followerUid,
     })
+
+    // Log follow event for analytics
+    await db.collection('events').add({
+      type: 'follow',
+      agentId: data.followedUid,
+      actorUid: data.followerUid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      hour: new Date().getHours(),
+      date: new Date().toISOString().slice(0, 10),
+    }).catch(() => {})
   },
 )
 
