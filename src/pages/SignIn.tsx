@@ -42,7 +42,7 @@ export default function SignIn() {
     }
 
     signInWithEmailAndPassword(auth!, email, password)
-      .then(() => { navigate('/dashboard') })
+      .then(() => waitForUserDoc().then(() => navigate('/dashboard')))
       .catch((e: any) => { setError(e.code === 'auth/user-not-found' ? 'No account found' : 'Incorrect password') })
       .finally(() => setLoading(false))
   }
@@ -52,10 +52,20 @@ export default function SignIn() {
     setLoading(true)
     try {
       await signInWithPopup(auth!, new GoogleAuthProvider())
+      await waitForUserDoc()
       navigate('/dashboard')
     } catch { setError('Google sign-in failed') }
     finally { setLoading(false) }
   }
+
+  const waitForUserDoc = () => new Promise<void>((resolve) => {
+    const check = () => {
+      const { userDoc, initialized } = useAuthStore.getState()
+      if (userDoc && initialized) { resolve(); return }
+      setTimeout(check, 100)
+    }
+    check()
+  })
 
   return (
     <div className="min-h-screen bg-ivory flex">
