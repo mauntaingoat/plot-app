@@ -224,14 +224,24 @@ export const onUnfollow = onDocumentDeleted(
   { document: 'follows/{followId}', region: 'us-central1' },
   async (event) => {
     const data = event.data?.data()
+    logger.info('[onUnfollow] triggered', { hasData: !!data, followedUid: data?.followedUid, followerUid: data?.followerUid })
     if (!data?.followedUid || !data?.followerUid) return
 
     const db = admin.firestore()
-    await db.collection('users').doc(data.followedUid).update({
-      followerCount: admin.firestore.FieldValue.increment(-1),
-    }).catch(() => {})
-    await db.collection('users').doc(data.followerUid).update({
-      followingCount: admin.firestore.FieldValue.increment(-1),
-    }).catch(() => {})
+
+    // Decrement but floor at 0
+    const followedSnap = await db.collection('users').doc(data.followedUid).get()
+    if (followedSnap.exists && (followedSnap.data()?.followerCount || 0) > 0) {
+      await db.collection('users').doc(data.followedUid).update({
+        followerCount: admin.firestore.FieldValue.increment(-1),
+      }).catch(() => {})
+    }
+
+    const followerSnap = await db.collection('users').doc(data.followerUid).get()
+    if (followerSnap.exists && (followerSnap.data()?.followingCount || 0) > 0) {
+      await db.collection('users').doc(data.followerUid).update({
+        followingCount: admin.firestore.FieldValue.increment(-1),
+      }).catch(() => {})
+    }
   },
 )

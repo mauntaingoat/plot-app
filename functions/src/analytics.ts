@@ -123,7 +123,10 @@ export const trackEngagement = onCall<{ pinId: string; action: 'tap' | 'save' | 
         }).catch(() => {})
       }
     } else if (action === 'unsave') {
-      await pinRef.update({ saves: admin.firestore.FieldValue.increment(-1) }).catch(() => {})
+      const snap = await pinRef.get()
+      if (snap.exists && (snap.data()?.saves || 0) > 0) {
+        await pinRef.update({ saves: admin.firestore.FieldValue.increment(-1) }).catch(() => {})
+      }
       if (contentId) {
         await db.runTransaction(async (tx) => {
           const snap = await tx.get(pinRef)
