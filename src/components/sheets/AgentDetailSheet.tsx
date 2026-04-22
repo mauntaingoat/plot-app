@@ -97,8 +97,8 @@ export function AgentDetailSheet({
           </div>
         )}
 
-        {/* View Mode + Nearby Agents — consumer only */}
-        {!isPreview && nearbyAgents.length > 0 && (
+        {/* View Mode */}
+        {!isPreview && (
           <div>
             <h3 className="text-[13px] font-semibold text-ghost uppercase tracking-wider mb-3">View Mode</h3>
 
@@ -143,8 +143,8 @@ export function AgentDetailSheet({
                   </div>
                   <span className="text-[10px] text-tangerine font-bold uppercase">Viewing</span>
                 </motion.button>
-                {/* Other followed agents */}
-                {nearbyAgents.map((a) => (
+                {/* Other followed agents (deduplicated — exclude current agent) */}
+                {nearbyAgents.filter((a) => a.uid !== agent.uid).map((a) => (
                   <motion.button
                     key={a.uid}
                     whileTap={{ scale: 0.97 }}

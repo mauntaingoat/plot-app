@@ -4,62 +4,80 @@ import { useAuthModalStore } from '@/stores/authModalStore'
 import { followAgent as followFs, unfollowAgent as unfollowFs, isFollowing as isFollowingFs } from '@/lib/firestore'
 import { firebaseConfigured } from '@/config/firebase'
 
-// Hook for managing follow relationships.
-// Backed by Firestore in production, localStorage in demo mode.
-
 const DEMO_KEY = 'reelst-demo-follows'
+
+// Global shared follow state so all hook instances see the same data
+const globalFollowState = new Map<string, boolean>()
+const globalListeners = new Set<() => void>()
+let globalFollowingIds: string[] = []
+let globalFollowingLoaded = false
+
+function notifyFollowListeners() {
+  globalListeners.forEach((fn) => fn())
+}
 
 export function useFollow(targetAgentUid: string | null | undefined) {
   const { userDoc } = useAuthStore()
   const { open: openAuth } = useAuthModalStore()
-  const [isFollowing, setIsFollowing] = useState(false)
+  const [, forceUpdate] = useState(0)
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    if (!targetAgentUid) { setLoaded(true); return }
+    const listener = () => forceUpdate((n) => n + 1)
+    globalListeners.add(listener)
+    return () => { globalListeners.delete(listener) }
+  }, [])
 
-    // Demo mode (or signed out) — read from localStorage
+  useEffect(() => {
+    if (!targetAgentUid) { setLoaded(true); return }
+    if (globalFollowState.has(targetAgentUid)) { setLoaded(true); return }
+
     if (!userDoc || !firebaseConfigured) {
       try {
         const raw = localStorage.getItem(DEMO_KEY)
         const list: string[] = raw ? JSON.parse(raw) : []
-        setIsFollowing(list.includes(targetAgentUid))
+        globalFollowState.set(targetAgentUid, list.includes(targetAgentUid))
       } catch {
-        setIsFollowing(false)
+        globalFollowState.set(targetAgentUid, false)
       }
       setLoaded(true)
+      notifyFollowListeners()
       return
     }
 
-    // Firestore lookup
     isFollowingFs(userDoc.uid, targetAgentUid)
-      .then((result) => setIsFollowing(result))
+      .then((result) => {
+        globalFollowState.set(targetAgentUid, result)
+        notifyFollowListeners()
+      })
       .catch(() => {})
       .finally(() => setLoaded(true))
   }, [userDoc, targetAgentUid])
 
+  const isFollowing = targetAgentUid ? (globalFollowState.get(targetAgentUid) ?? false) : false
+
   const toggle = useCallback(async () => {
     if (!targetAgentUid) return false
 
-    // If sign-in required, prompt for auth
     if (!userDoc && firebaseConfigured) {
       openAuth('signup')
       return false
     }
 
-    const wasFollowing = isFollowing
-    setIsFollowing(!wasFollowing)
+    const wasFollowing = globalFollowState.get(targetAgentUid) ?? false
+    globalFollowState.set(targetAgentUid, !wasFollowing)
+    notifyFollowListeners()
 
     if (userDoc && firebaseConfigured) {
       try {
         if (wasFollowing) await unfollowFs(userDoc.uid, targetAgentUid)
         else await followFs(userDoc.uid, targetAgentUid)
       } catch {
-        setIsFollowing(wasFollowing)
+        globalFollowState.set(targetAgentUid, wasFollowing)
+        notifyFollowListeners()
         return false
       }
     } else {
-      // Demo mode — persist to localStorage
       try {
         const raw = localStorage.getItem(DEMO_KEY)
         const list: string[] = raw ? JSON.parse(raw) : []
@@ -71,25 +89,32 @@ export function useFollow(targetAgentUid: string | null | undefined) {
     }
 
     return true
-  }, [isFollowing, userDoc, targetAgentUid, openAuth])
+  }, [userDoc, targetAgentUid, openAuth])
 
   return { isFollowing, loaded, toggle, needsAuth: !userDoc && firebaseConfigured }
 }
 
-// Hook for getting all agents a user is currently following
 export function useFollowingList(): { followingIds: string[]; loaded: boolean } {
   const { userDoc } = useAuthStore()
-  const [followingIds, setFollowingIds] = useState<string[]>([])
-  const [loaded, setLoaded] = useState(false)
+  const [followingIds, setFollowingIds] = useState<string[]>(globalFollowingIds)
+  const [loaded, setLoaded] = useState(globalFollowingLoaded)
+
+  useEffect(() => {
+    const listener = () => setFollowingIds([...globalFollowingIds])
+    globalListeners.add(listener)
+    return () => { globalListeners.delete(listener) }
+  }, [])
 
   useEffect(() => {
     if (!userDoc || !firebaseConfigured) {
       try {
         const raw = localStorage.getItem(DEMO_KEY)
-        setFollowingIds(raw ? JSON.parse(raw) : [])
+        globalFollowingIds = raw ? JSON.parse(raw) : []
       } catch {
-        setFollowingIds([])
+        globalFollowingIds = []
       }
+      globalFollowingLoaded = true
+      setFollowingIds([...globalFollowingIds])
       setLoaded(true)
       return
     }
@@ -100,8 +125,13 @@ export function useFollowingList(): { followingIds: string[]; loaded: boolean } 
       import('firebase/firestore').then(({ collection, query, where, onSnapshot, limit }) => {
         const q = query(collection(db, 'follows'), where('followerUid', '==', userDoc.uid), limit(1000))
         unsub = onSnapshot(q, (snap) => {
-          setFollowingIds(snap.docs.map((d) => d.data().followedUid as string))
+          globalFollowingIds = snap.docs.map((d) => d.data().followedUid as string)
+          globalFollowingLoaded = true
+          // Sync global follow state
+          globalFollowingIds.forEach((uid) => globalFollowState.set(uid, true))
+          setFollowingIds([...globalFollowingIds])
           setLoaded(true)
+          notifyFollowListeners()
         }, () => setLoaded(true))
       })
     })

@@ -435,8 +435,8 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isFullScreen, 
       {/* Spacer for overlay tabs — only needed in full-screen mode */}
       {!embedded && <div className="h-[calc(env(safe-area-inset-top,12px)+50px)]" />}
 
-      {/* When no photos, add space so price isn't behind the toggle buttons */}
-      {photos.length === 0 && embedded && <div className="h-14" />}
+      {/* When no photos on mobile bottomsheet, add space so price isn't behind toggle buttons */}
+      {photos.length === 0 && isFullScreen && <div className="h-14" />}
 
       {photos.length > 0 && (
         <div className="relative aspect-[4/3] bg-charcoal">

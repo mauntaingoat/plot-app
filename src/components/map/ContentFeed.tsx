@@ -6,6 +6,7 @@ import { ListingOnlySheet } from '@/components/viewers/ListingOnlySheet'
 import { type Pin, type UserDoc, type ContentItem, isTallAspect } from '@/lib/types'
 import { getAllContent } from '@/lib/mock'
 import { useSaves } from '@/hooks/useSaves'
+import { useFollow } from '@/hooks/useFollow'
 import { preloadImages } from '@/lib/imageCache'
 
 interface ContentFeedProps {
@@ -25,7 +26,7 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
   const scrollRef = useRef<HTMLDivElement>(null)
   const allContent = getAllContent(pins)
   const [listingSheet, setListingSheet] = useState<Pin | null>(null)
-  const [following, setFollowing] = useState(false)
+  const { isFollowing: following, toggle: toggleFollow } = useFollow(agent?.uid)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   useEffect(() => { setVisibleCount(PAGE_SIZE) }, [allContent.length])
@@ -80,7 +81,7 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
             isOwnProfile={isOwnProfile}
             onFollowToggle={() => {
               if (!isSignedIn && !isPreview && onAuthRequired) { onAuthRequired(); return }
-              setFollowing(!following)
+              toggleFollow()
             }}
             onListingTap={() => pin.type !== 'spotlight' && setListingSheet(pin)} />
         ))}
