@@ -746,18 +746,20 @@ export async function getNotifications(agentId: string): Promise<NotificationDoc
       collection(db, 'notifications'),
       where('agentId', '==', agentId),
       orderBy('createdAt', 'desc'),
-      limit(1000),
+      limit(200),
     )
     const snap = await getDocs(q)
     return snap.docs.map((d) => ({ id: d.id, ...d.data() } as NotificationDoc))
-  } catch {
-    const fallbackQ = query(
-      collection(db, 'notifications'),
-      where('agentId', '==', agentId),
-      limit(1000),
-    )
-    const snap = await getDocs(fallbackQ)
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as NotificationDoc))
+  } catch (err) {
+    console.warn('[firestore] getNotifications ordered query failed, trying fallback:', (err as Error).message)
+    try {
+      const fallbackQ = query(collection(db, 'notifications'), where('agentId', '==', agentId), limit(200))
+      const snap = await getDocs(fallbackQ)
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() } as NotificationDoc))
+    } catch (err2) {
+      console.error('[firestore] getNotifications fallback also failed:', (err2 as Error).message)
+      return []
+    }
   }
 }
 

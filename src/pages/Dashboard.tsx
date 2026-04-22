@@ -94,15 +94,15 @@ export default function Dashboard() {
   const isDark = resolvedTheme === 'dark'
   useEffect(() => activateTheme(), [activateTheme])
 
-  // Redirect to sign-in only if Firebase auth confirms no user
   useEffect(() => {
-    if (!initialized || loading) return
-    // Check Firebase auth directly — don't rely solely on userDoc
-    // which might be null due to Firestore SDK errors
-    import('@/config/firebase').then(({ auth }) => {
-      if (!auth?.currentUser && !userDoc) navigate('/sign-in')
-    })
-  }, [initialized, loading, userDoc, navigate])
+    if (loading) return
+    if (!userDoc && initialized) {
+      const t = setTimeout(() => {
+        if (!useAuthStore.getState().userDoc) navigate('/sign-in')
+      }, 2000)
+      return () => clearTimeout(t)
+    }
+  }, [loading, initialized, userDoc, navigate])
 
   const currentUser = userDoc
   const [impersonating, setImpersonating] = useState<UserDoc | null>(null)
@@ -287,12 +287,17 @@ export default function Dashboard() {
     return items.filter((i) => i.check).reduce((s, i) => s + i.weight, 0)
   }, [activeUser, pins])
 
-  // If not authenticated, show nothing while redirect fires
-  if (!activeUser) return (
-    <div className="min-h-screen bg-ivory flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-tangerine/30 border-t-tangerine rounded-full animate-spin" />
-    </div>
-  )
+  if (!activeUser) {
+    if (!loading && initialized) {
+      navigate('/sign-in')
+      return null
+    }
+    return (
+      <div className="min-h-screen bg-ivory flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-tangerine/30 border-t-tangerine rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   // ── Tab content (shared between mobile and desktop) ──
 

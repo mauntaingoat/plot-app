@@ -898,7 +898,7 @@ export default function PinCreate() {
                       </label>
                       <div className="flex items-center gap-1">
                         <DollarSign size={22} className="text-ink shrink-0" />
-                        <input type="number" placeholder="0" value={price} onChange={(e) => setPrice(e.target.value)}
+                        <input type="number" min="1" placeholder="0" value={price} onChange={(e) => { const v = e.target.value; if (v === '' || Number(v) >= 0) setPrice(v) }}
                           className="w-full text-[28px] font-extrabold text-ink bg-transparent outline-none placeholder:text-ash/40" />
                       </div>
                     </div>
@@ -996,7 +996,7 @@ export default function PinCreate() {
 
               <div className="flex flex-col gap-2.5">
                 <Button variant="primary" size="xl"
-                  disabled={(pinType === 'for_sale' || pinType === 'sold') && !price}
+                  disabled={(pinType === 'for_sale' || pinType === 'sold') && (!price || Number(price) <= 0)}
                   onClick={() => setStep('content-type')} fullWidth>
                   {(pinType === 'for_sale' || pinType === 'sold') && !price ? 'Enter price to continue' : 'Add content'}
                 </Button>
