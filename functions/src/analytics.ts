@@ -12,6 +12,7 @@ async function logEvent(data: {
   pinId?: string
   contentId?: string
   actorUid?: string
+  dedupeId?: string
   city?: string
   region?: string
   country?: string
@@ -56,8 +57,14 @@ export const trackView = onCall<{ pinId: string; contentId?: string }>(
     if (!pinSnap.exists) return
     const agentId = pinSnap.get('agentId') as string
 
-    // Don't track agent viewing their own content
     if (request.auth?.uid === agentId) return
+
+    // Check for unique view (deduplicate by user + content)
+    const viewerId = request.auth?.uid || 'anon'
+    const dedupeId = contentId ? `${viewerId}_${pinId}_${contentId}` : `${viewerId}_${pinId}`
+    const existingView = await db.collection('events')
+      .where('dedupeId', '==', dedupeId).where('type', '==', 'view').limit(1).get()
+    const isUnique = existingView.empty
 
     if (contentId) {
       await db.runTransaction(async (tx) => {
@@ -66,7 +73,11 @@ export const trackView = onCall<{ pinId: string; contentId?: string }>(
         const content: any[] = snap.get('content') ?? []
         const idx = content.findIndex((c) => c.id === contentId)
         if (idx !== -1) {
-          content[idx] = { ...content[idx], views: (content[idx].views || 0) + 1 }
+          content[idx] = {
+            ...content[idx],
+            views: (content[idx].views || 0) + 1,
+            ...(isUnique ? { uniqueViews: (content[idx].uniqueViews || 0) + 1 } : {}),
+          }
         }
         tx.update(pinRef, {
           views: admin.firestore.FieldValue.increment(1),
@@ -77,7 +88,6 @@ export const trackView = onCall<{ pinId: string; contentId?: string }>(
       await pinRef.update({ views: admin.firestore.FieldValue.increment(1) })
     }
 
-    // Log event with geo
     const ip = getClientIp(request)
     const geo = await geolocateIp(ip)
     await logEvent({
@@ -86,6 +96,7 @@ export const trackView = onCall<{ pinId: string; contentId?: string }>(
       pinId,
       contentId,
       actorUid: request.auth?.uid,
+      dedupeId,
       ...(geo || {}),
     })
   },

@@ -163,6 +163,7 @@ export default function AgentProfile() {
     }
   }, [followingIds])
 
+  const savesKey = saves.map((s) => s.pinId).sort().join(',')
   useEffect(() => {
     if (saves.length > 0) {
       const pinIds = [...new Set(saves.map((s) => s.pinId))]
@@ -170,7 +171,8 @@ export default function AgentProfile() {
     } else {
       setSavedPinsFull([])
     }
-  }, [saves])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savesKey])
 
   // Default map center: agent's licensed state when no pins exist
   const defaultCenter = useMemo<[number, number] | undefined>(() => {

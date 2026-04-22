@@ -118,9 +118,10 @@ export function ContentConversion({ pins }: ContentConversionProps) {
       }
       for (const c of pin.content) {
         if (c.type === 'video_note') continue // skip — removed
-        const t = byType[c.type] || (byType[c.type] = { count: 0, views: 0, saves: 0 })
+        const t = byType[c.type] || (byType[c.type] = { count: 0, views: 0, uniqueViews: 0, saves: 0 })
         t.count += 1
         t.views += c.views
+        t.uniqueViews += (c as any).uniqueViews || c.views
         t.saves += c.saves
       }
     }
@@ -132,7 +133,7 @@ export function ContentConversion({ pins }: ContentConversionProps) {
     return Object.entries(byType).map(([type, s]) => ({
       type,
       ...s,
-      conversionRate: s.views > 0 ? (s.saves / s.views) * 100 : 0,
+      conversionRate: s.uniqueViews > 0 ? (s.saves / s.uniqueViews) * 100 : 0,
     })).filter((s) => s.count > 0)
   }, [pins])
 
@@ -172,7 +173,7 @@ export function ContentConversion({ pins }: ContentConversionProps) {
                   <span className="text-[11px] text-smoke font-mono">{s.count} item{s.count !== 1 ? 's' : ''}</span>
                 </div>
                 <div className="flex items-center gap-3 mt-1">
-                  <span className="text-[11px] text-smoke">{s.views.toLocaleString()} views</span>
+                  <span className="text-[11px] text-smoke">{s.views.toLocaleString()} views ({s.uniqueViews.toLocaleString()} unique)</span>
                   <span className="text-[11px] text-smoke">·</span>
                   <span className="text-[11px] font-semibold text-tangerine">{s.conversionRate.toFixed(1)}% save rate</span>
                 </div>
@@ -411,7 +412,7 @@ export function FollowerGrowth({ currentFollowers, agentId }: FollowerGrowthProp
   const width = 100
   const height = 100
   const points = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * width
+    const x = data.length > 1 ? (i / (data.length - 1)) * width : width / 2
     const y = height - ((v - min) / range) * height
     return `${x},${y}`
   }).join(' ')
