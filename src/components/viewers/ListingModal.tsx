@@ -385,7 +385,7 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
             onClick={!isPreview ? () => toggleSave(pin.id, content.id, content.type) : undefined}
             className={isPreview ? 'opacity-40' : 'cursor-pointer'}>
             <Bookmark size={24} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
-            <span className="text-[9px] text-white font-semibold block mt-0.5">{content.saves + (saved ? 1 : 0)}</span>
+            <span className="text-[9px] text-white font-semibold block mt-0.5">{content.saves || 0}</span>
           </motion.button>
         )}
         <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}

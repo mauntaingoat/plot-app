@@ -782,7 +782,23 @@ export function subscribeToNotifications(agentId: string, cb: (docs: Notificatio
     )
     return onSnapshot(q, (snap) => {
       cb(snap.docs.map((d) => ({ id: d.id, ...d.data() } as NotificationDoc)))
-    }, (err) => { console.warn('[firestore] notifications subscription error:', err.message) })
+    }, (err) => {
+      console.warn('[firestore] notifications subscription error, trying fallback:', err.message)
+      const fallbackQ = query(
+        collection(db!, 'notifications'),
+        where('agentId', '==', agentId),
+        limit(1000),
+      )
+      onSnapshot(fallbackQ, (snap) => {
+        const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as NotificationDoc))
+        docs.sort((a, b) => {
+          const aMs = typeof a.createdAt?.toMillis === 'function' ? a.createdAt.toMillis() : 0
+          const bMs = typeof b.createdAt?.toMillis === 'function' ? b.createdAt.toMillis() : 0
+          return bMs - aMs
+        })
+        cb(docs)
+      }, () => cb([]))
+    })
   } catch {
     return null
   }

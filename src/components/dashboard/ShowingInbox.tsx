@@ -245,20 +245,19 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
 
 // ── Unread count hook for the tab badge ──
 export function useUnreadCount(agentId: string | undefined) {
-  const [count, setCount] = useState(0)
+  const [notifCount, setNotifCount] = useState(0)
+  const [showingCount, setShowingCount] = useState(0)
   useEffect(() => {
     if (!agentId) return
     const unsub = subscribeToNotifications(agentId, (docs) => {
-      setCount(docs.filter((d) => !d.read).length)
+      setNotifCount(docs.filter((d) => !d.read).length)
     })
-    // Also count unread showing requests
     listShowingRequests(agentId).then((reqs) => {
-      const newReqs = reqs.filter((r) => r.status === 'new').length
-      setCount((prev) => prev + newReqs)
+      setShowingCount(reqs.filter((r) => r.status === 'new').length)
     }).catch(() => {})
     return () => { unsub?.() }
   }, [agentId])
-  return count
+  return notifCount + showingCount
 }
 
 function RequestCard({

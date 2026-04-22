@@ -94,11 +94,14 @@ export default function Dashboard() {
   const isDark = resolvedTheme === 'dark'
   useEffect(() => activateTheme(), [activateTheme])
 
-  // Redirect to sign-in if not authenticated (after auth finishes loading)
+  // Redirect to sign-in only if Firebase auth confirms no user
   useEffect(() => {
-    if (initialized && !loading && !userDoc) {
-      navigate('/sign-in')
-    }
+    if (!initialized || loading) return
+    // Check Firebase auth directly — don't rely solely on userDoc
+    // which might be null due to Firestore SDK errors
+    import('@/config/firebase').then(({ auth }) => {
+      if (!auth?.currentUser && !userDoc) navigate('/sign-in')
+    })
   }, [initialized, loading, userDoc, navigate])
 
   const currentUser = userDoc

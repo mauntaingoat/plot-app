@@ -275,7 +275,7 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
             onClick={!isPreview ? () => toggleSave(pin.id, content.id, content.type) : undefined}
             className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}>
             <Bookmark size={26} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
-            <span className="text-[10px] text-white font-semibold">{content.saves + (saved ? 1 : 0)}</span>
+            <span className="text-[10px] text-white font-semibold">{content.saves || 0}</span>
           </motion.button>
         )}
 
