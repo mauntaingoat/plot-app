@@ -24,12 +24,16 @@ interface AgentDetailSheetProps {
   agentMode?: AgentMode
   onSetMode?: (mode: AgentMode) => void
   mapBounds?: { left: number; right: number }
+  currentUser?: UserDoc | null
+  onAccountTap?: () => void
+  onSignIn?: () => void
 }
 
 export function AgentDetailSheet({
   isOpen, onClose, agent, isFollowing, onFollow,
   nearbyAgents = [], enabledAgentIds, onToggleAgent, onExploreAll, onAgentTap,
   isPreview, agentMode = 'single', onSetMode, mapBounds,
+  currentUser, onAccountTap, onSignIn,
 }: AgentDetailSheetProps) {
   return (
     <ResponsiveSheet isOpen={isOpen} onClose={onClose} dark mapBounds={mapBounds}>
@@ -219,6 +223,25 @@ export function AgentDetailSheet({
             )}
           </div>
         )}
+
+        {/* Your account section */}
+        <div className="border-t border-white/6 pt-4 mt-4">
+          {currentUser ? (
+            <button onClick={onAccountTap}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5 cursor-pointer hover:bg-white/8 transition-colors text-left">
+              <Avatar src={currentUser.photoURL} name={currentUser.displayName || 'You'} size={32} />
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold text-white truncate">{currentUser.displayName}</p>
+                <p className="text-[11px] text-ghost truncate">@{currentUser.username}</p>
+              </div>
+            </button>
+          ) : (
+            <button onClick={onSignIn}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-tangerine/10 text-tangerine text-[13px] font-semibold cursor-pointer hover:bg-tangerine/15 transition-colors">
+              Sign in
+            </button>
+          )}
+        </div>
       </div>
     </ResponsiveSheet>
   )

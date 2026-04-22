@@ -25,6 +25,7 @@ import { useMapStore, applyPropertyFilters } from '@/stores/mapStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAgent, useAgentPins } from '@/hooks/useQueries'
 import { useFollow, useFollowingList } from '@/hooks/useFollow'
+import { AccountSheet } from '@/components/sheets/AccountSheet'
 import { useSaves } from '@/hooks/useSaves'
 import { firebaseConfigured } from '@/config/firebase'
 import type { UserDoc, Pin } from '@/lib/types'
@@ -110,6 +111,7 @@ export default function AgentProfile() {
   const [indicatorPins, setIndicatorPins] = useState<{ pins: Pin[]; type: 'live' | 'openhouse' } | null>(null)
   const [showAgentDetail, setShowAgentDetail] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
+  const [showAccount, setShowAccount] = useState(false)
   const initialMode = (searchParams.get('mode') as AgentMode) || 'single'
   const [agentMode, _setAgentMode] = useState<AgentMode>(
     ['single', 'following', 'explore', 'saved'].includes(initialMode) ? initialMode : 'single'
@@ -429,13 +431,15 @@ export default function AgentProfile() {
           {/* Bottom: account / auth */}
           <div className="px-4 pb-5 pt-3 shrink-0 border-t border-white/6">
             {currentUser ? (
-              <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/5">
+              <button onClick={() => setShowAccount(true)}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/5 cursor-pointer hover:bg-white/8 transition-colors text-left">
                 <Avatar src={currentUser.photoURL} name={currentUser.displayName || 'You'} size={28} ring="none" />
                 <div className="min-w-0 flex-1">
                   <p className="text-[12px] font-semibold text-white truncate">{currentUser.displayName || 'You'}</p>
                   <p className="text-[10px] text-white/35 truncate">@{currentUser.username || 'you'}</p>
                 </div>
-              </div>
+                <ChevronRight size={12} className="text-ghost shrink-0" />
+              </button>
             ) : (
               <button
                 onClick={() => setShowAuth(true)}
@@ -605,6 +609,10 @@ export default function AgentProfile() {
         />
 
         <AuthSheet isOpen={showAuth} onClose={() => setShowAuth(false)} mode="signup" />
+        <AccountSheet isOpen={showAccount} onClose={() => setShowAccount(false)} isDesktop
+          onSignOut={async () => { setShowAccount(false); const { auth } = await import('@/config/firebase'); await auth?.signOut(); navigate('/') }}
+          onNavigatePricing={() => { setShowAccount(false); navigate('/pricing') }}
+        />
       </div>
     )
   }
@@ -745,9 +753,16 @@ export default function AgentProfile() {
         isPreview={isPreview}
         agentMode={agentMode}
         onSetMode={setAgentMode}
+        currentUser={currentUser}
+        onAccountTap={() => { setShowAgentDetail(false); setShowAccount(true) }}
+        onSignIn={() => { setShowAgentDetail(false); setShowAuth(true) }}
       />
 
       <AuthSheet isOpen={showAuth} onClose={() => setShowAuth(false)} mode="signup" />
+      <AccountSheet isOpen={showAccount} onClose={() => setShowAccount(false)}
+        onSignOut={async () => { setShowAccount(false); const { auth } = await import('@/config/firebase'); await auth?.signOut(); navigate('/') }}
+        onNavigatePricing={() => { setShowAccount(false); navigate('/pricing') }}
+      />
     </div>
   )
 }
