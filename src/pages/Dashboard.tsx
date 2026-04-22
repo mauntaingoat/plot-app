@@ -113,11 +113,10 @@ export default function Dashboard() {
   const [pinsLoading, setPinsLoading] = useState(true)
   const activeUid = impersonating?.uid || userDoc?.uid
   useEffect(() => {
-    if (!initialized || !activeUid) {
-      if (!activeUid) { setPins([]); setPinsLoading(false) }
+    if (!activeUid) {
+      setPins([]); setPinsLoading(false)
       return
     }
-    setPins([])
     setPinsLoading(true)
     const unsub = subscribeToAllAgentPins(activeUid, (live) => {
       // Merge with local state to preserve optimistic updates (e.g.
@@ -144,7 +143,7 @@ export default function Dashboard() {
       setPinsLoading(false)
     }
     return () => { unsub?.() }
-  }, [activeUid, initialized])
+  }, [activeUid])
 
   useEffect(() => {
     const urls: string[] = []
@@ -161,6 +160,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!userDoc?.uid || impersonating) return
+    const lastPing = sessionStorage.getItem('reelst_last_active')
+    if (lastPing && Date.now() - Number(lastPing) < 300000) return
+    sessionStorage.setItem('reelst_last_active', String(Date.now()))
     import('@/lib/firestore').then(({ updateUserDoc }) =>
       updateUserDoc(userDoc.uid, { lastActiveAt: new Date() } as any).catch(() => {})
     )

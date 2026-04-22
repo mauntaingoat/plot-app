@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, Phone, Calendar, MessageSquare, Inbox, Check, Clock, UserPlus, Bookmark, ChevronRight, Eye } from 'lucide-react'
-import { listShowingRequests, updateShowingRequestStatus, subscribeToNotifications, markNotificationsRead, type NotificationDoc } from '@/lib/firestore'
+import { listShowingRequests, updateShowingRequestStatus, getNotifications, markNotificationsRead, type NotificationDoc } from '@/lib/firestore'
 import { formatDateShort, formatTime12h } from '@/lib/ics'
 import type { ShowingRequest, ShowingRequestStatus } from '@/lib/types'
 
@@ -50,8 +50,8 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
   }, [agentId])
 
   useEffect(() => {
-    const unsub = subscribeToNotifications(agentId, setNotifications)
-    return () => { unsub?.() }
+    if (!agentId) return
+    getNotifications(agentId).then(setNotifications).catch(() => {})
   }, [agentId])
 
   const follows = useMemo(() => notifications.filter((n) => n.type === 'follow'), [notifications])
@@ -245,19 +245,21 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
 
 // ── Unread count hook for the tab badge ──
 export function useUnreadCount(agentId: string | undefined) {
-  const [notifCount, setNotifCount] = useState(0)
-  const [showingCount, setShowingCount] = useState(0)
+  const [count, setCount] = useState(0)
   useEffect(() => {
     if (!agentId) return
-    const unsub = subscribeToNotifications(agentId, (docs) => {
-      setNotifCount(docs.filter((d) => !d.read).length)
-    })
-    listShowingRequests(agentId).then((reqs) => {
-      setShowingCount(reqs.filter((r) => r.status === 'new').length)
-    }).catch(() => {})
-    return () => { unsub?.() }
+    let cancelled = false
+    const load = () => {
+      Promise.all([
+        getNotifications(agentId).then((docs) => docs.filter((d) => !d.read).length).catch(() => 0),
+        listShowingRequests(agentId).then((reqs) => reqs.filter((r) => r.status === 'new').length).catch(() => 0),
+      ]).then(([n, s]) => { if (!cancelled) setCount(n + s) })
+    }
+    load()
+    const interval = setInterval(load, 30000)
+    return () => { cancelled = true; clearInterval(interval) }
   }, [agentId])
-  return notifCount + showingCount
+  return count
 }
 
 function RequestCard({
