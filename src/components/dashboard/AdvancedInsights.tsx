@@ -120,9 +120,9 @@ export function ContentConversion({ pins }: ContentConversionProps) {
         if (c.type === 'video_note') continue // skip — removed
         const t = byType[c.type] || (byType[c.type] = { count: 0, views: 0, uniqueViews: 0, saves: 0 })
         t.count += 1
-        t.views += c.views
-        t.uniqueViews += (c as any).uniqueViews || c.views
-        t.saves += c.saves
+        t.views += c.views || 0
+        t.uniqueViews += (c as any).uniqueViews || c.views || 0
+        t.saves += c.saves || 0
       }
     }
 

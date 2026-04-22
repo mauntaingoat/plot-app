@@ -974,21 +974,23 @@ export default function PinCreate() {
                             </div>
                           </div>
                         ) : (
-                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-graphite">
-                            <span><span className="font-bold text-ink">{beds}</span> bd</span>
-                            <span><span className="font-bold text-ink">{baths}</span> ba</span>
-                            {sqft && <span><span className="font-bold text-ink">{Number(sqft).toLocaleString()}</span> sqft</span>}
-                            <span className="capitalize">{homeType.replace('_', ' ')}</span>
-                            {yearBuilt && <span>Built {yearBuilt}</span>}
-                            {daysOnMarket > 0 && <span><span className="font-bold text-ink">{daysOnMarket}</span> DOM</span>}
-                            {mlsNumber && <span>MLS# {mlsNumber}</span>}
-                          </div>
-                          {listingAgentName && (
-                            <p className="text-[12px] text-smoke mt-1.5">
-                              Listed by <span className="font-semibold text-graphite">{listingAgentName}</span>
-                              {listingOfficeName ? ` · ${listingOfficeName}` : ''}
-                            </p>
-                          )}
+                          <>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-graphite">
+                              <span><span className="font-bold text-ink">{beds}</span> bd</span>
+                              <span><span className="font-bold text-ink">{baths}</span> ba</span>
+                              {sqft && <span><span className="font-bold text-ink">{Number(sqft).toLocaleString()}</span> sqft</span>}
+                              <span className="capitalize">{homeType.replace('_', ' ')}</span>
+                              {yearBuilt && <span>Built {yearBuilt}</span>}
+                              {daysOnMarket > 0 && <span><span className="font-bold text-ink">{daysOnMarket}</span> DOM</span>}
+                              {mlsNumber && <span>MLS# {mlsNumber}</span>}
+                            </div>
+                            {listingAgentName && (
+                              <p className="text-[12px] text-smoke mt-1.5">
+                                Listed by <span className="font-semibold text-graphite">{listingAgentName}</span>
+                                {listingOfficeName ? ` · ${listingOfficeName}` : ''}
+                              </p>
+                            )}
+                          </>
                         )}
                       </div>
                     )}
