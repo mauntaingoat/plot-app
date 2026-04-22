@@ -218,16 +218,16 @@ export default function Dashboard() {
 
   const [weeklyEvents, setWeeklyEvents] = useState<any[]>([])
   const chartData = useMemo(() => {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    const counts = Array(7).fill(0)
-    weeklyEvents.forEach((e) => {
-      if (e.type !== 'view') return
-      const eventDate = e.date ? new Date(e.date + 'T12:00:00') : null
-      if (!eventDate) return
-      const dayIdx = (eventDate.getDay() + 6) % 7
-      counts[dayIdx]++
-    })
-    return days.map((label, i) => ({ label, value: counts[i] }))
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const result: { label: string; value: number }[] = []
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date()
+      d.setDate(d.getDate() - i)
+      const dateStr = d.toISOString().slice(0, 10)
+      const count = weeklyEvents.filter((e) => e.type === 'view' && e.date === dateStr).length
+      result.push({ label: dayNames[d.getDay()], value: count })
+    }
+    return result
   }, [weeklyEvents])
 
   const confirmSignOut = () => {
@@ -450,10 +450,10 @@ export default function Dashboard() {
           <div className={isDesktop ? 'space-y-5' : 'px-5 py-5 space-y-4'}>
             {/* Basic stats — visible to all tiers */}
             <div className="grid grid-cols-2 gap-3">
-              <StatCard label="Views" value={stats.views} icon={<Eye size={18} />} format="compact" />
-              <StatCard label="Taps" value={stats.taps} icon={<MousePointerClick size={18} />} color="#3B82F6" format="compact" />
-              <StatCard label="Saves" value={stats.saves} icon={<Bookmark size={18} />} color="#A855F7" format="compact" />
-              <StatCard label="Followers" value={activeUser.followerCount} icon={<Users size={18} />} color="#34C759" />
+              <StatCard label="Views" value={stats.views} icon={<Eye size={18} />} format="compact" tooltip="Times your content was seen in the feed" />
+              <StatCard label="Taps" value={stats.taps} icon={<MousePointerClick size={18} />} color="#3B82F6" format="compact" tooltip="Times someone tapped your pin on the map" />
+              <StatCard label="Saves" value={stats.saves} icon={<Bookmark size={18} />} color="#A855F7" format="compact" tooltip="Times someone bookmarked your content" />
+              <StatCard label="Followers" value={activeUser.followerCount} icon={<Users size={18} />} color="#34C759" tooltip="People following your Reelst" />
             </div>
             <InsightsChart data={chartData} />
 

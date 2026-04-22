@@ -1,15 +1,16 @@
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { TrendingUp, TrendingDown } from 'lucide-react'
 
 interface StatCardProps {
   label: string
   value: number
   change?: number
-  changePeriod?: string // e.g. "vs last week"
+  changePeriod?: string
   icon: ReactNode
   color?: string
   format?: 'number' | 'compact'
+  tooltip?: string
 }
 
 function AnimatedNumber({ value, format }: { value: number; format: string }) {
@@ -30,8 +31,9 @@ function AnimatedNumber({ value, format }: { value: number; format: string }) {
   return <motion.span>{display}</motion.span>
 }
 
-export function StatCard({ label, value, change, changePeriod = 'vs last week', icon, color = '#FF6B3D', format = 'number' }: StatCardProps) {
+export function StatCard({ label, value, change, changePeriod = 'vs last week', icon, color = '#FF6B3D', format = 'number', tooltip }: StatCardProps) {
   const isPositive = change !== undefined && change >= 0
+  const [showTooltip, setShowTooltip] = useState(false)
 
   return (
     <motion.div
@@ -41,10 +43,19 @@ export function StatCard({ label, value, change, changePeriod = 'vs last week', 
     >
       <div className="flex items-center justify-between">
         <div
-          className="w-10 h-10 rounded-[12px] flex items-center justify-center"
+          className="w-10 h-10 rounded-[12px] flex items-center justify-center relative cursor-pointer"
           style={{ backgroundColor: `${color}15`, color }}
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+          onClick={() => setShowTooltip(!showTooltip)}
         >
           {icon}
+          {tooltip && showTooltip && (
+            <div className="absolute left-0 top-full mt-2 z-50 px-3 py-2 bg-ink text-warm-white rounded-[10px] shadow-lg whitespace-nowrap pointer-events-none">
+              <p className="text-[11px] font-medium">{tooltip}</p>
+              <div className="absolute bottom-full left-4 w-0 h-0 border-4 border-transparent border-b-ink" />
+            </div>
+          )}
         </div>
         {change !== undefined && (
           <div className={`flex items-center gap-0.5 text-[11px] font-semibold ${isPositive ? 'text-sold-green' : 'text-live-red'}`}>
