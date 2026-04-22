@@ -1,5 +1,12 @@
-const cache = new Map<string, HTMLImageElement>()
+const MAX_CACHE_SIZE = 200
+const cache = new Map<string, boolean>()
 const pending = new Map<string, Promise<void>>()
+
+function evictOldest() {
+  if (cache.size <= MAX_CACHE_SIZE) return
+  const first = cache.keys().next().value
+  if (first) cache.delete(first)
+}
 
 export function preloadImage(url: string): Promise<void> {
   if (!url) return Promise.resolve()
@@ -8,8 +15,8 @@ export function preloadImage(url: string): Promise<void> {
 
   const p = new Promise<void>((resolve) => {
     const img = document.createElement('img')
-    img.onload = () => { cache.set(url, img); pending.delete(url); resolve() }
-    img.onerror = () => { cache.set(url, img); pending.delete(url); resolve() }
+    img.onload = () => { evictOldest(); cache.set(url, true); pending.delete(url); resolve() }
+    img.onerror = () => { cache.set(url, true); pending.delete(url); resolve() }
     img.src = url
   })
   pending.set(url, p)

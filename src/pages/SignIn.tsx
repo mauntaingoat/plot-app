@@ -59,9 +59,11 @@ export default function SignIn() {
   }
 
   const waitForUserDoc = () => new Promise<void>((resolve) => {
+    let attempts = 0
     const check = () => {
       const { userDoc, initialized } = useAuthStore.getState()
       if (userDoc && initialized) { resolve(); return }
+      if (++attempts > 50) { resolve(); return } // 5s max
       setTimeout(check, 100)
     }
     check()

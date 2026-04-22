@@ -1,9 +1,6 @@
 /**
- * Property data lookup via RealtyMole API.
- *
- * Takes an address string, returns property details: beds, baths,
- * sqft, property type, year built, lot size. Agent confirms and
- * adds price + content.
+ * Property data lookup via Rentcast API.
+ * Takes an address, returns property details.
  */
 
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
@@ -51,22 +48,23 @@ export const propertyLookup = onCall<PropertyLookupRequest, Promise<PropertyData
 
     try {
       const encoded = encodeURIComponent(address.trim())
+
+      // Try Rentcast API first
       const res = await fetch(
-        `https://realty-mole-property-api.p.rapidapi.com/properties?address=${encoded}`,
+        `https://api.rentcast.io/v1/properties?address=${encoded}`,
         {
-          headers: {
-            'x-rapidapi-key': apiKey,
-            'x-rapidapi-host': 'realty-mole-property-api.p.rapidapi.com',
-          },
+          headers: { 'X-Api-Key': apiKey },
         },
       )
 
       if (!res.ok) {
-        logger.warn('[propertyLookup] API error', { status: res.status })
+        logger.warn('[propertyLookup] Rentcast error', { status: res.status })
         throw new HttpsError('not-found', 'No property data found for this address.')
       }
 
       const data = await res.json()
+
+      // Rentcast returns an array or single object
       const prop = Array.isArray(data) ? data[0] : data
 
       if (!prop) {
@@ -76,11 +74,11 @@ export const propertyLookup = onCall<PropertyLookupRequest, Promise<PropertyData
       const result: PropertyData = {
         bedrooms: prop.bedrooms ?? null,
         bathrooms: prop.bathrooms ?? null,
-        squareFootage: prop.squareFootage ?? null,
+        squareFootage: prop.squareFootage ?? prop.lotSquareFootage ?? null,
         propertyType: prop.propertyType ?? null,
         yearBuilt: prop.yearBuilt ?? null,
         lotSize: prop.lotSize ? String(prop.lotSize) : null,
-        lastSalePrice: prop.lastSalePrice ?? null,
+        lastSalePrice: prop.lastSalePrice ?? prop.price ?? null,
         lastSaleDate: prop.lastSaleDate ?? null,
       }
 

@@ -248,16 +248,10 @@ export function subscribeToAgentPins(agentId: string, callback: (pins: Pin[]) =>
     },
     (err) => {
       console.warn('[firestore] subscribeToAgentPins fallback:', err.message)
-      const fallbackQ = query(
-        collection(db!, 'pins'),
-        where('agentId', '==', agentId),
-        limit(1000)
-      )
-      onSnapshot(
-        fallbackQ,
-        (snap) => callback(snap.docs.filter((d) => d.data().enabled !== false && d.data().status !== 'archived').map((d) => ({ id: d.id, ...d.data() }) as Pin)),
-        () => callback([]),
-      )
+      const fallbackQ = query(collection(db!, 'pins'), where('agentId', '==', agentId), limit(1000))
+      getDocs(fallbackQ).then((snap) => {
+        callback(snap.docs.filter((d) => d.data().enabled !== false && d.data().status !== 'archived').map((d) => ({ id: d.id, ...d.data() }) as Pin))
+      }).catch(() => callback([]))
     },
   )
 }
@@ -287,11 +281,7 @@ export function subscribeToAllAgentPins(agentId: string, callback: (pins: Pin[])
         where('agentId', '==', agentId),
         limit(1000)
       )
-      onSnapshot(
-        fallbackQ,
-        (snap) => callback(filterArchived(snap.docs)),
-        () => callback([]),
-      )
+      getDocs(fallbackQ).then((snap) => callback(filterArchived(snap.docs))).catch(() => callback([]))
     },
   )
 }
