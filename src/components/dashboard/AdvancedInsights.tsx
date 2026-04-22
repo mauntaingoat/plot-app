@@ -316,7 +316,7 @@ export function TimeOfDay({ pins, agentId }: TimeOfDayProps) {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-[14px] font-bold text-ink">When viewers are active</h3>
-          <p className="text-[11px] text-smoke mt-0.5">Peak hour: <span className="font-bold text-tangerine">{formatHour(peakHour)}</span></p>
+          <p className="text-[11px] text-smoke mt-0.5">{max > 1 ? <>Peak hour: <span className="font-bold text-tangerine">{formatHour(peakHour)}</span></> : 'No data yet'}</p>
         </div>
         <Clock size={14} className="text-smoke" />
       </div>

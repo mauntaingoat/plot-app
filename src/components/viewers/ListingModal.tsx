@@ -286,8 +286,11 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
 
   const { isSaved, toggleSave } = useSaves()
   const saved = isSaved(pin.id, content.id)
-  const initialSaved = useRef(saved)
-  const saveOffset = saved !== initialSaved.current ? (saved ? 1 : -1) : 0
+  const [localSaveOffset, setLocalSaveOffset] = useState(0)
+  const handleSave = () => {
+    setLocalSaveOffset((prev) => saved ? prev - 1 : prev + 1)
+    toggleSave(pin.id, content.id, content.type)
+  }
   const thumbnailUrl = content.thumbnailUrl || ('heroPhotoUrl' in pin ? pin.heroPhotoUrl : '') || ''
   const isVideo = content.type === 'reel' || content.type === 'live'
   const isCarousel = content.type === 'photo' && content.mediaUrls && content.mediaUrls.length > 1
@@ -384,10 +387,10 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
       <div className="absolute right-3 bottom-[20%] z-10 flex flex-col items-center gap-4" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }}>
         {!isOwnProfile && (
           <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
-            onClick={!isPreview ? () => toggleSave(pin.id, content.id, content.type) : undefined}
+            onClick={!isPreview ? handleSave : undefined}
             className={isPreview ? 'opacity-40' : 'cursor-pointer'}>
             <Bookmark size={24} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
-            <span className="text-[9px] text-white font-semibold block mt-0.5">{Math.max(0, (content.saves || 0) + saveOffset)}</span>
+            <span className="text-[9px] text-white font-semibold block mt-0.5">{Math.max(0, (content.saves || 0) + localSaveOffset)}</span>
           </motion.button>
         )}
         <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}

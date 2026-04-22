@@ -155,8 +155,11 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
   const hasOpenHouse = pin.type === 'for_sale' && 'openHouse' in pin && pin.openHouse
   const { isSaved, toggleSave } = useSaves()
   const saved = isSaved(pin.id, content.id)
-  const initialSaved = useRef(saved)
-  const saveOffset = saved !== initialSaved.current ? (saved ? 1 : -1) : 0
+  const [localSaveOffset, setLocalSaveOffset] = useState(0)
+  const handleSave = () => {
+    setLocalSaveOffset((prev) => saved ? prev - 1 : prev + 1)
+    toggleSave(pin.id, content.id, content.type)
+  }
 
   const viewTracked = useRef(false)
 
@@ -275,10 +278,10 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
 
         {!isOwnProfile && (
           <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
-            onClick={!isPreview ? () => toggleSave(pin.id, content.id, content.type) : undefined}
+            onClick={!isPreview ? handleSave : undefined}
             className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}>
             <Bookmark size={26} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
-            <span className="text-[10px] text-white font-semibold">{Math.max(0, (content.saves || 0) + saveOffset)}</span>
+            <span className="text-[10px] text-white font-semibold">{Math.max(0, (content.saves || 0) + localSaveOffset)}</span>
           </motion.button>
         )}
 

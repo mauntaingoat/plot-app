@@ -120,14 +120,15 @@ export function useFollowingList(): { followingIds: string[]; loaded: boolean } 
     }
 
     let unsub: (() => void) | null = null
+    let cancelled = false
     import('@/config/firebase').then(({ db }) => {
-      if (!db) { setLoaded(true); return }
+      if (!db || cancelled) { setLoaded(true); return }
       import('firebase/firestore').then(({ collection, query, where, onSnapshot, limit }) => {
+        if (cancelled) return
         const q = query(collection(db, 'follows'), where('followerUid', '==', userDoc.uid), limit(1000))
         unsub = onSnapshot(q, (snap) => {
           globalFollowingIds = snap.docs.map((d) => d.data().followedUid as string)
           globalFollowingLoaded = true
-          // Sync global follow state
           globalFollowingIds.forEach((uid) => globalFollowState.set(uid, true))
           setFollowingIds([...globalFollowingIds])
           setLoaded(true)
@@ -136,7 +137,7 @@ export function useFollowingList(): { followingIds: string[]; loaded: boolean } 
       })
     })
 
-    return () => { unsub?.() }
+    return () => { cancelled = true; unsub?.() }
   }, [userDoc])
 
   return { followingIds, loaded }
