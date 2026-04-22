@@ -13,50 +13,49 @@ const PLANS = [
     name: 'Free',
     price: '$0',
     period: 'forever',
-    desc: 'Everything you need to get started.',
+    desc: 'Create content and showcase your listings.',
     cta: 'Start free',
     featured: false,
     features: [
-      { text: '6 active pins', included: true },
-      { text: 'Video reels & photo carousels', included: true },
+      { text: '3 active pins on your map', included: true },
+      { text: '3-min reels & carousels', included: true },
       { text: 'Your own reel.st link', included: true },
-      { text: 'Showing request inbox', included: true },
       { text: 'MLS data auto-fill', included: true },
+      { text: 'Showing request inbox', included: true },
+      { text: 'Discoverable in Explore', included: false },
       { text: 'Advanced analytics', included: false },
-      { text: 'Live streaming', included: false },
     ],
   },
   {
     name: 'Pro',
     price: '$19',
     period: '/mo',
-    desc: 'Unlimited pins and full analytics.',
+    desc: 'Get discovered. Understand your audience.',
     cta: 'Go Pro',
     featured: true,
     features: [
-      { text: 'Unlimited pins & content', included: true },
-      { text: 'Everything in Free', included: true },
-      { text: 'Advanced analytics', included: true },
+      { text: 'Unlimited pins', included: true },
+      { text: 'Listed in Explore', included: true },
+      { text: 'Open house scheduling', included: true },
+      { text: 'Full analytics dashboard', included: true },
+      { text: 'Email lead notifications', included: true },
       { text: 'Viewer cities & peak hours', included: true },
-      { text: 'Save rates & unique views', included: true },
-      { text: 'Per-pin breakdown', included: true },
-      { text: 'Live streaming', included: false },
     ],
   },
   {
     name: 'Studio',
     price: '$39',
     period: '/mo',
-    desc: 'The full suite. Built for top producers.',
+    badge: 'Best Value',
+    desc: 'The full suite for top producers.',
     cta: 'Go Studio',
     featured: false,
     features: [
       { text: 'Everything in Pro', included: true },
-      { text: 'Live streaming to your map', included: true },
       { text: 'Saved map insights', included: true },
       { text: 'Cross-listing patterns', included: true },
+      { text: 'Live streaming', included: true, comingSoon: true },
       { text: 'Priority support', included: true },
-      { text: 'Early access to new features', included: true },
     ],
   },
 ]
@@ -155,6 +154,9 @@ export default function Pricing() {
                         : 'text-ash/50 line-through'
                     }`}>
                       {f.text}
+                      {(f as any).comingSoon && (
+                        <span className="ml-1.5 text-[9px] font-bold text-tangerine bg-tangerine/10 px-1.5 py-0.5 rounded-full uppercase">Soon</span>
+                      )}
                     </span>
                   </div>
                 ))}

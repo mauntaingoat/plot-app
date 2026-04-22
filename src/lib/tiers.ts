@@ -1,7 +1,3 @@
-// ════════════════════════════════════════
-// PRICING TIERS — single source of truth
-// ════════════════════════════════════════
-
 import type { UserDoc, Pin } from './types'
 import { isAdmin } from './admin'
 
@@ -13,10 +9,14 @@ export interface TierLimits {
   price: number
   maxActivePins: number
   maxContentPerPin: number
+  maxSpotlightContent: number
   maxVideoSeconds: number
   advancedAnalytics: boolean
-  liveStreaming: boolean
   savedMapInsights: boolean
+  liveStreaming: boolean
+  openHouses: boolean
+  inExplore: boolean
+  emailNotifications: boolean
 }
 
 export const TIERS: Record<Tier, TierLimits> = {
@@ -24,38 +24,48 @@ export const TIERS: Record<Tier, TierLimits> = {
     id: 'free',
     name: 'Free',
     price: 0,
-    maxActivePins: 6,
-    maxContentPerPin: 3,
+    maxActivePins: 3,
+    maxContentPerPin: 999,
+    maxSpotlightContent: 999,
     maxVideoSeconds: 180,
     advancedAnalytics: false,
-    liveStreaming: false,
     savedMapInsights: false,
+    liveStreaming: false,
+    openHouses: false,
+    inExplore: false,
+    emailNotifications: false,
   },
   pro: {
     id: 'pro',
     name: 'Pro',
     price: 19,
     maxActivePins: 9999,
-    maxContentPerPin: 10,
+    maxContentPerPin: 999,
+    maxSpotlightContent: 999,
     maxVideoSeconds: 180,
     advancedAnalytics: true,
-    liveStreaming: false,
     savedMapInsights: false,
+    liveStreaming: false,
+    openHouses: true,
+    inExplore: true,
+    emailNotifications: true,
   },
   studio: {
     id: 'studio',
     name: 'Studio',
     price: 39,
     maxActivePins: 9999,
-    maxContentPerPin: 10,
+    maxContentPerPin: 999,
+    maxSpotlightContent: 999,
     maxVideoSeconds: 180,
     advancedAnalytics: true,
-    liveStreaming: true,
     savedMapInsights: true,
+    liveStreaming: true,
+    openHouses: true,
+    inExplore: true,
+    emailNotifications: true,
   },
 }
-
-// ── Helpers ──
 
 export function getUserTier(user: UserDoc | null): Tier {
   if (!user) return 'free'
@@ -81,8 +91,6 @@ export function countActivePins(pins: Pin[]): number {
   return pins.filter(isPinActive).length
 }
 
-// ── Gating checks ──
-
 export interface GateResult {
   allowed: boolean
   reason?: string
@@ -104,10 +112,11 @@ export function canActivatePin(user: UserDoc | null, pins: Pin[]): GateResult {
 
 export function canAddContent(user: UserDoc | null, pin: Pin): GateResult {
   const limits = getTierLimits(user)
-  if (pin.content.length >= limits.maxContentPerPin) {
+  const max = pin.type === 'spotlight' ? limits.maxSpotlightContent : limits.maxContentPerPin
+  if (max < 9999 && pin.content.length >= max) {
     return {
       allowed: false,
-      reason: `You've reached ${limits.maxContentPerPin} content items per pin on the ${limits.name} plan.`,
+      reason: `You've reached the content limit per pin on the ${limits.name} plan.`,
       upgradeTo: limits.id === 'free' ? 'pro' : 'studio',
     }
   }
@@ -125,6 +134,6 @@ export function canUploadVideo(user: UserDoc | null, durationSeconds: number): G
   return { allowed: true }
 }
 
-export function hasFeature(user: UserDoc | null, feature: keyof Pick<TierLimits, 'advancedAnalytics' | 'liveStreaming' | 'savedMapInsights'>): boolean {
+export function hasFeature(user: UserDoc | null, feature: keyof Pick<TierLimits, 'advancedAnalytics' | 'liveStreaming' | 'savedMapInsights' | 'openHouses' | 'inExplore' | 'emailNotifications'>): boolean {
   return getTierLimits(user)[feature]
 }

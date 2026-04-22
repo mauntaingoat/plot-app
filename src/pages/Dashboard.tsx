@@ -421,7 +421,10 @@ export default function Dashboard() {
                               { icon: Edit3, label: 'Edit Details', color: 'text-mist', onClick: () => { setEditPin(pin); setShowPinActions(null) } },
                               { icon: Film, label: 'Add Content', color: 'text-tangerine', onClick: () => { navigate(`/dashboard/pin/${pin.id}/edit?tab=content`); setShowPinActions(null) } },
                               { icon: QrCode, label: 'Get QR Code', color: 'text-tangerine', onClick: () => { setQrPin(pin); setShowPinActions(null) } },
-                              ...(pin.type === 'for_sale' ? [{ icon: CalendarDays, label: 'Open House', color: 'text-open-amber', onClick: () => { setOpenHousePin(pin as ForSalePin); setShowPinActions(null) } }] : []),
+                              ...(pin.type === 'for_sale' ? [{ icon: CalendarDays, label: 'Open House', color: 'text-open-amber', onClick: () => {
+                                if (!hasFeature(activeUser, 'openHouses')) { setPaywall({ open: true, reason: 'Open house scheduling is a Pro feature.', upgradeTo: 'pro' }); setShowPinActions(null); return }
+                                setOpenHousePin(pin as ForSalePin); setShowPinActions(null)
+                              } }] : []),
                               { icon: EyeOff, label: pin.enabled ? 'Hide from Map' : 'Show on Map', color: 'text-mist', onClick: () => { handleTogglePin(pin.id, !pin.enabled); setShowPinActions(null) } },
                               { icon: Trash2, label: 'Archive', color: 'text-live-red', onClick: () => { setShowDeleteConfirm(pin); setShowPinActions(null) } },
                             ].map((item, i) => (
@@ -457,7 +460,6 @@ export default function Dashboard() {
             </div>
             <InsightsChart data={chartData} />
 
-            {/* Advanced analytics — Pro/Studio only */}
             {hasFeature(activeUser, 'advancedAnalytics') ? (
               <>
                 <PinBreakdown pins={pins} metric="views" />
@@ -465,14 +467,40 @@ export default function Dashboard() {
                 <FollowerGrowth currentFollowers={activeUser.followerCount} agentId={activeUser.uid} />
                 <TimeOfDay pins={pins} agentId={activeUser.uid} />
                 <GeoHeatmap pins={pins} agentId={activeUser.uid} />
-                {hasFeature(activeUser, 'savedMapInsights') && <SavedMapInsights pins={pins} agentId={activeUser.uid} />}
+                {hasFeature(activeUser, 'savedMapInsights') ? (
+                  <SavedMapInsights pins={pins} agentId={activeUser.uid} />
+                ) : (
+                  <div className="relative">
+                    <div className="blur-[6px] pointer-events-none select-none opacity-60">
+                      <SavedMapInsights pins={pins} agentId={activeUser.uid} />
+                    </div>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-warm-white/60 rounded-[18px]">
+                      <p className="text-[14px] font-bold text-ink mb-1">Saved Map Insights</p>
+                      <p className="text-[12px] text-smoke mb-3">See cross-listing save patterns</p>
+                      <button onClick={() => setPaywall({ open: true, reason: 'Saved map insights is a Studio feature.', upgradeTo: 'studio' })}
+                        className="px-5 py-2 rounded-full bg-tangerine text-white text-[13px] font-bold cursor-pointer hover:brightness-105 transition-all">
+                        Upgrade to Studio
+                      </button>
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
-              <LockedFeature
-                title="Unlock advanced analytics"
-                description="Per-pin breakdown, content conversion, geographic heatmap, time-of-day patterns, and follower growth charts."
-                onUpgrade={() => setPaywall({ open: true, reason: 'Advanced analytics is a Pro feature.', upgradeTo: 'pro' })}
-              />
+              <div className="relative">
+                <div className="blur-[6px] pointer-events-none select-none opacity-60 space-y-4">
+                  <PinBreakdown pins={pins} metric="views" />
+                  <ContentConversion pins={pins} />
+                  <InsightsChart data={[{ label: 'Mon', value: 12 }, { label: 'Tue', value: 18 }, { label: 'Wed', value: 8 }, { label: 'Thu', value: 25 }, { label: 'Fri', value: 15 }, { label: 'Sat', value: 20 }, { label: 'Sun', value: 10 }]} title="Follower Growth" />
+                </div>
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-warm-white/50 rounded-[18px]">
+                  <p className="text-[16px] font-bold text-ink mb-1">Unlock full analytics</p>
+                  <p className="text-[13px] text-smoke mb-4 text-center max-w-[280px]">Per-pin breakdown, viewer cities, peak hours, save rates, and more.</p>
+                  <button onClick={() => setPaywall({ open: true, reason: 'Advanced analytics is a Pro feature.', upgradeTo: 'pro' })}
+                    className="px-6 py-2.5 rounded-full bg-tangerine text-white text-[14px] font-bold cursor-pointer hover:brightness-105 transition-all shadow-lg shadow-tangerine/20">
+                    Go Pro — $19/mo
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         )}
