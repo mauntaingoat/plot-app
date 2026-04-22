@@ -90,6 +90,10 @@ export default function PinCreate() {
   const [homeType, setHomeType] = useState('condo')
   const [yearBuilt, setYearBuilt] = useState('')
   const [photos, setPhotos] = useState<File[]>([])
+  const [mlsNumber, setMlsNumber] = useState('')
+  const [daysOnMarket, setDaysOnMarket] = useState(0)
+  const [listingAgentName, setListingAgentName] = useState('')
+  const [listingOfficeName, setListingOfficeName] = useState('')
 
   // Neighborhood details
   const [neighborhoodName, setNeighborhoodName] = useState('')
@@ -140,13 +144,19 @@ export default function PinCreate() {
         const { app } = await import('@/config/firebase')
         const functions = getFunctions(app ?? undefined)
         const fn = httpsCallable(functions, 'propertyLookup')
-        const res = await fn({ address: result.placeName })
+        const res = await fn({ address: result.placeName, pinType })
         const data = res.data as any
         if (data.bedrooms != null) setBeds(data.bedrooms)
         if (data.bathrooms != null) setBaths(data.bathrooms)
         if (data.squareFootage != null) setSqft(String(data.squareFootage))
         if (data.yearBuilt != null) setYearBuilt(String(data.yearBuilt))
-        if (data.lastSalePrice && pinType === 'sold' && !price) setPrice(String(data.lastSalePrice))
+        if (data.mlsNumber) setMlsNumber(data.mlsNumber)
+        if (data.daysOnMarket != null) setDaysOnMarket(data.daysOnMarket)
+        if (data.listingAgentName) setListingAgentName(data.listingAgentName)
+        if (data.listingOfficeName) setListingOfficeName(data.listingOfficeName)
+        // Auto-fill price
+        if (pinType === 'for_sale' && data.listingPrice && !price) setPrice(String(data.listingPrice))
+        if (pinType === 'sold' && (data.soldPrice || data.lastSalePrice) && !price) setPrice(String(data.soldPrice || data.lastSalePrice))
         if (data.propertyType) {
           const typeMap: Record<string, string> = {
             'Single Family': 'single_family', 'Condo/Co-op': 'condo', 'Condo': 'condo',
@@ -255,7 +265,7 @@ export default function PinCreate() {
           price: Number(price) || 0, beds, baths, sqft: Number(sqft) || 0,
           pricePerSqft: Number(sqft) ? Math.round((Number(price) || 0) / Number(sqft)) : 0,
           homeType, yearBuilt: yearBuilt ? Number(yearBuilt) : null,
-          description, listingStatus: 'active', daysOnMarket: 0,
+          description, listingStatus: 'active', daysOnMarket, ...(mlsNumber ? { mlsNumber } : {}),
           heroPhotoUrl: '', photos: [], openHouse: null, isLive: false,
         })
       } else if (pinType === 'sold') {
@@ -264,7 +274,7 @@ export default function PinCreate() {
           soldDate: Timestamp.now(), beds, baths, sqft: Number(sqft) || 0,
           pricePerSqft: Number(sqft) ? Math.round((Number(price) || 0) / Number(sqft)) : 0,
           homeType, yearBuilt: yearBuilt ? Number(yearBuilt) : null,
-          description, daysOnMarket: 0, heroPhotoUrl: '', photos: [],
+          description, daysOnMarket, ...(mlsNumber ? { mlsNumber } : {}), heroPhotoUrl: '', photos: [],
         })
       } else if (pinType === 'spotlight') {
         Object.assign(pinData, {
@@ -575,7 +585,7 @@ export default function PinCreate() {
         price: Number(price) || 0, beds, baths, sqft: Number(sqft) || 0,
         pricePerSqft: Number(sqft) ? Math.round((Number(price) || 0) / Number(sqft)) : 0,
         homeType, yearBuilt: yearBuilt ? Number(yearBuilt) : null,
-        description, listingStatus: 'active', daysOnMarket: 0,
+        description, listingStatus: 'active', daysOnMarket, ...(mlsNumber ? { mlsNumber } : {}),
         heroPhotoUrl: '', photos: [], openHouse: null, isLive: false,
       })
     } else if (pinType === 'sold') {
@@ -584,7 +594,7 @@ export default function PinCreate() {
         soldDate: Timestamp.now(), beds, baths, sqft: Number(sqft) || 0,
         pricePerSqft: Number(sqft) ? Math.round((Number(price) || 0) / Number(sqft)) : 0,
         homeType, yearBuilt: yearBuilt ? Number(yearBuilt) : null,
-        description, daysOnMarket: 0, heroPhotoUrl: '', photos: [],
+        description, daysOnMarket, ...(mlsNumber ? { mlsNumber } : {}), heroPhotoUrl: '', photos: [],
       })
     } else if (pinType === 'spotlight') {
       Object.assign(pinData, {
@@ -970,7 +980,15 @@ export default function PinCreate() {
                             {sqft && <span><span className="font-bold text-ink">{Number(sqft).toLocaleString()}</span> sqft</span>}
                             <span className="capitalize">{homeType.replace('_', ' ')}</span>
                             {yearBuilt && <span>Built {yearBuilt}</span>}
+                            {daysOnMarket > 0 && <span><span className="font-bold text-ink">{daysOnMarket}</span> DOM</span>}
+                            {mlsNumber && <span>MLS# {mlsNumber}</span>}
                           </div>
+                          {listingAgentName && (
+                            <p className="text-[12px] text-smoke mt-1.5">
+                              Listed by <span className="font-semibold text-graphite">{listingAgentName}</span>
+                              {listingOfficeName ? ` · ${listingOfficeName}` : ''}
+                            </p>
+                          )}
                         )}
                       </div>
                     )}
