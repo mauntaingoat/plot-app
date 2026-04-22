@@ -170,7 +170,7 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
           import('firebase/functions').then(({ getFunctions, httpsCallable }) => {
             import('@/config/firebase').then(({ app }) => {
               const fn = httpsCallable(getFunctions(app ?? undefined), 'trackView')
-              fn({ pinId: pin.id, contentId: content.id }).catch(() => {})
+              fn({ pinId: pin.id, contentId: content.id, localHour: new Date().getHours() }).catch(() => {})
             })
           })
         }

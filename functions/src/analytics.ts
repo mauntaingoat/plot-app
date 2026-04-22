@@ -13,6 +13,7 @@ async function logEvent(data: {
   contentId?: string
   actorUid?: string
   dedupeId?: string
+  localHour?: number
   city?: string
   region?: string
   country?: string
@@ -21,7 +22,7 @@ async function logEvent(data: {
   await db.collection('events').add({
     ...data,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    hour: new Date().getHours(),
+    hour: data.localHour ?? new Date().getHours(),
     date: new Date().toISOString().slice(0, 10),
   })
 }
@@ -45,7 +46,7 @@ function getClientIp(request: any): string {
 }
 
 // ── Track View ──
-export const trackView = onCall<{ pinId: string; contentId?: string }>(
+export const trackView = onCall<{ pinId: string; contentId?: string; localHour?: number }>(
   { cors: true, maxInstances: 20 },
   async (request) => {
     const { pinId, contentId } = request.data
@@ -97,6 +98,7 @@ export const trackView = onCall<{ pinId: string; contentId?: string }>(
       contentId,
       actorUid: request.auth?.uid,
       dedupeId,
+      localHour: request.data.localHour,
       ...(geo || {}),
     })
   },
