@@ -94,15 +94,6 @@ export default function Dashboard() {
   const isDark = resolvedTheme === 'dark'
   useEffect(() => activateTheme(), [activateTheme])
 
-  useEffect(() => {
-    if (loading) return
-    if (!userDoc && initialized) {
-      const t = setTimeout(() => {
-        if (!useAuthStore.getState().userDoc) navigate('/sign-in')
-      }, 2000)
-      return () => clearTimeout(t)
-    }
-  }, [loading, initialized, userDoc, navigate])
 
   const currentUser = userDoc
   const [impersonating, setImpersonating] = useState<UserDoc | null>(null)
@@ -303,11 +294,11 @@ export default function Dashboard() {
     return items.filter((i) => i.check).reduce((s, i) => s + i.weight, 0)
   }, [activeUser, pins])
 
+  useEffect(() => {
+    if (!activeUser && !loading && initialized) navigate('/sign-in')
+  }, [activeUser, loading, initialized, navigate])
+
   if (!activeUser) {
-    if (!loading && initialized) {
-      navigate('/sign-in')
-      return null
-    }
     return (
       <div className="min-h-screen bg-ivory flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-tangerine/30 border-t-tangerine rounded-full animate-spin" />
