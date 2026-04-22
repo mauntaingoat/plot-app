@@ -974,3 +974,52 @@ export async function getSavedMapInsights(agentId: string): Promise<{ pattern: s
 
   return insights.sort((a, b) => b.strength - a.strength).slice(0, 6)
 }
+
+// ══════════════════════════════════════════
+// COMMENTS
+// ══════════════════════════════════════════
+
+export interface CommentDoc {
+  id: string
+  pinId: string
+  contentId: string
+  pinAgentId: string
+  authorUid: string
+  authorName: string
+  authorPhotoURL: string | null
+  text: string
+  createdAt: import('firebase/firestore').Timestamp
+}
+
+export async function getComments(pinId: string, contentId: string): Promise<CommentDoc[]> {
+  if (!db) return []
+  try {
+    const q = query(
+      collection(db, 'comments'),
+      where('pinId', '==', pinId),
+      where('contentId', '==', contentId),
+      orderBy('createdAt', 'desc'),
+      limit(200),
+    )
+    const snap = await getDocs(q)
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as CommentDoc))
+  } catch {
+    const q = query(collection(db, 'comments'), where('pinId', '==', pinId), where('contentId', '==', contentId), limit(200))
+    const snap = await getDocs(q)
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as CommentDoc))
+  }
+}
+
+export async function addComment(data: Omit<CommentDoc, 'id' | 'createdAt'>): Promise<string> {
+  if (!db) return ''
+  const ref = await addDoc(collection(db, 'comments'), {
+    ...data,
+    createdAt: serverTimestamp(),
+  })
+  return ref.id
+}
+
+export async function deleteComment(commentId: string) {
+  if (!db) return
+  await deleteDoc(doc(db, 'comments', commentId))
+}

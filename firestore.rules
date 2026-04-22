@@ -147,6 +147,17 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── COMMENTS ──
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow delete: if isSignedIn() && (
+        resource.data.authorUid == request.auth.uid ||
+        resource.data.pinAgentId == request.auth.uid
+      );
+      allow update: if false;
+    }
+
     // ── DEFAULT DENY ──
     match /{document=**} {
       allow read, write: if false;

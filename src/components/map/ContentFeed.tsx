@@ -8,6 +8,7 @@ import { getAllContent } from '@/lib/mock'
 import { useSaves } from '@/hooks/useSaves'
 import { useFollow } from '@/hooks/useFollow'
 import { preloadImages } from '@/lib/imageCache'
+import { CommentSheet } from '@/components/comments/CommentSheet'
 
 interface ContentFeedProps {
   pins: Pin[]
@@ -156,6 +157,8 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
   const { isSaved, toggleSave } = useSaves()
   const saved = isSaved(pin.id, content.id)
   const [localSaveOffset, setLocalSaveOffset] = useState(0)
+  const [showComments, setShowComments] = useState(false)
+  const [commentCount, setCommentCount] = useState(0)
   const handleSave = () => {
     setLocalSaveOffset((prev) => saved ? prev - 1 : prev + 1)
     toggleSave(pin.id, content.id, content.type)
@@ -286,10 +289,10 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
         )}
 
         <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
-          onClick={!isPreview ? requireAuth : undefined}
+          onClick={!isPreview ? () => { if (!isSignedIn && onAuthRequired) { onAuthRequired(); return }; setShowComments(true) } : undefined}
           className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}>
           <MessageCircle size={24} className="text-white" />
-          <span className="text-[10px] text-white font-semibold">0</span>
+          <span className="text-[10px] text-white font-semibold">{commentCount}</span>
         </motion.button>
 
         <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
@@ -328,6 +331,15 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
           <span className="text-[11px] text-white/40 font-medium">{content.views.toLocaleString()} views</span>
         </div>
       </div>
+
+      <CommentSheet
+        isOpen={showComments}
+        onClose={() => setShowComments(false)}
+        pinId={pin.id}
+        contentId={content.id}
+        pinAgentId={pin.agentId}
+        onCountChange={setCommentCount}
+      />
     </div>
   )
 }
