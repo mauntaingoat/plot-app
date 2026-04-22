@@ -13,51 +13,74 @@ const PLANS = [
     name: 'Free',
     price: '$0',
     period: 'forever',
-    desc: 'Get started. See what Reelst can do.',
+    desc: 'Get started and see what Reelst can do.',
     cta: 'Start free',
     featured: false,
     features: [
-      { text: 'Up to 5 active pins', included: true },
-      { text: 'Reels Stories & Reels Photos', included: true },
+      { text: 'Up to 6 active pins', included: true },
+      { text: '3 content items per pin', included: true },
+      { text: '3-minute video reels', included: true },
+      { text: 'Photo carousels', included: true },
       { text: 'Public profile at reel.st/you', included: true },
-      { text: 'Basic view counts', included: true },
-      { text: 'Connect 2 social platforms', included: true },
-      { text: 'Detailed analytics', included: false },
-      { text: 'Unlimited pins', included: false },
-      { text: 'Custom branding', included: false },
-      { text: 'Priority placement', included: false },
-      { text: 'Custom map style', included: false },
+      { text: 'Basic view & save counts', included: true },
+      { text: 'Connect social platforms', included: true },
+      { text: 'Showing request inbox', included: true },
+      { text: 'Advanced analytics', included: false },
+      { text: 'Live streaming', included: false },
+      { text: 'Saved map insights', included: false },
     ],
   },
   {
     name: 'Pro',
     price: '$19',
     period: '/mo',
-    desc: 'For agents who are serious about content.',
+    desc: 'For agents serious about growing their brand.',
     cta: 'Go Pro',
     featured: true,
     features: [
       { text: 'Unlimited active pins', included: true },
-      { text: 'Reels, Photos Stories, Reels & Live Live', included: true },
+      { text: '10 content items per pin', included: true },
+      { text: '3-minute video reels', included: true },
+      { text: 'Photo carousels', included: true },
       { text: 'Public profile at reel.st/you', included: true },
-      { text: 'Deep analytics (views, taps, saves, WoW)', included: true },
+      { text: 'Advanced analytics dashboard', included: true },
+      { text: 'Per-pin performance breakdown', included: true },
+      { text: 'Viewer cities & time-of-day', included: true },
+      { text: 'Content performance & save rates', included: true },
       { text: 'Connect unlimited platforms', included: true },
-      { text: 'Detailed analytics dashboard', included: true },
-      { text: 'Custom branding (colors, logo)', included: true },
-      { text: 'Priority in Explore & search', included: true },
-      { text: 'Custom map style', included: true },
+      { text: 'Live streaming', included: false },
+      { text: 'Saved map insights', included: false },
+    ],
+  },
+  {
+    name: 'Studio',
+    price: '$39',
+    period: '/mo',
+    desc: 'Full suite for top-producing agents and teams.',
+    cta: 'Go Studio',
+    featured: false,
+    features: [
+      { text: 'Everything in Pro', included: true },
+      { text: 'Unlimited active pins', included: true },
+      { text: '10 content items per pin', included: true },
+      { text: 'Live streaming to your map', included: true },
+      { text: 'Saved map insights', included: true },
+      { text: 'Cross-listing pattern analysis', included: true },
+      { text: 'Follower growth tracking', included: true },
+      { text: 'Priority support', included: true },
       { text: 'Early access to new features', included: true },
     ],
   },
 ]
 
 const FAQS = [
-  { q: 'Can I try Pro before committing?', a: 'Yes — start on Free and upgrade to Pro anytime. Your data carries over. No setup required.' },
-  { q: 'What counts as an "active pin"?', a: 'Any pin that\'s visible on your public map. You can toggle pins off to free up slots on the Free plan. Expired stories and ended live streams don\'t count.' },
-  { q: 'Can I cancel Pro anytime?', a: 'Yes. Cancel anytime from your dashboard. You\'ll keep Pro features until the end of your billing period, then drop to Free.' },
-  { q: 'Do homebuyers need an account?', a: 'No. Anyone can view your Reelst profile and explore your map without signing up. They only need an account to follow, save, or contact you.' },
-  { q: 'What social platforms can I connect?', a: 'Instagram, TikTok, YouTube, Facebook, LinkedIn, Zillow, Realtor.com, MLS, and your personal website. Free plan: 2 platforms. Pro: unlimited.' },
-  { q: 'Is there a team plan?', a: 'Coming soon. If you\'re a brokerage or team, email hello@reelst.co and we\'ll set you up.' },
+  { q: 'Can I try Pro before committing?', a: 'Yes — start on Free and upgrade anytime. Your pins, content, and followers carry over seamlessly.' },
+  { q: 'What counts as an "active pin"?', a: 'Any pin that\'s visible on your public map. You can toggle pins on/off to manage your slots on the Free plan. Archived pins don\'t count.' },
+  { q: 'Can I cancel anytime?', a: 'Yes. Cancel from your dashboard settings. You\'ll keep your current plan features until the end of your billing period, then drop to Free.' },
+  { q: 'Do homebuyers need an account?', a: 'No. Anyone can view your Reelst profile, browse your map, and watch your reels without signing up. They only need an account to follow, save, or request a showing.' },
+  { q: 'What social platforms can I connect?', a: 'Instagram, TikTok, YouTube, Facebook, LinkedIn, and your personal website. All plans include platform connections.' },
+  { q: 'How does the MLS data auto-fill work?', a: 'When you create a pin, enter the address and we automatically pull property details — beds, baths, sqft, type, year built, listing price, days on market, and MLS number from public listing data.' },
+  { q: 'Is there a team or brokerage plan?', a: 'Coming soon. If you\'re a brokerage or team, reach out and we\'ll set you up with early access.' },
 ]
 
 export default function Pricing() {
@@ -67,16 +90,13 @@ export default function Pricing() {
   const [openFaq, setOpenFaq] = useState<number | null>(null)
 
   const handleCta = () => {
-    if (userDoc) {
-      navigate('/dashboard')
-    } else {
-      navigate('/sign-up')
-    }
+    if (userDoc) navigate('/dashboard')
+    else navigate('/sign-up')
   }
 
   return (
     <MarketingLayout>
-      <SEOHead title="Pricing" description="Reelst is free to start. Go Pro at $19/mo for unlimited pins, deep analytics, and custom branding." path="/pricing" />
+      <SEOHead title="Pricing" description="Reelst is free to start. Go Pro at $19/mo for advanced analytics or Studio at $39/mo for live streaming and full insights." path="/pricing" />
 
       {/* Hero */}
       <section className="max-w-[1200px] mx-auto px-5 md:px-8 pt-16 md:pt-24 pb-8 md:pb-12 text-center">
@@ -84,22 +104,22 @@ export default function Pricing() {
           <h1 className="text-[32px] md:text-[52px] font-extrabold text-ink tracking-tight mb-3">
             Simple pricing. <span className="text-gradient">Start free.</span>
           </h1>
-          <p className="text-[16px] md:text-[18px] text-smoke max-w-[480px] mx-auto">
-            No hidden fees, no contracts. Upgrade when you're ready.
+          <p className="text-[16px] md:text-[18px] text-smoke max-w-[520px] mx-auto">
+            No hidden fees, no contracts. Upgrade when you're ready to grow.
           </p>
         </motion.div>
       </section>
 
       {/* Plans */}
-      <section className="max-w-[900px] mx-auto px-5 md:px-8 py-10 md:py-16">
-        <div className="grid md:grid-cols-2 gap-5 md:gap-6">
+      <section className="max-w-[1100px] mx-auto px-5 md:px-8 py-10 md:py-16">
+        <div className="grid md:grid-cols-3 gap-5 md:gap-6">
           {PLANS.map((plan, i) => (
             <motion.div
               key={plan.name}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className={`rounded-[24px] p-6 md:p-8 flex flex-col relative ${
+              transition={{ delay: i * 0.08 }}
+              className={`rounded-[24px] p-6 md:p-7 flex flex-col relative ${
                 plan.featured
                   ? 'bg-gradient-to-br from-midnight to-obsidian text-white ring-2 ring-tangerine/30'
                   : 'bg-cream border border-border-light'
@@ -110,41 +130,41 @@ export default function Pricing() {
                   Most Popular
                 </span>
               )}
-              <h3 className={`text-[20px] md:text-[22px] font-extrabold tracking-tight ${plan.featured ? '' : 'text-ink'}`}>
+              <h3 className={`text-[20px] font-extrabold tracking-tight ${plan.featured ? '' : 'text-ink'}`}>
                 {plan.name}
               </h3>
               <div className="flex items-baseline gap-1 mt-2 mb-1">
-                <span className={`text-[40px] md:text-[48px] font-extrabold tracking-tight font-mono ${plan.featured ? '' : 'text-ink'}`}>
+                <span className={`text-[40px] font-extrabold tracking-tight font-mono ${plan.featured ? '' : 'text-ink'}`}>
                   {plan.price}
                 </span>
-                <span className={`text-[15px] font-medium ${plan.featured ? 'text-ghost' : 'text-smoke'}`}>
+                <span className={`text-[14px] font-medium ${plan.featured ? 'text-ghost' : 'text-smoke'}`}>
                   {plan.period}
                 </span>
               </div>
-              <p className={`text-[14px] mb-6 ${plan.featured ? 'text-mist' : 'text-smoke'}`}>{plan.desc}</p>
+              <p className={`text-[13px] mb-5 ${plan.featured ? 'text-mist' : 'text-smoke'}`}>{plan.desc}</p>
 
               <Button
                 variant={plan.featured ? 'primary' : 'secondary'}
-                size="xl"
+                size="lg"
                 fullWidth
                 onClick={handleCta}
-                iconRight={<ArrowRight size={16} />}
+                iconRight={<ArrowRight size={15} />}
               >
                 {plan.cta}
               </Button>
 
-              <div className="mt-6 space-y-3">
+              <div className="mt-5 space-y-2.5">
                 {plan.features.map((f, j) => (
                   <div key={j} className="flex items-start gap-2.5">
                     {f.included ? (
-                      <Check size={16} className={`shrink-0 mt-0.5 ${plan.featured ? 'text-tangerine' : 'text-sold-green'}`} />
+                      <Check size={15} className={`shrink-0 mt-0.5 ${plan.featured ? 'text-tangerine' : 'text-sold-green'}`} />
                     ) : (
-                      <X size={16} className="shrink-0 mt-0.5 text-ash/40" />
+                      <X size={15} className="shrink-0 mt-0.5 text-ash/30" />
                     )}
-                    <span className={`text-[13px] md:text-[14px] ${
+                    <span className={`text-[13px] ${
                       f.included
                         ? plan.featured ? 'text-mist' : 'text-graphite'
-                        : 'text-ash line-through'
+                        : 'text-ash/50 line-through'
                     }`}>
                       {f.text}
                     </span>
