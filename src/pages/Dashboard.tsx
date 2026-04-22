@@ -225,11 +225,27 @@ export default function Dashboard() {
     return { views, taps, saves, pins: pins.length }
   }, [pins])
 
+  const [weeklyEvents, setWeeklyEvents] = useState<any[]>([])
+  useEffect(() => {
+    if (!activeUser?.uid) return
+    import('@/lib/firestore').then(({ getAgentEvents }) =>
+      getAgentEvents(activeUser.uid, 7).then(setWeeklyEvents).catch(() => {})
+    )
+  }, [activeUser?.uid])
+
   const chartData = useMemo(() => {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    // Zeros until analytics are wired to Firestore.
-    return days.map((label) => ({ label, value: 0 }))
-  }, [])
+    const counts = Array(7).fill(0)
+    const today = new Date()
+    weeklyEvents.forEach((e) => {
+      if (e.type !== 'view') return
+      const eventDate = e.date ? new Date(e.date + 'T12:00:00') : null
+      if (!eventDate) return
+      const dayIdx = (eventDate.getDay() + 6) % 7 // Mon=0, Sun=6
+      counts[dayIdx]++
+    })
+    return days.map((label, i) => ({ label, value: counts[i] }))
+  }, [weeklyEvents])
 
   const confirmSignOut = () => {
     setShowSignOutConfirm(false)

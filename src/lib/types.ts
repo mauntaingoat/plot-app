@@ -91,6 +91,7 @@ export interface ContentItem {
   status?: 'preparing' | 'ready' | 'errored'
   /** The aspect ratio chosen in the editor (e.g. '9:16', '1:1', '4:5'). */
   aspect?: string
+  uniqueViews?: number
 }
 
 // ── Standalone content document (content collection) ──
