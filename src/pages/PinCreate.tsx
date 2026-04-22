@@ -133,11 +133,20 @@ export default function PinCreate() {
 
   const [lookingUpProperty, setLookingUpProperty] = useState(false)
   const [showEditDetails, setShowEditDetails] = useState(false)
+  const [statusMismatch, setStatusMismatch] = useState<string | null>(null)
+
+  const resetPropertyFields = () => {
+    setBeds(3); setBaths(2); setSqft(''); setYearBuilt('')
+    setHomeType('condo'); setPrice(''); setMlsNumber('')
+    setDaysOnMarket(0); setListingAgentName(''); setListingOfficeName('')
+    setStatusMismatch(null)
+  }
 
   const selectAddress = async (result: { placeName: string; center: [number, number] }) => {
     setAddress(result.placeName); setCoords({ lat: result.center[1], lng: result.center[0] }); clear()
 
     if (pinType === 'for_sale' || pinType === 'sold') {
+      resetPropertyFields()
       setLookingUpProperty(true)
       try {
         const { getFunctions, httpsCallable } = await import('firebase/functions')
@@ -154,9 +163,24 @@ export default function PinCreate() {
         if (data.daysOnMarket != null) setDaysOnMarket(data.daysOnMarket)
         if (data.listingAgentName) setListingAgentName(data.listingAgentName)
         if (data.listingOfficeName) setListingOfficeName(data.listingOfficeName)
-        // Auto-fill price
-        if (pinType === 'for_sale' && data.listingPrice && !price) setPrice(String(data.listingPrice))
-        if (pinType === 'sold' && (data.soldPrice || data.lastSalePrice) && !price) setPrice(String(data.soldPrice || data.lastSalePrice))
+
+        // Auto-detect listing status mismatch
+        if (data.listingStatus) {
+          const apiActive = data.listingStatus === 'Active'
+          if (pinType === 'sold' && apiActive) {
+            setPinType('for_sale')
+            setStatusMismatch('This property is actively for sale — switched to For Sale listing.')
+          } else if (pinType === 'for_sale' && !apiActive && data.soldPrice) {
+            setPinType('sold')
+            setStatusMismatch('This property appears to be sold — switched to Sold listing.')
+          }
+        }
+
+        // Auto-fill price based on (possibly corrected) pin type
+        const effectiveType = (data.listingStatus === 'Active') ? 'for_sale' : (data.soldPrice ? 'sold' : pinType)
+        if (effectiveType === 'for_sale' && data.listingPrice) setPrice(String(data.listingPrice))
+        else if (effectiveType === 'sold' && (data.soldPrice || data.lastSalePrice)) setPrice(String(data.soldPrice || data.lastSalePrice))
+
         if (data.propertyType) {
           const typeMap: Record<string, string> = {
             'Single Family': 'single_family', 'Condo/Co-op': 'condo', 'Condo': 'condo',
@@ -897,6 +921,13 @@ export default function PinCreate() {
             <motion.div key="details" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit" className="max-w-2xl mx-auto w-full">
               <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">Add details</h2>
               <p className="text-[14px] text-smoke mb-6">{address}</p>
+
+              {statusMismatch && (
+                <div className="flex items-start gap-2.5 bg-tangerine/10 border border-tangerine/20 rounded-[14px] p-3.5 mb-4">
+                  <span className="text-tangerine text-[16px] shrink-0">↻</span>
+                  <p className="text-[13px] text-ink font-medium">{statusMismatch}</p>
+                </div>
+              )}
 
               <div className="space-y-4 mb-8">
                 {(pinType === 'for_sale' || pinType === 'sold') && (

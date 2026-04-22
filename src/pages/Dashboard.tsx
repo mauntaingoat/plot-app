@@ -901,6 +901,10 @@ export default function Dashboard() {
           setEditPin(updated as Pin)
           import('@/lib/firestore').then(({ updatePin }) => updatePin(editPin.id, { content: reordered })).catch(() => {})
         }}
+        onPinUpdated={(updated) => {
+          setPins((prev) => prev.map((p) => p.id === updated.id ? updated : p))
+          setEditPin(updated)
+        }}
       />
 
       {/* Hidden photo file input */}
