@@ -217,22 +217,14 @@ export default function Dashboard() {
   }, [pins])
 
   const [weeklyEvents, setWeeklyEvents] = useState<any[]>([])
-  useEffect(() => {
-    if (!activeUser?.uid) return
-    import('@/lib/firestore').then(({ getAgentEvents }) =>
-      getAgentEvents(activeUser.uid, 7).then(setWeeklyEvents).catch(() => {})
-    )
-  }, [activeUser?.uid])
-
   const chartData = useMemo(() => {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     const counts = Array(7).fill(0)
-    const today = new Date()
     weeklyEvents.forEach((e) => {
       if (e.type !== 'view') return
       const eventDate = e.date ? new Date(e.date + 'T12:00:00') : null
       if (!eventDate) return
-      const dayIdx = (eventDate.getDay() + 6) % 7 // Mon=0, Sun=6
+      const dayIdx = (eventDate.getDay() + 6) % 7
       counts[dayIdx]++
     })
     return days.map((label, i) => ({ label, value: counts[i] }))
@@ -277,6 +269,13 @@ export default function Dashboard() {
 
   const activeUser = impersonating || currentUser
   const profileUrl = `reel.st/${activeUser?.username || 'you'}`
+
+  useEffect(() => {
+    if (!activeUser?.uid) return
+    import('@/lib/firestore').then(({ getAgentEvents }) =>
+      getAgentEvents(activeUser.uid, 7).then(setWeeklyEvents).catch(() => {})
+    )
+  }, [activeUser?.uid])
 
   // Compute real setup percent to match checklist (fix mismatch)
   const computedSetupPercent = useMemo(() => {
