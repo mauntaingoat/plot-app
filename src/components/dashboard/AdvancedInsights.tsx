@@ -173,9 +173,9 @@ export function ContentConversion({ pins }: ContentConversionProps) {
                   <span className="text-[11px] text-smoke font-mono">{s.count} item{s.count !== 1 ? 's' : ''}</span>
                 </div>
                 <div className="flex items-center gap-3 mt-1">
-                  <span className="text-[11px] text-smoke">{s.views.toLocaleString()} views ({s.uniqueViews.toLocaleString()} unique)</span>
+                  <span className="text-[11px] text-smoke">{(s.views || 0).toLocaleString()} views ({(s.uniqueViews || 0).toLocaleString()} unique)</span>
                   <span className="text-[11px] text-smoke">·</span>
-                  <span className="text-[11px] font-semibold text-tangerine">{s.conversionRate.toFixed(1)}% save rate</span>
+                  <span className="text-[11px] font-semibold text-tangerine">{(s.conversionRate || 0).toFixed(1)}% save rate</span>
                 </div>
               </div>
             </motion.div>
