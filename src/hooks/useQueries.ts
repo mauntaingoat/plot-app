@@ -34,7 +34,12 @@ export function useAgent(username: string | undefined) {
     return unsub
   }, [fetchedAgent?.uid])
 
-  return { data: liveAgent || fetchedAgent, isLoading }
+  const bumpFollowerCount = (delta: number) => {
+    const current = liveAgent || fetchedAgent
+    if (current) setLiveAgent({ ...current, followerCount: Math.max(0, current.followerCount + delta) })
+  }
+
+  return { data: liveAgent || fetchedAgent, isLoading, bumpFollowerCount }
 }
 
 export function useAgentPins(agent: UserDoc | null | undefined) {

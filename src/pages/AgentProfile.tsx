@@ -71,7 +71,7 @@ export default function AgentProfile() {
   const isDesktop = useIsDesktop()
 
   // Data fetching via React Query (cached across navigations)
-  const { data: agent = null, isLoading: agentLoading } = useAgent(username)
+  const { data: agent = null, isLoading: agentLoading, bumpFollowerCount } = useAgent(username)
   const { data: allPins = [] } = useAgentPins(agent)
 
   useEffect(() => {
@@ -277,6 +277,7 @@ export default function AgentProfile() {
 
   const handleFollow = async () => {
     if (isPreview || isOwnProfile) return
+    bumpFollowerCount(isFollowing ? -1 : 1)
     await toggleFollow()
   }
 

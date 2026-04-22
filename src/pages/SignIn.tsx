@@ -81,12 +81,12 @@ export default function SignIn() {
 
           <div className="flex items-center gap-3"><div className="flex-1 h-px bg-pearl" /><span className="text-[12px] text-smoke font-medium uppercase tracking-wider">or</span><div className="flex-1 h-px bg-pearl" /></div>
 
-          <div className="space-y-3">
+          <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); handleLogin() }}>
             <Input placeholder="Email address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} icon={<Mail size={16} />} />
             {firebaseConfigured && <Input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} icon={<Lock size={16} />} />}
             {error && <p className="text-[12px] text-live-red">{error}</p>}
-            <Button variant="primary" size="xl" fullWidth onClick={handleLogin} loading={loading} iconRight={<ArrowRight size={18} />}>Sign in</Button>
-          </div>
+            <Button variant="primary" size="xl" fullWidth type="submit" loading={loading} iconRight={<ArrowRight size={18} />}>Sign in</Button>
+          </form>
 
           <p className="text-[13px] text-smoke">Don't have an account? <Link to="/sign-up" className="text-tangerine font-semibold">Get started</Link></p>
         </motion.div>

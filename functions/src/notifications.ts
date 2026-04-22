@@ -103,9 +103,24 @@ async function writeNotification(data: {
   refId?: string
 }) {
   const db = admin.firestore()
+  const today = new Date().toISOString().slice(0, 10)
+
+  // Deduplicate: don't create another notification if the same actor
+  // did the same action on the same target today
+  if (data.actorUid) {
+    const existing = await db.collection('notifications')
+      .where('agentId', '==', data.agentId)
+      .where('type', '==', data.type)
+      .where('actorUid', '==', data.actorUid)
+      .where('date', '==', today)
+      .limit(1).get()
+    if (!existing.empty) return
+  }
+
   await db.collection('notifications').add({
     ...data,
     read: false,
+    date: today,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   })
 }
