@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Share2, UserPlus, UserCheck, ChevronDown, Map, Layers, Users, Globe, Locate, Bookmark } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
+import { formatCompact } from '@/lib/format'
 import { FilterBar } from '@/components/ui/FilterPill'
 import { FilterDropdown } from '@/components/ui/FilterDropdown'
 import { useMapStore } from '@/stores/mapStore'
@@ -118,7 +119,7 @@ export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick
         <div className="min-w-0">
           <p className={`text-[14px] font-bold truncate ${pillText}`}>{agent.displayName}</p>
           <p className={`text-[11px] font-medium ${pillSecText}`}>
-            {totalPins} pins · {agent.followerCount.toLocaleString()} followers
+            {totalPins} pins · {formatCompact(agent.followerCount)} followers
           </p>
         </div>
         <ChevronDown size={14} className={pillSecText + ' ml-0.5'} />

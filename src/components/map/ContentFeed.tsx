@@ -8,6 +8,7 @@ import { getAllContent } from '@/lib/mock'
 import { useSaves } from '@/hooks/useSaves'
 import { useFollow } from '@/hooks/useFollow'
 import { preloadImages } from '@/lib/imageCache'
+import { formatCompact } from '@/lib/format'
 import { CommentSheet } from '@/components/comments/CommentSheet'
 
 interface ContentFeedProps {
@@ -29,6 +30,7 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
   const [listingSheet, setListingSheet] = useState<Pin | null>(null)
   const { isFollowing: following, toggle: toggleFollow } = useFollow(agent?.uid)
   const [commentTarget, setCommentTarget] = useState<{ pinId: string; contentId: string; agentId: string } | null>(null)
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({})
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   useEffect(() => { setVisibleCount(PAGE_SIZE) }, [allContent.length])
@@ -86,7 +88,8 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
               toggleFollow()
             }}
             onListingTap={() => pin.type !== 'spotlight' && setListingSheet(pin)}
-            onComment={() => setCommentTarget({ pinId: pin.id, contentId: content.id, agentId: pin.agentId })} />
+            onComment={() => setCommentTarget({ pinId: pin.id, contentId: content.id, agentId: pin.agentId })}
+            parentCommentCount={commentCounts[content.id]} />
         ))}
       </div>
 
@@ -136,16 +139,17 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
           pinId={commentTarget.pinId}
           contentId={commentTarget.contentId}
           pinAgentId={commentTarget.agentId}
+          onCountChange={(count) => setCommentCounts((prev) => ({ ...prev, [commentTarget.contentId]: count }))}
         />
       )}
     </>
   )
 }
 
-function FeedCard({ content, pin, agent, isPreview, following, showFollowButton, onFollowToggle, onListingTap, isSignedIn, onAuthRequired, isOwnProfile, onComment }: {
+function FeedCard({ content, pin, agent, isPreview, following, showFollowButton, onFollowToggle, onListingTap, isSignedIn, onAuthRequired, isOwnProfile, onComment, parentCommentCount }: {
   content: ContentItem; pin: Pin; agent: UserDoc; isPreview?: boolean
   following: boolean; showFollowButton?: boolean; onFollowToggle: () => void; onListingTap: () => void
-  isSignedIn?: boolean; onAuthRequired?: () => void; isOwnProfile?: boolean; onComment?: () => void
+  isSignedIn?: boolean; onAuthRequired?: () => void; isOwnProfile?: boolean; onComment?: () => void; parentCommentCount?: number
 }) {
   const requireAuth = () => { if (!isSignedIn && onAuthRequired) onAuthRequired() }
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -155,10 +159,11 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
   const [commentCount, setCommentCount] = useState(0)
 
   useEffect(() => {
+    if (parentCommentCount !== undefined) { setCommentCount(parentCommentCount); return }
     import('@/lib/firestore').then(({ getComments }) =>
       getComments(pin.id, content.id).then((c) => setCommentCount(c.length)).catch(() => {})
     )
-  }, [pin.id, content.id])
+  }, [pin.id, content.id, parentCommentCount])
 
   useEffect(() => {
     if (!content.mediaUrls) return
@@ -299,7 +304,7 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
             onClick={!isPreview ? handleSave : undefined}
             className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}>
             <Bookmark size={26} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
-            <span className="text-[10px] text-white font-semibold">{content.saves || 0}</span>
+            <span className="text-[10px] text-white font-semibold">{formatCompact(content.saves || 0)}</span>
           </motion.button>
         )}
 
@@ -307,7 +312,7 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
           onClick={!isPreview ? () => { if (!isSignedIn && onAuthRequired) { onAuthRequired(); return }; onComment?.() } : undefined}
           className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}>
           <MessageCircle size={24} className="text-white" />
-          <span className="text-[10px] text-white font-semibold">{commentCount}</span>
+          <span className="text-[10px] text-white font-semibold">{formatCompact(commentCount)}</span>
         </motion.button>
 
         <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
@@ -343,7 +348,7 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
         {content.caption && <p className="text-[13px] text-white/90 leading-relaxed line-clamp-3">{content.caption}</p>}
         <div className="flex items-center gap-1 mt-2">
           <Eye size={12} className="text-white/40" />
-          <span className="text-[11px] text-white/40 font-medium">{content.views.toLocaleString()} views</span>
+          <span className="text-[11px] text-white/40 font-medium">{formatCompact(content.views || 0)} views</span>
         </div>
       </div>
 
