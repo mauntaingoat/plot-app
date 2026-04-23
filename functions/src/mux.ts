@@ -267,7 +267,7 @@ export const createMuxAsset = onCall<CreateMuxAssetRequest, Promise<CreateMuxAss
       const asset = await mux.video.assets.create({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         inputs: [{ url: finalUrl }] as any,
-        playback_policy: ['public'],
+        playback_policy: ['signed'],
         video_quality: 'basic',
         mp4_support: 'capped-1080p',
         passthrough: JSON.stringify({ pinId, contentId, caption: caption ?? '' }),
