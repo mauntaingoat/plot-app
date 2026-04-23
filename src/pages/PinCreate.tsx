@@ -939,7 +939,9 @@ export default function PinCreate() {
                       </label>
                       <div className="flex items-center gap-1">
                         <DollarSign size={22} className="text-ink shrink-0" />
-                        <input type="number" min="1" placeholder="0" value={price} onChange={(e) => { const v = e.target.value; if (v === '' || Number(v) >= 0) setPrice(v) }}
+                        <input type="text" inputMode="numeric" placeholder="0"
+                          value={price ? Number(price).toLocaleString() : ''}
+                          onChange={(e) => { const v = e.target.value.replace(/[^0-9]/g, ''); setPrice(v) }}
                           className="w-full text-[28px] font-extrabold text-ink bg-transparent outline-none placeholder:text-ash/40" />
                       </div>
                     </div>

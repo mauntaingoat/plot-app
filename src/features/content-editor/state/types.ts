@@ -129,9 +129,9 @@ export type EditorView = null | 'crop' | 'speed' | 'text' | 'adjust' | 'audio' |
 /** Legacy alias for backward-compat during migration. */
 export type EditorTool = EditorView
 
-export const ASPECT_OPTIONS: { id: AspectRatio; label: string; ratio: number | null }[] = [
+export const ASPECT_OPTIONS: { id: AspectRatio; label: string; ratio: number | null; recommended?: boolean }[] = [
   { id: 'original', label: 'Original', ratio: null },
-  { id: '9:16',     label: '9:16',     ratio: 9 / 16 },
+  { id: '9:16',     label: '9:16',     ratio: 9 / 16, recommended: true },
   { id: '1:1',      label: '1:1',      ratio: 1 },
   { id: '4:3',      label: '4:3',      ratio: 4 / 3 },
   { id: '3:4',      label: '3:4',      ratio: 3 / 4 },

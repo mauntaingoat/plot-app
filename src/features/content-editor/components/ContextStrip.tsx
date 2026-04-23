@@ -137,6 +137,9 @@ function CropStrip() {
               >
                 {opt.label}
               </span>
+              {(opt as any).recommended && (
+                <span className="absolute -top-1 -right-1 text-[6px] font-bold text-tangerine bg-tangerine/15 px-1 py-0.5 rounded-full leading-none">REC</span>
+              )}
             </button>
           )
         })}

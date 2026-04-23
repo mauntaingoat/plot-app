@@ -152,7 +152,7 @@ async function preprocessClip(clip: ClipInput, idx: number, tmpDir: string, aspe
     args.push('-vf', filters.join(','))
     args.push('-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23',
       '-pix_fmt', 'yuv420p', '-r', '30', '-movflags', '+faststart')
-    args.push('-an', outputPath)
+    args.push('-c:a', 'aac', '-b:a', '128k', outputPath)
   }
 
   await execFileAsync(ffmpegPath, args, { timeout: 120_000 })
@@ -232,7 +232,8 @@ export const createMuxAsset = onCall<CreateMuxAssetRequest, Promise<CreateMuxAss
             '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23',
             '-pix_fmt', 'yuv420p', '-r', '30',
             '-movflags', '+faststart',
-            '-an', outputPath,
+            '-c:a', 'aac', '-b:a', '128k',
+            outputPath,
           ], { timeout: 180_000 })
           logger.info(`[mux] concat ${segments.length} segments → ${outputPath}`)
         }
@@ -473,13 +474,15 @@ export const muxWebhook = onRequest(
           caption: string
         }
 
+        // Don't store direct URLs — signed playback requires token generation at play time.
+        // Store playbackId so the client can call getSignedPlaybackUrls.
         const mp4Url = `https://stream.mux.com/${playbackId}/capped-1080p.mp4`
         const hlsUrl = `https://stream.mux.com/${playbackId}.m3u8`
         const thumbUrl = `https://image.mux.com/${playbackId}/thumbnail.jpg?time=0`
 
         await docRef.update({
           status: 'ready',
-          mp4Url, hlsUrl, thumbUrl,
+          mp4Url, hlsUrl, thumbUrl, playbackId,
           readyAt: admin.firestore.FieldValue.serverTimestamp(),
         })
 
@@ -492,10 +495,13 @@ export const muxWebhook = onRequest(
           if (idx === -1) return
           content[idx] = {
             ...content[idx],
-            mediaUrl: mp4Url,
+            // Keep existing mediaUrl (Storage URL) as fallback — don't overwrite with
+            // unsigned Mux URL which returns 403 under signed playback policy.
+            // Client uses getSignedPlaybackUrls for actual playback via muxPlaybackId.
+            mediaUrl: content[idx].mediaUrl || mp4Url,
             mp4Url,
             hlsUrl,
-            thumbnailUrl: thumbUrl,
+            thumbnailUrl: content[idx].thumbnailUrl || thumbUrl,
             muxPlaybackId: playbackId,
             muxAssetId: assetId,
             caption: content[idx].caption || caption,
