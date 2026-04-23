@@ -195,7 +195,9 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
   const isVideo = content.type === 'reel' || content.type === 'live'
   const isCarousel = content.type === 'photo' && content.mediaUrls && content.mediaUrls.length > 1
   const isProcessing = isVideo && (!content.mediaUrl || content.status === 'preparing')
-  const videoSrc = signedUrl || content.mediaUrl || ''
+  // Use Storage URL for immediate playback (always available, no cold start).
+  // Signed URL is available as upgrade but Storage URL plays faster.
+  const videoSrc = content.mediaUrl || signedUrl || ''
   // stories removed
   const neighborhoodName = pin.type === 'spotlight' && 'name' in pin ? pin.name : pin.neighborhoodId
   const hasOpenHouse = pin.type === 'for_sale' && 'openHouse' in pin && pin.openHouse
