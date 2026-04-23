@@ -31,9 +31,28 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
   const { isFollowing: following, toggle: toggleFollow } = useFollow(agent?.uid)
   const [commentTarget, setCommentTarget] = useState<{ pinId: string; contentId: string; agentId: string } | null>(null)
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({})
+  const [signedUrls, setSignedUrls] = useState<Record<string, { hls: string; thumbnail: string }>>({})
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   useEffect(() => { setVisibleCount(PAGE_SIZE) }, [allContent.length])
+
+  // Batch-fetch signed playback URLs when content loads
+  useEffect(() => {
+    const playbackIds = allContent
+      .map(({ content }) => content.muxPlaybackId)
+      .filter(Boolean) as string[]
+    if (playbackIds.length === 0) return
+    const unique = [...new Set(playbackIds)]
+    import('firebase/functions').then(({ getFunctions, httpsCallable }) => {
+      import('@/config/firebase').then(({ app }) => {
+        const fn = httpsCallable(getFunctions(app ?? undefined), 'getSignedPlaybackUrls')
+        fn({ playbackIds: unique }).then((res: any) => {
+          if (res.data?.urls) setSignedUrls(res.data.urls)
+        }).catch(() => {})
+      })
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allContent.length])
 
   const visibleContent = allContent.slice(0, visibleCount)
 
@@ -89,7 +108,8 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
             }}
             onListingTap={() => pin.type !== 'spotlight' && setListingSheet(pin)}
             onComment={() => setCommentTarget({ pinId: pin.id, contentId: content.id, agentId: pin.agentId })}
-            parentCommentCount={commentCounts[content.id]} />
+            parentCommentCount={commentCounts[content.id]}
+            signedUrl={content.muxPlaybackId ? signedUrls[content.muxPlaybackId]?.hls : undefined} />
         ))}
       </div>
 
@@ -146,10 +166,10 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
   )
 }
 
-function FeedCard({ content, pin, agent, isPreview, following, showFollowButton, onFollowToggle, onListingTap, isSignedIn, onAuthRequired, isOwnProfile, onComment, parentCommentCount }: {
+function FeedCard({ content, pin, agent, isPreview, following, showFollowButton, onFollowToggle, onListingTap, isSignedIn, onAuthRequired, isOwnProfile, onComment, parentCommentCount, signedUrl }: {
   content: ContentItem; pin: Pin; agent: UserDoc; isPreview?: boolean
   following: boolean; showFollowButton?: boolean; onFollowToggle: () => void; onListingTap: () => void
-  isSignedIn?: boolean; onAuthRequired?: () => void; isOwnProfile?: boolean; onComment?: () => void; parentCommentCount?: number
+  isSignedIn?: boolean; onAuthRequired?: () => void; isOwnProfile?: boolean; onComment?: () => void; parentCommentCount?: number; signedUrl?: string
 }) {
   const requireAuth = () => { if (!isSignedIn && onAuthRequired) onAuthRequired() }
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -174,7 +194,7 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
   const isVideo = content.type === 'reel' || content.type === 'live'
   const isCarousel = content.type === 'photo' && content.mediaUrls && content.mediaUrls.length > 1
   const isProcessing = isVideo && (!content.mediaUrl || content.status === 'preparing')
-  const videoSrc = content.mediaUrl || ''
+  const videoSrc = signedUrl || content.mediaUrl || ''
   // stories removed
   const neighborhoodName = pin.type === 'spotlight' && 'name' in pin ? pin.name : pin.neighborhoodId
   const hasOpenHouse = pin.type === 'for_sale' && 'openHouse' in pin && pin.openHouse

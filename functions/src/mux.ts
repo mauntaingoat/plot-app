@@ -32,6 +32,8 @@ if (!admin.apps.length) admin.initializeApp()
 const MUX_TOKEN_ID = defineSecret('MUX_TOKEN_ID')
 const MUX_TOKEN_SECRET = defineSecret('MUX_TOKEN_SECRET')
 const MUX_WEBHOOK_SECRET = defineSecret('MUX_WEBHOOK_SECRET')
+const MUX_SIGNING_KEY_ID = defineSecret('MUX_SIGNING_KEY_ID')
+const MUX_SIGNING_PRIVATE_KEY = defineSecret('MUX_SIGNING_PRIVATE_KEY')
 
 /* ─────────── Types ─────────── */
 
@@ -305,6 +307,73 @@ export const createMuxAsset = onCall<CreateMuxAssetRequest, Promise<CreateMuxAss
       logger.error('[mux] asset create failed', { error: message, pinId, contentId })
       throw new HttpsError('internal', `Mux rejected the render: ${message}`)
     }
+  },
+)
+
+/* ─────────── getSignedPlaybackUrls (callable) ─────────── */
+
+interface SignedUrlRequest {
+  playbackIds: string[]
+}
+
+interface SignedUrlResult {
+  urls: Record<string, { hls: string; thumbnail: string }>
+}
+
+function generateMuxJwt(playbackId: string, type: 'video' | 'thumbnail', keyId: string, privateKey: string): string {
+  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT', kid: keyId })).toString('base64url')
+  const now = Math.floor(Date.now() / 1000)
+  const payload = Buffer.from(JSON.stringify({
+    sub: playbackId,
+    aud: type === 'video' ? 'v' : 't',
+    exp: now + 7200, // 2 hours
+    kid: keyId,
+  })).toString('base64url')
+  const signature = crypto.sign('RSA-SHA256', Buffer.from(`${header}.${payload}`),
+    { key: Buffer.from(privateKey, 'base64').toString(), padding: crypto.constants.RSA_PKCS1_PADDING }
+  ).toString('base64url')
+  return `${header}.${payload}.${signature}`
+}
+
+export const getSignedPlaybackUrls = onCall<SignedUrlRequest, Promise<SignedUrlResult>>(
+  {
+    secrets: [MUX_SIGNING_KEY_ID, MUX_SIGNING_PRIVATE_KEY],
+    cors: true,
+    maxInstances: 20,
+    timeoutSeconds: 10,
+  },
+  async (request) => {
+    const { playbackIds } = request.data
+    if (!playbackIds || !Array.isArray(playbackIds) || playbackIds.length === 0) {
+      return { urls: {} }
+    }
+
+    const keyId = MUX_SIGNING_KEY_ID.value()
+    const privateKey = MUX_SIGNING_PRIVATE_KEY.value()
+
+    // If signing keys not configured, return unsigned URLs (backwards compatible)
+    if (!keyId || !privateKey) {
+      const urls: Record<string, { hls: string; thumbnail: string }> = {}
+      for (const pid of playbackIds) {
+        urls[pid] = {
+          hls: `https://stream.mux.com/${pid}.m3u8`,
+          thumbnail: `https://image.mux.com/${pid}/thumbnail.jpg?time=0`,
+        }
+      }
+      return { urls }
+    }
+
+    const urls: Record<string, { hls: string; thumbnail: string }> = {}
+    for (const pid of playbackIds) {
+      const videoToken = generateMuxJwt(pid, 'video', keyId, privateKey)
+      const thumbToken = generateMuxJwt(pid, 'thumbnail', keyId, privateKey)
+      urls[pid] = {
+        hls: `https://stream.mux.com/${pid}.m3u8?token=${videoToken}`,
+        thumbnail: `https://image.mux.com/${pid}/thumbnail.jpg?token=${thumbToken}`,
+      }
+    }
+
+    return { urls }
   },
 )
 
