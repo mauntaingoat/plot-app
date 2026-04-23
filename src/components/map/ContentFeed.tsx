@@ -152,6 +152,13 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
   const cardRef = useRef<HTMLDivElement>(null)
   const [isNearViewport, setIsNearViewport] = useState(false)
   const [carouselIdx, setCarouselIdx] = useState(0)
+  const [commentCount, setCommentCount] = useState(0)
+
+  useEffect(() => {
+    import('@/lib/firestore').then(({ getComments }) =>
+      getComments(pin.id, content.id).then((c) => setCommentCount(c.length)).catch(() => {})
+    )
+  }, [pin.id, content.id])
 
   useEffect(() => {
     if (!content.mediaUrls) return
@@ -300,7 +307,7 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
           onClick={!isPreview ? () => { if (!isSignedIn && onAuthRequired) { onAuthRequired(); return }; onComment?.() } : undefined}
           className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}>
           <MessageCircle size={24} className="text-white" />
-          <span className="text-[10px] text-white font-semibold">0</span>
+          <span className="text-[10px] text-white font-semibold">{commentCount}</span>
         </motion.button>
 
         <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
