@@ -300,7 +300,7 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
           onClick={!isPreview ? () => { if (!isSignedIn && onAuthRequired) { onAuthRequired(); return }; onComment?.() } : undefined}
           className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}>
           <MessageCircle size={24} className="text-white" />
-          <span className="text-[10px] text-white font-semibold">{commentCount}</span>
+          <span className="text-[10px] text-white font-semibold">0</span>
         </motion.button>
 
         <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}

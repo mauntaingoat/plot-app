@@ -648,7 +648,7 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
     const map = new mapboxgl.Map({
       container: mapContainer.current, style: MAPBOX_STYLE, center, zoom,
       attributionControl: false, interactive, pitchWithRotate: false,
-      dragRotate: false, touchPitch: false, minZoom: 1.5, maxZoom: 16.8, fadeDuration: 0,
+      dragRotate: false, touchPitch: false, minZoom: 2.5, maxZoom: 16.8, fadeDuration: 0,
     })
 
     map.on('style.load', () => {})
