@@ -337,7 +337,7 @@ export async function savePin(userId: string, pinId: string, contentId?: string)
   })
   const { getFunctions, httpsCallable } = await import('firebase/functions')
   const { app } = await import('@/config/firebase')
-  httpsCallable(getFunctions(app ?? undefined), 'trackEngagement')({ pinId, action: 'save', contentId }).catch(() => {})
+  httpsCallable(getFunctions(app ?? undefined), 'trackEngagement')({ pinId, action: 'save', contentId, localHour: new Date().getHours() }).catch(() => {})
 }
 
 export async function unsavePin(userId: string, pinId: string, contentId?: string) {
@@ -346,7 +346,7 @@ export async function unsavePin(userId: string, pinId: string, contentId?: strin
   await deleteDoc(doc(db, 'saves', saveId))
   const { getFunctions, httpsCallable } = await import('firebase/functions')
   const { app } = await import('@/config/firebase')
-  httpsCallable(getFunctions(app ?? undefined), 'trackEngagement')({ pinId, action: 'unsave', contentId }).catch(() => {})
+  httpsCallable(getFunctions(app ?? undefined), 'trackEngagement')({ pinId, action: 'unsave', contentId, localHour: new Date().getHours() }).catch(() => {})
 }
 
 export async function getUserSaves(userId: string): Promise<{ pinId: string; contentId?: string }[]> {
@@ -444,7 +444,7 @@ export async function incrementPinTap(pinId: string) {
   const { getFunctions, httpsCallable } = await import('firebase/functions')
   const { app } = await import('@/config/firebase')
   const fn = httpsCallable(getFunctions(app ?? undefined), 'trackEngagement')
-  fn({ pinId, action: 'tap' }).catch(() => {})
+  fn({ pinId, action: 'tap', localHour: new Date().getHours() }).catch(() => {})
 }
 
 // ══════════════════════════════════════════

@@ -294,7 +294,14 @@ export default function Dashboard() {
   }, [activeUser, pins])
 
   useEffect(() => {
-    if (!activeUser && !loading && initialized) navigate('/sign-in')
+    if (!activeUser && !loading && initialized) {
+      // Delay to allow auth listener to catch up after sign-in navigation
+      const t = setTimeout(() => {
+        const { userDoc: latest } = useAuthStore.getState()
+        if (!latest) navigate('/sign-in')
+      }, 1500)
+      return () => clearTimeout(t)
+    }
   }, [activeUser, loading, initialized, navigate])
 
   if (!activeUser) {

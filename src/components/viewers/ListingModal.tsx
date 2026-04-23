@@ -286,9 +286,7 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
 
   const { isSaved, toggleSave } = useSaves()
   const saved = isSaved(pin.id, content.id)
-  const [localSaveOffset, setLocalSaveOffset] = useState(0)
   const handleSave = () => {
-    setLocalSaveOffset((prev) => saved ? prev - 1 : prev + 1)
     toggleSave(pin.id, content.id, content.type)
   }
   const thumbnailUrl = content.thumbnailUrl || ('heroPhotoUrl' in pin ? pin.heroPhotoUrl : '') || ''
@@ -390,7 +388,7 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
             onClick={!isPreview ? handleSave : undefined}
             className={isPreview ? 'opacity-40' : 'cursor-pointer'}>
             <Bookmark size={24} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
-            <span className="text-[9px] text-white font-semibold block mt-0.5">{Math.max(0, (content.saves || 0) + localSaveOffset)}</span>
+            <span className="text-[9px] text-white font-semibold block mt-0.5">{content.saves || 0}</span>
           </motion.button>
         )}
         <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}

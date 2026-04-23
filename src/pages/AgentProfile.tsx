@@ -606,6 +606,9 @@ export default function AgentProfile() {
           isPreview={isPreview}
           agentMode={agentMode}
           onSetMode={setAgentMode}
+          currentUser={currentUser}
+          onAccountTap={() => { setShowAgentDetail(false); setShowAccount(true) }}
+          onSignIn={() => { setShowAgentDetail(false); setShowAuth(true) }}
         />
 
         <AuthSheet isOpen={showAuth} onClose={() => setShowAuth(false)} mode="signup" />

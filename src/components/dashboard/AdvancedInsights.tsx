@@ -413,7 +413,7 @@ export function FollowerGrowth({ currentFollowers, agentId }: FollowerGrowthProp
   const height = 100
   const points = data.map((v, i) => {
     const x = data.length > 1 ? (i / (data.length - 1)) * width : width / 2
-    const y = height - ((v - min) / range) * height
+    const y = (max === min) ? height * 0.3 : height - ((v - min) / range) * height
     return `${x},${y}`
   }).join(' ')
 

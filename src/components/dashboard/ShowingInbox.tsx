@@ -256,7 +256,7 @@ export function useUnreadCount(agentId: string | undefined) {
       ]).then(([n, s]) => { if (!cancelled) setCount(n + s) })
     }
     load()
-    const interval = setInterval(load, 30000)
+    const interval = setInterval(load, 10000)
     return () => { cancelled = true; clearInterval(interval) }
   }, [agentId])
   return count

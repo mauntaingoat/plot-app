@@ -64,12 +64,14 @@ export function AccountSheet({ isOpen, onClose, onSignOut, onNavigatePricing, is
         </button>
         <div className="flex-1 min-w-0">
           <p className="text-[15px] font-bold text-white truncate">{userDoc.displayName}</p>
-          <p className="text-[12px] text-ghost truncate">@{userDoc.username}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-[12px] text-ghost truncate">@{userDoc.username}</p>
+            {!editMode && (
+              <button onClick={() => { setName(userDoc.displayName || ''); setBio(userDoc.bio || ''); setEditMode(true) }}
+                className="text-[11px] font-semibold text-tangerine cursor-pointer hover:underline">Edit</button>
+            )}
+          </div>
         </div>
-        {!editMode && (
-          <button onClick={() => { setName(userDoc.displayName || ''); setBio(userDoc.bio || ''); setEditMode(true) }}
-            className="text-[12px] font-semibold text-tangerine cursor-pointer hover:underline shrink-0">Edit</button>
-        )}
       </div>
 
       {editMode ? (
@@ -118,10 +120,10 @@ export function AccountSheet({ isOpen, onClose, onSignOut, onNavigatePricing, is
             <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }}
               onClick={(e) => e.stopPropagation()}
               className="relative bg-obsidian rounded-2xl shadow-2xl border border-border-dark w-[360px] p-5">
-              <button onClick={onClose} className="absolute top-4 right-4 w-7 h-7 rounded-full bg-charcoal flex items-center justify-center cursor-pointer text-ghost hover:text-white">
+              <button onClick={onClose} className="absolute top-4 right-4 w-7 h-7 rounded-full bg-charcoal flex items-center justify-center cursor-pointer text-ghost hover:text-white z-10">
                 <X size={14} />
               </button>
-              {content}
+              <div className="pt-2">{content}</div>
             </motion.div>
           </motion.div>
         )}

@@ -60,12 +60,17 @@ export const trackView = onCall<{ pinId: string; contentId?: string; localHour?:
 
     if (request.auth?.uid === agentId) return
 
-    // Check for unique view (deduplicate by user + content)
     const viewerId = request.auth?.uid || 'anon'
     const dedupeId = contentId ? `${viewerId}_${pinId}_${contentId}` : `${viewerId}_${pinId}`
-    const existingView = await db.collection('events')
-      .where('dedupeId', '==', dedupeId).where('type', '==', 'view').limit(1).get()
-    const isUnique = existingView.empty
+    let isUnique = true
+    try {
+      const existingView = await db.collection('events')
+        .where('dedupeId', '==', dedupeId).where('type', '==', 'view').limit(1).get()
+      isUnique = existingView.empty
+    } catch {
+      // Index might not exist — treat as unique to not block view tracking
+      isUnique = true
+    }
 
     if (contentId) {
       await db.runTransaction(async (tx) => {
@@ -105,7 +110,7 @@ export const trackView = onCall<{ pinId: string; contentId?: string; localHour?:
 )
 
 // ── Track Engagement (tap, save, unsave) ──
-export const trackEngagement = onCall<{ pinId: string; action: 'tap' | 'save' | 'unsave'; contentId?: string }>(
+export const trackEngagement = onCall<{ pinId: string; action: 'tap' | 'save' | 'unsave'; contentId?: string; localHour?: number }>(
   { cors: true, maxInstances: 20 },
   async (request) => {
     const { pinId, action, contentId } = request.data
@@ -160,6 +165,7 @@ export const trackEngagement = onCall<{ pinId: string; action: 'tap' | 'save' | 
       pinId,
       contentId,
       actorUid: request.auth?.uid,
+      localHour: request.data.localHour,
     })
   },
 )
