@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Eye, MapPin, Home, X, Bookmark, Share2, MessageCircle, UserPlus, UserCheck } from 'lucide-react'
+import { Eye, MapPin, Home, X, Bookmark, Share2, MessageCircle, UserPlus, UserCheck, Volume2, VolumeX } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
 import { ListingOnlySheet } from '@/components/viewers/ListingOnlySheet'
 import { type Pin, type UserDoc, type ContentItem, isTallAspect } from '@/lib/types'
@@ -175,6 +175,7 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
   const videoRef = useRef<HTMLVideoElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const [isNearViewport, setIsNearViewport] = useState(false)
+  const [isMuted, setIsMuted] = useState(true)
   const [carouselIdx, setCarouselIdx] = useState(0)
   const [commentCount, setCommentCount] = useState(0)
 
@@ -256,15 +257,28 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
               <video
                 ref={(el) => {
                   (videoRef as any).current = el
-                  if (el) el.muted = true
+                  if (el) el.muted = isMuted
                 }}
                 src={videoSrc}
                 className={`relative w-full h-full ${
                   isTallAspect(content.aspect) ? 'object-cover' : 'object-contain'
                 }`}
-                loop playsInline muted preload="auto"
+                loop playsInline muted={isMuted} preload="auto"
                 autoPlay
+                onClick={() => {
+                  if (videoRef.current) {
+                    const next = !isMuted
+                    setIsMuted(next)
+                    videoRef.current.muted = next
+                  }
+                }}
               />
+              <button
+                onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); if (videoRef.current) videoRef.current.muted = !isMuted }}
+                className="absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center cursor-pointer"
+              >
+                {isMuted ? <VolumeX size={14} className="text-white" /> : <Volume2 size={14} className="text-white" />}
+              </button>
             </>
           ) : isVideo && videoSrc ? (
             <>

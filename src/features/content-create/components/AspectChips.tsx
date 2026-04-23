@@ -1,9 +1,9 @@
 import { useThemeStore } from '@/stores/themeStore'
 import type { CreateAspect } from '../types'
 
-const OPTIONS: { id: CreateAspect; label: string }[] = [
+const OPTIONS: { id: CreateAspect; label: string; recommended?: boolean }[] = [
   { id: 'original', label: 'Original' },
-  { id: '9:16', label: '9:16' },
+  { id: '9:16', label: '9:16', recommended: true },
   { id: '1:1', label: '1:1' },
   { id: '4:3', label: '4:3' },
   { id: '3:4', label: '3:4' },
@@ -27,7 +27,7 @@ export function AspectChips({ value, onChange }: AspectChipsProps) {
             key={opt.id}
             type="button"
             onClick={() => onChange(opt.id)}
-            className={`px-3.5 h-9 rounded-full text-[12px] font-semibold transition-all cursor-pointer ${
+            className={`relative px-3.5 h-9 rounded-full text-[12px] font-semibold transition-all cursor-pointer ${
               active
                 ? 'bg-tangerine text-white shadow-[0_6px_18px_rgba(255,107,61,0.35)]'
                 : isDark
@@ -36,6 +36,9 @@ export function AspectChips({ value, onChange }: AspectChipsProps) {
             }`}
           >
             {opt.label}
+            {opt.recommended && (
+              <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[6px] font-bold text-white bg-tangerine px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap shadow-sm">Recommended</span>
+            )}
           </button>
         )
       })}
