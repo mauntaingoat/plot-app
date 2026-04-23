@@ -18,6 +18,7 @@ import Mux from '@mux/mux-node'
 import * as os from 'os'
 import * as path from 'path'
 import * as fs from 'fs'
+import * as crypto from 'crypto'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 
@@ -329,6 +330,47 @@ export const muxWebhook = onRequest(
   async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('method not allowed')
+      return
+    }
+
+    // Verify Mux webhook signature
+    const signature = req.headers['mux-signature'] as string
+    const secret = MUX_WEBHOOK_SECRET.value()
+    if (secret && signature) {
+      try {
+        const parts = signature.split(',').reduce((acc, part) => {
+          const [key, val] = part.split('=')
+          acc[key.trim()] = val
+          return acc
+        }, {} as Record<string, string>)
+        const timestamp = parts['t']
+        const expectedSig = parts['v1']
+        if (!timestamp || !expectedSig) {
+          res.status(401).send('invalid signature format')
+          return
+        }
+        const payload = `${timestamp}.${typeof req.body === 'string' ? req.body : JSON.stringify(req.body)}`
+        const computedSig = crypto.createHmac('sha256', secret).update(payload).digest('hex')
+        if (computedSig !== expectedSig) {
+          logger.warn('[mux] webhook signature mismatch')
+          res.status(401).send('signature mismatch')
+          return
+        }
+        // Reject if timestamp is older than 5 minutes (replay protection)
+        const age = Math.floor(Date.now() / 1000) - parseInt(timestamp, 10)
+        if (age > 300) {
+          logger.warn('[mux] webhook timestamp too old', { age })
+          res.status(401).send('timestamp expired')
+          return
+        }
+      } catch (err) {
+        logger.error('[mux] signature verification error', { error: (err as Error).message })
+        res.status(401).send('signature verification failed')
+        return
+      }
+    } else if (secret) {
+      logger.warn('[mux] webhook missing signature header')
+      res.status(401).send('missing signature')
       return
     }
 
