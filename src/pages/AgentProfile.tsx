@@ -616,6 +616,67 @@ export default function AgentProfile() {
           onSignOut={async () => { setShowAccount(false); const { auth } = await import('@/config/firebase'); await auth?.signOut(); navigate('/') }}
           onNavigatePricing={() => { setShowAccount(false); navigate('/pricing') }}
         />
+
+        {/* Indicator picker — multiple livestreams or open houses.
+            Desktop uses a centered modal (mobile below uses a bottom
+            sheet). Portaled via `fixed` + backdrop so it floats above
+            the map and sidebars regardless of parent stacking. */}
+        <AnimatePresence>
+          {indicatorPins && (
+            <>
+              <motion.div
+                key="ind-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 z-[400] bg-black/55"
+                onClick={() => setIndicatorPins(null)}
+              />
+              <motion.div
+                key="ind-modal"
+                initial={{ opacity: 0, scale: 0.96, y: 8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 8 }}
+                transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
+                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[410] w-[calc(100vw-48px)] max-w-[640px] max-h-[80vh] bg-obsidian rounded-[22px] shadow-2xl border border-border-dark flex flex-col overflow-hidden"
+              >
+                <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-border-dark">
+                  <h2 className="text-[17px] font-bold text-white tracking-tight">
+                    {indicatorPins.type === 'live'
+                      ? `${indicatorPins.pins.length} Livestream${indicatorPins.pins.length !== 1 ? 's' : ''}`
+                      : `${indicatorPins.pins.length} Open House${indicatorPins.pins.length !== 1 ? 's' : ''}`}
+                  </h2>
+                  <button
+                    onClick={() => setIndicatorPins(null)}
+                    className="w-8 h-8 rounded-full bg-charcoal flex items-center justify-center text-ghost hover:text-white cursor-pointer transition-colors"
+                    aria-label="Close"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-5">
+                  <div className="grid grid-cols-2 gap-3">
+                    {indicatorPins.pins.map((pin) => (
+                      <PinCard
+                        key={pin.id}
+                        pin={pin}
+                        dark
+                        onClick={() => {
+                          const tab = indicatorPins.type === 'openhouse' ? 'listing' as const : 'content' as const
+                          setIndicatorPins(null)
+                          setSelectedPinTab(tab)
+                          setSelectedPin(pin)
+                          setModalKey((k) => k + 1)
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       </div>
     )
   }
@@ -642,8 +703,8 @@ export default function AgentProfile() {
             </ErrorBoundary>
             <MapIndicators
               pins={filteredPins}
-              onLiveTap={(livePins) => { if (livePins[0]) setSelectedPin(livePins[0]) }}
-              onOpenHouseTap={(ohPins) => { if (ohPins[0]) setSelectedPin(ohPins[0]) }}
+              onLiveTap={(livePins) => handleIndicatorTap(livePins, 'live')}
+              onOpenHouseTap={(ohPins) => handleIndicatorTap(ohPins, 'openhouse')}
             />
             <PeekDrawer
               collapsedContent={

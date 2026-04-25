@@ -58,7 +58,7 @@ function useIsDesktop() {
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { userDoc, setUserDoc, loading, initialized } = useAuthStore()
+  const { userDoc, setUserDoc, firebaseUser, loading, initialized } = useAuthStore()
   const [activeTab, setActiveTab] = useState<DashTab>('reelst')
   const inboxUnread = useUnreadCount(userDoc?.uid)
   const [showSetup, setShowSetup] = useState(false)
@@ -230,8 +230,17 @@ export default function Dashboard() {
     return result
   }, [weeklyEvents])
 
-  const confirmSignOut = () => {
+  const confirmSignOut = async () => {
     setShowSignOutConfirm(false)
+    try {
+      const { auth: fbAuth } = await import('@/config/firebase')
+      if (fbAuth) {
+        const { signOut } = await import('firebase/auth')
+        await signOut(fbAuth)
+      }
+    } catch (e) {
+      console.warn('[signout] firebase signOut failed:', e)
+    }
     setUserDoc(null)
     navigate('/')
   }
@@ -294,15 +303,18 @@ export default function Dashboard() {
   }, [activeUser, pins])
 
   useEffect(() => {
-    if (!activeUser && !loading && initialized) {
-      // Delay to allow auth listener to catch up after sign-in navigation
+    // Only bounce to /sign-in if Firebase Auth is ALSO empty. If firebaseUser
+    // is set, the user is authenticated — their Firestore doc may just be
+    // slow/missing. Bouncing them back to /sign-in creates an infinite loop
+    // where sign-in succeeds, Dashboard mounts, sees no userDoc, kicks back.
+    if (!activeUser && !firebaseUser && !loading && initialized) {
       const t = setTimeout(() => {
-        const { userDoc: latest } = useAuthStore.getState()
-        if (!latest) navigate('/sign-in')
+        const { userDoc: latest, firebaseUser: fu } = useAuthStore.getState()
+        if (!latest && !fu) navigate('/sign-in')
       }, 1500)
       return () => clearTimeout(t)
     }
-  }, [activeUser, loading, initialized, navigate])
+  }, [activeUser, firebaseUser, loading, initialized, navigate])
 
   if (!activeUser) {
     return (

@@ -169,17 +169,23 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
           )}
         </div>
 
-        {/* Stats row */}
+        {/* Stats row — views are public; taps/saves are owner-only (manage variant).
+            The feed variant renders on the public agent profile, where tap
+            and save counts are private performance data. */}
         <div className="flex items-center gap-3 pt-1">
           <span className={`flex items-center gap-1 text-[11px] font-medium ${dark ? 'text-ghost' : 'text-smoke'}`}>
             <Eye size={12} /> {pin.views.toLocaleString()}
           </span>
-          <span className={`flex items-center gap-1 text-[11px] font-medium ${dark ? 'text-ghost' : 'text-smoke'}`}>
-            <MousePointerClick size={12} /> {pin.taps.toLocaleString()}
-          </span>
-          <span className={`flex items-center gap-1 text-[11px] font-medium ${dark ? 'text-ghost' : 'text-smoke'}`}>
-            <Bookmark size={12} /> {pin.saves.toLocaleString()}
-          </span>
+          {isManage && (
+            <>
+              <span className={`flex items-center gap-1 text-[11px] font-medium ${dark ? 'text-ghost' : 'text-smoke'}`}>
+                <MousePointerClick size={12} /> {pin.taps.toLocaleString()}
+              </span>
+              <span className={`flex items-center gap-1 text-[11px] font-medium ${dark ? 'text-ghost' : 'text-smoke'}`}>
+                <Bookmark size={12} /> {pin.saves.toLocaleString()}
+              </span>
+            </>
+          )}
 
           {variant === 'manage' && onToggle && (
             <div className="ml-auto">

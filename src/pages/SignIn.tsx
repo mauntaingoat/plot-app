@@ -21,14 +21,15 @@ export default function SignIn() {
   const [error, setError] = useState('')
 
   const handleLogin = () => {
-    if (!email.trim()) { setError('Enter an email'); return }
+    const cleanEmail = email.trim().toLowerCase()
+    if (!cleanEmail) { setError('Enter an email'); return }
     setLoading(true); setError('')
 
     if (!firebaseConfigured) {
       const newUser: UserDoc = {
-        uid: `demo-${Date.now()}`, email, role: 'agent',
-        createdAt: Timestamp.now(), username: email.split('@')[0].toLowerCase(),
-        displayName: email.split('@')[0], photoURL: null, bio: '',
+        uid: `demo-${Date.now()}`, email: cleanEmail, role: 'agent',
+        createdAt: Timestamp.now(), username: cleanEmail.split('@')[0],
+        displayName: cleanEmail.split('@')[0], photoURL: null, bio: '',
         brokerage: null, licenseNumber: null, licenseState: null,
         licenseName: null, verificationStatus: 'unverified',
         fairHousingAccepted: false, dataSecurityAccepted: false,
@@ -41,9 +42,23 @@ export default function SignIn() {
       return
     }
 
-    signInWithEmailAndPassword(auth!, email, password)
+    signInWithEmailAndPassword(auth!, cleanEmail, password)
       .then(() => navigate('/dashboard'))
-      .catch((e: any) => { setError(e.code === 'auth/user-not-found' ? 'No account found' : 'Incorrect password') })
+      .catch((e: any) => {
+        console.error('[sign-in] firebase error:', e?.code, e?.message, e)
+        const code = e?.code || ''
+        const msg = e?.message || ''
+        if (code === 'auth/user-not-found') setError('No account found with that email')
+        else if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') setError('Incorrect email or password')
+        else if (code === 'auth/invalid-email') setError('Invalid email format')
+        else if (code === 'auth/too-many-requests') setError('Too many attempts — wait a minute and try again')
+        else if (code === 'auth/network-request-failed') setError('Network error. Check your connection.')
+        else if (code === 'auth/user-disabled') setError('This account has been disabled')
+        else if (code === 'auth/requests-from-referer-blocked' || msg.includes('requests-from-referer')) {
+          setError('This domain is blocked by Firebase. Add it to your API key allowed referrers in Google Cloud Console.')
+        }
+        else setError(`Sign-in failed (${code || 'unknown'}). ${msg}`)
+      })
       .finally(() => setLoading(false))
   }
 
@@ -82,8 +97,31 @@ export default function SignIn() {
           <div className="flex items-center gap-3"><div className="flex-1 h-px bg-pearl" /><span className="text-[12px] text-smoke font-medium uppercase tracking-wider">or</span><div className="flex-1 h-px bg-pearl" /></div>
 
           <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); handleLogin() }}>
-            <Input placeholder="Email address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} icon={<Mail size={16} />} />
-            {firebaseConfigured && <Input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} icon={<Lock size={16} />} />}
+            <Input
+              placeholder="Email address"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              icon={<Mail size={16} />}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              autoComplete="email"
+              inputMode="email"
+            />
+            {firebaseConfigured && (
+              <Input
+                placeholder="Password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                icon={<Lock size={16} />}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                autoComplete="current-password"
+              />
+            )}
             {error && <p className="text-[12px] text-live-red">{error}</p>}
             <Button variant="primary" size="xl" fullWidth type="submit" loading={loading} iconRight={<ArrowRight size={18} />}>Sign in</Button>
           </form>

@@ -68,17 +68,18 @@ export default function SignUp() {
   }
 
   const handleCreate = () => {
-    if (!email.trim()) { setError('Enter an email'); return }
+    const cleanEmail = email.trim().toLowerCase()
+    if (!cleanEmail) { setError('Enter an email'); return }
     if (role === 'agent' && !displayName.trim()) { setError('Enter your name'); return }
     if (firebaseConfigured && !password.trim()) { setError('Enter a password'); return }
     setLoading(true); setError('')
 
     // Create user doc helper
     const makeUser = (uid: string): UserDoc => ({
-      uid, email, role: role || 'consumer',
+      uid, email: cleanEmail, role: role || 'consumer',
       agentType: role === 'agent' ? 'agent' : undefined,
       createdAt: Timestamp.now(), username: role === 'agent' ? username : null,
-      displayName: displayName || email.split('@')[0], photoURL: null, bio: '',
+      displayName: displayName || cleanEmail.split('@')[0], photoURL: null, bio: '',
       brokerage: null,
       licenseNumber: role === 'agent' ? licenseNumber : null,
       licenseState: role === 'agent' ? licenseState : null,
@@ -108,7 +109,7 @@ export default function SignUp() {
 
     ;(async () => {
       try {
-        const cred = await createUserWithEmailAndPassword(auth, email, password)
+        const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password)
         clearTimeout(timeout)
         // Write user doc + claim username
         const newUser = makeUser(cred.user.uid)
@@ -365,8 +366,31 @@ export default function SignUp() {
 
               <div className="space-y-3">
                 {role === 'agent' && <Input placeholder="Full name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />}
-                <Input placeholder="Email address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} icon={<Mail size={16} />} />
-                {firebaseConfigured && <Input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} icon={<Lock size={16} />} />}
+                <Input
+                  placeholder="Email address"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  icon={<Mail size={16} />}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  autoComplete="email"
+                  inputMode="email"
+                />
+                {firebaseConfigured && (
+                  <Input
+                    placeholder="Password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    icon={<Lock size={16} />}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    autoComplete="new-password"
+                  />
+                )}
                 {error && <p className="text-[12px] text-live-red">{error}</p>}
                 <Button variant="primary" size="xl" fullWidth onClick={handleCreate} loading={loading} iconRight={<ArrowRight size={18} />}>
                   {role === 'agent' ? 'Get started' : 'Create account'}

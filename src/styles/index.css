@@ -76,7 +76,13 @@
 
   /* ── Font families ── */
   --font-display: 'Outfit', system-ui, -apple-system, sans-serif;
+  --font-humanist: 'General Sans', 'Outfit', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Fraunces', 'Times New Roman', serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* ── Brand gradient (logo's two halves: bright tangerine → burnt amber) ── */
+  --brand-grad: linear-gradient(135deg, #FF8552 0%, #F26340 35%, #D94A1F 100%);
+  --brand-grad-soft: linear-gradient(135deg, rgba(255,133,82,0.12) 0%, rgba(217,74,31,0.12) 100%);
 
   /* ── Animations ── */
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -232,12 +238,216 @@ input:focus, textarea:focus {
   border: 1px solid var(--color-border-light);
 }
 
-/* ── Gradient text ── */
+/* ── Gradient text (legacy — tangerine → ember) ── */
 .text-gradient {
   background: linear-gradient(135deg, var(--color-tangerine) 0%, var(--color-ember) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* ── Brand gradient text — tangerine → amber, matches logo halves ── */
+.brand-grad-text {
+  background: var(--brand-grad);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+.brand-grad-bg {
+  background: var(--brand-grad);
+  color: #fff;
+}
+
+/* ── Brand button — shared hover behavior
+   On hover:
+   • NO upward translate — the pill stays planted.
+   • Gradient smoothly reverses color order (amber→tangerine instead of
+     tangerine→amber), matching the Reelst icon halves.
+   • A subtle counter-clockwise tilt, same -6deg as the logo icon hover.
+   We drive the gradient reverse by layering a second gradient on a
+   pseudo-element and cross-fading opacity — CSS can't tween gradient
+   stops directly, so the opacity swap gives the impression of a fluid
+   color flip. */
+.brand-btn {
+  background: var(--brand-grad);
+  color: #fff;
+  transition: transform 0.3s cubic-bezier(0.33, 1, 0.68, 1);
+}
+.brand-btn:hover {
+  transform: rotate(-1.5deg);
+}
+
+/* ── Map-grid pattern for the hero inner card ──
+   Pale tangerine wash + a subtle orthogonal street-grid of thin
+   tangerine lines, with a few accent blocks to hint at city blocks.
+   Reads as a quiet map underlay — present but never competing. */
+.map-grid {
+  background-color: #FFF3EA;
+  background-image:
+    /* fine 40px grid */
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' fill='none'><path d='M 40 0 L 0 0 0 40' stroke='%23FF7A4D' stroke-opacity='0.08' stroke-width='1'/></svg>"),
+    /* coarser 200px grid — thicker "arterial" lines */
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' fill='none'><path d='M 200 0 L 0 0 0 200' stroke='%23FF7A4D' stroke-opacity='0.12' stroke-width='1.25'/></svg>"),
+    /* occasional accent blocks / map markers */
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600' fill='none'><rect x='120' y='80' width='44' height='28' rx='3' fill='%23FF7A4D' fill-opacity='0.05'/><rect x='380' y='220' width='28' height='36' rx='3' fill='%23FF7A4D' fill-opacity='0.05'/><rect x='200' y='420' width='56' height='24' rx='3' fill='%23FF7A4D' fill-opacity='0.05'/><rect x='460' y='480' width='32' height='32' rx='3' fill='%23FF7A4D' fill-opacity='0.05'/><circle cx='320' cy='160' r='3' fill='%23FF7A4D' fill-opacity='0.18'/><circle cx='520' cy='360' r='3' fill='%23FF7A4D' fill-opacity='0.18'/><circle cx='80' cy='520' r='3' fill='%23FF7A4D' fill-opacity='0.18'/></svg>");
+  background-size: 40px 40px, 200px 200px, 600px 600px;
+  background-position: 0 0, 0 0, 0 0;
+  background-repeat: repeat, repeat, repeat;
+}
+
+/* Marketing page off-white bg — a half-shade deeper than the inner card,
+   so the hero card "floats" with just enough tonal shift. */
+.bg-marketing {
+  background-color: #F6F1E9;
+}
+
+/* Soft-white variant of map-grid for the How-It-Works copy cards.
+   Pure white base (rather than the pale-peach base used in the hero
+   card) so each step's text "lifts" off the cream section bg with a
+   crisper contrast. Same tangerine grid lines + accent rectangles
+   underneath, slightly dialed down so the body copy stays legible. */
+.map-grid-soft {
+  background-color: #FFFFFF;
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' fill='none'><path d='M 40 0 L 0 0 0 40' stroke='%23FF7A4D' stroke-opacity='0.06' stroke-width='1'/></svg>"),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' fill='none'><path d='M 200 0 L 0 0 0 200' stroke='%23FF7A4D' stroke-opacity='0.10' stroke-width='1.25'/></svg>"),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600' fill='none'><rect x='120' y='80' width='44' height='28' rx='3' fill='%23FF7A4D' fill-opacity='0.04'/><rect x='380' y='220' width='28' height='36' rx='3' fill='%23FF7A4D' fill-opacity='0.04'/><rect x='200' y='420' width='56' height='24' rx='3' fill='%23FF7A4D' fill-opacity='0.04'/><rect x='460' y='480' width='32' height='32' rx='3' fill='%23FF7A4D' fill-opacity='0.04'/><circle cx='320' cy='160' r='3' fill='%23FF7A4D' fill-opacity='0.14'/><circle cx='520' cy='360' r='3' fill='%23FF7A4D' fill-opacity='0.14'/><circle cx='80' cy='520' r='3' fill='%23FF7A4D' fill-opacity='0.14'/></svg>");
+  background-size: 40px 40px, 200px 200px, 600px 600px;
+  background-position: 0 0, 0 0, 0 0;
+  background-repeat: repeat, repeat, repeat;
+}
+
+/* Mascot anchor: on mobile the mascot is `left: 50%` and centered
+   horizontally beneath the FeatureShowcase content; on sm+ it's
+   left-aligned, so only the Y shift is needed. The shared lift
+   (-59%) puts the figure's seated ledge just above the section's
+   top edge so it reads as sitting on the seam. */
+.mascot-pose {
+  transform: translate(-50%, -59%);
+}
+@media (min-width: 640px) {
+  .mascot-pose {
+    transform: translateY(-59%);
+  }
+}
+
+/* ── Hero pin stage & pins ──
+   The card exposes a single `--pin-u` viewport-driven unit. Every
+   pin dimension and offset below is expressed as a multiple of that
+   unit, so the three pins maintain an identical visual relationship
+   (to each other and to the card's interior borders) at every
+   viewport width — no drift on resize or mobile. */
+
+.hero-pin-stage {
+  --pin-u: clamp(7px, 0.95vw, 14px);
+}
+
+.hero-pin {
+  position: absolute;
+  bottom: 0;
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+
+/* Left — subtle counter-clockwise lean, bulb resting against the
+   card's interior left border. The small positive `left` offset
+   compensates for the lean so the bulb kisses the border without
+   the image getting clipped. */
+.hero-pin--left {
+  left:  calc(var(--pin-u) * 0.8);
+  width: calc(var(--pin-u) * 12);
+  transform: rotate(-5deg);
+}
+
+/* Right pair — back pin (a) leans right, front pin (b) leans left.
+   Offsets chosen so the bulbs meet border-to-border at every size. */
+.hero-pin--right-a {
+  right: calc(var(--pin-u) * 12.9);
+  width: calc(var(--pin-u) * 12.7);
+  transform: rotate(6deg);
+}
+.hero-pin--right-b {
+  right: calc(var(--pin-u) * 0.35);
+  width: calc(var(--pin-u) * 10.5);
+  transform: rotate(-12deg);
+}
+
+/* ── Feature showcase chips ──
+   Pill buttons that swap the right-side feature panel.
+   Unselected: transparent inner, tangerine→ember gradient ring drawn by a
+     masked pseudo-element (so the button itself has NO border — the ring
+     sits outside the flow of the inset highlight on the active state).
+   Selected: identical to the brand-btn "Claim it" / "Get started" CTAs —
+     solid brand gradient fill, soft drop glow, crisp 1px inner top
+     highlight at the true top edge of the pill.
+   No hover state by design — the chip either is or isn't selected. */
+.chip-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 999px;
+  font-family: var(--font-humanist);
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  background: transparent;
+  isolation: isolate;
+  transition:
+    background 0.25s var(--ease-smooth),
+    box-shadow 0.25s var(--ease-smooth);
+}
+/* Gradient ring for the unselected state — drawn via a padding-mask on
+   a pseudo-element, so only the 2px outer ring shows the gradient and
+   the inner is transparent (letting the section bg show through). */
+.chip-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: var(--brand-grad);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+          mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  z-index: -1;
+  transition: opacity 0.2s var(--ease-smooth);
+}
+.chip-btn--active {
+  background: var(--brand-grad);
+  color: #fff;
+  box-shadow:
+    0 8px 22px -4px rgba(217, 74, 31, 0.48),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+/* Hide the ring on the active chip — the solid gradient takes over. */
+.chip-btn--active::before {
+  opacity: 0;
+}
+
+/* Soft fade/rise when the feature panel content swaps. Driven by
+   React `key` prop on the containers — changing key remounts the
+   element which restarts the animation. */
+@keyframes feature-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.feature-content,
+.feature-panel {
+  animation: feature-fade-in 0.35s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 /* ── Story ring gradient ── */
@@ -259,10 +469,21 @@ input:focus, textarea:focus {
   inset: 0;
   overflow: hidden;
   touch-action: none;
+  /* Dark fallback so any moment the map canvas isn't covering the viewport
+     (iOS URL-bar transitions, tile load edges, brief style swaps) shows
+     the dark chrome instead of a flash of white. */
+  background: #14161E;
 }
 
 .map-page .mapboxgl-canvas-container {
   touch-action: pan-x pan-y pinch-zoom;
+  /* Match the map-page chrome so any visible sliver of canvas outside
+     rendered tiles (e.g. panning past the top/bottom map edge on mobile)
+     shows dark instead of the WebGL default white. */
+  background: #14161E;
+}
+.map-page .mapboxgl-canvas {
+  background: #14161E;
 }
 
 /* ── Pulse animation for live/open pins ── */
@@ -412,6 +633,219 @@ input:focus, textarea:focus {
 
 .tracking-wide {
   letter-spacing: 0.06em;
+}
+
+/* ============================================================
+   MARKETING SITE UTILITIES
+   ============================================================ */
+
+/* ── Serif helpers ── */
+.font-serif {
+  font-family: var(--font-serif);
+}
+.serif-italic {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-variation-settings: "opsz" 144, "SOFT" 100;
+  letter-spacing: -0.01em;
+}
+.serif-display {
+  font-family: var(--font-serif);
+  font-variation-settings: "opsz" 144, "SOFT" 50;
+  letter-spacing: -0.02em;
+}
+
+/* ── Grain overlay (for dark sections) ── */
+.grain {
+  position: relative;
+}
+.grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 240px 240px;
+}
+
+/* ── Hero topographic drift ──
+   Faint contour-line SVG that slowly pans horizontally. */
+@keyframes topo-drift {
+  0%   { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-160px, 0, 0); }
+}
+.topo-drift {
+  animation: topo-drift 40s linear infinite;
+  will-change: transform;
+}
+
+/* ── Shift section: line reveal ──
+   Each line starts blurred + low opacity, resolves when parent .in-view. */
+.line-reveal {
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateY(12px);
+  transition:
+    opacity 0.9s cubic-bezier(0.22, 0.61, 0.36, 1),
+    filter 0.9s cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 0.9s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.in-view .line-reveal {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0);
+}
+.line-reveal[data-line="1"] { transition-delay: 0.00s; }
+.line-reveal[data-line="2"] { transition-delay: 0.25s; }
+.line-reveal[data-line="3"] { transition-delay: 0.50s; }
+.line-reveal[data-line="4"] { transition-delay: 1.05s; }
+
+/* ── Paintbrush underline (final CTA hover) ──
+   Uses an SVG stroke-dasharray trick: path is pre-dashed "off",
+   hover brings it in. Applied via .brush-word wrapping the target word. */
+.brush-word {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 0.05em;
+}
+.brush-word svg {
+  position: absolute;
+  left: 0;
+  bottom: -0.15em;
+  width: 100%;
+  height: 0.45em;
+  overflow: visible;
+  pointer-events: none;
+}
+.brush-word svg path {
+  fill: none;
+  stroke: var(--color-tangerine);
+  stroke-width: 14;
+  stroke-linecap: round;
+  stroke-dasharray: 600;
+  stroke-dashoffset: 600;
+  transition: stroke-dashoffset 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.brush-word:hover svg path {
+  stroke-dashoffset: 0;
+  transition-duration: 0.7s;
+}
+
+/* ── Marketing horizontal scroll strip ── */
+.marquee-row {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 0;
+}
+.marquee-row > * {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+/* ── Pin-drop hover ──
+   Wrap any inline element with .pin-drop. A small tangerine pin SVG
+   appears above the text on hover, retracts on leave. */
+.pin-drop {
+  position: relative;
+}
+.pin-drop::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  width: 18px;
+  height: 24px;
+  margin-bottom: 4px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 84' fill='none'><path d='M 30 3 C 14.5 3, 3 14.5, 3 30 C 3 50, 30 80, 30 80 S 57 50, 57 30 C 57 14.5, 45.5 3, 30 3 Z' fill='%23FF6B3D' stroke='%230A0E17' stroke-width='2.5' stroke-linejoin='round'/><circle cx='30' cy='28' r='8.5' fill='%23FFF7F0' stroke='%230A0E17' stroke-width='2'/></svg>");
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: 0;
+  transform: translateX(-50%) translateY(10px) scale(0.4) rotate(-10deg);
+  transition:
+    opacity 0.22s ease,
+    transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+.pin-drop:hover::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px) scale(1) rotate(0deg);
+}
+
+/* ── Confetti burst ──
+   Each piece is an inline SVG with its own hand-drawn-ish path.
+   Pieces fly outward at random angles, tumble, and fade. */
+@keyframes confetti-fly {
+  0% {
+    transform: translate(0, 0) rotate(var(--start-rot, 0deg)) scale(0.2);
+    opacity: 0;
+  }
+  12% {
+    transform:
+      translate(calc(var(--dx, 0px) * 0.25), calc(var(--dy, 0px) * 0.25))
+      rotate(calc(var(--start-rot, 0deg) + var(--spin, 180deg) * 0.25))
+      scale(1);
+    opacity: 1;
+  }
+  80% {
+    transform:
+      translate(calc(var(--dx, 0px) * 0.95), calc(var(--dy, 0px) * 0.95))
+      rotate(calc(var(--start-rot, 0deg) + var(--spin, 180deg) * 0.95))
+      scale(0.9);
+    opacity: 1;
+  }
+  100% {
+    transform:
+      translate(var(--dx, 0px), var(--dy, 0px))
+      rotate(calc(var(--start-rot, 0deg) + var(--spin, 180deg)))
+      scale(0.55);
+    opacity: 0;
+  }
+}
+.confetti-piece {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-origin: center;
+  animation: confetti-fly 1.15s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* ── Scroll-driven brush underline ──
+   Path starts fully dashed-off; JS sets stroke-dashoffset based on
+   the element's position in the viewport (not hover). */
+.brush-scroll {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 0.05em;
+}
+.brush-scroll svg {
+  position: absolute;
+  left: 0;
+  bottom: -0.15em;
+  width: 100%;
+  height: 0.45em;
+  overflow: visible;
+  pointer-events: none;
+}
+.brush-scroll svg path {
+  fill: none;
+  stroke: var(--color-tangerine);
+  stroke-width: 14;
+  stroke-linecap: round;
+  stroke-dasharray: 600;
+  stroke-dashoffset: 600;
+  transition: stroke-dashoffset 0.08s linear;
+}
+
+/* ── Hide the traveling pin and bursts on mobile ── */
+@media (max-width: 767px) {
+  .traveling-pin,
+  .strand-burst-anchor { display: none !important; }
 }
 
 /* ── Legal prose ── */

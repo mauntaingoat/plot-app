@@ -651,7 +651,18 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       dragRotate: false, touchPitch: false, minZoom: 3, maxZoom: 16.8, fadeDuration: 0,
     })
 
-    map.on('style.load', () => {})
+    map.on('style.load', () => {
+      // Recolor the Mapbox style's bottom background layer so panning
+      // past the world's edge (Web Mercator latitude limits) shows our
+      // dark chrome instead of the style's default off-white. Some
+      // styles don't include a layer literally named "background" —
+      // setPaintProperty silently no-ops in that case.
+      try {
+        map.setPaintProperty('background', 'background-color', '#14161E')
+      } catch {
+        /* style has no 'background' layer — fine, CSS fallback catches it */
+      }
+    })
 
     map.on('load', async () => {
       await loadPinImages(map, pinsRef.current)

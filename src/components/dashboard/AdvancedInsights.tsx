@@ -100,10 +100,14 @@ export function ContentConversion({ pins }: ContentConversionProps) {
   useDismissOnScroll(() => setHoverIdx(null))
 
   const stats = useMemo(() => {
-    const byType: Record<string, { count: number; views: number; saves: number }> = {
-      reel: { count: 0, views: 0, saves: 0 },
-      live: { count: 0, views: 0, saves: 0 },
-      photo: { count: 0, views: 0, saves: 0 },
+    // Bug fix: the initializers must include `uniqueViews: 0`, otherwise
+    // `t.uniqueViews += c.uniqueViews || 0` becomes `undefined + N = NaN`
+    // and all downstream `uniqueViews > 0` checks fail → "0 unique" and
+    // "0.0% save rate" everywhere.
+    const byType: Record<string, { count: number; views: number; uniqueViews: number; saves: number }> = {
+      reel: { count: 0, views: 0, uniqueViews: 0, saves: 0 },
+      live: { count: 0, views: 0, uniqueViews: 0, saves: 0 },
+      photo: { count: 0, views: 0, uniqueViews: 0, saves: 0 },
     }
     let openHouseCount = 0
     let openHouseViews = 0
@@ -127,7 +131,9 @@ export function ContentConversion({ pins }: ContentConversionProps) {
     }
 
     if (openHouseCount > 0) {
-      byType.open_house = { count: openHouseCount, views: openHouseViews, saves: openHouseSaves }
+      // No per-content uniqueViews for open-house pins — use pin-level
+      // views as the denominator so the save rate isn't a div-by-zero.
+      byType.open_house = { count: openHouseCount, views: openHouseViews, uniqueViews: openHouseViews, saves: openHouseSaves }
     }
 
     return Object.entries(byType).map(([type, s]) => ({

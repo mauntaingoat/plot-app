@@ -1,448 +1,1272 @@
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Play, BarChart3, Radio, Bell, CalendarDays, ChevronDown } from 'lucide-react'
+import { ArrowRight, Check, X as XIcon } from 'lucide-react'
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { SEOHead } from '@/components/marketing/SEOHead'
-import { HeroMap } from '@/components/marketing/HeroMap'
-import { PhoneCarousel } from '@/components/marketing/PhoneCarousel'
 import { useAuthStore } from '@/stores/authStore'
-import { useAuthModalStore } from '@/stores/authModalStore'
 import { useScrollReveal } from '@/hooks/useScrollReveal'
 
-// Feature toggle data
-const FEATURES = [
-  {
-    id: 'live',
-    label: 'Live Streaming',
-    icon: Radio,
-    color: '#FF3B30',
-    title: 'Go live from any listing',
-    desc: 'Stream open houses and walkthroughs directly from your pin. Followers get notified instantly. Recordings auto-save as reels.',
-  },
-  {
-    id: 'openhouse',
-    label: 'Open Houses',
-    icon: CalendarDays,
-    color: '#FFAA00',
-    title: 'Schedule and share open houses',
-    desc: 'Add sessions with one-click calendar export. Visitors RSVP directly from the listing. Recurring weekly support built in.',
-  },
-  {
-    id: 'notifications',
-    label: 'Notifications',
-    icon: Bell,
-    color: '#3B82F6',
-    title: 'Never miss a lead',
-    desc: 'Push notifications for new followers, showing requests, and saved listings. Real-time inbox in your dashboard.',
-  },
-  {
-    id: 'analytics',
-    label: 'Analytics',
-    icon: BarChart3,
-    color: '#34C759',
-    title: 'Know what\'s working',
-    desc: 'Per-pin views, taps, saves. Content conversion rates. Geographic heatmaps. Follower growth trends. All in one dashboard.',
-  },
-]
-
-// FAQ data
-const FAQ_ITEMS = [
-  { q: 'Is Reelst free?', a: 'Yes. The free plan includes 5 active pins and 3 content items per pin. Upgrade to Pro ($19/mo) or Studio ($39/mo) for higher limits, analytics, and live streaming.' },
-  { q: 'What makes Reelst different?', a: 'Reelst is a live, interactive map — not a list of links. Every pin is tied to a real address with content, analytics, and lead capture built in. One link replaces your bio, website, and listing page.' },
-  { q: 'Can I import content from Instagram or TikTok?', a: 'Connected platforms are coming soon. You\'ll be able to sync reels and photos from Instagram, TikTok, YouTube, and Facebook directly into your map pins.' },
-  { q: 'Do homebuyers need an account to view my map?', a: 'No. Your Reelst is a public page — anyone with the link can browse your map, watch reels, and view listings. They only need an account to follow you or save pins.' },
-  { q: 'How do showing requests work?', a: 'Visitors fill out a quick form (name, email, phone, preferred date). You get a push notification + it appears in your dashboard inbox. No third-party tools needed.' },
-]
+/* ════════════════════════════════════════════════════════════════
+   SHARED — cream color, tuned to match the generated illustrations'
+   baked-in background so there's no seam between image + section.
+   ════════════════════════════════════════════════════════════════ */
+const HERO_CREAM = '#F0E8D0'
 
 export default function Home() {
   const navigate = useNavigate()
   const { userDoc } = useAuthStore()
-  const { open: openAuth } = useAuthModalStore()
-  const [heroUsername, setHeroUsername] = useState('')
-  const [activeFeature, setActiveFeature] = useState('live')
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
-
   useScrollReveal()
-
-  function handleClaim() {
-    const u = heroUsername.trim()
-    navigate(u ? `/sign-up?username=${encodeURIComponent(u)}` : '/sign-up')
-  }
-
   useEffect(() => {
-    if (userDoc?.role === 'agent' && userDoc.onboardingComplete) navigate('/dashboard', { replace: true })
+    if (userDoc?.role === 'agent' && userDoc.onboardingComplete) {
+      navigate('/dashboard', { replace: true })
+    }
   }, [userDoc, navigate])
-
-  const currentFeature = FEATURES.find((f) => f.id === activeFeature) || FEATURES[0]
 
   return (
     <MarketingLayout>
       <SEOHead path="/" />
-      <style>{`
-        .hero-content-pad {
-          padding-left: 1.5rem;
-          padding-right: 1.5rem;
-        }
-        @media (min-width: 768px) {
-          .hero-content-pad {
-            padding-left: clamp(3rem, 8vw, 10rem);
-            padding-right: 0;
-          }
-        }
-      `}</style>
-
-      {/* ════════════════════════════════════════════════════════════
-          SECTION 1 — HERO: Animated map grid + left-aligned CTA
-          ════════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden">
-        {/* Animated map background — desktop: right side, mobile: below content */}
-        <div className="hidden md:block">
-          <HeroMap />
-        </div>
-
-        {/* Content — centered on mobile, left-aligned on desktop */}
-        <div className="relative z-10 hero-content-pad pt-32 md:pt-48 pb-12 md:pb-36">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-            className="max-w-[560px] text-center md:text-left mx-auto md:mx-0"
-          >
-            <h1 className="font-extrabold text-ink tracking-tight leading-[0.97] mb-5" style={{ fontSize: 'clamp(2.75rem, 5.5vw, 5.2rem)' }}>
-              Where listings{' '}
-              <span className="text-gradient">come alive.</span>
-            </h1>
-
-            <p className="text-graphite leading-[1.4] mb-9 max-w-[500px] mx-auto md:mx-0" style={{ fontSize: 'clamp(1.06rem, 1.5vw, 1.4rem)' }}>
-              One link. A live map of your listings, reels, and open houses. The modern agent's profile, built for content.
-            </p>
-
-            {/* Inline claim form */}
-            <div className="flex items-center max-w-[460px] mx-auto md:mx-0 bg-white/80 backdrop-blur-sm border border-border-light rounded-[14px] p-2 focus-within:border-tangerine/50 focus-within:shadow-[0_0_20px_rgba(255,107,61,0.1)] transition-all">
-              <span className="font-bold text-ink pl-4 shrink-0 select-none" style={{ fontSize: 'clamp(1rem, 1.3vw, 1.2rem)' }}>reel.st/</span>
-              <input
-                type="text"
-                value={heroUsername}
-                onChange={(e) => setHeroUsername(e.target.value.replace(/[^a-z0-9._-]/gi, '').toLowerCase())}
-                onKeyDown={(e) => e.key === 'Enter' && handleClaim()}
-                placeholder="yourname"
-                className="flex-1 bg-transparent text-tangerine font-bold py-3.5 px-1 outline-none placeholder:text-tangerine/40 min-w-0"
-                style={{ fontSize: 'clamp(1rem, 1.3vw, 1.2rem)' }}
-              />
-              <button
-                onClick={handleClaim}
-                className="shrink-0 h-12 px-6 rounded-[10px] bg-gradient-to-r from-tangerine to-ember text-white text-[15px] font-bold hover:brightness-110 transition-all flex items-center gap-2 cursor-pointer shadow-glow-tangerine"
-              >
-                Claim it <ArrowRight size={16} />
-              </button>
-            </div>
-
-            <p className="text-[12px] text-ash mt-3">Free forever. No credit card required.</p>
-          </motion.div>
-        </div>
-
-        {/* Mobile: map below the CTA */}
-        <div className="md:hidden relative w-full h-[280px] sm:h-[320px] mt-2">
-          <HeroMap />
-        </div>
-      </section>
-
-      {/* ════════════════════════════════════════════════════════════
-          SECTION 2 — ARCHITECTURE: Video + text (Linktree-style split)
-          ════════════════════════════════════════════════════════════ */}
-      <section className="below-fold bg-obsidian">
-        <div className="max-w-[1200px] mx-auto px-6 sm:px-8 md:px-8 py-20 md:py-28">
-          <div className="reveal grid md:grid-cols-2 gap-8 md:gap-16 items-center">
-            {/* Left — 3D rotating phone carousel */}
-            <PhoneCarousel className="py-8" />
-
-            {/* Right — copy */}
-            <div>
-              <span className="text-[11px] font-bold text-tangerine uppercase tracking-[0.15em] mb-3 block">How it works</span>
-              <h2 className="text-[28px] md:text-[40px] font-extrabold text-white tracking-tight leading-tight mb-4">
-                Your listings, pinned to the real world.
-              </h2>
-              <p className="text-[15px] md:text-[17px] text-mist leading-relaxed mb-6">
-                Every pin lives on a real address. Tap a pin to see the listing details, swipe through reels and photos, view open house dates, or request a showing — all without leaving the map.
-              </p>
-              <ul className="space-y-3">
-                {['Pin listings to real addresses on an interactive map', 'Attach reels and photos to each pin', 'Visitors tap, swipe, save, and follow — all from one link'].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    <div className="w-5 h-5 rounded-full bg-tangerine/20 flex items-center justify-center shrink-0 mt-0.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-tangerine" />
-                    </div>
-                    <span className="text-[14px] text-mist leading-snug">{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ════════════════════════════════════════════════════════════
-          SECTION 3 — PLATFORM SYNC: Mascot + flowing social icons
-          ════════════════════════════════════════════════════════════ */}
-      <section className="below-fold">
-        <div className="max-w-[1200px] mx-auto px-6 sm:px-8 md:px-8 py-20 md:py-28">
-          <div className="reveal text-center mb-12">
-            <span className="text-[11px] font-bold text-tangerine uppercase tracking-[0.15em] mb-3 block">Connected platforms</span>
-            <h2 className="text-[28px] md:text-[40px] font-extrabold text-ink tracking-tight leading-tight mb-3">
-              Your content already exists.<br className="hidden md:block" />
-              <span className="text-gradient">Bring it to your map.</span>
-            </h2>
-            <p className="text-[15px] md:text-[17px] text-smoke max-w-[540px] mx-auto leading-relaxed">
-              Connect Instagram, TikTok, YouTube, and more. Your existing reels and posts flow directly into your listing pins.
-            </p>
-          </div>
-
-          {/* Mascot + sign + flowing icons — full width, no container */}
-          <div className="reveal relative overflow-hidden" data-delay="2" style={{ minHeight: '420px' }}>
-            {/* Mascot placeholder + sign — left/center */}
-            <div className="absolute left-1/2 md:left-[30%] top-1/2 -translate-x-1/2 -translate-y-1/2">
-              <div className="relative">
-                {/* Sign post */}
-                <div className="w-2 h-44 bg-gradient-to-b from-graphite to-smoke mx-auto rounded-full" />
-                {/* Sign board */}
-                <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-52 bg-white rounded-xl shadow-xl border border-border-light p-4 text-center">
-                  <img src="/reelst-logo.png" alt="" className="w-6 h-6 mx-auto mb-2" />
-                  <p className="text-[13px] font-bold text-ink mb-1">OPEN HOUSE</p>
-                  <p className="text-[11px] text-tangerine font-semibold">reel.st/yourname</p>
-                  <div className="w-14 h-14 bg-cream rounded-lg mx-auto mt-2 flex items-center justify-center">
-                    <div className="w-10 h-10 bg-ink/10 rounded" />
-                  </div>
-                  <p className="text-[9px] text-ash mt-1">Scan QR</p>
-                </div>
-                {/* Mascot placeholder */}
-                <div className="absolute -bottom-4 -left-20 w-28 h-36 bg-cream rounded-2xl border-2 border-dashed border-tangerine/30 flex items-center justify-center">
-                  <span className="text-[10px] text-tangerine font-bold text-center px-2">Your mascot here</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Flowing social icons — single-file from right edge */}
-            <FlowingIcons />
-          </div>
-        </div>
-      </section>
-
-      {/* ════════════════════════════════════════════════════════════
-          SECTION 4 — FEATURES: Toggle tabs + product screenshots
-          ════════════════════════════════════════════════════════════ */}
-      <section className="below-fold bg-cream/50 border-y border-border-light">
-        <div className="max-w-[1200px] mx-auto px-6 sm:px-8 md:px-8 py-20 md:py-28">
-          <div className="reveal text-center mb-12">
-            <span className="text-[11px] font-bold text-tangerine uppercase tracking-[0.15em] mb-3 block">Features</span>
-            <h2 className="text-[28px] md:text-[40px] font-extrabold text-ink tracking-tight mb-3">
-              Everything you need. Nothing you don't.
-            </h2>
-          </div>
-
-          <div className="reveal grid md:grid-cols-[280px_1fr] gap-8 md:gap-12 items-start" data-delay="2">
-            {/* Left — toggle buttons */}
-            <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-2 md:pb-0 -mx-5 px-5 md:mx-0 md:px-0">
-              {FEATURES.map((feature) => {
-                const Icon = feature.icon
-                const isActive = activeFeature === feature.id
-                return (
-                  <button
-                    key={feature.id}
-                    onClick={() => setActiveFeature(feature.id)}
-                    className={`
-                      shrink-0 flex items-center gap-3 px-4 py-3.5 rounded-[14px] text-left cursor-pointer transition-all duration-200
-                      ${isActive
-                        ? 'bg-white shadow-md border border-border-light'
-                        : 'bg-transparent hover:bg-white/50'
-                      }
-                    `}
-                  >
-                    <div
-                      className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 transition-colors"
-                      style={{ background: isActive ? `${feature.color}18` : 'transparent' }}
-                    >
-                      <Icon size={18} style={{ color: isActive ? feature.color : '#9CA3AF' }} />
-                    </div>
-                    <span className={`text-[14px] font-semibold whitespace-nowrap ${isActive ? 'text-ink' : 'text-smoke'}`}>
-                      {feature.label}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Right — product screenshot + info */}
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentFeature.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-              >
-                {/* Product screenshot placeholder — no container, sits on section bg */}
-                <div
-                  className="aspect-[16/10] rounded-[18px] flex items-center justify-center mb-6"
-                  style={{ background: `linear-gradient(135deg, ${currentFeature.color}08, ${currentFeature.color}15)` }}
-                >
-                  <div className="text-center">
-                    <div
-                      className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center"
-                      style={{ background: `${currentFeature.color}20` }}
-                    >
-                      <currentFeature.icon size={28} style={{ color: currentFeature.color }} />
-                    </div>
-                    <p className="text-[13px] font-semibold text-smoke">Product screenshot</p>
-                    <p className="text-[11px] text-ash mt-1">Placeholder</p>
-                  </div>
-                </div>
-
-                <h3 className="text-[22px] md:text-[26px] font-extrabold text-ink tracking-tight mb-2">
-                  {currentFeature.title}
-                </h3>
-                <p className="text-[14px] md:text-[16px] text-smoke leading-relaxed max-w-[520px]">
-                  {currentFeature.desc}
-                </p>
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </div>
-      </section>
-
-      {/* ════════════════════════════════════════════════════════════
-          SECTION 5 — FAQ
-          ════════════════════════════════════════════════════════════ */}
-      <section className="below-fold max-w-[720px] mx-auto px-6 sm:px-8 md:px-8 py-20 md:py-28">
-        <div className="reveal text-center mb-10">
-          <h2 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-3">
-            Frequently asked questions
-          </h2>
-        </div>
-        <div className="reveal space-y-2" data-delay="1">
-          {FAQ_ITEMS.map((item, i) => (
-            <FAQItem key={i} question={item.q} answer={item.a} />
-          ))}
-        </div>
-      </section>
+      <Hero />
+      <FeatureShowcase />
+      <CloserLook />
+      <Compared />
+      <Priced />
+      <Ready />
     </MarketingLayout>
   )
 }
 
-// ── FAQ accordion item ──
+/* ════════════════════════════════════════════════════════════════
+   THE PIN
+   ════════════════════════════════════════════════════════════════ */
 
-function FAQItem({ question, answer }: { question: string; answer: string }) {
-  const [open, setOpen] = useState(false)
+function PinSVG({ size = 56, className = '' }: { size?: number; className?: string }) {
   return (
-    <div className="bg-cream rounded-[14px] border border-border-light overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-5 py-4 text-left cursor-pointer"
+    <svg width={size} viewBox="0 0 60 84" fill="none" className={className} aria-hidden>
+      <path
+        d="M 30 3 C 14.5 3, 3 14.5, 3 30 C 3 50, 30 80, 30 80 S 57 50, 57 30 C 57 14.5, 45.5 3, 30 3 Z"
+        fill="#FF6B3D"
+        stroke="#0A0E17"
+        strokeWidth="2.5"
+        strokeLinejoin="round"
+      />
+      <circle cx="30" cy="28" r="8.5" fill={HERO_CREAM} stroke="#0A0E17" strokeWidth="2" />
+    </svg>
+  )
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CHOREOGRAPHY — simple zigzag path driven by document scroll
+   progress, with continuous RAF smoothing so the rendered pin
+   position LAGS the scroll target. Result: pin feels lazy and
+   floaty regardless of how fast the user scrolls.
+   ════════════════════════════════════════════════════════════════ */
+
+type PinPose = { x: number; y: number; rotate: number }
+
+function clamp(v: number, lo = 0, hi = 1) { return Math.max(lo, Math.min(hi, v)) }
+function lerp(a: number, b: number, t: number) { return a + (b - a) * t }
+function rectOf(selector: string) {
+  const el = document.querySelector(selector)
+  return el ? (el as HTMLElement).getBoundingClientRect() : null
+}
+
+/*
+ * Path keyframes, coords in viewport units (vw / vh fractions).
+ * The pin is always positioned in-viewport — no off-screen moments,
+ * no opacity fades. Just a continuous zigzag with gentle rotation.
+ */
+const PATH: Array<{ p: number; xf: number; yf: number; rotate: number }> = [
+  { p: 0.000, xf: 0.72, yf: 0.55, rotate: -6  }, // in the pinch (hero image ~45%, 55%; image occupies right half)
+  { p: 0.040, xf: 0.72, yf: 0.60, rotate: -2  }, // slipping
+  { p: 0.090, xf: 0.70, yf: 0.72, rotate: 14  }, // falling below hero
+  { p: 0.160, xf: 0.40, yf: 0.42, rotate: -18 }, // enter Step 1 area
+  { p: 0.240, xf: 0.68, yf: 0.50, rotate: 16  }, // over toward Step 2
+  { p: 0.320, xf: 0.32, yf: 0.45, rotate: -14 }, // back to Step 3 left side
+  { p: 0.400, xf: 0.60, yf: 0.52, rotate: 12  }, // bottom of Steps
+  { p: 0.500, xf: 0.30, yf: 0.48, rotate: -10 }, // Closer Look left
+  { p: 0.600, xf: 0.65, yf: 0.44, rotate: 10  }, // Closer Look right
+  { p: 0.680, xf: 0.42, yf: 0.55, rotate: -8  }, // Closer Look bottom
+  { p: 0.760, xf: 0.55, yf: 0.50, rotate: 6   }, // Compared
+  { p: 0.850, xf: 0.50, yf: 0.48, rotate: -4  }, // Priced center
+  { p: 0.930, xf: 0.50, yf: 0.55, rotate: 2   }, // approach
+  { p: 1.000, xf: 0.50, yf: 0.72, rotate: 0   }, // land below final CTA
+]
+
+/* If the hero image is visible on screen, override the first keyframe so
+ * the pin sits in the actual pinch-point of the image (responsive). */
+function getHeroPinchTarget(): PinPose | null {
+  const hero = rectOf('[data-pin="hero-img"]')
+  if (!hero) return null
+  // Pinch in the generated illustration is at ~45% horiz, 55% vert of image.
+  const x = hero.left + hero.width * 0.45
+  const y = hero.top + hero.height * 0.55 + 30 // +30 so pin TOP is at pinch
+  return { x, y, rotate: -6 }
+}
+
+function scrollProgress(): number {
+  const max = document.documentElement.scrollHeight - window.innerHeight
+  return max > 0 ? clamp(window.scrollY / max) : 0
+}
+
+function targetPose(): PinPose {
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const p = scrollProgress()
+
+  // At the very top while hero is visible, lock the pin to the actual
+  // pinch-point of the illustration (responsive to layout).
+  if (p < 0.05) {
+    const herotarget = getHeroPinchTarget()
+    if (herotarget) {
+      // Blend out of the hero pinch between p=0.03 and p=0.05 so transition to
+      // the general path is smooth.
+      const blend = clamp((p - 0.03) / 0.02)
+      const pathPose = interpolatePath(p)
+      return {
+        x: lerp(herotarget.x, pathPose.x, blend),
+        y: lerp(herotarget.y, pathPose.y, blend),
+        rotate: lerp(herotarget.rotate, pathPose.rotate, blend),
+      }
+    }
+  }
+
+  return interpolatePath(p)
+}
+
+function interpolatePath(p: number): PinPose {
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  for (let i = 0; i < PATH.length - 1; i++) {
+    const a = PATH[i], b = PATH[i + 1]
+    if (p >= a.p && p <= b.p) {
+      const tRaw = (p - a.p) / Math.max(0.0001, b.p - a.p)
+      // Ease-in-out for each segment — gentle
+      const t = tRaw < 0.5
+        ? 2 * tRaw * tRaw
+        : 1 - Math.pow(-2 * tRaw + 2, 2) / 2
+      return {
+        x: lerp(a.xf, b.xf, t) * vw,
+        y: lerp(a.yf, b.yf, t) * vh,
+        rotate: lerp(a.rotate, b.rotate, t),
+      }
+    }
+  }
+  const last = PATH[PATH.length - 1]
+  return { x: last.xf * vw, y: last.yf * vh, rotate: last.rotate }
+}
+
+/* Flipbook cadence — commit a new rendered position at a fixed
+ * step rate so the pin moves in discrete frames rather than a
+ * smooth 60fps glide. Target position is still read continuously
+ * from scroll; only the paint is throttled. */
+const STEP_MS = 90 // ~11fps — choppy but steady
+
+function TravelingPin() {
+  const pinRef = useRef<HTMLDivElement>(null)
+  const [isDesktop, setIsDesktop] = useState(false)
+  const [bursts, setBursts] = useState<Array<{ id: number; x: number; y: number }>>([])
+  const burstKeys = useRef<Set<string>>(new Set())
+  const burstId = useRef(0)
+
+  useEffect(() => {
+    const check = () => setIsDesktop(window.innerWidth >= 900)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  useEffect(() => {
+    if (!isDesktop) return
+    let raf = 0
+    let lastStep = 0
+    let rx = 0, ry = 0, rr = 0 // last committed pose
+
+    const tick = (now: number) => {
+      if (now - lastStep >= STEP_MS) {
+        lastStep = now
+        const target = targetPose()
+        rx = target.x; ry = target.y; rr = target.rotate
+
+        const el = pinRef.current
+        if (el) {
+          el.style.transform = `translate3d(${rx}px, ${ry}px, 0) translate(-50%, -50%) rotate(${rr}deg)`
+        }
+
+        // Confetti milestones — fire once per crossing (forward only)
+        const p = scrollProgress()
+        const milestones: Array<{ key: string; at: number }> = [
+          { key: 'hero-drop',   at: 0.10 },
+          { key: 'steps-done',  at: 0.44 },
+          { key: 'pricing-in',  at: 0.82 },
+          { key: 'final-land',  at: 0.96 },
+        ]
+        for (const m of milestones) {
+          if (p >= m.at && !burstKeys.current.has(m.key)) {
+            burstKeys.current.add(m.key)
+            const id = ++burstId.current
+            setBursts((b) => [...b, { id, x: rx, y: ry }])
+            setTimeout(() => {
+              setBursts((b) => b.filter((x) => x.id !== id))
+            }, 1400)
+          }
+        }
+      }
+      raf = requestAnimationFrame(tick)
+    }
+
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [isDesktop])
+
+  if (!isDesktop) return null
+
+  return (
+    <>
+      <div
+        ref={pinRef}
+        className="fixed pointer-events-none"
+        style={{
+          top: 0,
+          left: 0,
+          zIndex: 30,
+          willChange: 'transform',
+        }}
       >
-        <span className="text-[15px] font-semibold text-ink pr-4">{question}</span>
-        <ChevronDown
-          size={18}
-          className={`text-smoke shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
-        />
-      </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
-            className="overflow-hidden"
+        <PinSVG size={60} />
+      </div>
+
+      {bursts.map((b) => (
+        <ConfettiBurst key={b.id} x={b.x} y={b.y} />
+      ))}
+    </>
+  )
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CONFETTI — hand-drawn squiggle paths, tumbling outward
+   ════════════════════════════════════════════════════════════════ */
+
+const CONFETTI_PIECES = [
+  // [path, color]
+  { d: 'M 0 0 Q 6 -4 12 0 T 24 0', color: '#FF6B3D' },           // wave
+  { d: 'M 0 0 L 14 -4 L 28 0',     color: '#0A0E17' },           // zigzag line
+  { d: 'M 0 0 C 6 -8 14 -8 20 0',  color: '#F5C58C' },           // arch
+  { d: 'M 0 0 C 4 4 10 -4 14 0 S 22 4 28 0', color: '#FF6B3D' }, // S
+  { d: 'M 0 0 Q 4 -8 8 0 T 16 0 T 24 0',     color: '#FF3B7A' }, // double wave
+  { d: 'M 0 0 L 18 0',             color: '#0A0E17' },           // straight
+  { d: 'M 0 0 C 3 -6 9 -6 12 0 C 15 6 21 6 24 0', color: '#FFAA00' }, // loop
+  { d: 'M 0 0 Q 8 -10 16 0',       color: '#FF6B3D' },           // hop
+  { d: 'M 0 0 C 6 4 6 -4 12 0',    color: '#0A0E17' },           // squiggle
+  { d: 'M 0 0 Q 5 -4 10 0 T 20 0', color: '#F5C58C' },           // small wave
+  { d: 'M 0 0 L 6 -4 L 12 0 L 18 -4 L 24 0', color: '#FF3B7A' }, // peaked
+  { d: 'M 0 0 Q 6 6 12 0 Q 18 -6 24 0', color: '#FF6B3D' },      // big S
+]
+
+function ConfettiBurst({ x, y }: { x: number; y: number }) {
+  return (
+    <div
+      className="fixed pointer-events-none z-20"
+      style={{ top: 0, left: 0, transform: `translate3d(${x}px, ${y}px, 0)` }}
+    >
+      {CONFETTI_PIECES.map((piece, i) => {
+        // Random-ish direction and spin per piece
+        const angleDeg = (i / CONFETTI_PIECES.length) * 360 + (i % 3 === 0 ? 12 : -8)
+        const dist = 70 + (i % 4) * 18
+        const dx = Math.cos((angleDeg * Math.PI) / 180) * dist
+        const dy = Math.sin((angleDeg * Math.PI) / 180) * dist * 0.9 - 20
+        const startRot = (i * 47) % 360
+        const spin = (i % 2 === 0 ? 1 : -1) * (240 + i * 40)
+        const delay = i * 18
+        return (
+          <svg
+            key={i}
+            className="confetti-piece"
+            width="32"
+            height="16"
+            viewBox="-2 -10 32 20"
+            style={
+              {
+                animationDelay: `${delay}ms`,
+                ['--dx' as any]: `${dx}px`,
+                ['--dy' as any]: `${dy}px`,
+                ['--start-rot' as any]: `${startRot}deg`,
+                ['--spin' as any]: `${spin}deg`,
+              } as React.CSSProperties
+            }
           >
-            <div className="px-5 pb-4">
-              <p className="text-[14px] text-smoke leading-relaxed">{answer}</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <path
+              d={piece.d}
+              fill="none"
+              stroke={piece.color}
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        )
+      })}
     </div>
   )
 }
 
-// ── Flowing social icons — single-file from right screen edge ──
+/* ════════════════════════════════════════════════════════════════
+   SHARED — claim input
+   ════════════════════════════════════════════════════════════════ */
 
-const FLOW_ICONS = [
-  { name: 'Instagram', color: '#E4405F', svg: 'M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0z' },
-  { name: 'TikTok', color: '#010101', svg: 'M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z' },
-  { name: 'YouTube', color: '#FF0000', svg: 'M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z' },
-  { name: 'Facebook', color: '#1877F2', svg: 'M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z' },
-]
+function ClaimInput({
+  variant,
+  className = '',
+  'data-pin': dataPin,
+}: {
+  variant: 'dark' | 'light'
+  className?: string
+  'data-pin'?: string
+}) {
+  const navigate = useNavigate()
+  const [username, setUsername] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
 
-function FlowingIcons() {
+  function handleClaim() {
+    const u = username.trim()
+    navigate(u ? `/sign-up?username=${encodeURIComponent(u)}` : '/sign-up')
+  }
+
+  const isDark = variant === 'dark'
+
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {/* Subtle curved path guide line */}
-      <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-        <path
-          d="M 100% 25% Q 60% 35%, 30% 50%"
-          fill="none"
-          stroke="url(#flow-grad)"
-          strokeWidth="1"
-          opacity="0.15"
-          vectorEffect="non-scaling-stroke"
-        />
-        <defs>
-          <linearGradient id="flow-grad" x1="1" y1="0" x2="0" y2="0">
-            <stop offset="0%" stopColor="#FF6B3D" stopOpacity="0" />
-            <stop offset="40%" stopColor="#FF6B3D" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="#FF6B3D" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-      </svg>
+    <div
+      data-pin={dataPin}
+      className={`flex items-center w-full max-w-[460px] p-1.5 rounded-full transition-all ${className} ${
+        isDark
+          ? 'bg-white/[0.06] border border-white/[0.12] backdrop-blur-sm focus-within:border-tangerine/60 focus-within:bg-white/[0.09]'
+          : 'bg-white border border-black/[0.08] focus-within:border-tangerine/40 focus-within:shadow-[0_0_0_5px_rgba(255,133,82,0.10)]'
+      }`}
+      style={
+        isDark
+          ? undefined
+          : { boxShadow: '0 8px 20px -12px rgba(10,14,23,0.10), 0 1px 0 rgba(255,255,255,0.8) inset' }
+      }
+      onClick={() => inputRef.current?.focus()}
+    >
+      <span
+        className={`pl-5 text-[14px] md:text-[15px] select-none shrink-0 ${
+          isDark ? 'text-white/55' : 'text-smoke'
+        }`}
+        style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
+      >
+        reel.st/
+      </span>
+      <input
+        ref={inputRef}
+        type="text"
+        value={username}
+        onChange={(e) => setUsername(e.target.value.replace(/[^a-z0-9._-]/gi, '').toLowerCase())}
+        onKeyDown={(e) => e.key === 'Enter' && handleClaim()}
+        placeholder="yourname"
+        className={`flex-1 bg-transparent py-3 px-1 outline-none min-w-0 text-[14px] md:text-[15px] ${
+          isDark ? 'text-tangerine placeholder:text-white/25' : 'text-tangerine placeholder:text-smoke/45'
+        }`}
+        style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
+      />
+      <button
+        onClick={handleClaim}
+        className="brand-btn shrink-0 h-11 px-5 rounded-full text-[13px] md:text-[14px] flex items-center gap-1.5 cursor-pointer"
+        style={{
+          fontFamily: 'var(--font-humanist)',
+          fontWeight: 600,
+          boxShadow: '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)',
+        }}
+      >
+        Claim it <ArrowRight size={14} strokeWidth={2.5} />
+      </button>
+    </div>
+  )
+}
 
-      {/* Icons in single-file, staggered on same path */}
-      {FLOW_ICONS.map((icon, i) => (
+/* ════════════════════════════════════════════════════════════════
+   01 — HERO
+   Centered. Off-white page bg with a rounded inner "card" carrying
+   a faint tangerine topographic-wave texture. Three clay pins live
+   at the bottom corners — one leaning on the left, a pair leaning
+   on each other on the right.
+   ════════════════════════════════════════════════════════════════ */
+
+function Hero() {
+  return (
+    <section className="relative bg-marketing pt-20 md:pt-24 pb-20 md:pb-28">
+      <div className="max-w-[1320px] mx-auto px-4 md:px-6">
         <div
-          key={icon.name}
-          className="absolute"
+          className="map-grid hero-pin-stage relative rounded-[28px] md:rounded-[36px] overflow-hidden"
           style={{
-            right: '-60px',
-            top: '22%',
-            animation: `iconFlow 5s cubic-bezier(0.4, 0, 0.2, 1) ${i * 1.1}s infinite`,
+            border: '1px solid rgba(255,133,82,0.22)',
+            boxShadow:
+              '0 1px 0 rgba(255,255,255,0.8) inset, 0 30px 80px -30px rgba(217,74,31,0.20), 0 10px 32px -16px rgba(10,14,23,0.08)',
           }}
         >
-          <div
-            className="w-12 h-12 rounded-[14px] shadow-xl flex items-center justify-center"
-            style={{ background: icon.color }}
-          >
-            <svg viewBox="0 0 24 24" className="w-6 h-6" fill="white">
-              <path d={icon.svg} />
-            </svg>
+          {/* Content — generous bottom padding leaves room below the
+              text for the pins to sit inside the card with their tips
+              touching the bottom interior border. */}
+          <div className="relative z-10 px-6 md:px-10 pt-20 md:pt-28 pb-44 md:pb-52 flex flex-col items-center text-center">
+            <h1
+              className="text-ink mb-7 max-w-[980px]"
+              style={{
+                fontFamily: 'var(--font-humanist)',
+                fontSize: 'clamp(2.75rem, 6.2vw, 6rem)',
+                fontWeight: 500,
+                letterSpacing: '-0.035em',
+                lineHeight: 0.98,
+              }}
+            >
+              Drop a pin.
+              <br />
+              <span className="brand-grad-text" style={{ fontWeight: 600 }}>
+                Grow a neighborhood.
+              </span>
+            </h1>
+
+            <p
+              className="text-graphite max-w-[620px] mb-10 leading-[1.55]"
+              style={{
+                fontFamily: 'var(--font-humanist)',
+                fontSize: 'clamp(1rem, 1.22vw, 1.18rem)',
+                fontWeight: 400,
+              }}
+            >
+              Reelst is the map-based profile for real estate agents. Pin every
+              listing to a real address. Attach your reels, photos, and open
+              houses. Send one link and let buyers scroll your territory.
+            </p>
+
+            <div className="w-full flex justify-center">
+              <ClaimInput variant="light" />
+            </div>
+
+            <p
+              className="text-[11px] text-smoke mt-5 tracking-[0.18em] uppercase"
+              style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}
+            >
+              Free forever · 2 min setup · No card
+            </p>
+          </div>
+
+          {/* Pins — children of the card so overflow-hidden contains
+              them. Left pin is a single image, right side is a pre-
+              composed pair that already leans against itself. Both
+              sit with bottom: 0 so tips touch the bottom interior
+              border. Widths scale proportionally on mobile so the
+              right pair keeps its internal spacing. */}
+          {/* All three pins are sized and positioned from a single
+              viewport-driven unit (`--pin-u` on the card), so their
+              relationship to each other and to the card's interior
+              borders is locked at every viewport width. The rotations
+              stay fixed; all spatial values scale proportionally. */}
+          <img
+            src="/marketing/hero-pin.png"
+            alt=""
+            aria-hidden
+            draggable={false}
+            className="hero-pin hero-pin--left pointer-events-none select-none absolute"
+          />
+          <img
+            src="/marketing/hero-pin.png"
+            alt=""
+            aria-hidden
+            draggable={false}
+            className="hero-pin hero-pin--right-a pointer-events-none select-none absolute"
+          />
+          <img
+            src="/marketing/hero-pin.png"
+            alt=""
+            aria-hidden
+            draggable={false}
+            className="hero-pin hero-pin--right-b pointer-events-none select-none absolute"
+          />
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ════════════════════════════════════════════════════════════════
+   02 — FEATURE SHOWCASE
+   Dark section with curved top corners. Left column: meta headline +
+   chip picker (sticky on desktop). Right column: per-feature graphic
+   placeholder + punchy headline + description. Chip click swaps the
+   right content; no tilt on active — just the brand gradient fill.
+   Ordered by agent-workflow priority: what you create first (pins,
+   content) → how you work (open houses, showings) → how you measure
+   (analytics) → how you grow (explore, spotlights).
+   ════════════════════════════════════════════════════════════════ */
+
+type Feature = {
+  key: string
+  label: string
+  title: string
+  desc: string
+  /** Still image or transparent PNG. Rendered as <img>. */
+  img?: string
+  /** Video path (.mov / .mp4 / .webm). Autoplay, loop, muted, inline.
+   *  Takes precedence over `img` when both are set. */
+  video?: string
+}
+
+const FEATURES: Feature[] = [
+  {
+    key: 'pins',
+    label: 'Listing Pins',
+    title: 'Your listings, on a real map.',
+    desc: 'Drop every listing on a real address. MLS data auto-fills beds, baths, sqft, price, days on market. Buyers scroll your territory — not a feed.',
+    // Video file names are historical; the actual recording mapped to
+    // each chip is rotated here:
+    //   pins       → feature-content.mov   (actually the Listing recording)
+    //   spotlights → feature-pins.mov      (actually the Spotlights recording)
+    //   content    → feature-spotlights.mov (actually the Content recording)
+    video: '/marketing/feature-content.mov',
+  },
+  {
+    key: 'spotlights',
+    label: 'Spotlights',
+    title: 'Pin the neighborhood, not just the listing.',
+    desc: 'A second pin type for the coffee shop, the playground, the block that makes the zip code feel like home. Not a property — a feel for the place. Attach a reel and sell the neighborhood, not just the house.',
+    video: '/marketing/feature-pins.mov',
+  },
+  {
+    key: 'content',
+    label: 'Content',
+    title: 'Every reel, inside a pin.',
+    desc: 'Shoot walkthroughs. Drop carousels. Go live from the open house. Your content lives where the listing is — not floating in a feed that forgets it tomorrow.',
+    video: '/marketing/feature-spotlights.mov',
+  },
+  {
+    key: 'open-houses',
+    label: 'Open Houses',
+    title: 'Schedule. Share. Fill the room.',
+    desc: 'Create an open house from a pin in two taps. Auto-post to your map and push to your followers. RSVPs land in your inbox, not on a clipboard.',
+    video: '/marketing/feature-open-houses.mov',
+  },
+  {
+    key: 'showings',
+    label: 'Showing Requests',
+    title: 'Leads, not likes.',
+    desc: 'Private showing asks drop straight into your inbox with buyer context. Approve, reschedule, or decline in one tap — the back-and-forth ends here.',
+    video: '/marketing/feature-showings.mov',
+  },
+  {
+    key: 'analytics',
+    label: 'Analytics',
+    title: "Know what's actually working.",
+    desc: 'Views, taps, and saves per pin. Viewer cities and peak hours. Follower growth over time. Every number you need — none of the ones you don’t.',
+    video: '/marketing/feature-analytics.mov',
+  },
+  {
+    key: 'explore',
+    label: 'Explore',
+    title: 'Show up on the map buyers are already browsing.',
+    desc: 'Pro agents surface on the live discovery map. A buyer pans into a city or a neighborhood and sees every Pro working it — your pins included. Free agents stay private; going Pro puts you in front of buyers actively looking.',
+    video: '/marketing/feature-explore.mov',
+  },
+]
+
+function FeatureShowcase() {
+  const [activeKey, setActiveKey] = useState<string>(FEATURES[0].key)
+  const active = FEATURES.find((f) => f.key === activeKey) || FEATURES[0]
+
+  return (
+    <section
+      id="features"
+      className="pt-16 md:pt-20 pb-16 md:pb-24 rounded-t-[40px] md:rounded-t-[64px] scroll-mt-24"
+      style={{ background: '#0A0E17' }}
+    >
+      <div className="max-w-[1200px] mx-auto px-6 md:px-10">
+        <div className="grid md:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] gap-12 md:gap-16 items-start">
+          {/* ── Left: meta headline + chips ── */}
+          <div>
+            <h2
+              className="text-white mb-10 md:mb-12"
+              style={{
+                fontFamily: 'var(--font-humanist)',
+                fontSize: 'clamp(2.5rem, 5.2vw, 4.75rem)',
+                fontWeight: 500,
+                letterSpacing: '-0.035em',
+                lineHeight: 0.98,
+              }}
+            >
+              One app.{' '}
+              <span className="brand-grad-text" style={{ fontWeight: 600 }}>
+                Every part of the job.
+              </span>
+            </h2>
+
+            <div className="flex flex-wrap gap-2.5 max-w-[520px]">
+              {FEATURES.map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => setActiveKey(f.key)}
+                  className={`chip-btn ${activeKey === f.key ? 'chip-btn--active' : ''}`}
+                  type="button"
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Right: active feature ── */}
+          <div>
+            {/* Packaged screen-recording panel — macOS-style window frame.
+                The video: autoplays on chip change (key remounts it),
+                muted, inline, no loop (stays on last frame), fully
+                non-interactive (pointer-events none + no controls +
+                context menu + PIP disabled). Aspect 16:10 reads as a
+                screen. */}
+            <div
+              key={`graphic-${active.key}`}
+              className="feature-panel aspect-[16/9] rounded-[14px] mb-6 relative overflow-hidden flex flex-col"
+              style={{
+                background: '#0A0E17',
+                border: '1px solid rgba(255,255,255,0.08)',
+                boxShadow:
+                  '0 30px 60px -30px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,133,82,0.04), 0 40px 80px -60px rgba(217,74,31,0.35)',
+              }}
+            >
+              {/* Window chrome — compact bar with 3 traffic-light dots */}
+              <div
+                className="shrink-0 flex items-center px-3 h-[22px] border-b border-white/[0.06]"
+                style={{ background: 'linear-gradient(180deg, #14181F 0%, #0E1219 100%)' }}
+              >
+                <div className="flex items-center gap-[5px]">
+                  <span className="w-[8px] h-[8px] rounded-full" style={{ background: '#FF5F57' }} />
+                  <span className="w-[8px] h-[8px] rounded-full" style={{ background: '#FEBC2E' }} />
+                  <span className="w-[8px] h-[8px] rounded-full" style={{ background: '#28C840' }} />
+                </div>
+                <div className="flex-1 text-center">
+                  <span
+                    className="text-[9px] tracking-[0.18em] uppercase text-white/30"
+                    style={{ fontFamily: 'var(--font-mono)' }}
+                  >
+                    reel.st · {active.label.toLowerCase()}
+                  </span>
+                </div>
+                {/* Spacer to balance the dots on the left */}
+                <div className="w-[46px]" />
+              </div>
+
+              {/* Media area */}
+              <div className="relative flex-1 overflow-hidden" style={{ background: '#05080E' }}>
+                {active.video ? (
+                  <video
+                    key={active.video}
+                    src={active.video}
+                    autoPlay
+                    muted
+                    playsInline
+                    preload="auto"
+                    controls={false}
+                    disablePictureInPicture
+                    disableRemotePlayback
+                    onContextMenu={(e) => e.preventDefault()}
+                    className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
+                  />
+                ) : active.img ? (
+                  <img
+                    src={active.img}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
+                    draggable={false}
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center px-6">
+                      <div
+                        className="text-[10px] uppercase tracking-[0.24em] mb-3"
+                        style={{ fontFamily: 'var(--font-mono)', color: 'rgba(255,133,82,0.55)' }}
+                      >
+                        Graphic · {active.label}
+                      </div>
+                      <div className="text-white/45 text-[13px] max-w-[260px] mx-auto leading-[1.5]">
+                        Product snapshot coming.
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Text block — key prop restarts the CSS fade on chip switch.
+                min-height reserves space for the longest feature's copy so
+                the section doesn't jump height when the user toggles chips.
+                Tune the min-height if new/longer descriptions are added. */}
+            <div
+              key={`copy-${active.key}`}
+              className="feature-content min-h-[180px] md:min-h-[200px]"
+            >
+              <h3
+                className="text-white mb-3"
+                style={{
+                  fontFamily: 'var(--font-humanist)',
+                  fontSize: 'clamp(1.4rem, 2.3vw, 2rem)',
+                  fontWeight: 500,
+                  letterSpacing: '-0.025em',
+                  lineHeight: 1.08,
+                }}
+              >
+                {active.title}
+              </h3>
+              <p className="text-white/60 text-[14.5px] md:text-[15.5px] leading-[1.55] max-w-[500px]">
+                {active.desc}
+              </p>
+            </div>
           </div>
         </div>
-      ))}
+      </div>
+    </section>
+  )
+}
 
-      <style>{`
-        @keyframes iconFlow {
-          0% {
-            transform: translate(0, 0) scale(1);
-            opacity: 0;
-          }
-          8% {
-            opacity: 1;
-          }
-          50% {
-            transform: translate(calc(-50vw + 100px), 12vh) scale(0.85);
-            opacity: 1;
-          }
-          80% {
-            transform: translate(calc(-70vw + 60px), 20vh) scale(0.5);
-            opacity: 0.6;
-          }
-          95% {
-            transform: translate(calc(-75vw + 40px), 24vh) scale(0.2);
-            opacity: 0;
-          }
-          100% {
-            transform: translate(calc(-75vw + 40px), 24vh) scale(0);
-            opacity: 0;
-          }
-        }
-      `}</style>
+/* ════════════════════════════════════════════════════════════════
+   03 — HOW IT WORKS (zigzag, illustrations only)
+   Cream section sharing the hero's bg. Three steps in a zigzag:
+   Pin it (right) → Reel it (left) → Share it (right). Seated mascot
+   stays at the top straddling the seam from FeatureShowcase. The
+   scroll-driven connector line that joins everything is intentionally
+   not wired up here — once illustrations are sized correctly we'll
+   add it back in.
+   ════════════════════════════════════════════════════════════════ */
+
+const HOW_STEPS = [
+  {
+    n: '01',
+    title: 'Pin it.',
+    desc: 'Drop every listing on a real address. MLS auto-fills beds, baths, sqft, days on market — your map fills itself.',
+    img: '/marketing/howitworks-pin.png',
+    align: 'right' as const,
+    /* Pin it is landscape (~4:3); fills its column comfortably. */
+    maxW: 'max-w-[300px] md:max-w-[340px]',
+  },
+  {
+    n: '02',
+    title: 'Reel it.',
+    desc: 'Walk through the property with your phone. Attach a reel to the pin in one tap — buyers see how the place actually feels.',
+    img: '/marketing/howitworks-reel.png',
+    align: 'left' as const,
+    /* Reel it is portrait (~3:4); same width reads visually larger,
+       so we narrow it noticeably. */
+    maxW: 'max-w-[220px] md:max-w-[250px]',
+  },
+  {
+    n: '03',
+    title: 'Share it.',
+    desc: 'One link, your whole territory. Hand it out, paste it on your yard sign, drop it in your bio.',
+    img: '/marketing/howitworks-share.png',
+    align: 'right' as const,
+    /* Share it is mildly portrait (~4:5); slight reduction. */
+    maxW: 'max-w-[260px] md:max-w-[300px]',
+  },
+]
+
+function CloserLook() {
+  return (
+    <section
+      id="closer-look"
+      className="relative bg-marketing scroll-mt-24"
+    >
+      <div className="relative max-w-[1180px] mx-auto px-6 md:px-10 pt-20 md:pt-28 pb-24 md:pb-32 space-y-16 md:space-y-24">
+        {HOW_STEPS.map((step) => (
+          <HowStep key={step.n} step={step} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function HowStep({ step }: { step: (typeof HOW_STEPS)[number] }) {
+  const imageOnRight = step.align === 'right'
+  return (
+    <div className="relative grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-10 items-center">
+      {/* COPY column — wrapped in a rounded grid card matching the
+          hero's visual language, but on a whiter base so it lifts
+          off the cream section bg. */}
+      <div
+        className={`md:col-span-5 ${
+          imageOnRight ? 'md:col-start-1' : 'md:col-start-8'
+        }`}
+      >
+        <div
+          className="map-grid-soft rounded-[24px] md:rounded-[28px] p-7 md:p-9"
+          style={{
+            border: '1px solid rgba(255,133,82,0.22)',
+            boxShadow:
+              '0 1px 0 rgba(255,255,255,0.9) inset, 0 24px 60px -28px rgba(217,74,31,0.18), 0 8px 24px -14px rgba(10,14,23,0.07)',
+          }}
+        >
+          <span
+            className="text-[11px] text-tangerine font-bold uppercase tracking-[0.24em] mb-4 inline-block"
+            style={{ fontFamily: 'var(--font-mono)' }}
+          >
+            {step.n}
+          </span>
+          <h2
+            className="text-ink leading-[0.98] mb-4"
+            style={{
+              fontFamily: 'var(--font-humanist)',
+              fontSize: 'clamp(2rem, 4.2vw, 3.5rem)',
+              fontWeight: 500,
+              letterSpacing: '-0.035em',
+            }}
+          >
+            {step.title}
+          </h2>
+          <p
+            className="text-graphite leading-[1.55]"
+            style={{
+              fontFamily: 'var(--font-humanist)',
+              fontSize: 'clamp(0.98rem, 1.1vw, 1.1rem)',
+              fontWeight: 400,
+            }}
+          >
+            {step.desc}
+          </p>
+        </div>
+      </div>
+
+      {/* IMAGE column */}
+      <div
+        className={`md:col-span-6 ${
+          imageOnRight ? 'md:col-start-7' : 'md:col-start-1 md:row-start-1'
+        } flex justify-center`}
+      >
+        <img
+          src={step.img}
+          alt=""
+          aria-hidden
+          draggable={false}
+          className={`w-full ${step.maxW} h-auto select-none pointer-events-none`}
+        />
+      </div>
     </div>
+  )
+}
+
+/* ════════════════════════════════════════════════════════════════
+   04 — COMPARED
+   ════════════════════════════════════════════════════════════════ */
+
+const COMP_ROWS = [
+  { feature: 'Live map of your listings', reelst: true, ig: false, realtor: false, zillow: 'partial' },
+  { feature: 'Video reels on listings', reelst: true, ig: true, realtor: false, zillow: false },
+  { feature: 'Your own brand + URL', reelst: true, ig: 'partial', realtor: false, zillow: false },
+  { feature: 'Direct showing requests', reelst: true, ig: false, realtor: 'partial', zillow: 'partial' },
+  { feature: 'One link for everything', reelst: true, ig: false, realtor: false, zillow: false },
+  { feature: 'Built for agents, not platforms', reelst: true, ig: false, realtor: false, zillow: false },
+  { feature: 'Free to start', reelst: true, ig: true, realtor: false, zillow: false },
+]
+
+function Compared() {
+  return (
+    <section
+      className="py-24 md:py-36 border-t border-black/[0.06]"
+      style={{ background: HERO_CREAM }}
+      data-pin="compared"
+    >
+      <div className="max-w-[1200px] mx-auto px-6 md:px-10">
+        <div className="reveal max-w-[760px] mb-14 md:mb-20">
+          <span
+            className="text-[11px] text-tangerine font-bold uppercase tracking-[0.2em] mb-5 inline-block"
+            style={{ fontFamily: 'var(--font-mono)' }}
+          >
+            Compared
+          </span>
+          <h2
+            className="text-ink leading-[1.02]"
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 'clamp(2.25rem, 4.2vw, 3.75rem)',
+              fontWeight: 900,
+              letterSpacing: '-0.03em',
+            }}
+          >
+            What you're using now — and what you could be using.
+          </h2>
+        </div>
+
+        <div
+          className="reveal rounded-[22px] bg-white border border-black/[0.07] overflow-hidden relative"
+          data-delay="1"
+          style={{ zIndex: 10 }}
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] border-collapse">
+              <thead>
+                <tr style={{ background: 'rgba(255,247,240,0.6)' }}>
+                  <th
+                    className="text-left py-4 pl-6 pr-4 text-[11px] font-bold text-smoke uppercase tracking-[0.18em]"
+                    style={{ fontFamily: 'var(--font-mono)' }}
+                  >
+                    Feature
+                  </th>
+                  <th className="py-4 px-3 text-center">
+                    <div className="inline-flex items-center gap-1.5">
+                      <PinSVG size={14} />
+                      <span className="text-[13px] font-bold text-ink uppercase tracking-[0.1em]">Reelst</span>
+                    </div>
+                  </th>
+                  <th className="py-4 px-3 text-center text-[13px] font-semibold text-smoke">IG bio</th>
+                  <th className="py-4 px-3 text-center text-[13px] font-semibold text-smoke">Realtor.com</th>
+                  <th className="py-4 px-3 text-center text-[13px] font-semibold text-smoke">Zillow</th>
+                </tr>
+              </thead>
+              <tbody>
+                {COMP_ROWS.map((row, i) => (
+                  <tr
+                    key={row.feature}
+                    className={i % 2 === 0 ? 'bg-white' : ''}
+                    style={i % 2 === 1 ? { background: 'rgba(255,247,240,0.35)' } : undefined}
+                  >
+                    <td className="py-4 pl-6 pr-4 text-[14.5px] text-ink font-medium">{row.feature}</td>
+                    <td className="text-center py-4 px-3"><CompMark value={row.reelst} highlight /></td>
+                    <td className="text-center py-4 px-3"><CompMark value={row.ig} /></td>
+                    <td className="text-center py-4 px-3"><CompMark value={row.realtor} /></td>
+                    <td className="text-center py-4 px-3"><CompMark value={row.zillow} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function CompMark({ value, highlight = false }: { value: boolean | 'partial' | string; highlight?: boolean }) {
+  if (value === true) {
+    return (
+      <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full ${highlight ? 'bg-tangerine' : 'bg-ink/5'}`}>
+        <Check size={14} className={highlight ? 'text-white' : 'text-ink'} strokeWidth={3} />
+      </span>
+    )
+  }
+  if (value === 'partial') {
+    return (
+      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-black/[0.04]">
+        <span className="w-2.5 h-0.5 bg-smoke rounded-full" />
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-black/[0.03]">
+      <XIcon size={13} className="text-ash" strokeWidth={2} />
+    </span>
+  )
+}
+
+/* ════════════════════════════════════════════════════════════════
+   05 — PRICED (sticky)
+   Sticky-scroll section (h-[280vh]) with tier cards. Pin bounces
+   Studio → Free → Pro → Pro-bounce → fall straight down.
+   ════════════════════════════════════════════════════════════════ */
+
+const TIERS = [
+  {
+    key: 'free',
+    name: 'Free',
+    price: '$0',
+    period: 'forever',
+    desc: 'Create content and showcase your listings.',
+    cta: 'Start free',
+    featured: false,
+    features: [
+      { text: '3 active pins on your map', included: true },
+      { text: '3-min reels & carousels', included: true },
+      { text: 'Your own reel.st link', included: true },
+      { text: 'MLS data auto-fill', included: true },
+      { text: 'Showing request inbox', included: true },
+      { text: 'Discoverable in Explore', included: false },
+      { text: 'Advanced analytics', included: false },
+    ],
+  },
+  {
+    key: 'pro',
+    name: 'Pro',
+    price: '$19',
+    period: '/ mo',
+    desc: 'Get discovered. Understand your audience.',
+    cta: 'Go Pro',
+    featured: true,
+    features: [
+      { text: 'Unlimited pins', included: true },
+      { text: 'Listed in Explore', included: true },
+      { text: 'Open house scheduling', included: true },
+      { text: 'Full analytics dashboard', included: true },
+      { text: 'Email lead notifications', included: true },
+      { text: 'Viewer cities & peak hours', included: true },
+    ],
+  },
+  {
+    key: 'studio',
+    name: 'Studio',
+    price: '$39',
+    period: '/ mo',
+    badge: 'Best value',
+    desc: 'The full suite for top producers.',
+    cta: 'Go Studio',
+    featured: false,
+    features: [
+      { text: 'Everything in Pro', included: true },
+      { text: 'Saved map insights', included: true },
+      { text: 'Cross-listing patterns', included: true },
+      { text: 'Live streaming', included: true, comingSoon: true },
+      { text: 'Priority support', included: true },
+    ],
+  },
+]
+
+function Priced() {
+  const navigate = useNavigate()
+
+  return (
+    <section
+      className="relative border-t border-black/[0.06] py-24 md:py-36"
+      style={{ background: HERO_CREAM }}
+      data-pin="priced"
+    >
+      <div data-pin="priced-inner">
+        <div className="max-w-[1200px] mx-auto px-6 md:px-10 w-full">
+          <div className="max-w-[760px] mb-12 md:mb-16">
+            <span
+              className="text-[11px] text-tangerine font-bold uppercase tracking-[0.2em] mb-5 inline-block"
+              style={{ fontFamily: 'var(--font-mono)' }}
+            >
+              Priced
+            </span>
+            <h2
+              className="text-ink leading-[1.02]"
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 'clamp(2.25rem, 4.2vw, 3.75rem)',
+                fontWeight: 900,
+                letterSpacing: '-0.03em',
+              }}
+            >
+              Start free. Upgrade when you grow.
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-5 md:gap-5">
+            {TIERS.map((tier, i) => (
+              <div
+                key={tier.name}
+                data-pin={`tier-${tier.key}`}
+                className={`reveal relative rounded-[22px] p-7 md:p-8 flex flex-col ${
+                  tier.featured
+                    ? 'bg-gradient-to-br from-midnight to-obsidian text-ivory ring-1 ring-tangerine/40 shadow-[0_20px_50px_-12px_rgba(10,14,23,0.4)]'
+                    : 'bg-white border border-black/[0.07]'
+                }`}
+                data-delay={String(i + 1)}
+              >
+                {tier.featured && (
+                  <span className="absolute -top-3 right-6 px-3 py-1 rounded-full bg-tangerine text-white text-[10px] font-bold uppercase tracking-[0.16em]">
+                    Most popular
+                  </span>
+                )}
+                {tier.badge && (
+                  <span className="absolute -top-3 right-6 px-3 py-1 rounded-full bg-ink text-ivory text-[10px] font-bold uppercase tracking-[0.16em]">
+                    {tier.badge}
+                  </span>
+                )}
+
+                <h3
+                  className={`mb-2 ${tier.featured ? 'text-ivory' : 'text-ink'}`}
+                  style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: '1.4rem',
+                    fontWeight: 800,
+                    letterSpacing: '-0.02em',
+                  }}
+                >
+                  {tier.name}
+                </h3>
+
+                <div className="flex items-baseline gap-1.5 mb-1">
+                  <span
+                    className={`${tier.featured ? 'text-ivory' : 'text-ink'}`}
+                    style={{
+                      fontFamily: 'var(--font-display)',
+                      fontSize: '2.5rem',
+                      fontWeight: 900,
+                      letterSpacing: '-0.035em',
+                    }}
+                  >
+                    {tier.price}
+                  </span>
+                  <span className={`text-[13px] ${tier.featured ? 'text-white/55' : 'text-smoke'}`}>
+                    {tier.period}
+                  </span>
+                </div>
+
+                <p className={`text-[13px] mb-5 ${tier.featured ? 'text-white/65' : 'text-smoke'}`}>
+                  {tier.desc}
+                </p>
+
+                <button
+                  onClick={() => navigate('/sign-up')}
+                  className={`mb-6 h-11 rounded-full text-[14px] font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    tier.featured
+                      ? 'bg-tangerine text-white hover:bg-ember shadow-[0_4px_14px_rgba(255,107,61,0.4)]'
+                      : 'bg-ink text-ivory hover:bg-ink/85'
+                  }`}
+                >
+                  {tier.cta} <ArrowRight size={14} strokeWidth={2.5} />
+                </button>
+
+                <ul className="space-y-2.5">
+                  {tier.features.map((f) => (
+                    <li key={f.text} className="flex items-start gap-2.5">
+                      {f.included ? (
+                        <Check
+                          size={14}
+                          className={`shrink-0 mt-[3px] ${tier.featured ? 'text-tangerine' : 'text-sold-green'}`}
+                          strokeWidth={2.5}
+                        />
+                      ) : (
+                        <XIcon size={14} className="shrink-0 mt-[3px] text-ash/40" strokeWidth={2} />
+                      )}
+                      <span
+                        className={`text-[13px] leading-[1.45] ${
+                          f.included
+                            ? tier.featured ? 'text-white/85' : 'text-graphite'
+                            : 'text-ash/60 line-through'
+                        }`}
+                      >
+                        {f.text}
+                        {f.comingSoon && (
+                          <span className="ml-1.5 text-[9px] font-bold text-tangerine bg-tangerine/10 px-1.5 py-0.5 rounded-full uppercase">
+                            Soon
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center mt-8">
+            <button
+              onClick={() => navigate('/pricing')}
+              className="text-[14px] text-graphite hover:text-ink transition-colors inline-flex items-center gap-1.5 cursor-pointer font-semibold"
+            >
+              See full pricing details <ArrowRight size={14} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ════════════════════════════════════════════════════════════════
+   06 — READY
+   Scroll-driven paintbrush underline on "yours". Pin lands below
+   the claim CTA.
+   ════════════════════════════════════════════════════════════════ */
+
+function Ready() {
+  return (
+    <section className="relative bg-midnight grain overflow-hidden">
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse at 50% 55%, rgba(255,107,61,0.16), transparent 60%)',
+        }}
+      />
+
+      <div className="relative max-w-[1000px] mx-auto px-6 md:px-10 py-28 md:py-44 text-center">
+        <span
+          className="text-[11px] text-tangerine font-bold uppercase tracking-[0.2em] mb-6 inline-block"
+          style={{ fontFamily: 'var(--font-mono)' }}
+        >
+          Ready
+        </span>
+
+        <h2
+          className="reveal text-white leading-[0.95] mb-12 md:mb-14"
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(3rem, 9vw, 8rem)',
+            fontWeight: 900,
+            letterSpacing: '-0.04em',
+          }}
+        >
+          Drop{' '}
+          <ScrollBrushWord>yours</ScrollBrushWord>
+          .
+        </h2>
+
+        <p className="reveal text-white/60 max-w-[520px] mx-auto mb-10 leading-[1.5] text-[15.5px]" data-delay="1">
+          Claim your handle in 2 minutes. Drop your first pin the same day.
+          <br className="hidden md:block" />
+          No card. No contract. Always free to start.
+        </p>
+
+        <div className="reveal flex justify-center" data-delay="2">
+          <ClaimInput variant="dark" data-pin="ready-cta" />
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ScrollBrushWord — draws underline via scroll (retracts on scroll up)
+   ════════════════════════════════════════════════════════════════ */
+
+function ScrollBrushWord({ children }: { children: ReactNode }) {
+  const hostRef = useRef<HTMLSpanElement>(null)
+  const pathRef = useRef<SVGPathElement>(null)
+
+  useEffect(() => {
+    let raf = 0
+    const update = () => {
+      const host = hostRef.current
+      const path = pathRef.current
+      if (!host || !path) return
+      const rect = host.getBoundingClientRect()
+      const vh = window.innerHeight
+      const center = rect.top + rect.height / 2
+      // Start drawing when word is 85% down viewport, done when 35% down.
+      const triggerStart = vh * 0.85
+      const triggerEnd = vh * 0.35
+      let p = (triggerStart - center) / (triggerStart - triggerEnd)
+      p = Math.max(0, Math.min(1, p))
+      path.style.strokeDashoffset = String(600 * (1 - p))
+      raf = 0
+    }
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update) }
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', update)
+    }
+  }, [])
+
+  return (
+    <span
+      ref={hostRef}
+      className="brush-scroll text-tangerine"
+      style={{
+        fontFamily: 'var(--font-display)',
+        fontWeight: 900,
+        letterSpacing: '-0.04em',
+      }}
+    >
+      {children}
+      <svg viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden>
+        <path ref={pathRef} d="M 8 28 C 60 16, 140 34, 210 22 S 340 30, 392 18" />
+      </svg>
+    </span>
   )
 }
