@@ -4,7 +4,7 @@ import { Eye, MapPin, Home, X, Bookmark, Share2, MessageCircle, UserPlus, UserCh
 import { Avatar } from '@/components/ui/Avatar'
 import { ListingOnlySheet } from '@/components/viewers/ListingOnlySheet'
 import { type Pin, type UserDoc, type ContentItem, isTallAspect } from '@/lib/types'
-import { getAllContent } from '@/lib/mock'
+import { getAllContent } from '@/lib/contentUtils'
 import { useSaves } from '@/hooks/useSaves'
 import { useFollow } from '@/hooks/useFollow'
 import { preloadImages } from '@/lib/imageCache'

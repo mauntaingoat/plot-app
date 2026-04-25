@@ -544,6 +544,63 @@ input:focus, textarea:focus {
   contain-intrinsic-size: auto 600px;
 }
 
+/* ── Value-tile inner animations ──
+   Children of a `.reveal` tile that should pan into place SEQUENTIALLY
+   as the tile enters the viewport. The parent gets `.in-view` from
+   useScrollReveal; these utilities respond to that. Transitions are
+   ~600ms with 300ms gaps so each element finishes before the next
+   starts — reads as one-at-a-time, not a wall of fades. */
+
+/* Pan in from the LEFT. */
+.va-pan {
+  opacity: 0;
+  transform: translateX(-32px) translateZ(0);
+  transition: opacity 0.6s cubic-bezier(0.22, 0.61, 0.36, 1),
+              transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
+  will-change: transform, opacity;
+}
+.in-view .va-pan { opacity: 1; transform: translateX(0) translateZ(0); }
+
+/* Pan in from the RIGHT. */
+.va-pan-r {
+  opacity: 0;
+  transform: translateX(32px) translateZ(0);
+  transition: opacity 0.6s cubic-bezier(0.22, 0.61, 0.36, 1),
+              transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
+  will-change: transform, opacity;
+}
+.in-view .va-pan-r { opacity: 1; transform: translateX(0) translateZ(0); }
+
+/* Drop in from above with a soft overshoot — used for pin SVGs. */
+.va-drop {
+  opacity: 0;
+  transform: translateY(-28px) scale(0.92) translateZ(0);
+  transition: opacity 0.55s cubic-bezier(0.34, 1.56, 0.64, 1),
+              transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform, opacity;
+}
+.in-view .va-drop { opacity: 1; transform: translateY(0) scale(1) translateZ(0); }
+
+/* Pop in (scale + fade), tighter timing for badges/check stamps. */
+.va-pop {
+  opacity: 0;
+  transform: scale(0.6) translateZ(0);
+  transition: opacity 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+              transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform, opacity;
+}
+.in-view .va-pop { opacity: 1; transform: scale(1) translateZ(0); }
+
+/* Shared step delays — applied to ANY of the variants above. 300ms gap
+   between consecutive steps so each element gets its own moment. */
+.in-view [data-step="1"] { transition-delay: 0.10s; }
+.in-view [data-step="2"] { transition-delay: 0.40s; }
+.in-view [data-step="3"] { transition-delay: 0.70s; }
+.in-view [data-step="4"] { transition-delay: 1.00s; }
+.in-view [data-step="5"] { transition-delay: 1.30s; }
+.in-view [data-step="6"] { transition-delay: 1.60s; }
+.in-view [data-step="7"] { transition-delay: 1.90s; }
+
 @keyframes pulse-live {
   0%, 100% { transform: scale(1); opacity: 0.8; }
   50% { transform: scale(1.6); opacity: 0; }

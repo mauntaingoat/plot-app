@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, UserCheck, Eye, Gift, Clock, Users, Bookmark, Shield, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
+import { Search, Eye, Gift, Clock, Users, Shield, CheckCircle, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { getUserByUsername } from '@/lib/firestore'
 import { resetFirestore, app } from '@/config/firebase'
@@ -14,10 +14,11 @@ interface AdminPanelProps {
   onImpersonate: (user: UserDoc) => void
 }
 
-async function callAdmin(data: { action: string; targetUid: string; giftTier?: string; giftExpiry?: number }) {
+async function callAdmin(data: { action: string; targetUid?: string; giftTier?: string; giftExpiry?: number }) {
   const functions = getFunctions(app ?? undefined)
   const fn = httpsCallable(functions, 'adminAction')
-  await fn(data)
+  const res = await fn(data)
+  return res.data as any
 }
 
 export function AdminPanel({ onImpersonate }: AdminPanelProps) {

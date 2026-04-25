@@ -4,8 +4,7 @@ import { ArrowLeft, Bookmark } from 'lucide-react'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { MapCanvas } from '@/components/map/MapCanvas'
 import { ListingModal } from '@/components/viewers/ListingModal'
-import { getSharedMap } from '@/lib/firestore'
-import { getMockPins, MOCK_AGENTS } from '@/lib/mock'
+import { getSharedMap, getPinsByIds, getUserById } from '@/lib/firestore'
 import { firebaseConfigured } from '@/config/firebase'
 import type { Pin, UserDoc } from '@/lib/types'
 
@@ -20,35 +19,37 @@ export default function SharedMap() {
   const [pins, setPins] = useState<Pin[]>([])
   const [ownerName, setOwnerName] = useState<string>('')
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null)
+  const [agentsByUid, setAgentsByUid] = useState<Record<string, UserDoc>>({})
 
   useEffect(() => {
     if (!shareId) return
     setLoading(true)
     ;(async () => {
       try {
-        if (firebaseConfigured) {
-          const data = await getSharedMap(shareId)
-          if (!data) { setNotFound(true); setLoading(false); return }
-          setOwnerName(data.displayName)
-
-          // Resolve pin IDs to actual pins by searching all agents' pins
-          const allPins: Pin[] = []
-          for (const agent of MOCK_AGENTS) {
-            allPins.push(...getMockPins(agent.uid))
-          }
-          const resolved = allPins.filter((p) => data.pinIds.includes(p.id))
-          setPins(resolved)
-        } else {
-          // Demo mode — no shared map data, show empty
-          setOwnerName('Demo User')
-          setPins([])
-        }
+        if (!firebaseConfigured) { setNotFound(true); setLoading(false); return }
+        const data = await getSharedMap(shareId)
+        if (!data) { setNotFound(true); setLoading(false); return }
+        setOwnerName(data.displayName)
+        const resolved = data.pinIds.length ? await getPinsByIds(data.pinIds) : []
+        setPins(resolved)
       } catch {
         setNotFound(true)
       }
       setLoading(false)
     })()
   }, [shareId])
+
+  // Lazy-load the agent doc for whichever pin the visitor has open in the
+  // ListingModal. Cached by uid so we only fetch each agent once.
+  useEffect(() => {
+    if (!selectedPin) return
+    const uid = selectedPin.agentId
+    if (!uid || agentsByUid[uid]) return
+    ;(async () => {
+      const doc = await getUserById(uid)
+      if (doc) setAgentsByUid((prev) => ({ ...prev, [uid]: doc }))
+    })()
+  }, [selectedPin, agentsByUid])
 
   if (loading) return <LoadingScreen onComplete={() => {}} minDuration={500} />
 
@@ -90,10 +91,10 @@ export default function SharedMap() {
         </div>
       </div>
 
-      {selectedPin && (
+      {selectedPin && agentsByUid[selectedPin.agentId] && (
         <ListingModal
           pin={selectedPin}
-          agent={MOCK_AGENTS.find((a) => a.uid === selectedPin.agentId) || MOCK_AGENTS[0]}
+          agent={agentsByUid[selectedPin.agentId]}
           onClose={() => setSelectedPin(null)}
           isPreview
         />

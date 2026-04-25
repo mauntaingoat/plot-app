@@ -750,7 +750,7 @@ function CloserLook() {
       id="closer-look"
       className="relative bg-marketing scroll-mt-24"
     >
-      <div className="relative max-w-[1240px] mx-auto px-6 md:px-10 pt-8 md:pt-10 pb-28 md:pb-32">
+      <div className="relative max-w-[1240px] mx-auto px-6 md:px-10 pt-8 md:pt-10 pb-20 md:pb-24">
         <div className="relative max-w-[1080px] mx-auto">
           {/* Card uses NO overflow-hidden so the figure's lower half
               (pin + house + trail) can bleed past the card's bottom and
@@ -832,10 +832,832 @@ function CloserLook() {
             />
           </div>
         </div>
+
+        {/* ── Value-add tiles. Staggered 2-col grid where each tile
+             pairs an editorial heading with a light, brand-styled scene
+             card. Inside each scene, distinct UI elements pan into
+             place ONE AT A TIME — see .va-pan / .va-drop / .va-pop in
+             index.css. The cards stay airy and Reelst-cream so they
+             belong to the same world as the hero, not a different app. */}
+        <div className="relative max-w-[1080px] mx-auto mt-28 md:mt-40">
+          <div className="md:grid md:grid-cols-2 md:gap-x-12 lg:gap-x-16">
+            <div className="space-y-24 md:space-y-32">
+              <ValueTile
+                heading="An address. A pin. The whole listing."
+                description="Type any address. Reelst drops a pin on its real coordinates and pulls beds, baths, sqft, price, and listing agent from MLS. You confirm. The pin goes live."
+              >
+                <AddressToPinScene />
+              </ValueTile>
+
+              <ValueTile
+                heading="One link, every channel."
+                description="reelst.co/yourname is your IG bio, your TikTok link, your email signature, your business card. It opens to your live map — not a static page."
+              >
+                <OneLinkScene />
+              </ValueTile>
+            </div>
+
+            <div className="space-y-24 md:space-y-32 mt-20 md:mt-32 lg:mt-44">
+              <ValueTile
+                heading="A pin is a media drawer."
+                description="Reels, walkthroughs, photo carousels, and a live open-house broadcast all sit behind every pin you drop. The listing isn't a card — it's the whole story."
+              >
+                <PinDrawerScene />
+              </ValueTile>
+
+              <ValueTile
+                heading="Buyers don't need an account."
+                description="Anyone can scroll your map, watch your reels, save pins, and request a showing. No signup, no friction. The lead lands in your inbox anyway."
+              >
+                <BuyerScene />
+              </ValueTile>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   )
 }
+
+/* ────────────────────────────────────────────────────────────────
+   Value-tile shell — heading stack above a dark mock-platform card.
+   The whole tile is `.reveal` so its internals (`.va-step`, etc.)
+   animate as the parent enters the viewport.
+   ──────────────────────────────────────────────────────────────── */
+function ValueTile({
+  heading,
+  description,
+  children,
+}: {
+  heading: string
+  description: string
+  children: ReactNode
+}) {
+  return (
+    <div className="reveal">
+      <div className="text-center max-w-[440px] mx-auto mb-7 md:mb-9 px-2">
+        <h3
+          className="text-ink mb-3"
+          style={{
+            fontFamily: 'var(--font-humanist)',
+            fontSize: 'clamp(1.5rem, 2.4vw, 2.1rem)',
+            fontWeight: 500,
+            letterSpacing: '-0.025em',
+            lineHeight: 1.04,
+          }}
+        >
+          {heading}
+        </h3>
+        <p
+          className="text-graphite"
+          style={{
+            fontFamily: 'var(--font-humanist)',
+            fontSize: '14.5px',
+            fontWeight: 400,
+            lineHeight: 1.5,
+          }}
+        >
+          {description}
+        </p>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+/* ────────────────────────────────────────────────────────────────
+   Shared scene shell — light, brand-cream card with the map-grid-soft
+   pattern. Children pack in via normal flow; no fixed aspect-ratio so
+   each scene sizes itself to its content (denser = no empty pockets).
+   Scene internals pan in one at a time via .va-pan / .va-drop /
+   .va-pop + data-step.
+   ──────────────────────────────────────────────────────────────── */
+function SceneFrame({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="map-grid-soft relative rounded-[24px] overflow-hidden p-4 md:p-5"
+      style={{
+        border: '1px solid rgba(255,133,82,0.18)',
+        boxShadow:
+          '0 1px 0 rgba(255,255,255,0.85) inset, 0 18px 50px -22px rgba(217,74,31,0.14), 0 6px 20px -10px rgba(10,14,23,0.06)',
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+/* Small reusable pin SVG matching the brand pin (orange w/ ink stroke
+   and cream dot). Stand-alone so each scene can place its own pin. */
+function ScenePin({ size = 44 }: { size?: number }) {
+  return (
+    <svg width={size} viewBox="0 0 60 84" fill="none" aria-hidden>
+      <path
+        d="M 30 3 C 14.5 3, 3 14.5, 3 30 C 3 50, 30 80, 30 80 S 57 50, 57 30 C 57 14.5, 45.5 3, 30 3 Z"
+        fill="#FF6B3D"
+        stroke="#0A0E17"
+        strokeWidth="2.5"
+        strokeLinejoin="round"
+      />
+      <circle cx="30" cy="28" r="8.5" fill="#F0E8D0" stroke="#0A0E17" strokeWidth="2" />
+    </svg>
+  )
+}
+
+/* Shared row card style used inside scenes (white + soft tangerine border). */
+const ROW_CARD = {
+  border: '1px solid rgba(255,133,82,0.18)',
+  boxShadow: '0 3px 10px -6px rgba(10,14,23,0.08)',
+} as const
+
+/* ────────────────────────────────────────────────────────────────
+   Scene 1 — Address → Pin. A "pin creator" mockup densely packed:
+   address search w/ autocomplete suggestions, mini map preview with
+   the dropped pin, and a rich detail panel beneath. Animation runs
+   top-to-bottom in 4 sequential steps.
+   ──────────────────────────────────────────────────────────────── */
+function AddressToPinScene() {
+  return (
+    <SceneFrame>
+      {/* 1 — search bar + autocomplete suggestions group */}
+      <div className="va-pan" data-step="1">
+        <div
+          className="bg-white rounded-[14px] pl-3 pr-4 py-2.5 flex items-center gap-2.5"
+          style={ROW_CARD}
+        >
+          <span
+            className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(255,122,77,0.10)' }}
+          >
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <circle cx="5.5" cy="5.5" r="4" stroke="#FF6B3D" strokeWidth="1.6"/>
+              <path d="M9 9L12 12" stroke="#FF6B3D" strokeWidth="1.6" strokeLinecap="round"/>
+            </svg>
+          </span>
+          <span
+            className="text-ink text-[13px] flex-1"
+            style={{ fontFamily: 'var(--font-humanist)', fontWeight: 500 }}
+          >
+            210 Coral Way
+          </span>
+          <span
+            className="w-1 h-4 bg-tangerine"
+            style={{ animation: 'shimmer 1.1s ease-in-out infinite' }}
+          />
+        </div>
+        <div className="mt-1.5 px-1.5 space-y-0.5">
+          {[
+            '210 Coral Way, Miami, FL 33133',
+            '210 Coral Gables Dr, Coral Gables',
+            '2104 Coral Plaza, Pinecrest',
+          ].map((s, i) => (
+            <div
+              key={s}
+              className="text-graphite text-[11.5px] truncate px-2 py-1 rounded"
+              style={{
+                fontFamily: 'var(--font-humanist)',
+                fontWeight: 400,
+                background: i === 0 ? 'rgba(255,133,82,0.07)' : 'transparent',
+                color: i === 0 ? '#0A0E17' : undefined,
+              }}
+            >
+              {s}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 2 — mini map preview with the pin dropped on it */}
+      <div className="va-pan mt-3" data-step="2">
+        <div
+          className="map-grid relative rounded-[14px] h-[120px] md:h-[140px] overflow-hidden"
+          style={{ border: '1px solid rgba(255,133,82,0.22)' }}
+        >
+          {/* Cross-hair lines hinting at street grid intersections */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="va-drop" data-step="3">
+              <ScenePin size={52} />
+            </div>
+          </div>
+          {/* corner street labels */}
+          <span
+            className="absolute top-1.5 left-2 text-[9px] uppercase tracking-[0.14em]"
+            style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, color: 'rgba(160,106,74,0.75)' }}
+          >
+            CORAL WAY
+          </span>
+          <span
+            className="absolute bottom-1.5 right-2 text-[9px] uppercase tracking-[0.14em]"
+            style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, color: 'rgba(160,106,74,0.75)' }}
+          >
+            33133
+          </span>
+        </div>
+      </div>
+
+      {/* 4 — detail panel: price + stat grid + agent + MLS chip */}
+      <div className="va-pan mt-3" data-step="4">
+        <div
+          className="bg-white rounded-[14px] p-3.5"
+          style={ROW_CARD}
+        >
+          <div className="flex items-center justify-between mb-2.5">
+            <p
+              className="text-[10px] tracking-[0.16em] uppercase"
+              style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, color: '#A06A4A' }}
+            >
+              Pulled from MLS
+            </p>
+            <span
+              className="flex items-center gap-1 text-[10px] tracking-[0.14em] uppercase"
+              style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: '#22C55E' }}
+            >
+              <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6.2L4.8 9 10 3.2" stroke="#22C55E" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Verified
+            </span>
+          </div>
+          <div className="flex items-baseline gap-2 mb-3">
+            <span
+              className="text-ink text-[20px] tabular-nums leading-none"
+              style={{ fontFamily: 'var(--font-humanist)', fontWeight: 600 }}
+            >
+              $1,485,000
+            </span>
+            <span
+              className="text-graphite text-[11.5px]"
+              style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}
+            >
+              · 12 days
+            </span>
+          </div>
+          <div className="grid grid-cols-4 gap-1.5 mb-3">
+            {[
+              { v: '4',     l: 'Beds' },
+              { v: '3.5',   l: 'Baths' },
+              { v: '2,840', l: 'Sqft' },
+              { v: '1968',  l: 'Built' },
+            ].map((s) => (
+              <div
+                key={s.l}
+                className="rounded-[8px] py-1.5 px-2 text-center"
+                style={{ background: 'rgba(255,133,82,0.06)', border: '1px solid rgba(255,133,82,0.15)' }}
+              >
+                <div
+                  className="text-ink text-[13px] tabular-nums leading-none"
+                  style={{ fontFamily: 'var(--font-humanist)', fontWeight: 600 }}
+                >
+                  {s.v}
+                </div>
+                <div
+                  className="text-graphite text-[9px] uppercase tracking-[0.12em] mt-0.5"
+                  style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}
+                >
+                  {s.l}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div
+            className="flex items-center gap-2 px-3 py-2 rounded-[10px]"
+            style={{ background: 'rgba(255,133,82,0.06)' }}
+          >
+            <span
+              className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-white text-[10px]"
+              style={{ background: 'var(--brand-grad)', fontFamily: 'var(--font-humanist)', fontWeight: 600 }}
+            >
+              JD
+            </span>
+            <span
+              className="text-ink text-[12px] flex-1 truncate"
+              style={{ fontFamily: 'var(--font-humanist)', fontWeight: 500 }}
+            >
+              Listed by Jane Doe · Compass
+            </span>
+          </div>
+        </div>
+      </div>
+    </SceneFrame>
+  )
+}
+
+/* ────────────────────────────────────────────────────────────────
+   Scene 2 — One link, every channel. A miniature reelst.co/handle
+   profile preview at the top (avatar, bio, mini map, pin grid),
+   followed by the channels that link points to: Instagram bio,
+   email signature, business card, open-house QR. Each row pans
+   from the left with a small arrow nodding toward the profile.
+   ──────────────────────────────────────────────────────────────── */
+function OneLinkScene() {
+  return (
+    <SceneFrame>
+      {/* 1 — profile preview "card" (acts as the canonical destination) */}
+      <div className="va-pan" data-step="1">
+        <div
+          className="bg-white rounded-[16px] p-3.5"
+          style={{
+            border: '1px solid rgba(255,133,82,0.28)',
+            boxShadow: '0 10px 30px -14px rgba(217,74,31,0.30)',
+          }}
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <span
+              className="w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0"
+              style={{ background: 'var(--brand-grad)', fontFamily: 'var(--font-humanist)', fontWeight: 600, fontSize: '14px' }}
+            >
+              JR
+            </span>
+            <div className="min-w-0 flex-1">
+              <div
+                className="text-ink text-[13.5px] truncate"
+                style={{ fontFamily: 'var(--font-humanist)', fontWeight: 600 }}
+              >
+                Jordan Reyes
+              </div>
+              <div
+                className="text-graphite text-[11px] truncate"
+                style={{ fontFamily: 'var(--font-humanist)' }}
+              >
+                Compass · Miami, FL
+              </div>
+            </div>
+            <div
+              className="text-tangerine text-[10.5px] tracking-[0.14em] uppercase"
+              style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
+            >
+              reelst.co/jordan
+            </div>
+          </div>
+          {/* Mini map with pin grid baked in */}
+          <div
+            className="map-grid relative rounded-[10px] h-[88px] overflow-hidden mb-2"
+            style={{ border: '1px solid rgba(255,133,82,0.22)' }}
+          >
+            {[
+              { t: '18%', l: '14%', s: 22 },
+              { t: '52%', l: '32%', s: 22 },
+              { t: '28%', l: '54%', s: 22 },
+              { t: '60%', l: '72%', s: 22 },
+              { t: '14%', l: '78%', s: 22 },
+            ].map((p, i) => (
+              <div key={i} className="absolute" style={{ top: p.t, left: p.l }}>
+                <ScenePin size={p.s} />
+              </div>
+            ))}
+          </div>
+          {/* Stats strip */}
+          <div className="grid grid-cols-3 gap-1.5">
+            {[
+              { v: '47', l: 'Sold' },
+              { v: '12', l: 'Active' },
+              { v: '1.4k', l: 'Following' },
+            ].map((s) => (
+              <div
+                key={s.l}
+                className="rounded-[8px] py-1.5 text-center"
+                style={{ background: 'rgba(255,133,82,0.06)' }}
+              >
+                <div
+                  className="text-ink text-[12px] tabular-nums leading-none"
+                  style={{ fontFamily: 'var(--font-humanist)', fontWeight: 600 }}
+                >
+                  {s.v}
+                </div>
+                <div
+                  className="text-graphite text-[9px] uppercase tracking-[0.12em] mt-0.5"
+                  style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}
+                >
+                  {s.l}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 2-5 — channels that point at the same link */}
+      <div className="mt-3 space-y-1.5">
+        {[
+          { label: 'Instagram bio', sub: '@jordan.realtor',           step: 2 },
+          { label: 'Email signature', sub: 'compass.com/jordan',      step: 3 },
+          { label: 'Business card',  sub: 'QR + reelst.co/jordan',    step: 4 },
+          { label: 'MLS profile',    sub: 'A11293812 · Miami MLS',    step: 5 },
+        ].map((c) => (
+          <div
+            key={c.label}
+            className="va-pan flex items-center gap-2"
+            data-step={c.step}
+          >
+            <svg
+              width="20"
+              height="12"
+              viewBox="0 0 22 14"
+              fill="none"
+              className="shrink-0"
+              aria-hidden
+            >
+              <path
+                d="M21 1C16 1 11 7 6 7M6 7L9 4M6 7L9 10"
+                stroke="#FF6B3D"
+                strokeOpacity="0.55"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <div
+              className="bg-white rounded-[10px] px-3 py-2 flex-1 flex items-center justify-between gap-2 min-w-0"
+              style={ROW_CARD}
+            >
+              <span
+                className="text-ink text-[12px] truncate"
+                style={{ fontFamily: 'var(--font-humanist)', fontWeight: 500 }}
+              >
+                {c.label}
+              </span>
+              <span
+                className="text-graphite text-[10.5px] truncate"
+                style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}
+              >
+                {c.sub}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </SceneFrame>
+  )
+}
+
+/* ────────────────────────────────────────────────────────────────
+   Scene 3 — A pin is a media drawer. Mock of a pin "opened" on
+   Reelst, packed with: pin header w/ price, content tabs, a
+   featured reel + thumbnail strip, photo carousel, and a LIVE
+   broadcast strip. Five sequential animation steps.
+   ──────────────────────────────────────────────────────────────── */
+function PinDrawerScene() {
+  return (
+    <SceneFrame>
+      {/* 1 — pin header */}
+      <div className="va-pan" data-step="1">
+        <div
+          className="bg-white rounded-[14px] p-3 flex items-center gap-3"
+          style={ROW_CARD}
+        >
+          <ScenePin size={36} />
+          <div className="min-w-0 flex-1">
+            <div
+              className="text-ink text-[13px] truncate"
+              style={{ fontFamily: 'var(--font-humanist)', fontWeight: 600 }}
+            >
+              210 Coral Way
+            </div>
+            <div
+              className="text-graphite text-[11px]"
+              style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}
+            >
+              FOR SALE · $1.485M
+            </div>
+          </div>
+          <span
+            className="text-[9.5px] tracking-[0.14em] uppercase px-2 py-1 rounded-full"
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontWeight: 600,
+              background: 'rgba(255,122,77,0.12)',
+              color: '#D44A1F',
+            }}
+          >
+            12 days
+          </span>
+        </div>
+      </div>
+
+      {/* 2 — tab strip */}
+      <div className="va-pan mt-2.5 flex gap-1" data-step="2">
+        {[
+          { l: 'Reels', n: 4, active: true },
+          { l: 'Photos', n: 12 },
+          { l: 'Live', dot: true },
+          { l: 'Details' },
+        ].map((t) => (
+          <div
+            key={t.l}
+            className="rounded-full px-2.5 py-1 flex items-center gap-1"
+            style={{
+              background: t.active ? 'var(--brand-grad)' : 'rgba(255,255,255,0.6)',
+              border: t.active ? 'none' : '1px solid rgba(255,133,82,0.18)',
+            }}
+          >
+            <span
+              className={t.active ? 'text-white' : 'text-ink'}
+              style={{ fontFamily: 'var(--font-humanist)', fontWeight: 500, fontSize: '10.5px' }}
+            >
+              {t.l}
+            </span>
+            {typeof t.n === 'number' && (
+              <span
+                className={t.active ? 'text-white/85' : 'text-graphite'}
+                style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, fontSize: '9.5px' }}
+              >
+                {t.n}
+              </span>
+            )}
+            {t.dot && (
+              <span
+                className="w-1.5 h-1.5 rounded-full bg-red-500"
+                style={{ animation: 'pulse-live 1.6s ease-in-out infinite' }}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* 3 — featured reel (large) */}
+      <div className="va-pan mt-2.5" data-step="3">
+        <div
+          className="rounded-[14px] overflow-hidden relative"
+          style={{
+            background: 'linear-gradient(155deg, #FF7A4D 0%, #D94A1F 100%)',
+            aspectRatio: '16/9',
+          }}
+        >
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span
+              className="w-12 h-12 rounded-full flex items-center justify-center"
+              style={{ background: 'rgba(255,255,255,0.92)' }}
+            >
+              <svg width="14" height="16" viewBox="0 0 11 12" fill="none">
+                <path d="M2 2L9 6L2 10V2Z" fill="#0A0E17"/>
+              </svg>
+            </span>
+          </div>
+          <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between">
+            <span
+              className="text-white text-[11px]"
+              style={{ fontFamily: 'var(--font-humanist)', fontWeight: 500 }}
+            >
+              Walkthrough
+            </span>
+            <span
+              className="text-white/80 text-[10.5px]"
+              style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}
+            >
+              0:48
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 4 — thumbnail strip (photos + reel + live, mixed) */}
+      <div className="va-pan mt-2.5 grid grid-cols-4 gap-1.5" data-step="4">
+        {[
+          { kind: 'photo', n: 1 },
+          { kind: 'photo', n: 2 },
+          { kind: 'photo', n: 3 },
+          { kind: 'live' },
+        ].map((tile, i) => (
+          <div
+            key={i}
+            className="rounded-[8px] aspect-square overflow-hidden relative"
+            style={{
+              background: tile.kind === 'live'
+                ? '#0A0E17'
+                : i === 0
+                ? 'linear-gradient(160deg, #FFD9C2 0%, #FFB58F 100%)'
+                : i === 1
+                ? 'linear-gradient(160deg, #FFE6D1 0%, #FFC9A4 100%)'
+                : 'linear-gradient(160deg, #FFF1E2 0%, #FFD9B6 100%)',
+              border: '1px solid rgba(255,133,82,0.18)',
+            }}
+          >
+            {tile.kind === 'live' && (
+              <>
+                <span
+                  className="absolute top-1.5 left-1.5 w-1.5 h-1.5 rounded-full bg-red-500"
+                  style={{ animation: 'pulse-live 1.6s ease-in-out infinite' }}
+                />
+                <span
+                  className="absolute bottom-1.5 left-1.5 right-1.5 text-white text-[8px] uppercase tracking-[0.14em] text-center"
+                  style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
+                >
+                  LIVE Sat
+                </span>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* 5 — open-house broadcast strip */}
+      <div className="va-pan mt-2.5" data-step="5">
+        <div
+          className="bg-white rounded-[10px] px-3 py-2 flex items-center gap-2.5"
+          style={ROW_CARD}
+        >
+          <span
+            className="w-6 h-6 rounded-full bg-[#0A0E17] flex items-center justify-center shrink-0 relative"
+          >
+            <span
+              className="absolute top-1 left-1 w-1.5 h-1.5 rounded-full bg-red-500"
+              style={{ animation: 'pulse-live 1.6s ease-in-out infinite' }}
+            />
+          </span>
+          <div className="flex-1 min-w-0">
+            <div
+              className="text-ink text-[11.5px] truncate"
+              style={{ fontFamily: 'var(--font-humanist)', fontWeight: 600 }}
+            >
+              Open House · Sat 11:00 AM
+            </div>
+            <div
+              className="text-graphite text-[10px]"
+              style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}
+            >
+              Tap to set a reminder
+            </div>
+          </div>
+          <ArrowRight size={13} className="text-tangerine shrink-0" />
+        </div>
+      </div>
+    </SceneFrame>
+  )
+}
+
+/* ────────────────────────────────────────────────────────────────
+   Scene 4 — Buyers don't need an account. Mock of a buyer's view of
+   an agent's profile: mini-map with pins, a tapped-pin listing
+   card, save action, request-a-showing CTA, and an inbox toast on
+   the agent side. Each piece pans in sequentially.
+   ──────────────────────────────────────────────────────────────── */
+function BuyerScene() {
+  return (
+    <SceneFrame>
+      {/* 1 — buyer's mini-map */}
+      <div className="va-pan" data-step="1">
+        <div
+          className="map-grid relative rounded-[14px] h-[120px] md:h-[140px] overflow-hidden"
+          style={{ border: '1px solid rgba(255,133,82,0.22)' }}
+        >
+          {[
+            { t: '22%', l: '16%', s: 26 },
+            { t: '54%', l: '32%', s: 26 },
+            { t: '34%', l: '52%', s: 26 },
+            { t: '14%', l: '76%', s: 26 },
+            { t: '62%', l: '70%', s: 26 },
+          ].map((p, i) => (
+            <div key={i} className="absolute" style={{ top: p.t, left: p.l }}>
+              <ScenePin size={p.s} />
+            </div>
+          ))}
+          {/* No-login pill, top-right */}
+          <span
+            className="absolute top-2 right-2 px-2 py-1 rounded-full text-[9px] uppercase tracking-[0.14em] flex items-center gap-1"
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontWeight: 600,
+              background: 'rgba(34,197,94,0.16)',
+              color: '#15803D',
+              border: '1px solid rgba(34,197,94,0.32)',
+            }}
+          >
+            <span className="w-1 h-1 rounded-full bg-[#22C55E]"/>
+            Browsing
+          </span>
+        </div>
+      </div>
+
+      {/* 2 — tapped pin listing card */}
+      <div className="va-pan mt-2.5" data-step="2">
+        <div
+          className="bg-white rounded-[14px] p-3"
+          style={ROW_CARD}
+        >
+          <div className="flex items-baseline justify-between mb-1.5">
+            <span
+              className="text-ink text-[16px] tabular-nums leading-none"
+              style={{ fontFamily: 'var(--font-humanist)', fontWeight: 600 }}
+            >
+              $1,485,000
+            </span>
+            <span
+              className="text-graphite text-[10.5px]"
+              style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}
+            >
+              FOR SALE
+            </span>
+          </div>
+          <div
+            className="text-graphite text-[12px] mb-2"
+            style={{ fontFamily: 'var(--font-humanist)', fontWeight: 500 }}
+          >
+            210 Coral Way · 4 bd · 3.5 ba · 2,840 sqft
+          </div>
+          <div className="flex items-center gap-1.5">
+            {[1,2,3].map((i) => (
+              <div
+                key={i}
+                className="flex-1 h-9 rounded-[6px]"
+                style={{
+                  background: i === 1
+                    ? 'linear-gradient(160deg, #FFD9C2 0%, #FFB58F 100%)'
+                    : i === 2
+                    ? 'linear-gradient(160deg, #FFE6D1 0%, #FFC9A4 100%)'
+                    : 'linear-gradient(160deg, #FFF1E2 0%, #FFD9B6 100%)',
+                  border: '1px solid rgba(255,133,82,0.20)',
+                }}
+              />
+            ))}
+            <div
+              className="flex-1 h-9 rounded-[6px] bg-white flex items-center justify-center"
+              style={{ border: '1px solid rgba(255,133,82,0.22)' }}
+            >
+              <span
+                className="text-graphite text-[10px]"
+                style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
+              >
+                +9
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 3 — save + request actions row */}
+      <div className="va-pan mt-2.5 flex gap-2" data-step="3">
+        <div
+          className="bg-white rounded-full px-3 py-2 flex items-center gap-2 shrink-0"
+          style={ROW_CARD}
+        >
+          <span
+            className="w-5 h-5 rounded-full flex items-center justify-center"
+            style={{ background: 'rgba(255,122,77,0.14)' }}
+          >
+            <svg width="11" height="10" viewBox="0 0 11 10" fill="none">
+              <path d="M5.5 9.2L1.4 5.4C0 4.1 0.3 1.8 2.1 1C3.4 0.4 4.7 1 5.5 2C6.3 1 7.6 0.4 8.9 1C10.7 1.8 11 4.1 9.6 5.4L5.5 9.2Z" fill="#FF6B3D"/>
+            </svg>
+          </span>
+          <span
+            className="text-ink text-[12px]"
+            style={{ fontFamily: 'var(--font-humanist)', fontWeight: 500 }}
+          >
+            Saved
+          </span>
+        </div>
+        <div
+          className="rounded-full px-3.5 py-2 flex items-center justify-between gap-1.5 flex-1 shadow-[0_8px_22px_-10px_rgba(217,74,31,0.40)]"
+          style={{ background: 'var(--brand-grad)', color: '#fff' }}
+        >
+          <span
+            className="text-[12px]"
+            style={{ fontFamily: 'var(--font-humanist)', fontWeight: 500 }}
+          >
+            Request a showing
+          </span>
+          <ArrowRight size={13} />
+        </div>
+      </div>
+
+      {/* 4 — agent inbox toast (lead landed) */}
+      <div className="va-pan mt-2.5" data-step="4">
+        <div
+          className="rounded-[12px] p-3 flex items-center gap-2.5 bg-[#0A0E17]"
+        >
+          <span
+            className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(34,197,94,0.18)' }}
+          >
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+              <path d="M2 6.2L4.8 9 10 3.2" stroke="#22C55E" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </span>
+          <div className="flex-1 min-w-0">
+            <div
+              className="text-white text-[12px] mb-0.5"
+              style={{ fontFamily: 'var(--font-humanist)', fontWeight: 600 }}
+            >
+              New showing request
+            </div>
+            <div
+              className="text-white/55 text-[10.5px] truncate"
+              style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}
+            >
+              Maya C. · Sat 11:00 AM · 210 Coral Way
+            </div>
+          </div>
+          <span
+            className="text-[9.5px] tracking-[0.14em] uppercase"
+            style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: '#7DDB9D' }}
+          >
+            Inbox
+          </span>
+        </div>
+      </div>
+    </SceneFrame>
+  )
+}
+
 
 /* ════════════════════════════════════════════════════════════════
    06 — READY
