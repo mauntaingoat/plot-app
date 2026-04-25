@@ -45,15 +45,35 @@ import { PIN_CONFIG, type Pin, type Platform, type ForSalePin, type OpenHouse, t
 
 type DashTab = 'reelst' | 'insights' | 'inbox' | 'content' | 'settings' | 'admin'
 
+/* Desktop layout (sidebar + content) kicks in early — sidebar is
+   ~240px, so anything wider than ~760px has enough room for both
+   without forcing the mobile bottom-tab layout. Below this we drop
+   to the original mobile layout. */
 function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(typeof window !== 'undefined' && window.innerWidth >= 1024)
+  const [isDesktop, setIsDesktop] = useState(typeof window !== 'undefined' && window.innerWidth >= 768)
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)')
+    const mq = window.matchMedia('(min-width: 768px)')
     const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
   }, [])
   return isDesktop
+}
+
+/* Right-side preview pane only appears at wider widths — sidebar
+   (240) + content (~500 min) + preview (300) = ~1040, so we wait
+   for a comfortable buffer before rendering it. Between mobile and
+   this threshold we keep the desktop sidebar layout but drop the
+   preview pane. */
+function useIsWide() {
+  const [isWide, setIsWide] = useState(typeof window !== 'undefined' && window.innerWidth >= 1200)
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1200px)')
+    const handler = (e: MediaQueryListEvent) => setIsWide(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return isWide
 }
 
 export default function Dashboard() {
@@ -80,6 +100,7 @@ export default function Dashboard() {
   const desktopScrollRef = useRef<HTMLDivElement>(null)
   const previewIframeRef = useRef<HTMLIFrameElement>(null)
   const isDesktop = useIsDesktop()
+  const isWide = useIsWide()
 
   // Lock background scroll for desktop-only inline modals
   // (Mobile variants use DarkBottomSheet which locks scroll internally)
@@ -1170,48 +1191,53 @@ export default function Dashboard() {
           </div>
         </main>
 
-        {/* ── Right Preview Panel (Live iframe) ── */}
-        <aside className="w-[300px] shrink-0 border-l border-border-light flex flex-col items-center justify-center" style={{ background: 'linear-gradient(180deg, var(--color-cream) 0%, var(--color-pearl) 100%)' }}>
-          {activeUser.username ? (
-            <>
-              {/* Phone frame with live preview — scaled to fit */}
-              <div className="relative">
-                <div className="w-[240px] rounded-[32px] bg-midnight shadow-2xl overflow-hidden" style={{ height: '480px' }}>
-                  <iframe
-                    ref={previewIframeRef}
-                    src={`/${activeUser.username}?preview=true`}
-                    className="border-0 origin-top-left"
-                    style={{ pointerEvents: 'none', width: '375px', height: '750px', transform: 'scale(0.64)', transformOrigin: 'top left' }}
-                    title="Profile preview"
-                  />
+        {/* ── Right Preview Panel (Live iframe) ──
+            Only shown on wide screens (≥1200px). Between mobile and
+            this width, the dashboard keeps the sidebar + content
+            layout but drops the preview to give content more room. */}
+        {isWide && (
+          <aside className="w-[300px] shrink-0 border-l border-border-light flex flex-col items-center justify-center" style={{ background: 'linear-gradient(180deg, var(--color-cream) 0%, var(--color-pearl) 100%)' }}>
+            {activeUser.username ? (
+              <>
+                {/* Phone frame with live preview — scaled to fit */}
+                <div className="relative">
+                  <div className="w-[240px] rounded-[32px] bg-midnight shadow-2xl overflow-hidden" style={{ height: '480px' }}>
+                    <iframe
+                      ref={previewIframeRef}
+                      src={`/${activeUser.username}?preview=true`}
+                      className="border-0 origin-top-left"
+                      style={{ pointerEvents: 'none', width: '375px', height: '750px', transform: 'scale(0.64)', transformOrigin: 'top left' }}
+                      title="Profile preview"
+                    />
+                  </div>
+                  {/* Reload button — top-right of phone frame */}
+                  <button
+                    onClick={() => {
+                      const iframe = previewIframeRef.current
+                      if (iframe) iframe.src = iframe.src
+                    }}
+                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-warm-white/90 shadow border border-border-light flex items-center justify-center text-smoke hover:text-ink cursor-pointer transition-colors"
+                    title="Reload preview"
+                  >
+                    <RefreshCw size={13} strokeWidth={2.3} />
+                  </button>
                 </div>
-                {/* Reload button — top-right of phone frame */}
-                <button
-                  onClick={() => {
-                    const iframe = previewIframeRef.current
-                    if (iframe) iframe.src = iframe.src
-                  }}
-                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-warm-white/90 shadow border border-border-light flex items-center justify-center text-smoke hover:text-ink cursor-pointer transition-colors"
-                  title="Reload preview"
-                >
-                  <RefreshCw size={13} strokeWidth={2.3} />
-                </button>
-              </div>
 
-              <button
-                onClick={() => navigate(`/${activeUser.username}?preview=true`)}
-                className="mt-4 text-[12px] font-semibold text-tangerine cursor-pointer hover:underline"
-              >
-                Open full preview
-              </button>
-            </>
-          ) : (
-            <div className="text-center px-6">
-              <p className="text-[14px] font-semibold text-ink mb-1">Set up your username</p>
-              <p className="text-[12px] text-smoke">Choose a username to see your live preview here.</p>
-            </div>
-          )}
-        </aside>
+                <button
+                  onClick={() => navigate(`/${activeUser.username}?preview=true`)}
+                  className="mt-4 text-[12px] font-semibold text-tangerine cursor-pointer hover:underline"
+                >
+                  Open full preview
+                </button>
+              </>
+            ) : (
+              <div className="text-center px-6">
+                <p className="text-[14px] font-semibold text-ink mb-1">Set up your username</p>
+                <p className="text-[12px] text-smoke">Choose a username to see your live preview here.</p>
+              </div>
+            )}
+          </aside>
+        )}
 
         {renderSheets()}
       </div>

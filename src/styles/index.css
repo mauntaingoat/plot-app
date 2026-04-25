@@ -261,22 +261,20 @@ input:focus, textarea:focus {
 }
 
 /* ── Brand button — shared hover behavior
-   On hover:
-   • NO upward translate — the pill stays planted.
-   • Gradient smoothly reverses color order (amber→tangerine instead of
-     tangerine→amber), matching the Reelst icon halves.
-   • A subtle counter-clockwise tilt, same -6deg as the logo icon hover.
-   We drive the gradient reverse by layering a second gradient on a
-   pseudo-element and cross-fading opacity — CSS can't tween gradient
-   stops directly, so the opacity swap gives the impression of a fluid
-   color flip. */
+   On hover the pill tilts a subtle 1.5° in the direction of the cursor:
+   cursor on the right of center → clockwise lean (+1.5°); cursor on
+   the left → counter-clockwise lean (-1.5°). A small JS effect (see
+   MarketingLayout) updates the --btn-tilt custom property at the
+   moment of mouseenter; if the cursor is exactly centered (or no value
+   has been set) the default falls back to a clockwise lean.
+   No upward translate — the pill stays planted. */
 .brand-btn {
   background: var(--brand-grad);
   color: #fff;
   transition: transform 0.3s cubic-bezier(0.33, 1, 0.68, 1);
 }
 .brand-btn:hover {
-  transform: rotate(-1.5deg);
+  transform: rotate(var(--btn-tilt, 1.5deg));
 }
 
 /* ── Map-grid pattern for the hero inner card ──
@@ -848,26 +846,40 @@ input:focus, textarea:focus {
   .strand-burst-anchor { display: none !important; }
 }
 
-/* ── Legal prose ── */
+/* ── Legal prose ──
+   Tuned to the brand humanist family used by Hero/Features/Pricing.
+   Slightly larger body size (15px) for legal readability, with section
+   headings sized to feel like restrained kin to the marketing H2s
+   without competing for attention. */
+.prose-reeltor {
+  font-family: var(--font-humanist);
+}
+
 .prose-reeltor h2 {
-  font-size: 18px;
-  font-weight: 700;
+  font-family: var(--font-humanist);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   color: var(--color-ink);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .prose-reeltor h3 {
+  font-family: var(--font-humanist);
   font-size: 15px;
   font-weight: 600;
-  color: var(--color-graphite);
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
   margin-bottom: 4px;
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 .prose-reeltor p {
-  font-size: 14px;
+  font-family: var(--font-humanist);
+  font-size: 15px;
+  font-weight: 400;
   line-height: 1.7;
-  color: var(--color-smoke);
+  color: var(--color-graphite);
 }
 
 .prose-reeltor ul {
@@ -877,14 +889,22 @@ input:focus, textarea:focus {
 }
 
 .prose-reeltor li {
-  font-size: 14px;
+  font-family: var(--font-humanist);
+  font-size: 15px;
+  font-weight: 400;
   line-height: 1.7;
-  color: var(--color-smoke);
+  color: var(--color-graphite);
   margin-bottom: 4px;
+}
+
+.prose-reeltor strong {
+  font-weight: 600;
+  color: var(--color-ink);
 }
 
 .prose-reeltor a {
   color: var(--color-tangerine);
+  font-weight: 500;
 }
 
 .prose-reeltor a:hover {

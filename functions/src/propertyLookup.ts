@@ -85,49 +85,73 @@ export const propertyLookup = onCall<PropertyLookupRequest, Promise<PropertyData
       lastSalePrice: null, lastSaleDate: null,
     }
 
-    try {
-      // 1. Try sale listings endpoint first (has price, DOM, agent, MLS)
-      const listingStatus = pinType === 'sold' ? 'Inactive' : 'Active'
-      const listingData = await fetchRentcast(
-        `/v1/listings/sale?address=${encoded}&status=${listingStatus}&limit=1`,
-        apiKey,
-      )
+    const applyListing = (listing: any, source: 'active' | 'inactive') => {
+      if (!result.bedrooms) result.bedrooms = listing.bedrooms ?? null
+      if (!result.bathrooms) result.bathrooms = listing.bathrooms ?? null
+      if (!result.squareFootage) result.squareFootage = listing.squareFootage ?? null
+      if (!result.propertyType) result.propertyType = listing.propertyType ?? null
+      if (!result.yearBuilt) result.yearBuilt = listing.yearBuilt ?? null
+      if (!result.lotSize) result.lotSize = listing.lotSize ? String(listing.lotSize) : null
+      result.daysOnMarket = listing.daysOnMarket ?? result.daysOnMarket
+      result.listedDate = listing.listedDate ?? result.listedDate
+      result.listingStatus = listing.status ?? (source === 'active' ? 'Active' : 'Inactive')
+      result.mlsNumber = listing.mlsNumber ?? result.mlsNumber
+      result.hoaFees = listing.hoaFee ?? result.hoaFees
 
-      const listing = Array.isArray(listingData) ? listingData[0] : listingData
-
-      if (listing) {
-        result.bedrooms = listing.bedrooms ?? null
-        result.bathrooms = listing.bathrooms ?? null
-        result.squareFootage = listing.squareFootage ?? null
-        result.propertyType = listing.propertyType ?? null
-        result.yearBuilt = listing.yearBuilt ?? null
-        result.lotSize = listing.lotSize ? String(listing.lotSize) : null
-        result.listingPrice = listing.price ?? null
-        result.daysOnMarket = listing.daysOnMarket ?? null
-        result.listedDate = listing.listedDate ?? null
-        result.soldDate = listing.removedDate ?? null
-        result.listingStatus = listing.status ?? null
-        result.mlsNumber = listing.mlsNumber ?? null
-        result.hoaFees = listing.hoaFee ?? null
-
-        if (listing.listingAgent) {
-          result.listingAgentName = listing.listingAgent.name ?? null
-          result.listingAgentPhone = listing.listingAgent.phone ?? null
-          result.listingAgentEmail = listing.listingAgent.email ?? null
-        }
-        if (listing.listingOffice) {
-          result.listingOfficeName = listing.listingOffice.name ?? null
-        }
-
-        if (pinType === 'sold') {
-          result.soldPrice = listing.price ?? null
-        }
-
-        logger.info('[propertyLookup] listing found', { address, status: listingStatus, price: result.listingPrice })
+      if (listing.listingAgent) {
+        result.listingAgentName = listing.listingAgent.name ?? result.listingAgentName
+        result.listingAgentPhone = listing.listingAgent.phone ?? result.listingAgentPhone
+        result.listingAgentEmail = listing.listingAgent.email ?? result.listingAgentEmail
+      }
+      if (listing.listingOffice) {
+        result.listingOfficeName = listing.listingOffice.name ?? result.listingOfficeName
       }
 
-      // 2. If no listing found or missing basic details, try property data
-      if (!listing || !result.bedrooms) {
+      if (source === 'active') {
+        result.listingPrice = listing.price ?? result.listingPrice
+      } else {
+        result.soldPrice = listing.price ?? result.soldPrice
+        result.soldDate = listing.removedDate ?? listing.soldDate ?? result.soldDate
+      }
+    }
+
+    try {
+      // 1. Try the sale listings endpoint matching the user's selected pin
+      // type. (Active for For Sale, Inactive for Sold.)
+      const primaryStatus = pinType === 'sold' ? 'Inactive' : 'Active'
+      const primaryData = await fetchRentcast(
+        `/v1/listings/sale?address=${encoded}&status=${primaryStatus}&limit=1`,
+        apiKey,
+      )
+      const primary = Array.isArray(primaryData) ? primaryData[0] : primaryData
+      if (primary) {
+        applyListing(primary, primaryStatus === 'Active' ? 'active' : 'inactive')
+        logger.info('[propertyLookup] primary listing found', {
+          address, status: primaryStatus, price: result.listingPrice ?? result.soldPrice,
+        })
+      }
+
+      // 2. ALWAYS check the opposite status as well so we can detect a
+      // mismatch (e.g. user picks For Sale but the property is actually
+      // sold). This lets the client surface the correct status & price.
+      if (pinType === 'for_sale' || pinType === 'sold') {
+        const altStatus = primaryStatus === 'Active' ? 'Inactive' : 'Active'
+        const altData = await fetchRentcast(
+          `/v1/listings/sale?address=${encoded}&status=${altStatus}&limit=1`,
+          apiKey,
+        )
+        const alt = Array.isArray(altData) ? altData[0] : altData
+        if (alt) {
+          applyListing(alt, altStatus === 'Active' ? 'active' : 'inactive')
+          logger.info('[propertyLookup] alternate listing found', {
+            address, status: altStatus,
+          })
+        }
+      }
+
+      // 3. If no listings or missing basic details, fall back to property data.
+      const haveListing = result.listingPrice || result.soldPrice
+      if (!haveListing || !result.bedrooms) {
         const propData = await fetchRentcast(`/v1/properties?address=${encoded}`, apiKey)
         const prop = Array.isArray(propData) ? propData[0] : propData
 
@@ -141,9 +165,10 @@ export const propertyLookup = onCall<PropertyLookupRequest, Promise<PropertyData
           result.lastSalePrice = prop.lastSalePrice ?? null
           result.lastSaleDate = prop.lastSaleDate ?? null
 
-          if (pinType === 'sold' && !result.soldPrice) {
-            result.soldPrice = prop.lastSalePrice ?? null
-            result.soldDate = prop.lastSaleDate ?? null
+          // Treat lastSalePrice as a sold-price hint when no listing exists.
+          if (!result.soldPrice && prop.lastSalePrice) {
+            result.soldPrice = prop.lastSalePrice
+            result.soldDate = prop.lastSaleDate ?? result.soldDate
           }
 
           logger.info('[propertyLookup] property data found', { address })

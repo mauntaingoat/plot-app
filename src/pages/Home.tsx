@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Check, X as XIcon } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { SEOHead } from '@/components/marketing/SEOHead'
 import { useAuthStore } from '@/stores/authStore'
@@ -28,8 +28,6 @@ export default function Home() {
       <Hero />
       <FeatureShowcase />
       <CloserLook />
-      <Compared />
-      <Priced />
       <Ready />
     </MarketingLayout>
   )
@@ -408,33 +406,32 @@ function Hero() {
               touching the bottom interior border. */}
           <div className="relative z-10 px-6 md:px-10 pt-20 md:pt-28 pb-44 md:pb-52 flex flex-col items-center text-center">
             <h1
-              className="text-ink mb-7 max-w-[980px]"
+              className="text-ink mb-7 max-w-[1080px]"
               style={{
                 fontFamily: 'var(--font-humanist)',
-                fontSize: 'clamp(2.75rem, 6.2vw, 6rem)',
+                fontSize: 'clamp(2.5rem, 5.6vw, 5.5rem)',
                 fontWeight: 500,
                 letterSpacing: '-0.035em',
                 lineHeight: 0.98,
               }}
             >
-              Drop a pin.
-              <br />
+              The map-based profile{' '}
               <span className="brand-grad-text" style={{ fontWeight: 600 }}>
-                Grow a neighborhood.
+                every real estate agent needs
               </span>
             </h1>
 
             <p
-              className="text-graphite max-w-[620px] mb-10 leading-[1.55]"
+              className="text-graphite max-w-[640px] mb-10 leading-[1.55]"
               style={{
                 fontFamily: 'var(--font-humanist)',
                 fontSize: 'clamp(1rem, 1.22vw, 1.18rem)',
                 fontWeight: 400,
               }}
             >
-              Reelst is the map-based profile for real estate agents. Pin every
-              listing to a real address. Attach your reels, photos, and open
-              houses. Send one link and let buyers scroll your territory.
+              Pin every listing to a real address, attach your reels, photos,
+              and open houses, and send one link that turns your territory
+              into a place buyers can actually scroll.
             </p>
 
             <div className="w-full flex justify-center">
@@ -591,9 +588,9 @@ function FeatureShowcase() {
                 lineHeight: 0.98,
               }}
             >
-              One app.{' '}
+              One profile.{' '}
               <span className="brand-grad-text" style={{ fontWeight: 600 }}>
-                Every part of the job.
+                Every part of your brand.
               </span>
             </h2>
 
@@ -718,51 +715,34 @@ function FeatureShowcase() {
             </div>
           </div>
         </div>
+
+        {/* Subtle mock-data disclaimer */}
+        <p
+          className="text-white/30 mt-12 md:mt-16"
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '10.5px',
+            fontWeight: 500,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+          }}
+        >
+          Listings, agents, and analytics shown are illustrative — not real data.
+        </p>
       </div>
     </section>
   )
 }
 
 /* ════════════════════════════════════════════════════════════════
-   03 — HOW IT WORKS (zigzag, illustrations only)
-   Cream section sharing the hero's bg. Three steps in a zigzag:
-   Pin it (right) → Reel it (left) → Share it (right). Seated mascot
-   stays at the top straddling the seam from FeatureShowcase. The
-   scroll-driven connector line that joins everything is intentionally
-   not wired up here — once illustrations are sized correctly we'll
-   add it back in.
+   03 — WHY REELST (single hero-style stat card)
+   Cream section sharing the hero's bg. One row: cropped Pin it line
+   illustration (man's upper body + pin + house) on the LEFT, with a
+   centered hero-style grid card on the RIGHT carrying a punchy stat
+   about why this works for agents. The illustration is sized so the
+   man fits within the card's vertical extent while the house deliber-
+   ately bleeds out below the card's bottom edge for a dynamic feel.
    ════════════════════════════════════════════════════════════════ */
-
-const HOW_STEPS = [
-  {
-    n: '01',
-    title: 'Pin it.',
-    desc: 'Drop every listing on a real address. MLS auto-fills beds, baths, sqft, days on market — your map fills itself.',
-    img: '/marketing/howitworks-pin.png',
-    align: 'right' as const,
-    /* Pin it is landscape (~4:3); fills its column comfortably. */
-    maxW: 'max-w-[300px] md:max-w-[340px]',
-  },
-  {
-    n: '02',
-    title: 'Reel it.',
-    desc: 'Walk through the property with your phone. Attach a reel to the pin in one tap — buyers see how the place actually feels.',
-    img: '/marketing/howitworks-reel.png',
-    align: 'left' as const,
-    /* Reel it is portrait (~3:4); same width reads visually larger,
-       so we narrow it noticeably. */
-    maxW: 'max-w-[220px] md:max-w-[250px]',
-  },
-  {
-    n: '03',
-    title: 'Share it.',
-    desc: 'One link, your whole territory. Hand it out, paste it on your yard sign, drop it in your bio.',
-    img: '/marketing/howitworks-share.png',
-    align: 'right' as const,
-    /* Share it is mildly portrait (~4:5); slight reduction. */
-    maxW: 'max-w-[260px] md:max-w-[300px]',
-  },
-]
 
 function CloserLook() {
   return (
@@ -770,395 +750,86 @@ function CloserLook() {
       id="closer-look"
       className="relative bg-marketing scroll-mt-24"
     >
-      <div className="relative max-w-[1180px] mx-auto px-6 md:px-10 pt-20 md:pt-28 pb-24 md:pb-32 space-y-16 md:space-y-24">
-        {HOW_STEPS.map((step) => (
-          <HowStep key={step.n} step={step} />
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function HowStep({ step }: { step: (typeof HOW_STEPS)[number] }) {
-  const imageOnRight = step.align === 'right'
-  return (
-    <div className="relative grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-10 items-center">
-      {/* COPY column — wrapped in a rounded grid card matching the
-          hero's visual language, but on a whiter base so it lifts
-          off the cream section bg. */}
-      <div
-        className={`md:col-span-5 ${
-          imageOnRight ? 'md:col-start-1' : 'md:col-start-8'
-        }`}
-      >
-        <div
-          className="map-grid-soft rounded-[24px] md:rounded-[28px] p-7 md:p-9"
-          style={{
-            border: '1px solid rgba(255,133,82,0.22)',
-            boxShadow:
-              '0 1px 0 rgba(255,255,255,0.9) inset, 0 24px 60px -28px rgba(217,74,31,0.18), 0 8px 24px -14px rgba(10,14,23,0.07)',
-          }}
-        >
-          <span
-            className="text-[11px] text-tangerine font-bold uppercase tracking-[0.24em] mb-4 inline-block"
-            style={{ fontFamily: 'var(--font-mono)' }}
-          >
-            {step.n}
-          </span>
-          <h2
-            className="text-ink leading-[0.98] mb-4"
+      <div className="relative max-w-[1240px] mx-auto px-6 md:px-10 pt-8 md:pt-10 pb-28 md:pb-32">
+        <div className="relative max-w-[1080px] mx-auto">
+          {/* Card uses NO overflow-hidden so the figure's lower half
+              (pin + house + trail) can bleed past the card's bottom and
+              right edges. The grid background remains clipped to the
+              rounded box via background-clip. */}
+          <div
+            className="map-grid relative rounded-[24px] md:rounded-[32px] px-7 md:px-14 pt-6 md:pt-8 pb-[120px] sm:pb-[170px] lg:pb-10"
             style={{
-              fontFamily: 'var(--font-humanist)',
-              fontSize: 'clamp(2rem, 4.2vw, 3.5rem)',
-              fontWeight: 500,
-              letterSpacing: '-0.035em',
+              border: '1px solid rgba(255,133,82,0.22)',
+              boxShadow:
+                '0 1px 0 rgba(255,255,255,0.85) inset, 0 30px 80px -30px rgba(217,74,31,0.20), 0 10px 32px -16px rgba(10,14,23,0.08)',
             }}
           >
-            {step.title}
-          </h2>
-          <p
-            className="text-graphite leading-[1.55]"
-            style={{
-              fontFamily: 'var(--font-humanist)',
-              fontSize: 'clamp(0.98rem, 1.1vw, 1.1rem)',
-              fontWeight: 400,
-            }}
-          >
-            {step.desc}
-          </p>
-        </div>
-      </div>
-
-      {/* IMAGE column */}
-      <div
-        className={`md:col-span-6 ${
-          imageOnRight ? 'md:col-start-7' : 'md:col-start-1 md:row-start-1'
-        } flex justify-center`}
-      >
-        <img
-          src={step.img}
-          alt=""
-          aria-hidden
-          draggable={false}
-          className={`w-full ${step.maxW} h-auto select-none pointer-events-none`}
-        />
-      </div>
-    </div>
-  )
-}
-
-/* ════════════════════════════════════════════════════════════════
-   04 — COMPARED
-   ════════════════════════════════════════════════════════════════ */
-
-const COMP_ROWS = [
-  { feature: 'Live map of your listings', reelst: true, ig: false, realtor: false, zillow: 'partial' },
-  { feature: 'Video reels on listings', reelst: true, ig: true, realtor: false, zillow: false },
-  { feature: 'Your own brand + URL', reelst: true, ig: 'partial', realtor: false, zillow: false },
-  { feature: 'Direct showing requests', reelst: true, ig: false, realtor: 'partial', zillow: 'partial' },
-  { feature: 'One link for everything', reelst: true, ig: false, realtor: false, zillow: false },
-  { feature: 'Built for agents, not platforms', reelst: true, ig: false, realtor: false, zillow: false },
-  { feature: 'Free to start', reelst: true, ig: true, realtor: false, zillow: false },
-]
-
-function Compared() {
-  return (
-    <section
-      className="py-24 md:py-36 border-t border-black/[0.06]"
-      style={{ background: HERO_CREAM }}
-      data-pin="compared"
-    >
-      <div className="max-w-[1200px] mx-auto px-6 md:px-10">
-        <div className="reveal max-w-[760px] mb-14 md:mb-20">
-          <span
-            className="text-[11px] text-tangerine font-bold uppercase tracking-[0.2em] mb-5 inline-block"
-            style={{ fontFamily: 'var(--font-mono)' }}
-          >
-            Compared
-          </span>
-          <h2
-            className="text-ink leading-[1.02]"
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(2.25rem, 4.2vw, 3.75rem)',
-              fontWeight: 900,
-              letterSpacing: '-0.03em',
-            }}
-          >
-            What you're using now — and what you could be using.
-          </h2>
-        </div>
-
-        <div
-          className="reveal rounded-[22px] bg-white border border-black/[0.07] overflow-hidden relative"
-          data-delay="1"
-          style={{ zIndex: 10 }}
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-collapse">
-              <thead>
-                <tr style={{ background: 'rgba(255,247,240,0.6)' }}>
-                  <th
-                    className="text-left py-4 pl-6 pr-4 text-[11px] font-bold text-smoke uppercase tracking-[0.18em]"
-                    style={{ fontFamily: 'var(--font-mono)' }}
-                  >
-                    Feature
-                  </th>
-                  <th className="py-4 px-3 text-center">
-                    <div className="inline-flex items-center gap-1.5">
-                      <PinSVG size={14} />
-                      <span className="text-[13px] font-bold text-ink uppercase tracking-[0.1em]">Reelst</span>
-                    </div>
-                  </th>
-                  <th className="py-4 px-3 text-center text-[13px] font-semibold text-smoke">IG bio</th>
-                  <th className="py-4 px-3 text-center text-[13px] font-semibold text-smoke">Realtor.com</th>
-                  <th className="py-4 px-3 text-center text-[13px] font-semibold text-smoke">Zillow</th>
-                </tr>
-              </thead>
-              <tbody>
-                {COMP_ROWS.map((row, i) => (
-                  <tr
-                    key={row.feature}
-                    className={i % 2 === 0 ? 'bg-white' : ''}
-                    style={i % 2 === 1 ? { background: 'rgba(255,247,240,0.35)' } : undefined}
-                  >
-                    <td className="py-4 pl-6 pr-4 text-[14.5px] text-ink font-medium">{row.feature}</td>
-                    <td className="text-center py-4 px-3"><CompMark value={row.reelst} highlight /></td>
-                    <td className="text-center py-4 px-3"><CompMark value={row.ig} /></td>
-                    <td className="text-center py-4 px-3"><CompMark value={row.realtor} /></td>
-                    <td className="text-center py-4 px-3"><CompMark value={row.zillow} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function CompMark({ value, highlight = false }: { value: boolean | 'partial' | string; highlight?: boolean }) {
-  if (value === true) {
-    return (
-      <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full ${highlight ? 'bg-tangerine' : 'bg-ink/5'}`}>
-        <Check size={14} className={highlight ? 'text-white' : 'text-ink'} strokeWidth={3} />
-      </span>
-    )
-  }
-  if (value === 'partial') {
-    return (
-      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-black/[0.04]">
-        <span className="w-2.5 h-0.5 bg-smoke rounded-full" />
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-black/[0.03]">
-      <XIcon size={13} className="text-ash" strokeWidth={2} />
-    </span>
-  )
-}
-
-/* ════════════════════════════════════════════════════════════════
-   05 — PRICED (sticky)
-   Sticky-scroll section (h-[280vh]) with tier cards. Pin bounces
-   Studio → Free → Pro → Pro-bounce → fall straight down.
-   ════════════════════════════════════════════════════════════════ */
-
-const TIERS = [
-  {
-    key: 'free',
-    name: 'Free',
-    price: '$0',
-    period: 'forever',
-    desc: 'Create content and showcase your listings.',
-    cta: 'Start free',
-    featured: false,
-    features: [
-      { text: '3 active pins on your map', included: true },
-      { text: '3-min reels & carousels', included: true },
-      { text: 'Your own reel.st link', included: true },
-      { text: 'MLS data auto-fill', included: true },
-      { text: 'Showing request inbox', included: true },
-      { text: 'Discoverable in Explore', included: false },
-      { text: 'Advanced analytics', included: false },
-    ],
-  },
-  {
-    key: 'pro',
-    name: 'Pro',
-    price: '$19',
-    period: '/ mo',
-    desc: 'Get discovered. Understand your audience.',
-    cta: 'Go Pro',
-    featured: true,
-    features: [
-      { text: 'Unlimited pins', included: true },
-      { text: 'Listed in Explore', included: true },
-      { text: 'Open house scheduling', included: true },
-      { text: 'Full analytics dashboard', included: true },
-      { text: 'Email lead notifications', included: true },
-      { text: 'Viewer cities & peak hours', included: true },
-    ],
-  },
-  {
-    key: 'studio',
-    name: 'Studio',
-    price: '$39',
-    period: '/ mo',
-    badge: 'Best value',
-    desc: 'The full suite for top producers.',
-    cta: 'Go Studio',
-    featured: false,
-    features: [
-      { text: 'Everything in Pro', included: true },
-      { text: 'Saved map insights', included: true },
-      { text: 'Cross-listing patterns', included: true },
-      { text: 'Live streaming', included: true, comingSoon: true },
-      { text: 'Priority support', included: true },
-    ],
-  },
-]
-
-function Priced() {
-  const navigate = useNavigate()
-
-  return (
-    <section
-      className="relative border-t border-black/[0.06] py-24 md:py-36"
-      style={{ background: HERO_CREAM }}
-      data-pin="priced"
-    >
-      <div data-pin="priced-inner">
-        <div className="max-w-[1200px] mx-auto px-6 md:px-10 w-full">
-          <div className="max-w-[760px] mb-12 md:mb-16">
-            <span
-              className="text-[11px] text-tangerine font-bold uppercase tracking-[0.2em] mb-5 inline-block"
-              style={{ fontFamily: 'var(--font-mono)' }}
-            >
-              Priced
-            </span>
-            <h2
-              className="text-ink leading-[1.02]"
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 'clamp(2.25rem, 4.2vw, 3.75rem)',
-                fontWeight: 900,
-                letterSpacing: '-0.03em',
-              }}
-            >
-              Start free. Upgrade when you grow.
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-5 md:gap-5">
-            {TIERS.map((tier, i) => (
-              <div
-                key={tier.name}
-                data-pin={`tier-${tier.key}`}
-                className={`reveal relative rounded-[22px] p-7 md:p-8 flex flex-col ${
-                  tier.featured
-                    ? 'bg-gradient-to-br from-midnight to-obsidian text-ivory ring-1 ring-tangerine/40 shadow-[0_20px_50px_-12px_rgba(10,14,23,0.4)]'
-                    : 'bg-white border border-black/[0.07]'
-                }`}
-                data-delay={String(i + 1)}
+            {/* ── Text column: full width on narrow viewports, capped on
+                 lg+ to leave room for the figure on the right. */}
+            <div className="relative lg:max-w-[560px]" style={{ zIndex: 5 }}>
+              <p
+                className="text-graphite mb-3"
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '11px',
+                  fontWeight: 500,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                }}
               >
-                {tier.featured && (
-                  <span className="absolute -top-3 right-6 px-3 py-1 rounded-full bg-tangerine text-white text-[10px] font-bold uppercase tracking-[0.16em]">
-                    Most popular
-                  </span>
-                )}
-                {tier.badge && (
-                  <span className="absolute -top-3 right-6 px-3 py-1 rounded-full bg-ink text-ivory text-[10px] font-bold uppercase tracking-[0.16em]">
-                    {tier.badge}
-                  </span>
-                )}
+                Why agents pick Reelst
+              </p>
+              <h2
+                className="text-ink mb-5"
+                style={{
+                  fontFamily: 'var(--font-humanist)',
+                  fontSize: 'clamp(2rem, 4.4vw, 3.75rem)',
+                  fontWeight: 500,
+                  letterSpacing: '-0.035em',
+                  lineHeight: 0.98,
+                }}
+              >
+                <span className="brand-grad-text" style={{ fontWeight: 600 }}>
+                  3×
+                </span>{' '}
+                more buyer inquiries.
+              </h2>
+              <p
+                className="text-graphite"
+                style={{
+                  fontFamily: 'var(--font-humanist)',
+                  fontSize: 'clamp(1rem, 1.18vw, 1.12rem)',
+                  fontWeight: 400,
+                  lineHeight: 1.55,
+                }}
+              >
+                Agents who pin every listing on a real map — with reels,
+                photos, and live open houses attached — report 3× the
+                inbound inquiries of agents using a static link-in-bio.
+              </p>
+            </div>
 
-                <h3
-                  className={`mb-2 ${tier.featured ? 'text-ivory' : 'text-ink'}`}
-                  style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '1.4rem',
-                    fontWeight: 800,
-                    letterSpacing: '-0.02em',
-                  }}
-                >
-                  {tier.name}
-                </h3>
-
-                <div className="flex items-baseline gap-1.5 mb-1">
-                  <span
-                    className={`${tier.featured ? 'text-ivory' : 'text-ink'}`}
-                    style={{
-                      fontFamily: 'var(--font-display)',
-                      fontSize: '2.5rem',
-                      fontWeight: 900,
-                      letterSpacing: '-0.035em',
-                    }}
-                  >
-                    {tier.price}
-                  </span>
-                  <span className={`text-[13px] ${tier.featured ? 'text-white/55' : 'text-smoke'}`}>
-                    {tier.period}
-                  </span>
-                </div>
-
-                <p className={`text-[13px] mb-5 ${tier.featured ? 'text-white/65' : 'text-smoke'}`}>
-                  {tier.desc}
-                </p>
-
-                <button
-                  onClick={() => navigate('/sign-up')}
-                  className={`mb-6 h-11 rounded-full text-[14px] font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                    tier.featured
-                      ? 'bg-tangerine text-white hover:bg-ember shadow-[0_4px_14px_rgba(255,107,61,0.4)]'
-                      : 'bg-ink text-ivory hover:bg-ink/85'
-                  }`}
-                >
-                  {tier.cta} <ArrowRight size={14} strokeWidth={2.5} />
-                </button>
-
-                <ul className="space-y-2.5">
-                  {tier.features.map((f) => (
-                    <li key={f.text} className="flex items-start gap-2.5">
-                      {f.included ? (
-                        <Check
-                          size={14}
-                          className={`shrink-0 mt-[3px] ${tier.featured ? 'text-tangerine' : 'text-sold-green'}`}
-                          strokeWidth={2.5}
-                        />
-                      ) : (
-                        <XIcon size={14} className="shrink-0 mt-[3px] text-ash/40" strokeWidth={2} />
-                      )}
-                      <span
-                        className={`text-[13px] leading-[1.45] ${
-                          f.included
-                            ? tier.featured ? 'text-white/85' : 'text-graphite'
-                            : 'text-ash/60 line-through'
-                        }`}
-                      >
-                        {f.text}
-                        {f.comingSoon && (
-                          <span className="ml-1.5 text-[9px] font-bold text-tangerine bg-tangerine/10 px-1.5 py-0.5 rounded-full uppercase">
-                            Soon
-                          </span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-
-          <div className="text-center mt-8">
-            <button
-              onClick={() => navigate('/pricing')}
-              className="text-[14px] text-graphite hover:text-ink transition-colors inline-flex items-center gap-1.5 cursor-pointer font-semibold"
-            >
-              See full pricing details <ArrowRight size={14} />
-            </button>
+            {/* ── Pin it figure (cropped — partial legs visible, house
+                 intact). Cut line at 55% of image height sits flush
+                 against the card's bottom interior border. Pin + house
+                 + trail + lower legs bleed BELOW the card.
+                 < lg: centered beneath text. ≥ lg: anchored bottom-right.
+                 Image aspect h/w = 0.935; cut at 55% →
+                   upper-half = imgW × 0.514, lower-half = imgW × 0.421. */}
+            <img
+              src="/marketing/howitworks-pin-cropped.png"
+              alt=""
+              aria-hidden
+              draggable={false}
+              className="absolute h-auto pointer-events-none select-none
+                         left-1/2 -translate-x-1/2
+                         lg:left-auto lg:translate-x-0 lg:-right-[16px]"
+              style={{
+                zIndex: 4,
+                width: 'clamp(220px, 32vw, 440px)',
+                bottom: 'calc(clamp(220px, 32vw, 440px) * -0.421)',
+              }}
+            />
           </div>
         </div>
       </div>
@@ -1184,27 +855,37 @@ function Ready() {
 
       <div className="relative max-w-[1000px] mx-auto px-6 md:px-10 py-28 md:py-44 text-center">
         <span
-          className="text-[11px] text-tangerine font-bold uppercase tracking-[0.2em] mb-6 inline-block"
-          style={{ fontFamily: 'var(--font-mono)' }}
+          className="text-[11px] text-tangerine uppercase tracking-[0.18em] mb-6 inline-block"
+          style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}
         >
           Ready
         </span>
 
         <h2
-          className="reveal text-white leading-[0.95] mb-12 md:mb-14"
+          className="reveal text-white mb-12 md:mb-14"
           style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 'clamp(3rem, 9vw, 8rem)',
-            fontWeight: 900,
-            letterSpacing: '-0.04em',
+            fontFamily: 'var(--font-humanist)',
+            fontSize: 'clamp(2.75rem, 7vw, 6.5rem)',
+            fontWeight: 500,
+            letterSpacing: '-0.035em',
+            lineHeight: 0.98,
           }}
         >
-          Drop{' '}
+          Claim{' '}
           <ScrollBrushWord>yours</ScrollBrushWord>
           .
         </h2>
 
-        <p className="reveal text-white/60 max-w-[520px] mx-auto mb-10 leading-[1.5] text-[15.5px]" data-delay="1">
+        <p
+          className="reveal text-white/60 max-w-[560px] mx-auto mb-10"
+          style={{
+            fontFamily: 'var(--font-humanist)',
+            fontSize: 'clamp(1rem, 1.22vw, 1.18rem)',
+            fontWeight: 400,
+            lineHeight: 1.55,
+          }}
+          data-delay="1"
+        >
           Claim your handle in 2 minutes. Drop your first pin the same day.
           <br className="hidden md:block" />
           No card. No contract. Always free to start.
@@ -1258,9 +939,9 @@ function ScrollBrushWord({ children }: { children: ReactNode }) {
       ref={hostRef}
       className="brush-scroll text-tangerine"
       style={{
-        fontFamily: 'var(--font-display)',
-        fontWeight: 900,
-        letterSpacing: '-0.04em',
+        fontFamily: 'var(--font-humanist)',
+        fontWeight: 600,
+        letterSpacing: '-0.035em',
       }}
     >
       {children}

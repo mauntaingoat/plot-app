@@ -164,20 +164,23 @@ export default function PinCreate() {
         if (data.listingAgentName) setListingAgentName(data.listingAgentName)
         if (data.listingOfficeName) setListingOfficeName(data.listingOfficeName)
 
-        // Auto-detect listing status mismatch
-        if (data.listingStatus) {
-          const apiActive = data.listingStatus === 'Active'
-          if (pinType === 'sold' && apiActive) {
-            setPinType('for_sale')
-            setStatusMismatch('This property is actively for sale — switched to For Sale listing.')
-          } else if (pinType === 'for_sale' && !apiActive && data.soldPrice) {
-            setPinType('sold')
-            setStatusMismatch('This property appears to be sold — switched to Sold listing.')
-          }
+        // Auto-detect listing status mismatch. The Rentcast lookup may
+        // return: an Active listing (listingPrice set), an Inactive/sold
+        // listing (soldPrice set), or only public records (lastSalePrice).
+        // When the user-selected pin type doesn't match what we found,
+        // flip the type and surface a notice.
+        const hasActive = data.listingStatus === 'Active' && data.listingPrice
+        const hasSold = data.soldPrice || data.lastSalePrice
+        if (pinType === 'sold' && hasActive) {
+          setPinType('for_sale')
+          setStatusMismatch('This property is actively for sale — switched to For Sale listing.')
+        } else if (pinType === 'for_sale' && !hasActive && hasSold) {
+          setPinType('sold')
+          setStatusMismatch('This property appears to be sold — switched to Sold listing.')
         }
 
         // Auto-fill price based on (possibly corrected) pin type
-        const effectiveType = (data.listingStatus === 'Active') ? 'for_sale' : (data.soldPrice ? 'sold' : pinType)
+        const effectiveType = hasActive ? 'for_sale' : (hasSold ? 'sold' : pinType)
         if (effectiveType === 'for_sale' && data.listingPrice) setPrice(String(data.listingPrice))
         else if (effectiveType === 'sold' && (data.soldPrice || data.lastSalePrice)) setPrice(String(data.soldPrice || data.lastSalePrice))
 
