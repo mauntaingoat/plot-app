@@ -597,30 +597,11 @@ export default function Dashboard() {
             onArchiveContent={(contentId, pinId) => {
               const pin = pins.find((p) => p.id === pinId)
               if (!pin) return
-              const removedItem = pin.content.find((c) => c.id === contentId)
               const updated = { ...pin, content: pin.content.filter((c) => c.id !== contentId) }
               setPins((prev) => prev.map((p) => p.id === pinId ? updated as Pin : p))
-              import('@/lib/firestore').then(async ({ updatePin, upsertContent }) => {
-                await updatePin(pinId, { content: updated.content })
-                if (removedItem && currentUser?.uid) {
-                  await upsertContent(contentId, {
-                    agentId: currentUser.uid,
-                    pinId: null,
-                    type: removedItem.type,
-                    mediaUrl: removedItem.mediaUrl,
-                    caption: removedItem.caption || '',
-                    ...(removedItem.thumbnailUrl ? { thumbnailUrl: removedItem.thumbnailUrl } : {}),
-                    ...(removedItem.mediaUrls ? { mediaUrls: removedItem.mediaUrls } : {}),
-                    ...(removedItem.mp4Url ? { mp4Url: removedItem.mp4Url } : {}),
-                    ...(removedItem.sourceUrl ? { sourceUrl: removedItem.sourceUrl } : {}),
-                    ...(removedItem.sourceUrls ? { sourceUrls: removedItem.sourceUrls } : {}),
-                    ...(removedItem.muxAssetId ? { muxAssetId: removedItem.muxAssetId } : {}),
-                    ...(removedItem.muxPlaybackId ? { muxPlaybackId: removedItem.muxPlaybackId } : {}),
-                    ...(removedItem.aspect ? { aspect: removedItem.aspect } : {}),
-                    status: removedItem.status || 'ready',
-                  } as any)
-                }
-              }).catch(() => {})
+              import('@/lib/firestore').then(({ updatePin }) =>
+                updatePin(pinId, { content: updated.content }),
+              ).catch(() => {})
             }}
             onAssignContent={(contentId, fromPinId, toPinId, contentItem) => {
               if (fromPinId === toPinId) return
