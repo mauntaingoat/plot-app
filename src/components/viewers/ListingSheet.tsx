@@ -6,6 +6,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { formatPrice } from '@/lib/firestore'
+import { displayAddressWithUnit } from '@/lib/format'
 import type { ForSalePin, SoldPin, Pin, OpenHouse, UserDoc } from '@/lib/types'
 
 interface ListingSheetProps {
@@ -118,7 +119,7 @@ export function ListingSheet({ pin, agent, isOpen, onClose }: ListingSheetProps)
             </div>
             <p className="text-[14px] text-mist mt-1 flex items-center gap-1.5">
               <MapPin size={14} className="text-ghost" />
-              {pin.address}
+              {displayAddressWithUnit(pin.address, pin.unit)}
             </p>
           </div>
 

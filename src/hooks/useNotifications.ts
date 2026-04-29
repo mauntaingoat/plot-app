@@ -53,13 +53,20 @@ export function useNotifications() {
   }, [])
 
   // ── Auto-register token if previously granted ──
+  // ── Reconcile stored tokens with current permission state ──
+  // If the user revoked permission since their last visit, the tokens
+  // sitting on their user doc are dead — clear them so server pushes
+  // don't waste FCM API calls firing into the void.
   useEffect(() => {
     if (!userDoc?.uid) return
-    if (permission !== 'granted') return
-    ;(async () => {
-      const token = await getOrRefreshFcmToken()
-      if (token) await saveFcmTokenToUser(userDoc.uid, token)
-    })()
+    if (permission === 'granted') {
+      ;(async () => {
+        const token = await getOrRefreshFcmToken()
+        if (token) await saveFcmTokenToUser(userDoc.uid, token)
+      })()
+    } else if (permission === 'denied') {
+      import('@/lib/fcm').then(({ reconcileFcmTokens }) => reconcileFcmTokens(userDoc.uid)).catch(() => {})
+    }
   }, [userDoc?.uid, permission])
 
   // ── Public API ──

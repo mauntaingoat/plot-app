@@ -43,11 +43,17 @@ export async function renderComposition(args: RenderArgs): Promise<RenderResult>
   const storageUrls: string[] = []
 
   // 1. Upload each raw clip to Firebase Storage.
+  // Filename is contentId + clip-index + per-clip random nonce + timestamp.
+  // The clip index alone already prevents collisions within a single render
+  // call; the random nonce additionally protects against the (rare) case
+  // where two parallel renders for the same contentId race each other —
+  // e.g., a double-click on Save that fires renderComposition twice.
   for (let i = 0; i < clips.length; i++) {
     const clip = clips[i]
     const ext = clip.file.name.split('.').pop() || 'bin'
+    const nonce = Math.random().toString(36).slice(2, 10)
     const url = await uploadFile({
-      path: pinMediaPath(pinId, `${contentId}-clip-${i}-${Date.now()}.${ext}`),
+      path: pinMediaPath(pinId, `${contentId}-clip-${i}-${Date.now()}-${nonce}.${ext}`),
       file: clip.file,
       onProgress: (pct) => onProgress?.('upload', (i + pct / 100) / clips.length),
     })

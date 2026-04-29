@@ -11,12 +11,72 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import { defineSecret } from 'firebase-functions/params'
 import { logger } from 'firebase-functions/v2'
+import * as admin from 'firebase-admin'
+
+if (!admin.apps.length) admin.initializeApp()
 
 const REALTYMOLE_API_KEY = defineSecret('REALTYMOLE_API_KEY')
+
+// Per-user rate limit on propertyLookup. Rentcast is paid per-call;
+// without this a single bad actor (or a busted client retry loop) can
+// burn the monthly quota. 30 lookups / rolling 60-minute window per
+// uid is plenty for a normal authoring session — 10 pins ≈ 30 calls.
+const RATE_LIMIT_PER_HOUR = 30
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000
+
+interface RateLimitDoc {
+  count: number
+  windowStart: admin.firestore.Timestamp
+}
+
+async function checkAndIncrementRateLimit(uid: string): Promise<void> {
+  const ref = admin.firestore().collection('rateLimits').doc(`${uid}_propertyLookup`)
+  await admin.firestore().runTransaction(async (tx) => {
+    const snap = await tx.get(ref)
+    const now = admin.firestore.Timestamp.now()
+    if (!snap.exists) {
+      tx.set(ref, { count: 1, windowStart: now } as RateLimitDoc)
+      return
+    }
+    const data = snap.data() as RateLimitDoc
+    const elapsed = now.toMillis() - data.windowStart.toMillis()
+    if (elapsed >= RATE_LIMIT_WINDOW_MS) {
+      // Window expired — reset.
+      tx.set(ref, { count: 1, windowStart: now } as RateLimitDoc)
+      return
+    }
+    if (data.count >= RATE_LIMIT_PER_HOUR) {
+      const minutesLeft = Math.ceil((RATE_LIMIT_WINDOW_MS - elapsed) / 60000)
+      throw new HttpsError(
+        'resource-exhausted',
+        `Property lookup limit reached. Try again in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''}.`,
+      )
+    }
+    tx.update(ref, { count: admin.firestore.FieldValue.increment(1) })
+  })
+}
 
 interface PropertyLookupRequest {
   address: string
   pinType: 'for_sale' | 'sold' | 'spotlight'
+  /** Optional apt/unit/suite for unit-level Rentcast matching. The
+   *  client may pass the address pre-composed; if `unit` is also set
+   *  we compose it ourselves and ignore the original (defensive).
+   *  Stored unit is the bare number/code without a leading '#'. */
+  unit?: string | null
+}
+
+function composeAddressWithUnit(address: string, unit: string | null | undefined): string {
+  if (!unit || !unit.trim()) return address
+  const cleanUnit = unit.trim().replace(/^#/, '')
+  // If the address already has a # already (client pre-composed),
+  // don't double up.
+  if (address.includes(`#${cleanUnit}`)) return address
+  const commaIdx = address.indexOf(',')
+  if (commaIdx === -1) return `${address.trim()} #${cleanUnit}`
+  const street = address.slice(0, commaIdx).trim()
+  const rest = address.slice(commaIdx)
+  return `${street} #${cleanUnit}${rest}`
 }
 
 interface PropertyData {
@@ -64,17 +124,24 @@ export const propertyLookup = onCall<PropertyLookupRequest, Promise<PropertyData
       throw new HttpsError('unauthenticated', 'Sign in required.')
     }
 
-    const { address, pinType } = request.data
+    const { address, pinType, unit } = request.data
     if (!address || address.trim().length < 5) {
       throw new HttpsError('invalid-argument', 'A valid address is required.')
     }
+
+    // Rate limit BEFORE the Rentcast call so we don't burn quota on
+    // the request that's about to be rejected anyway.
+    await checkAndIncrementRateLimit(request.auth.uid)
 
     const apiKey = REALTYMOLE_API_KEY.value()
     if (!apiKey) {
       throw new HttpsError('unavailable', 'Property lookup is not configured.')
     }
 
-    const encoded = encodeURIComponent(address.trim())
+    // Compose unit into the address before encoding. Rentcast matches
+    // distinct condo/apartment units when the unit is in the string.
+    const fullAddress = composeAddressWithUnit(address, unit)
+    const encoded = encodeURIComponent(fullAddress.trim())
     const result: PropertyData = {
       bedrooms: null, bathrooms: null, squareFootage: null,
       propertyType: null, yearBuilt: null, lotSize: null,

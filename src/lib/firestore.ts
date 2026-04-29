@@ -1,11 +1,12 @@
 import {
-  doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc,
-  collection, query, where, getDocs, orderBy, limit,
+  doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, addDoc,
+  collection, collectionGroup, query, where, getDocs, orderBy, limit,
   serverTimestamp, increment, onSnapshot, writeBatch,
   type DocumentData, type Unsubscribe,
 } from 'firebase/firestore'
 import { db, firebaseConfigured } from '@/config/firebase'
-import type { UserDoc, Pin, ForSalePin, SoldPin, SpotlightPin, ContentItem, ContentDoc, Coordinates, PinType, ShowingRequest, ContentReport, ReportReason, LicenseDispute, DmcaRequest } from '@/lib/types'
+import type { UserDoc, Pin, ForSalePin, SoldPin, SpotlightPin, ContentItem, ContentDoc, Coordinates, PinType, ShowingRequest, ContentReport, ReportReason, LicenseDispute, DmcaRequest, PendingPinChange } from '@/lib/types'
+import { TYPE_SPECIFIC_FIELDS } from '@/lib/types'
 
 // ══════════════════════════════════════════
 // USERS
@@ -79,6 +80,10 @@ export async function updateUserDoc(uid: string, data: Partial<UserDoc>) {
 // PINS (Listings + Neighborhoods)
 // ══════════════════════════════════════════
 
+// Pins are created in DRAFT state (enabled: false). Activation goes
+// through the setPinEnabled callable which checks the agent's
+// per-tier active-pin cap. The Firestore rule enforces this default
+// — a client write that sets enabled=true on create will be rejected.
 export async function createPin(data: Record<string, unknown>): Promise<string> {
   if (!db) return `local-${Date.now()}`
   const ref = await addDoc(collection(db, 'pins'), {
@@ -88,11 +93,118 @@ export async function createPin(data: Record<string, unknown>): Promise<string> 
     views: 0,
     taps: 0,
     saves: 0,
-    enabled: true,
+    enabled: false,
     status: 'active',
     content: data.content || [],
   })
   return ref.id
+}
+
+// Wrap the setPinEnabled callable with a friendly client API. Returns
+// { ok: true } on success or throws an Error with the cap reason for
+// the caller to surface (paywall sheet, toast, etc.).
+export async function setPinEnabled(pinId: string, enabled: boolean): Promise<void> {
+  const { getFunctions, httpsCallable } = await import('firebase/functions')
+  const { app } = await import('@/config/firebase')
+  const functions = getFunctions(app ?? undefined)
+  const fn = httpsCallable<{ pinId: string; enabled: boolean }, { ok: boolean }>(functions, 'setPinEnabled')
+  await fn({ pinId, enabled })
+}
+
+// ══════════════════════════════════════════
+// PENDING PIN CHANGES (Rentcast sync diffs)
+// ══════════════════════════════════════════
+
+/**
+ * Subscribe to all pending property-data changes for an agent. Pushes
+ * an empty array if the agent has nothing pending. The Cloud Function
+ * (syncPropertyData) is the only producer; only the agent can delete.
+ */
+export function subscribeToAgentPendingChanges(
+  agentId: string,
+  cb: (changes: PendingPinChange[]) => void,
+): Unsubscribe | null {
+  if (!db) return null
+  try {
+    const q = query(
+      collectionGroup(db, 'pendingChanges'),
+      where('agentId', '==', agentId),
+    )
+    return onSnapshot(q, (snap) => {
+      cb(snap.docs.map((d) => d.data() as PendingPinChange))
+    }, (err) => {
+      console.warn('[firestore] pendingChanges subscription error:', err.message)
+      cb([])
+    })
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Approve a pending change — apply the diff to the pin doc and delete
+ * the pendingChanges record. Type transitions route through
+ * updatePinType so type-specific fields get cleaned up.
+ */
+export async function approvePendingChange(change: PendingPinChange): Promise<void> {
+  if (!db) return
+  const pinRef = doc(db, 'pins', change.pinId)
+  const pendingRef = doc(db, 'pins', change.pinId, 'pendingChanges', 'latest')
+
+  if (change.typeChange) {
+    // Type transition — for_sale ↔ sold. Build the new-shape data and
+    // route through updatePinType so old-type-only fields disappear.
+    const newType = change.typeChange.to
+    const newData: Record<string, unknown> = {}
+    if (change.priceChange) {
+      newData[newType === 'sold' ? 'soldPrice' : 'price'] = change.priceChange.to
+      if (newType === 'sold') {
+        newData.originalPrice = change.priceChange.from
+      }
+    }
+    if (newType === 'sold' && change.soldDate) {
+      // Firestore is strict about timestamps; the date string from
+      // Rentcast is ISO so we store it as-is — UI parses on read.
+      newData.soldDate = change.soldDate
+    }
+    if (change.mlsNumber !== undefined) newData.mlsNumber = change.mlsNumber
+    await updatePinType(change.pinId, change.typeChange.from, newType, newData)
+  } else if (change.priceChange) {
+    // Price-only change. Apply to the field corresponding to the pin's
+    // current type — the diff was computed against that field.
+    const pinSnap = await getDoc(pinRef)
+    const currentType = (pinSnap.data() as { type?: PinType } | undefined)?.type
+    const priceField = currentType === 'sold' ? 'soldPrice' : 'price'
+    const updates: Record<string, unknown> = {
+      [priceField]: change.priceChange.to,
+      updatedAt: serverTimestamp(),
+    }
+    if (change.mlsNumber !== undefined) updates.mlsNumber = change.mlsNumber
+    await updateDoc(pinRef, updates as DocumentData)
+  }
+
+  await deleteDoc(pendingRef)
+}
+
+/**
+ * Reject a pending change — write the rejected values to the pin's
+ * `rejectedSnapshot` field so the next sync skips re-suggesting the
+ * same change, and delete the pendingChanges record.
+ */
+export async function rejectPendingChange(change: PendingPinChange): Promise<void> {
+  if (!db) return
+  const pinRef = doc(db, 'pins', change.pinId)
+  const pendingRef = doc(db, 'pins', change.pinId, 'pendingChanges', 'latest')
+
+  const rejected: Record<string, unknown> = {}
+  if (change.priceChange) rejected.price = change.priceChange.to
+  if (change.typeChange) rejected.type = change.typeChange.to
+
+  await updateDoc(pinRef, {
+    rejectedSnapshot: rejected,
+    updatedAt: serverTimestamp(),
+  } as DocumentData)
+  await deleteDoc(pendingRef)
 }
 
 /** Accepts any partial pin fields — including subtype-specific ones
@@ -108,20 +220,58 @@ export async function updatePin(pinId: string, data: Partial<ForSalePin> | Parti
   } as DocumentData)
 }
 
-// Soft delete — archive instead of destroy. Data persists for RTBF compliance.
+/**
+ * Atomic pin-type transition with cleanup of stale type-specific fields.
+ *
+ * When a pin's type changes (for_sale ↔ sold ↔ spotlight), the fields
+ * that were specific to the old type but not the new type get bloat-y
+ * — they linger in Firestore as orphan data. This helper computes the
+ * field-level diff from TYPE_SPECIFIC_FIELDS and writes deleteField()
+ * sentinels for everything that should go, alongside the new fields,
+ * in a single update call.
+ *
+ * If `oldType === newType` this is just a regular updatePin.
+ */
+export async function updatePinType(
+  pinId: string,
+  oldType: PinType,
+  newType: PinType,
+  newData: Record<string, unknown>,
+): Promise<void> {
+  if (!db) return
+  const writes: Record<string, unknown> = {
+    ...newData,
+    type: newType,
+    updatedAt: serverTimestamp(),
+  }
+  if (oldType !== newType) {
+    const oldFields = new Set(TYPE_SPECIFIC_FIELDS[oldType] ?? [])
+    const newFields = new Set(TYPE_SPECIFIC_FIELDS[newType] ?? [])
+    const incomingKeys = new Set(Object.keys(newData))
+    for (const f of oldFields) {
+      // Drop fields that belong to the old type but not the new one,
+      // unless the caller is explicitly setting them as part of the
+      // transition (rare but legal — e.g., 'description' is shared).
+      if (!newFields.has(f) && !incomingKeys.has(f)) {
+        writes[f] = deleteField()
+      }
+    }
+  }
+  await updateDoc(doc(db, 'pins', pinId), writes as DocumentData)
+}
+
+// Soft delete — archive instead of destroy. Data persists for 7 days
+// before the cleanupArchivedAssets scheduled Cloud Function deletes the
+// pin's Storage + Mux assets and hard-deletes the doc. archivedAt is
+// the cutoff anchor.
 export async function archivePin(pinId: string) {
   if (!db) return
   await updateDoc(doc(db, 'pins', pinId), {
     status: 'archived',
     enabled: false,
+    archivedAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
-}
-
-// Hard delete — only for RTBF (Right To Be Forgotten) requests
-export async function deletePin(pinId: string) {
-  if (!db) return
-  await deleteDoc(doc(db, 'pins', pinId))
 }
 
 // ── License duplicate check ──
@@ -423,6 +573,42 @@ export async function listShowingRequests(agentId: string): Promise<ShowingReque
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as ShowingRequest))
 }
 
+export function subscribeToShowingRequests(
+  agentId: string,
+  cb: (reqs: ShowingRequest[]) => void,
+): Unsubscribe | null {
+  if (!db) return null
+  try {
+    const q = query(
+      collection(db, 'showing_requests'),
+      where('agentId', '==', agentId),
+      orderBy('createdAt', 'desc'),
+      limit(1000),
+    )
+    return onSnapshot(q, (snap) => {
+      cb(snap.docs.map((d) => ({ id: d.id, ...d.data() } as ShowingRequest)))
+    }, (err) => {
+      console.warn('[firestore] showing_requests subscription error, falling back:', err.message)
+      const fallbackQ = query(
+        collection(db!, 'showing_requests'),
+        where('agentId', '==', agentId),
+        limit(1000),
+      )
+      onSnapshot(fallbackQ, (snap) => {
+        const reqs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as ShowingRequest))
+        reqs.sort((a, b) => {
+          const aMs = typeof (a as any).createdAt?.toMillis === 'function' ? (a as any).createdAt.toMillis() : 0
+          const bMs = typeof (b as any).createdAt?.toMillis === 'function' ? (b as any).createdAt.toMillis() : 0
+          return bMs - aMs
+        })
+        cb(reqs)
+      }, () => cb([]))
+    })
+  } catch {
+    return null
+  }
+}
+
 export async function updateShowingRequestStatus(
   requestId: string,
   status: ShowingRequest['status'],
@@ -672,6 +858,9 @@ export async function getAgentContent(agentId: string): Promise<ContentDoc[]> {
     const list = JSON.parse(localStorage.getItem('reelst_content') || '[]')
     return list.filter((c: ContentDoc) => c.agentId === agentId)
   }
+  // Archived items linger for 7 days awaiting Mux/Storage cleanup —
+  // hide them from list views so the agent doesn't see ghost content.
+  const stripArchived = (docs: ContentDoc[]) => docs.filter((c) => !c.archivedAt)
   try {
     const q = query(
       collection(db, 'content'),
@@ -680,7 +869,7 @@ export async function getAgentContent(agentId: string): Promise<ContentDoc[]> {
       limit(1000),
     )
     const snap = await getDocs(q)
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as ContentDoc))
+    return stripArchived(snap.docs.map((d) => ({ id: d.id, ...d.data() } as ContentDoc)))
   } catch (err) {
     console.warn('[firestore] getAgentContent fallback:', (err as Error).message)
     const fallbackQ = query(
@@ -689,7 +878,7 @@ export async function getAgentContent(agentId: string): Promise<ContentDoc[]> {
       limit(1000),
     )
     const snap = await getDocs(fallbackQ)
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as ContentDoc))
+    return stripArchived(snap.docs.map((d) => ({ id: d.id, ...d.data() } as ContentDoc)))
   }
 }
 
@@ -711,13 +900,19 @@ export async function linkContentToPin(contentId: string, pinId: string | null) 
   return updateContent(contentId, { pinId })
 }
 
+// Soft delete — keep the doc for 7 days so cleanupArchivedAssets can
+// tear down the associated Mux asset alongside the doc. Stamp
+// archivedAt to anchor the 7-day window. Demo / no-DB mode keeps the
+// hard-delete since localStorage has no orphan-cleanup concerns.
 export async function archiveContent(contentId: string) {
   if (!db) {
     const list = JSON.parse(localStorage.getItem('reelst_content') || '[]')
     localStorage.setItem('reelst_content', JSON.stringify(list.filter((c: ContentDoc) => c.id !== contentId)))
     return
   }
-  await deleteDoc(doc(db, 'content', contentId))
+  await updateDoc(doc(db, 'content', contentId), {
+    archivedAt: serverTimestamp(),
+  })
 }
 
 // ══════════════════════════════════════════
@@ -803,21 +998,6 @@ export async function markNotificationsRead(ids: string[]) {
     batch.update(doc(db, 'notifications', id), { read: true })
   }
   await batch.commit()
-}
-
-export async function getUnreadNotificationCount(agentId: string): Promise<number> {
-  if (!db) return 0
-  try {
-    const q = query(
-      collection(db, 'notifications'),
-      where('agentId', '==', agentId),
-      where('read', '==', false),
-    )
-    const snap = await getDocs(q)
-    return snap.size
-  } catch {
-    return 0
-  }
 }
 
 // ══════════════════════════════════════════

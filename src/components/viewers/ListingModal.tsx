@@ -6,6 +6,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { formatPrice } from '@/lib/firestore'
+import { displayAddressWithUnit } from '@/lib/format'
 import { useSaves } from '@/hooks/useSaves'
 import { OpenHouseBlock } from '@/components/listing/OpenHouseBlock'
 import { publicContent } from '@/lib/contentVisibility'
@@ -477,7 +478,7 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isFullScreen, 
             {'originalPrice' in pin && pin.originalPrice !== pin.soldPrice && <span className="text-[16px] text-ghost line-through font-mono">{formatPrice(pin.originalPrice)}</span>}
           </div>
         )}
-        <p className="text-[14px] text-mist flex items-center gap-1.5"><MapPin size={13} className="text-ghost" /> {pin.address}</p>
+        <p className="text-[14px] text-mist flex items-center gap-1.5"><MapPin size={13} className="text-ghost" /> {displayAddressWithUnit(pin.address, pin.unit)}</p>
 
         {pin.type === 'for_sale' && <OpenHouseBlock pin={pin as ForSalePin} agent={agent} />}
 

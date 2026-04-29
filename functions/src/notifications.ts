@@ -175,6 +175,13 @@ export const onNewFollower = onDocumentCreated(
 )
 
 // ── Trigger: new showing request ──
+// Showing requests live in their own `showing_requests` collection with
+// their own status field — the dashboard Inbox reads them directly via
+// listShowingRequests(). We don't mirror them into `notifications`
+// because (a) the Inbox would never read those docs, and (b) it would
+// double-count toward the unread tab badge (once from the showing
+// request's status='new', once from the unread notification doc).
+// We still fire the FCM push so the agent gets a real-time alert.
 export const onNewShowingRequest = onDocumentCreated(
   { document: 'showing_requests/{reqId}', region: 'us-central1' },
   async (event) => {
@@ -186,17 +193,6 @@ export const onNewShowingRequest = onDocumentCreated(
       body: `${data.visitorName || 'Someone'} wants to tour ${data.pinAddress || 'a listing'}.`,
       url: '/dashboard?tab=inbox',
       tag: `req_${event.params.reqId}`,
-    })
-
-    await writeNotification({
-      agentId: data.agentId,
-      type: 'showing_request',
-      title: 'New showing request',
-      body: `${data.visitorName || 'Someone'} wants to tour ${data.pinAddress || 'a listing'}.`,
-      actorName: data.visitorName || 'Someone',
-      pinId: data.pinId,
-      pinAddress: data.pinAddress,
-      refId: event.params.reqId,
     })
   },
 )

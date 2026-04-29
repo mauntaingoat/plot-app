@@ -26,7 +26,7 @@ interface SidebarPanelsProps {
 const PANEL_TITLES: Record<Exclude<SidebarPanelType, null>, string> = {
   selectAgent: 'Select Agent',
   following: 'Following',
-  exploreAll: 'Explore All',
+  exploreAll: 'Explore',
   saved: 'Saved',
 }
 
@@ -111,13 +111,13 @@ export function SidebarPanels({
                 </div>
               )}
 
-              {/* Explore All panel */}
+              {/* Explore panel */}
               {sidebarPanel === 'exploreAll' && (
                 <div className="space-y-4">
                   <p className="text-[13px] text-white/40 mb-2">See all agents in your current map viewport. Pan and zoom to discover new agents.</p>
                   <motion.button whileTap={{ scale: 0.97 }} onClick={() => { onSetMode('explore'); setSidebarPanel(null) }}
                     className="w-full py-3 rounded-xl bg-tangerine text-white font-semibold text-[14px] cursor-pointer hover:bg-ember transition-colors">
-                    Explore All Agents
+                    Explore
                   </motion.button>
                 </div>
               )}

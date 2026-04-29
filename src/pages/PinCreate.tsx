@@ -21,6 +21,7 @@ import { renderComposition, type RenderPhase } from '@/features/content-editor/l
 import { CarouselStep } from '@/features/content-create/CarouselStep'
 import { publishCarouselPhotos } from '@/features/content-create/lib/publish'
 import type { ContentDraft, EditorDraftKind } from '@/features/content-create/types'
+import { displayAddressWithUnit } from '@/lib/format'
 
 const PIN_OPTIONS: { type: PinType; label: string; desc: string; icon: typeof Home; color: string }[] = [
   { type: 'for_sale', label: 'For Sale Listing', desc: 'Active listing with MLS data, photos, and content', icon: Home, color: '#3B82F6' },
@@ -75,6 +76,7 @@ export default function PinCreate() {
   const setStep = goTo
   const [pinType, setPinType] = useState<PinType | null>(null)
   const [address, setAddress] = useState('')
+  const [unit, setUnit] = useState('')
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [saving, setSaving] = useState(false)
   const [paywall, setPaywall] = useState<{ open: boolean; reason: string; upgradeTo?: Tier }>({ open: false, reason: '' })
@@ -134,26 +136,43 @@ export default function PinCreate() {
   const [lookingUpProperty, setLookingUpProperty] = useState(false)
   const [showEditDetails, setShowEditDetails] = useState(false)
   const [statusMismatch, setStatusMismatch] = useState<string | null>(null)
+  const [lookupError, setLookupError] = useState<string | null>(null)
+  // Monotonic counter — every selectAddress call bumps it. After the
+  // async lookup resolves, we only apply results if our captured id is
+  // still the latest. Prevents a stale lookup from stomping the user's
+  // current address selection or in-progress manual edits.
+  const lookupIdRef = useRef(0)
 
   const resetPropertyFields = () => {
     setBeds(3); setBaths(2); setSqft(''); setYearBuilt('')
     setHomeType('condo'); setPrice(''); setMlsNumber('')
     setDaysOnMarket(0); setListingAgentName(''); setListingOfficeName('')
     setStatusMismatch(null)
+    setLookupError(null)
   }
 
   const selectAddress = async (result: { placeName: string; center: [number, number] }) => {
     setAddress(result.placeName); setCoords({ lat: result.center[1], lng: result.center[0] }); clear()
+    // Reset unit on a fresh address pick — it doesn't carry over across
+    // different buildings. User adds it on the next step if relevant.
+    setUnit('')
 
     if (pinType === 'for_sale' || pinType === 'sold') {
       resetPropertyFields()
+      const myLookupId = ++lookupIdRef.current
       setLookingUpProperty(true)
       try {
         const { getFunctions, httpsCallable } = await import('firebase/functions')
         const { app } = await import('@/config/firebase')
         const functions = getFunctions(app ?? undefined)
         const fn = httpsCallable(functions, 'propertyLookup')
-        const res = await fn({ address: result.placeName, pinType })
+        // First lookup happens with no unit — Mapbox doesn't surface
+        // them in autocomplete and the user hasn't typed one yet. If
+        // they add a unit on the next step we'll re-run the lookup.
+        const res = await fn({ address: result.placeName, pinType, unit: null })
+        // Stale response (user picked a different address mid-flight,
+        // or kicked off a fresh lookup). Drop this one entirely.
+        if (myLookupId !== lookupIdRef.current) return
         const data = res.data as any
         if (data.bedrooms != null) setBeds(data.bedrooms)
         if (data.bathrooms != null) setBaths(data.bathrooms)
@@ -194,20 +213,82 @@ export default function PinCreate() {
           if (mapped) setHomeType(mapped)
         }
       } catch (err) {
+        if (myLookupId !== lookupIdRef.current) return
         console.warn('[PinCreate] property lookup failed:', err)
+        setLookupError("Couldn't auto-fill property details — fill them in manually below.")
       } finally {
-        setLookingUpProperty(false)
+        if (myLookupId === lookupIdRef.current) setLookingUpProperty(false)
       }
     }
   }
 
-  const handleMediaFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Re-run propertyLookup when the user adds/changes a unit number on
+  // the details step. Rentcast returns different beds/baths/price per
+  // unit in the same building, so this is essential for condos. Reuses
+  // the same request-versioning guard as selectAddress.
+  const reLookupWithUnit = async (newUnit: string) => {
+    if (!address) return
+    if (pinType !== 'for_sale' && pinType !== 'sold') return
+    const myLookupId = ++lookupIdRef.current
+    setLookingUpProperty(true)
+    setLookupError(null)
+    try {
+      const { composeAddressWithUnit } = await import('@/lib/format')
+      const { getFunctions, httpsCallable } = await import('firebase/functions')
+      const { app } = await import('@/config/firebase')
+      const functions = getFunctions(app ?? undefined)
+      const fn = httpsCallable(functions, 'propertyLookup')
+      const fullAddress = composeAddressWithUnit(address, newUnit)
+      const res = await fn({ address: fullAddress, pinType, unit: newUnit || null })
+      if (myLookupId !== lookupIdRef.current) return
+      const data = res.data as any
+      if (data.bedrooms != null) setBeds(data.bedrooms)
+      if (data.bathrooms != null) setBaths(data.bathrooms)
+      if (data.squareFootage != null) setSqft(String(data.squareFootage))
+      if (data.yearBuilt != null) setYearBuilt(String(data.yearBuilt))
+      if (data.mlsNumber) setMlsNumber(data.mlsNumber)
+      if (data.daysOnMarket != null) setDaysOnMarket(data.daysOnMarket)
+      if (data.listingAgentName) setListingAgentName(data.listingAgentName)
+      if (data.listingOfficeName) setListingOfficeName(data.listingOfficeName)
+      const hasActive = data.listingStatus === 'Active' && data.listingPrice
+      const hasSold = data.soldPrice || data.lastSalePrice
+      const effectiveType = hasActive ? 'for_sale' : (hasSold ? 'sold' : pinType)
+      if (effectiveType === 'for_sale' && data.listingPrice) setPrice(String(data.listingPrice))
+      else if (effectiveType === 'sold' && (data.soldPrice || data.lastSalePrice)) setPrice(String(data.soldPrice || data.lastSalePrice))
+    } catch (err) {
+      if (myLookupId !== lookupIdRef.current) return
+      console.warn('[PinCreate] unit re-lookup failed:', err)
+      // Soft-fail — leave the building-level data in place rather than
+      // wiping it. User edited fields stay untouched.
+    } finally {
+      if (myLookupId === lookupIdRef.current) setLookingUpProperty(false)
+    }
+  }
+
+  const handleMediaFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return
+    e.target.value = '' // reset so picking same file again re-fires onChange
+    const { assertFileWithinLimit, FileTooLargeError, PHOTO_MAX_BYTES, VIDEO_MAX_BYTES } = await import('@/lib/storage')
+    try {
+      assertFileWithinLimit(file, file.type.startsWith('video/') ? VIDEO_MAX_BYTES : PHOTO_MAX_BYTES)
+    } catch (err) {
+      if (err instanceof FileTooLargeError) { alert(err.message); return }
+      throw err
+    }
     setNewFile(file); setNewPreview(URL.createObjectURL(file))
   }
 
-  const handlePhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPhotos(Array.from(e.target.files || []))
+  const handlePhotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    e.target.value = ''
+    const { assertFileWithinLimit, FileTooLargeError, PHOTO_MAX_BYTES } = await import('@/lib/storage')
+    try {
+      for (const f of files) assertFileWithinLimit(f, PHOTO_MAX_BYTES)
+    } catch (err) {
+      if (err instanceof FileTooLargeError) { alert(err.message); return }
+      throw err
+    }
+    setPhotos(files)
   }
 
   const addContent = async () => {
@@ -281,6 +362,7 @@ export default function PinCreate() {
         type: pinType,
         coordinates: coords,
         address,
+        unit: unit.trim() || null,
         neighborhoodId: '',
         geohash: '',
         enabled: true,
@@ -371,6 +453,23 @@ export default function PinCreate() {
 
         const { updatePin } = await import('@/lib/firestore')
         await updatePin(pinId, { content: contentArray, nextPublishAt })
+      }
+
+      // Activate the pin (createPin defaults to enabled=false). If the
+      // user is at their tier's active-pin cap, the callable rejects
+      // and we leave the pin as a draft + show the paywall.
+      try {
+        const { setPinEnabled } = await import('@/lib/firestore')
+        await setPinEnabled(pinId, true)
+      } catch (err: any) {
+        clearTimeout(timeout)
+        setSaving(false)
+        const reason = err?.message || "You're at your active-pin cap. The pin is saved as a draft — archive an active pin or upgrade to publish it."
+        const upgradeTo = err?.details?.upgradeTo as 'pro' | 'studio' | undefined
+        setPaywall({ open: true, reason, upgradeTo })
+        // Pin lives as a draft; bounce to dashboard so they see it.
+        navigate('/dashboard')
+        return
       }
 
       clearTimeout(timeout)
@@ -605,6 +704,7 @@ export default function PinCreate() {
     // Build type-specific pin data (mirrors handlePublish logic)
     const pinData: Record<string, unknown> = {
       agentId, type: pinType, coordinates: coords, address,
+      unit: unit.trim() || null,
       neighborhoodId: '', geohash: '', enabled: true, content: [],
     }
     if (pinType === 'for_sale') {
@@ -757,6 +857,20 @@ export default function PinCreate() {
         })
       }
 
+      // Activate the pin via the Cloud Function (server-side cap check).
+      // Pin lives as a draft if user is at their tier's active-pin cap.
+      try {
+        const { setPinEnabled } = await import('@/lib/firestore')
+        await setPinEnabled(pinId, true)
+      } catch (err: any) {
+        setSaving(false)
+        const reason = err?.message || "You're at your active-pin cap. The pin is saved as a draft — archive an active pin or upgrade to publish it."
+        const upgradeTo = err?.details?.upgradeTo as 'pro' | 'studio' | undefined
+        setPaywall({ open: true, reason, upgradeTo })
+        navigate('/dashboard')
+        return
+      }
+
       navigate('/dashboard')
     } catch (err) {
       setSaving(false)
@@ -904,9 +1018,35 @@ export default function PinCreate() {
               </div>
 
               {coords && (
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-cream rounded-[14px] p-3 flex items-center gap-2.5 mb-6">
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-cream rounded-[14px] p-3 flex items-center gap-2.5 mb-4">
                   <div className="w-8 h-8 rounded-full bg-sold-green/15 flex items-center justify-center"><Check size={16} className="text-sold-green" /></div>
-                  <p className="text-[13px] font-medium text-ink truncate flex-1">{address}</p>
+                  <p className="text-[13px] font-medium text-ink truncate flex-1">{displayAddressWithUnit(address, unit)}</p>
+                </motion.div>
+              )}
+
+              {/* Apt / Unit / Suite — optional. Only meaningful for
+                  multi-unit property types. Re-runs the Rentcast
+                  lookup on blur so the right unit's data fills in
+                  before the user reaches the details step. */}
+              {coords && (pinType === 'for_sale' || pinType === 'sold') && (
+                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-2">
+                  <label className="text-[12px] font-semibold text-smoke uppercase tracking-wider block mb-1.5">
+                    Apt / Unit / Suite (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={unit}
+                    placeholder="e.g. 4B, PH-2, 1201"
+                    onChange={(e) => setUnit(e.target.value)}
+                    onBlur={(e) => {
+                      const trimmed = e.target.value.trim()
+                      if (trimmed) reLookupWithUnit(trimmed)
+                    }}
+                    className="w-full px-4 py-3 rounded-[14px] bg-cream border border-border-light text-[14px] text-ink placeholder:text-ash outline-none focus:border-tangerine/40"
+                  />
+                  <p className="text-[11px] text-smoke mt-1.5">
+                    For condos & apartments — helps pull this unit's beds, baths, and price instead of the building-wide data.
+                  </p>
                 </motion.div>
               )}
 
@@ -923,12 +1063,19 @@ export default function PinCreate() {
           {step === 'details' && (
             <motion.div key="details" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 20 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -20 * d }) }} initial="enter" animate="center" exit="exit" className="max-w-2xl mx-auto w-full">
               <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">Add details</h2>
-              <p className="text-[14px] text-smoke mb-6">{address}</p>
+              <p className="text-[14px] text-smoke mb-6">{displayAddressWithUnit(address, unit)}</p>
 
               {statusMismatch && (
                 <div className="flex items-start gap-2.5 bg-tangerine/10 border border-tangerine/20 rounded-[14px] p-3.5 mb-4">
                   <span className="text-tangerine text-[16px] shrink-0">↻</span>
                   <p className="text-[13px] text-ink font-medium">{statusMismatch}</p>
+                </div>
+              )}
+
+              {lookupError && (
+                <div className="flex items-start gap-2.5 bg-live-red/8 border border-live-red/20 rounded-[14px] p-3.5 mb-4">
+                  <span className="text-live-red text-[16px] shrink-0">!</span>
+                  <p className="text-[13px] text-ink font-medium">{lookupError}</p>
                 </div>
               )}
 

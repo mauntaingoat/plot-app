@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronRight, ChevronLeft, Users, Globe, X, Map, Play, Bookmark, UserCircle, LogIn } from 'lucide-react'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
+import { displayAddressWithUnit } from '@/lib/format'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { MapCanvas } from '@/components/map/MapCanvas'
 import { MapOverlay } from '@/components/map/MapOverlay'
@@ -301,11 +302,11 @@ export default function AgentProfile() {
 
   if (notFound || !agent) {
     return (
-      <div className="map-page flex flex-col items-center justify-center text-center px-6 bg-midnight">
+      <div className="map-page flex flex-col items-center justify-center text-center px-6 bg-midnight" style={{ fontFamily: 'var(--font-humanist)' }}>
         <div className="w-16 h-16 rounded-full bg-charcoal flex items-center justify-center mb-4">
           <span className="text-[28px] text-ghost">?</span>
         </div>
-        <h1 className="text-[24px] font-extrabold text-white mb-2">Reelst not found</h1>
+        <h1 className="text-[24px] text-white mb-2" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>Reelst not found</h1>
         <p className="text-[15px] text-ghost mb-6">@{username} doesn't have a Reelst yet.</p>
         <motion.button whileTap={{ scale: 0.96 }} onClick={() => navigate('/')} className="text-tangerine font-semibold text-[15px]">Go home</motion.button>
       </div>
@@ -314,11 +315,11 @@ export default function AgentProfile() {
 
   if (agent.verificationStatus !== 'verified' && !isPreview) {
     return (
-      <div className="map-page flex flex-col items-center justify-center text-center px-6 bg-midnight">
+      <div className="map-page flex flex-col items-center justify-center text-center px-6 bg-midnight" style={{ fontFamily: 'var(--font-humanist)' }}>
         <div className="w-16 h-16 rounded-full bg-tangerine/15 flex items-center justify-center mb-4">
           <span className="text-[28px]">🔒</span>
         </div>
-        <h1 className="text-[22px] font-extrabold text-white mb-2">Profile pending verification</h1>
+        <h1 className="text-[22px] text-white mb-2" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>Profile pending verification</h1>
         <p className="text-[14px] text-ghost mb-6 max-w-[300px]">
           @{username}'s Reelst is being reviewed and will be live soon.
         </p>
@@ -359,7 +360,7 @@ export default function AgentProfile() {
 
   if (isDesktop) {
     return (
-      <div className="map-page" style={{ background: '#14161E' }} ref={mapContainerRef}>
+      <div className="map-page" style={{ background: '#14161E', fontFamily: 'var(--font-humanist)' }} ref={mapContainerRef}>
         {seoElement}
 
         {/* ═══ LEFT SIDEBAR ═══ */}
@@ -367,7 +368,7 @@ export default function AgentProfile() {
           {/* Logo lockup */}
           <div className="flex items-center justify-center gap-2.5 py-6 shrink-0">
             <img src="/reelst-logo.png" alt="Reelst" className="w-8 h-8" />
-            <span className="text-[20px] font-extrabold text-white tracking-tight">Reelst</span>
+            <span className="text-[20px] text-white" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>Reelst</span>
           </div>
 
           {/* Nav buttons */}
@@ -411,7 +412,7 @@ export default function AgentProfile() {
                   setSidebarPanel(sidebarPanel === 'exploreAll' ? null : 'exploreAll')
                 }}
               >
-                <Globe size={18} /> Explore All
+                <Globe size={18} /> Explore
               </SidebarNavButton>
 
               <div className="h-px bg-white/6 !my-3" />
@@ -573,7 +574,7 @@ export default function AgentProfile() {
                   transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }} onClick={(e) => e.stopPropagation()}
                   className="bg-obsidian rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ height: '88vh', aspectRatio: '9/16', maxWidth: '90vw' }}>
                   <div className="px-5 pt-4 pb-3 shrink-0 flex items-center justify-between border-b border-border-dark">
-                    <h2 className="text-[16px] font-bold text-white tracking-tight truncate flex-1 mr-3">{selectedPin.address}</h2>
+                    <h2 className="text-[16px] text-white truncate flex-1 mr-3" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>{displayAddressWithUnit(selectedPin.address, selectedPin.unit)}</h2>
                     <button onClick={() => setSelectedPin(null)} className="w-8 h-8 rounded-full bg-charcoal flex items-center justify-center text-ghost hover:text-white cursor-pointer shrink-0"><X size={16} /></button>
                   </div>
                   <div className="flex-1 min-h-0 overflow-hidden">
@@ -642,7 +643,7 @@ export default function AgentProfile() {
                 className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[410] w-[calc(100vw-48px)] max-w-[640px] max-h-[80vh] bg-obsidian rounded-[22px] shadow-2xl border border-border-dark flex flex-col overflow-hidden"
               >
                 <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-border-dark">
-                  <h2 className="text-[17px] font-bold text-white tracking-tight">
+                  <h2 className="text-[17px] text-white" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>
                     {indicatorPins.type === 'live'
                       ? `${indicatorPins.pins.length} Livestream${indicatorPins.pins.length !== 1 ? 's' : ''}`
                       : `${indicatorPins.pins.length} Open House${indicatorPins.pins.length !== 1 ? 's' : ''}`}
@@ -685,7 +686,7 @@ export default function AgentProfile() {
   // MOBILE (unchanged)
   // ═══════════════════════════════════════════
   return (
-    <div className="map-page" ref={mapContainerRef}>
+    <div className="map-page" ref={mapContainerRef} style={{ fontFamily: 'var(--font-humanist)' }}>
       {seoElement}
       <AnimatePresence mode="wait">
         {viewMode === 'map' ? (

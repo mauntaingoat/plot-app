@@ -193,7 +193,8 @@ export default function ContentEdit() {
         const rawUrls: string[] = []
         for (let i = 0; i < carouselDraft.photos.length; i++) {
           const photo = carouselDraft.photos[i]
-          const filename = `content-${contentId}-photo-${i}-${Date.now()}.jpg`
+          const nonce = Math.random().toString(36).slice(2, 10)
+          const filename = `content-${contentId}-photo-${i}-${Date.now()}-${nonce}.jpg`
           const url = await uploadFile({
             path: pinMediaPath(pinId, filename),
             file: photo.file,

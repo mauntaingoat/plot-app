@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Eye, MousePointerClick, Bookmark, Users, Clock, Map as MapIcon, BadgeCheck, Heart, Home as HomeIcon, Compass } from 'lucide-react'
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
+import { FooterContent } from '@/components/marketing/Footer'
 import { SEOHead } from '@/components/marketing/SEOHead'
 import { useAuthStore } from '@/stores/authStore'
 import { useScrollReveal } from '@/hooks/useScrollReveal'
@@ -23,11 +24,12 @@ export default function Home() {
   }, [userDoc, navigate])
 
   return (
-    <MarketingLayout>
+    <MarketingLayout noFooter>
       <SEOHead path="/" />
       <Hero />
       <FeatureShowcase />
       <CloserLook />
+      <PortfolioShowcase />
       <Ready />
     </MarketingLayout>
   )
@@ -415,9 +417,9 @@ function Hero() {
                 lineHeight: 0.98,
               }}
             >
-              The map-based profile{' '}
+              The link in your bio,{' '}
               <span className="brand-grad-text" style={{ fontWeight: 600 }}>
-                every real estate agent needs
+                built for real estate agents
               </span>
             </h1>
 
@@ -429,9 +431,9 @@ function Hero() {
                 fontWeight: 400,
               }}
             >
-              Pin every listing to a real address, attach your reels, photos,
-              and open houses, and send one link that turns your territory
-              into a place buyers can actually scroll.
+              A live map of your listings married to the reels, walkthroughs,
+              and neighborhood spotlights you already make — every part of
+              your agent brand on one shareable link.
             </p>
 
             <div className="w-full flex justify-center">
@@ -510,28 +512,20 @@ type Feature = {
 const FEATURES: Feature[] = [
   {
     key: 'pins',
-    label: 'Listing Pins',
-    title: 'Your listings, on a real map.',
-    desc: 'Drop every listing on a real address. MLS data auto-fills beds, baths, sqft, price, days on market. Buyers scroll your territory — not a feed.',
+    label: 'Map Pins',
+    title: 'Your listings — and your neighborhoods — on a real map.',
+    desc: 'Drop a pin for a property and MLS auto-fills beds, baths, sqft, price, days on market, and more. Or drop a neighborhood pin to sell the area itself — the streets, the parks, the block that makes the zip code feel like home.',
     // Video file names are historical; the actual recording mapped to
     // each chip is rotated here:
-    //   pins       → feature-content.mov   (actually the Listing recording)
-    //   spotlights → feature-pins.mov      (actually the Spotlights recording)
-    //   content    → feature-spotlights.mov (actually the Content recording)
+    //   pins    → feature-content.mov     (the Listing recording)
+    //   content → feature-spotlights.mov  (the Content recording)
     video: '/marketing/feature-content.mov',
-  },
-  {
-    key: 'spotlights',
-    label: 'Spotlights',
-    title: 'Pin the neighborhood, not just the listing.',
-    desc: 'A second pin type for the coffee shop, the playground, the block that makes the zip code feel like home. Not a property — a feel for the place. Attach a reel and sell the neighborhood, not just the house.',
-    video: '/marketing/feature-pins.mov',
   },
   {
     key: 'content',
     label: 'Content',
     title: 'Every reel, inside a pin.',
-    desc: 'Shoot walkthroughs. Drop carousels. Go live from the open house. Your content lives where the listing is — not floating in a feed that forgets it tomorrow.',
+    desc: 'Shoot walkthroughs. Drop carousels. Go live from the open house. Tap any pin and the listing comes alive with the content you’ve attached — reels, photos, the whole drawer.',
     video: '/marketing/feature-spotlights.mov',
   },
   {
@@ -552,14 +546,14 @@ const FEATURES: Feature[] = [
     key: 'analytics',
     label: 'Analytics',
     title: "Know what's actually working.",
-    desc: 'Views, taps, and saves per pin. Viewer cities and peak hours. Follower growth over time. Every number you need — none of the ones you don’t.',
+    desc: 'Views per reel, photo, and live. Taps and saves per pin. Follower growth, viewer cities, peak hours, and crosslist patterns — every signal in one place.',
     video: '/marketing/feature-analytics.mov',
   },
   {
     key: 'explore',
-    label: 'Explore',
+    label: 'Get Discovered',
     title: 'Show up on the map buyers are already browsing.',
-    desc: 'Pro agents surface on the live discovery map. A buyer pans into a city or a neighborhood and sees every Pro working it — your pins included. Free agents stay private; going Pro puts you in front of buyers actively looking.',
+    desc: 'Buyers panning your city see your pins on the live discovery map — the same map your followers use, open to anyone browsing the area. Your listings find them, instead of waiting to be found.',
     video: '/marketing/feature-explore.mov',
   },
 ]
@@ -569,17 +563,18 @@ function FeatureShowcase() {
   const active = FEATURES.find((f) => f.key === activeKey) || FEATURES[0]
 
   return (
+    <div className="bg-marketing">
     <section
       id="features"
-      className="pt-16 md:pt-20 pb-16 md:pb-24 rounded-t-[40px] md:rounded-t-[64px] scroll-mt-24"
+      className="pt-12 md:pt-14 pb-10 md:pb-14 rounded-t-[40px] md:rounded-t-[64px] scroll-mt-24"
       style={{ background: '#0A0E17' }}
     >
       <div className="max-w-[1200px] mx-auto px-6 md:px-10">
-        <div className="grid md:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] gap-12 md:gap-16 items-start">
+        <div className="grid md:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] gap-10 md:gap-12 items-center">
           {/* ── Left: meta headline + chips ── */}
           <div>
             <h2
-              className="text-white mb-10 md:mb-12"
+              className="text-white mb-8 md:mb-10"
               style={{
                 fontFamily: 'var(--font-humanist)',
                 fontSize: 'clamp(2.5rem, 5.2vw, 4.75rem)',
@@ -588,9 +583,9 @@ function FeatureShowcase() {
                 lineHeight: 0.98,
               }}
             >
-              One profile.{' '}
+              Your listings on a map.{' '}
               <span className="brand-grad-text" style={{ fontWeight: 600 }}>
-                Every part of your brand.
+                Your content inside them.
               </span>
             </h2>
 
@@ -695,7 +690,7 @@ function FeatureShowcase() {
                 Tune the min-height if new/longer descriptions are added. */}
             <div
               key={`copy-${active.key}`}
-              className="feature-content min-h-[180px] md:min-h-[200px]"
+              className="feature-content min-h-[140px] md:min-h-[160px]"
             >
               <h3
                 className="text-white mb-3"
@@ -718,7 +713,7 @@ function FeatureShowcase() {
 
         {/* Subtle mock-data disclaimer */}
         <p
-          className="text-white/30 mt-12 md:mt-16"
+          className="text-white/30 mt-8 md:mt-10"
           style={{
             fontFamily: 'var(--font-mono)',
             fontSize: '10.5px',
@@ -731,6 +726,7 @@ function FeatureShowcase() {
         </p>
       </div>
     </section>
+    </div>
   )
 }
 
@@ -751,7 +747,7 @@ function CloserLook() {
       className="relative bg-marketing scroll-mt-24"
     >
       <div className="relative max-w-[1240px] mx-auto px-6 md:px-10 pt-8 md:pt-10 pb-20 md:pb-24">
-        <div className="relative max-w-[1080px] mx-auto">
+        <div className="relative">
           {/* Card uses NO overflow-hidden so the figure's lower half
               (pin + house + trail) can bleed past the card's bottom and
               right edges. The grid background remains clipped to the
@@ -803,9 +799,10 @@ function CloserLook() {
                   lineHeight: 1.55,
                 }}
               >
-                Agents who pin every listing on a real map — with reels,
-                photos, and live open houses attached — report 3× the
-                inbound inquiries of agents using a static link-in-bio.
+                Agents whose reels, walkthroughs, and neighborhood
+                spotlights live inside their listings — not scattered
+                across feeds and profiles — report 3× the inbound
+                inquiries of agents using a static link-in-bio.
               </p>
             </div>
 
@@ -833,45 +830,86 @@ function CloserLook() {
           </div>
         </div>
 
-        {/* ── Value-add tiles. Staggered 2-col grid where each tile
-             pairs an editorial heading with a light, brand-styled scene
-             card. Inside each scene, distinct UI elements pan into
-             place ONE AT A TIME — see .va-pan / .va-drop / .va-pop in
-             index.css. The cards stay airy and Reelst-cream so they
-             belong to the same world as the hero, not a different app. */}
-        <div className="relative max-w-[1080px] mx-auto mt-28 md:mt-40">
-          <div className="md:grid md:grid-cols-2 md:gap-x-12 lg:gap-x-16">
-            <div className="space-y-24 md:space-y-32">
-              <ValueTile
-                heading="An address. A pin. The whole listing."
-                description="Type any address. Reelst drops a pin on its real coordinates and pulls beds, baths, sqft, price, and listing agent from MLS. You confirm. The pin goes live."
-              >
-                <AddressToPinScene />
-              </ValueTile>
+        <PinAnalytics />
 
-              <ValueTile
-                heading="One link, every channel."
-                description="reelst.co/yourname is your IG bio, your TikTok link, your email signature, your business card. It opens to your live map — not a static page."
+        {/* ── Section 3: customization & branding (mirror of 3× card) ──
+             Continuous-line illustration of a woman realtor painting custom
+             flourishes onto a "FOR SALE" yard sign — same one-line tangerine
+             aesthetic as the Pin It illustration above. */}
+        <div className="relative mt-44 md:mt-48 lg:mt-40">
+          <div
+            className="map-grid relative rounded-[24px] md:rounded-[32px] px-7 md:px-14 pt-6 md:pt-8 pb-[260px] sm:pb-[300px] lg:pb-10"
+            style={{
+              border: '1px solid rgba(255,133,82,0.22)',
+              boxShadow:
+                '0 1px 0 rgba(255,255,255,0.85) inset, 0 30px 80px -30px rgba(217,74,31,0.20), 0 10px 32px -16px rgba(10,14,23,0.08)',
+            }}
+          >
+            {/* ── Text column — right-aligned on lg+ (mirror of 3× card) */}
+            <div className="relative lg:max-w-[560px] lg:ml-auto" style={{ zIndex: 5 }}>
+              <p
+                className="text-graphite mb-3"
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '11px',
+                  fontWeight: 500,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                }}
               >
-                <OneLinkScene />
-              </ValueTile>
+                One link
+              </p>
+              <h2
+                className="text-ink mb-5"
+                style={{
+                  fontFamily: 'var(--font-humanist)',
+                  fontSize: 'clamp(2rem, 4.4vw, 3.75rem)',
+                  fontWeight: 500,
+                  letterSpacing: '-0.035em',
+                  lineHeight: 0.98,
+                }}
+              >
+                Everything that makes you,{' '}
+                <span className="brand-grad-text" style={{ fontWeight: 600 }}>
+                  you
+                </span>
+                .
+              </h2>
+              <p
+                className="text-graphite"
+                style={{
+                  fontFamily: 'var(--font-humanist)',
+                  fontSize: 'clamp(1rem, 1.18vw, 1.12rem)',
+                  fontWeight: 400,
+                  lineHeight: 1.55,
+                }}
+              >
+                Your sold, for-sale, and spotlight pins. Your reels and
+                walkthroughs. Your socials, your broker, your verified badge
+                — every piece of your agent presence on a single shareable
+                link.
+              </p>
             </div>
 
-            <div className="space-y-24 md:space-y-32 mt-20 md:mt-32 lg:mt-44">
-              <ValueTile
-                heading="A pin is a media drawer."
-                description="Reels, walkthroughs, photo carousels, and a live open-house broadcast all sit behind every pin you drop. The listing isn't a card — it's the whole story."
-              >
-                <PinDrawerScene />
-              </ValueTile>
-
-              <ValueTile
-                heading="Buyers don't need an account."
-                description="Anyone can scroll your map, watch your reels, save pins, and request a showing. No signup, no friction. The lead lands in your inbox anyway."
-              >
-                <BuyerScene />
-              </ValueTile>
-            </div>
+            {/* ── Pin-aloft line illustration (upper-body figure cropped at
+                 the waist). Always absolute, bottom-anchored so the waist
+                 sits flush with the card's interior bottom and the pin tip
+                 is free to bleed ABOVE the card's top edge. Card has heavy
+                 mobile pb so text doesn't run into the figure's torso.
+                 Image aspect ratio 815:1007. */}
+            <img
+              src="/marketing/customize-line-cropped.png"
+              alt=""
+              aria-hidden
+              draggable={false}
+              className="absolute h-auto pointer-events-none select-none
+                         bottom-0 left-1/2 -translate-x-1/2
+                         lg:left-[16px] lg:translate-x-0"
+              style={{
+                zIndex: 4,
+                width: 'clamp(200px, 30vw, 340px)',
+              }}
+            />
           </div>
         </div>
       </div>
@@ -880,295 +918,430 @@ function CloserLook() {
 }
 
 /* ────────────────────────────────────────────────────────────────
-   Value-tile shell — heading stack above a dark mock-platform card.
-   The whole tile is `.reveal` so its internals (`.va-step`, etc.)
-   animate as the parent enters the viewport.
+   PinAnalytics — left column hosts a 6-card bento collage of stat
+   tiles in tangerine/ember shades; right column carries the headline
+   (no underline), subhead, and brand CTA. On scroll the cards fly in
+   from their own off-axis directions and converge to their final
+   bento positions; on scroll-up they fly back out. Card aspect
+   ratios are locked (2:1 for col-span-2, 1:1 for col-span-1) so
+   they keep their proportions on resize.
    ──────────────────────────────────────────────────────────────── */
-function ValueTile({
-  heading,
-  description,
-  children,
+function PinAnalytics() {
+  const navigate = useNavigate()
+  const sectionRef = useRef<HTMLDivElement>(null)
+  const cardRefs = useRef<Array<HTMLDivElement | null>>([])
+
+  // Each card's "exploded" offset (px). Mutated in place by the scroll
+  // handler — at p=0 the card sits at this offset, at p=1 it's at 0,0.
+  const explosions = [
+    { ox: -14, oy: -10 }, // 0 Views     — top-left
+    { ox:  16, oy: -12 }, // 1 Taps      — top-right
+    { ox: -18, oy:   0 }, // 2 Save rate — left
+    { ox:  14, oy:   0 }, // 3 Followers — right
+    { ox: -10, oy:  14 }, // 4 Active    — bottom-left
+    { ox:  20, oy:  10 }, // 5 Co-saves  — bottom-right
+  ]
+
+  useEffect(() => {
+    let raf = 0
+    const update = () => {
+      const sec = sectionRef.current
+      if (!sec) return
+      const rect = sec.getBoundingClientRect()
+      const vh = window.innerHeight
+      const center = rect.top + rect.height / 2
+      const triggerStart = vh * 1.35
+      const triggerEnd = vh * 0.80
+      let p = (triggerStart - center) / (triggerStart - triggerEnd)
+      p = Math.max(0, Math.min(1, p))
+      cardRefs.current.forEach((card, i) => {
+        if (!card) return
+        const e = explosions[i]
+        const x = e.ox * (1 - p)
+        const y = e.oy * (1 - p)
+        card.style.transform = `translate(${x}px, ${y}px)`
+      })
+      raf = 0
+    }
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update) }
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', update)
+      cancelAnimationFrame(raf)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Initial inline transform per card so first paint has the cards
+  // already at their exploded position (no flash before the scroll
+  // handler runs).
+  const initialStyle = (i: number) => ({
+    transform: `translate(${explosions[i].ox}px, ${explosions[i].oy}px)`,
+  } as const)
+
+  return (
+    <section
+      ref={sectionRef}
+      className="relative mt-44 md:mt-48 lg:mt-40"
+    >
+      <div className="grid lg:grid-cols-2 gap-14 lg:gap-20 items-center">
+        {/* RIGHT (header) — placed first in DOM so on mobile it stacks
+            on top of the bento. On lg+ we re-order it to col 2. */}
+        <div className="text-center lg:text-left lg:order-2">
+          <p
+            className="text-graphite mb-4"
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '11px',
+              fontWeight: 500,
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+            }}
+          >
+            What your map says
+          </p>
+          <h2
+            className="text-ink mb-5"
+            style={{
+              fontFamily: 'var(--font-humanist)',
+              fontSize: 'clamp(2rem, 4.4vw, 3.75rem)',
+              fontWeight: 500,
+              letterSpacing: '-0.035em',
+              lineHeight: 1.0,
+            }}
+          >
+            See what your listings are doing.
+          </h2>
+          <p
+            className="text-graphite mb-9 max-w-[520px] mx-auto lg:mx-0"
+            style={{
+              fontFamily: 'var(--font-humanist)',
+              fontSize: 'clamp(1rem, 1.18vw, 1.12rem)',
+              fontWeight: 400,
+              lineHeight: 1.55,
+            }}
+          >
+            Views, taps, save rate, follower growth, when your viewers are
+            active, and which neighborhoods buyers save yours alongside —
+            every signal in one place.
+          </p>
+          <button
+            onClick={() => navigate('/sign-up')}
+            className="brand-btn h-12 px-6 rounded-full text-[14px] md:text-[15px] inline-flex items-center gap-2 cursor-pointer"
+            style={{
+              fontFamily: 'var(--font-humanist)',
+              fontWeight: 600,
+              boxShadow:
+                '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)',
+            }}
+          >
+            Become a Reelst agent <ArrowRight size={15} strokeWidth={2.5} />
+          </button>
+        </div>
+
+        {/* LEFT (bento) — second in DOM, ordered to col 1 on lg+. */}
+        <div className="relative w-full max-w-[560px] mx-auto lg:order-1">
+          <div className="relative grid grid-cols-3 gap-3 md:gap-4">
+            {/* Views — col-span 2, deep tangerine */}
+            <StatCard
+              cardRef={(el) => { cardRefs.current[0] = el }}
+              initialStyle={initialStyle(0)}
+              span="col-span-2"
+              aspect="2 / 1"
+              bg="#FF6B3D"
+              fg="white"
+              icon={<Eye size={16} />}
+              label="Views"
+              value="12,408"
+              caption="+18% week / week"
+              graphic={<GrowthBars color="rgba(255,255,255,0.85)" />}
+            />
+
+            {/* Taps — peach, ink text */}
+            <StatCard
+              cardRef={(el) => { cardRefs.current[1] = el }}
+              initialStyle={initialStyle(1)}
+              aspect="1 / 1"
+              bg="#FFD4B0"
+              fg="#1A0703"
+              icon={<MousePointerClick size={16} />}
+              label="Taps"
+              value="3,217"
+              caption="taps to open your pins"
+            />
+
+            {/* Save rate — ember, donut */}
+            <StatCard
+              cardRef={(el) => { cardRefs.current[2] = el }}
+              initialStyle={initialStyle(2)}
+              aspect="1 / 1"
+              bg="#D94A1F"
+              fg="white"
+              icon={<Bookmark size={16} />}
+              label="Save rate"
+              value="27.4%"
+              caption="of viewers save"
+              graphic={<Donut color="rgba(255,255,255,0.92)" track="rgba(255,255,255,0.18)" />}
+            />
+
+            {/* Followers — col-span 2, mid tangerine */}
+            <StatCard
+              cardRef={(el) => { cardRefs.current[3] = el }}
+              initialStyle={initialStyle(3)}
+              span="col-span-2"
+              aspect="2 / 1"
+              bg="#FF8552"
+              fg="white"
+              icon={<Users size={16} />}
+              label="Followers"
+              value="1,842"
+              caption="+184 this month"
+              graphic={<Sparkline color="rgba(255,255,255,0.92)" />}
+            />
+
+            {/* Active hours — col-span 2, deep ember-coral */}
+            <StatCard
+              cardRef={(el) => { cardRefs.current[4] = el }}
+              initialStyle={initialStyle(4)}
+              span="col-span-2"
+              aspect="2 / 1"
+              bg="#A8341A"
+              fg="white"
+              icon={<Clock size={16} />}
+              label="Active hours"
+              value="7–10 PM"
+              caption="when your viewers tap"
+              graphic={<HourBars color="rgba(255,255,255,0.78)" highlight="#FFD4B0" />}
+            />
+
+            {/* Crosslist insight — chip cluster shows the *kinds* of
+                listings buyers who save yours also save. Mixes a
+                feature, a neighborhood, and a price band so the point
+                lands without explaining it. */}
+            <StatCard
+              cardRef={(el) => { cardRefs.current[5] = el }}
+              initialStyle={initialStyle(5)}
+              aspect="1 / 1"
+              bg="#FFE6D1"
+              fg="#1A0703"
+              icon={<MapIcon size={16} />}
+              label="Crosslist"
+              value="67%"
+              valueSize="clamp(1.05rem, 1.75vw, 1.5rem)"
+              caption="of savers also save"
+              graphic={<CrosslistChips />}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* StatCard — one bento tile. `aspect` locks proportions on resize.
+   `cardRef` + `initialStyle` are wired by PinAnalytics so the scroll
+   handler can mutate transform / opacity directly. */
+function StatCard({
+  cardRef,
+  initialStyle,
+  span,
+  aspect,
+  bg,
+  fg,
+  icon,
+  label,
+  value,
+  valueSize,
+  caption,
+  graphic,
 }: {
-  heading: string
-  description: string
-  children: ReactNode
+  cardRef?: (el: HTMLDivElement | null) => void
+  initialStyle?: CSSProperties
+  span?: string
+  aspect: string
+  bg: string
+  fg: string
+  icon: ReactNode
+  label: string
+  value: string
+  valueSize?: string
+  caption: string
+  graphic?: ReactNode
 }) {
   return (
-    <div className="reveal">
-      <div className="text-center max-w-[440px] mx-auto mb-7 md:mb-9 px-2">
-        <h3
-          className="text-ink mb-3"
-          style={{
-            fontFamily: 'var(--font-humanist)',
-            fontSize: 'clamp(1.5rem, 2.4vw, 2.1rem)',
-            fontWeight: 500,
-            letterSpacing: '-0.025em',
-            lineHeight: 1.04,
-          }}
-        >
-          {heading}
-        </h3>
-        <p
-          className="text-graphite"
-          style={{
-            fontFamily: 'var(--font-humanist)',
-            fontSize: '14.5px',
-            fontWeight: 400,
-            lineHeight: 1.5,
-          }}
-        >
-          {description}
-        </p>
-      </div>
-      {children}
-    </div>
-  )
-}
-
-/* ────────────────────────────────────────────────────────────────
-   Shared scene shell — light, brand-cream card with the map-grid-soft
-   pattern. Children pack in via normal flow; no fixed aspect-ratio so
-   each scene sizes itself to its content (denser = no empty pockets).
-   Scene internals pan in one at a time via .va-pan / .va-drop /
-   .va-pop + data-step.
-   ──────────────────────────────────────────────────────────────── */
-function SceneFrame({ children }: { children: ReactNode }) {
-  return (
     <div
-      className="map-grid-soft relative rounded-[28px] overflow-hidden px-6 py-12 md:px-8 md:py-16 min-h-[300px] md:min-h-[340px] flex flex-col items-center justify-center"
+      ref={cardRef}
+      className={`relative rounded-[18px] p-3.5 md:p-4 overflow-hidden flex flex-col ${span || ''}`}
       style={{
-        border: '1px solid rgba(255,133,82,0.18)',
+        background: bg,
+        color: fg,
+        aspectRatio: aspect,
         boxShadow:
-          '0 1px 0 rgba(255,255,255,0.85) inset, 0 18px 50px -22px rgba(217,74,31,0.14), 0 6px 20px -10px rgba(10,14,23,0.06)',
+          '0 14px 32px -16px rgba(217,74,31,0.30), 0 6px 16px -8px rgba(10,14,23,0.10), inset 0 1px 0 rgba(255,255,255,0.10)',
+        willChange: 'transform, opacity',
+        ...initialStyle,
       }}
     >
-      {children}
+      <div className="flex items-center gap-2 mb-1.5 opacity-90">
+        <span style={{ opacity: 0.85 }}>{icon}</span>
+        <span
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontWeight: 600,
+            fontSize: '10px',
+            letterSpacing: '0.16em',
+            textTransform: 'uppercase',
+          }}
+        >
+          {label}
+        </span>
+      </div>
+      <div
+        style={{
+          fontFamily: 'var(--font-humanist)',
+          fontWeight: 600,
+          fontSize: valueSize || 'clamp(1.35rem, 2.2vw, 1.8rem)',
+          letterSpacing: '-0.025em',
+          lineHeight: 1.0,
+        }}
+      >
+        {value}
+      </div>
+      <div
+        className="opacity-80 mt-1"
+        style={{
+          fontFamily: 'var(--font-humanist)',
+          fontSize: '11.5px',
+          fontWeight: 400,
+        }}
+      >
+        {caption}
+      </div>
+      {graphic && (
+        <div className="mt-auto pt-1.5 -mx-1 flex items-end overflow-hidden min-h-0 flex-shrink">
+          {graphic}
+        </div>
+      )}
     </div>
   )
 }
 
-/* Small reusable pin SVG matching the brand pin (orange w/ ink stroke
-   and cream dot). Stand-alone so each scene can place its own pin. */
-function ScenePin({ size = 44 }: { size?: number }) {
+/* Sparkline — wavy line trending up. Pure SVG, no data. */
+function Sparkline({ color }: { color: string }) {
   return (
-    <svg width={size} viewBox="0 0 60 84" fill="none" aria-hidden>
+    <svg viewBox="0 0 120 32" className="w-full h-6" preserveAspectRatio="none">
       <path
-        d="M 30 3 C 14.5 3, 3 14.5, 3 30 C 3 50, 30 80, 30 80 S 57 50, 57 30 C 57 14.5, 45.5 3, 30 3 Z"
-        fill="#FF6B3D"
-        stroke="#0A0E17"
-        strokeWidth="2.5"
+        d="M0 24 C 14 22, 22 18, 36 16 S 60 12, 72 14 S 96 6, 120 4"
+        fill="none"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <circle cx="30" cy="28" r="8.5" fill="#F0E8D0" stroke="#0A0E17" strokeWidth="2" />
+      <circle cx="120" cy="4" r="2.5" fill={color} />
     </svg>
   )
 }
 
-/* Shared row card style used inside scenes (white + soft tangerine border). */
-const ROW_CARD = {
-  border: '1px solid rgba(255,133,82,0.18)',
-  boxShadow: '0 3px 10px -6px rgba(10,14,23,0.08)',
-} as const
-
-/* ────────────────────────────────────────────────────────────────
-   Scene 1 — Address → Pin. A pin drops, an MLS-verified listing card
-   appears beneath. Two elements, lots of air.
-   ──────────────────────────────────────────────────────────────── */
-function AddressToPinScene() {
+/* Donut — single arc representing save rate. */
+function Donut({ color, track }: { color: string; track: string }) {
+  const r = 14
+  const c = 2 * Math.PI * r
+  const pct = 0.274
   return (
-    <SceneFrame>
-      <div className="va-drop" data-step="1">
-        <ScenePin size={56} />
-      </div>
-      <div className="va-pan mt-6 w-full max-w-[300px]" data-step="2">
-        <div className="bg-white rounded-[14px] p-3.5" style={ROW_CARD}>
-          <div className="flex items-center justify-between mb-1.5">
-            <span
-              className="text-ink text-[14px]"
-              style={{ fontFamily: 'var(--font-humanist)', fontWeight: 600 }}
-            >
-              210 Coral Way
-            </span>
-            <span
-              className="flex items-center gap-1 text-[10px] uppercase tracking-[0.14em]"
-              style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: '#22C55E' }}
-            >
-              <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-                <path d="M2 6.2L4.8 9 10 3.2" stroke="#22C55E" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              MLS
-            </span>
-          </div>
-          <div
-            className="text-graphite text-[11.5px]"
-            style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}
-          >
-            $1,485,000 · 4 bd · 3.5 ba · 2,840 sqft
-          </div>
-        </div>
-      </div>
-    </SceneFrame>
+    <svg viewBox="0 0 36 36" className="w-8 h-8">
+      <circle cx="18" cy="18" r={r} fill="none" stroke={track} strokeWidth={4} />
+      <circle
+        cx="18"
+        cy="18"
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth={4}
+        strokeLinecap="round"
+        strokeDasharray={`${c * pct} ${c}`}
+        transform="rotate(-90 18 18)"
+      />
+    </svg>
   )
 }
 
-/* ────────────────────────────────────────────────────────────────
-   Scene 2 — One link, every channel. URL pill + the agent profile
-   it resolves to. Two elements.
-   ──────────────────────────────────────────────────────────────── */
-function OneLinkScene() {
+/* GrowthBars — 8 ascending bars implying follower growth. */
+function GrowthBars({ color }: { color: string }) {
+  const heights = [22, 28, 26, 38, 44, 50, 58, 70]
   return (
-    <SceneFrame>
-      <div className="va-pan w-full max-w-[300px]" data-step="1">
-        <div
-          className="bg-white rounded-full px-4 py-2.5 flex items-center gap-2.5"
-          style={ROW_CARD}
-        >
-          <span className="w-2 h-2 rounded-full bg-tangerine shrink-0" />
-          <span
-            className="text-ink text-[13px] flex-1 truncate"
-            style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}
-          >
-            reelst.co/jordan
-          </span>
-          <span
-            className="w-1 h-3.5 bg-tangerine"
-            style={{ animation: 'shimmer 1.1s ease-in-out infinite' }}
-          />
-        </div>
-      </div>
-      <div className="va-pan mt-5 w-full max-w-[300px]" data-step="2">
-        <div className="bg-white rounded-[14px] p-3.5 flex items-center gap-3" style={ROW_CARD}>
-          <span
-            className="w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0"
-            style={{ background: 'var(--brand-grad)', fontFamily: 'var(--font-humanist)', fontWeight: 600, fontSize: '14px' }}
-          >
-            JR
-          </span>
-          <div className="flex-1 min-w-0">
-            <div
-              className="text-ink text-[13.5px] truncate"
-              style={{ fontFamily: 'var(--font-humanist)', fontWeight: 600 }}
-            >
-              Jordan Reyes
-            </div>
-            <div
-              className="text-graphite text-[11px] truncate"
-              style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}
-            >
-              47 listings · Miami
-            </div>
-          </div>
-        </div>
-      </div>
-    </SceneFrame>
+    <svg viewBox="0 0 200 80" className="w-full h-8" preserveAspectRatio="none">
+      {heights.map((h, i) => (
+        <rect
+          key={i}
+          x={i * 24 + 4}
+          y={80 - h}
+          width={16}
+          height={h}
+          rx={3}
+          fill={color}
+          opacity={0.55 + i * 0.055}
+        />
+      ))}
+    </svg>
   )
 }
 
-/* ────────────────────────────────────────────────────────────────
-   Scene 3 — A pin is a media drawer. Pin drops, a single reel-style
-   media tile opens beneath it.
-   ──────────────────────────────────────────────────────────────── */
-function PinDrawerScene() {
+/* HourBars — 24 thin bars hinting at hour-of-day distribution. The
+   evening peak is highlighted to match "7-10 PM". */
+function HourBars({ color, highlight }: { color: string; highlight: string }) {
+  const data = [
+    8, 6, 5, 4, 4, 5, 8, 14, 22, 28, 32, 36, 40, 38, 36, 38, 42, 50, 64, 70, 66, 50, 30, 18,
+  ]
+  const peakIdx = new Set([18, 19, 20, 21]) // 7-10 PM
   return (
-    <SceneFrame>
-      <div className="va-drop" data-step="1">
-        <ScenePin size={48} />
-      </div>
-      <div className="va-pan mt-5 w-[180px]" data-step="2">
-        <div
-          className="rounded-[14px] overflow-hidden relative"
-          style={{
-            background: 'linear-gradient(155deg, #FF7A4D 0%, #D94A1F 100%)',
-            aspectRatio: '4/5',
-            border: '1px solid rgba(217,74,31,0.20)',
-            boxShadow: '0 14px 32px -16px rgba(217,74,31,0.40)',
-          }}
-        >
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span
-              className="w-11 h-11 rounded-full flex items-center justify-center"
-              style={{ background: 'rgba(255,255,255,0.94)' }}
-            >
-              <svg width="13" height="14" viewBox="0 0 11 12" fill="none">
-                <path d="M2 2L9 6L2 10V2Z" fill="#0A0E17" />
-              </svg>
-            </span>
-          </div>
-          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-            <span
-              className="text-white text-[11px]"
-              style={{ fontFamily: 'var(--font-humanist)', fontWeight: 600 }}
-            >
-              Walkthrough
-            </span>
-            <span
-              className="text-white/85 text-[10px]"
-              style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}
-            >
-              0:48
-            </span>
-          </div>
-        </div>
-      </div>
-    </SceneFrame>
+    <svg viewBox="0 0 200 36" className="w-full h-7" preserveAspectRatio="none">
+      {data.map((h, i) => (
+        <rect
+          key={i}
+          x={i * (200 / 24) + 1}
+          y={36 - (h * 36) / 80}
+          width={(200 / 24) - 2}
+          height={(h * 36) / 80}
+          rx={1.2}
+          fill={peakIdx.has(i) ? highlight : color}
+        />
+      ))}
+    </svg>
   )
 }
 
-/* ────────────────────────────────────────────────────────────────
-   Scene 4 — Buyers don't need an account. A "no-login" pill above
-   a single inbox notification — the lead landed anyway.
-   ──────────────────────────────────────────────────────────────── */
-function BuyerScene() {
+/* CrosslistChips — small wrapped chip cluster representing the
+   "kinds" of listings co-saved alongside the agent's: a feature
+   (pool), a neighborhood (Brickell), a price band ($1.2M+). The
+   chip styles inherit the card's ink/peach palette so they read
+   in both light- and dark-card variants. */
+function CrosslistChips() {
+  const chips = ['Pools', 'Brickell', '$1.2M+']
   return (
-    <SceneFrame>
-      <div className="va-pan" data-step="1">
+    <div className="flex flex-wrap gap-1 w-full">
+      {chips.map((c) => (
         <span
-          className="px-2.5 py-1 rounded-full text-[9.5px] uppercase tracking-[0.16em] flex items-center gap-1.5"
+          key={c}
+          className="inline-block px-1.5 py-[3px] rounded-full whitespace-nowrap"
           style={{
+            background: 'rgba(217,74,31,0.12)',
+            color: '#7A2A12',
+            border: '1px solid rgba(217,74,31,0.24)',
             fontFamily: 'var(--font-mono)',
             fontWeight: 600,
-            background: 'rgba(34,197,94,0.14)',
-            color: '#15803D',
-            border: '1px solid rgba(34,197,94,0.32)',
+            fontSize: '9px',
+            letterSpacing: '0.04em',
+            lineHeight: 1.3,
           }}
         >
-          <span className="w-1 h-1 rounded-full bg-[#22C55E]" />
-          Browsing · no signup
+          {c}
         </span>
-      </div>
-      <div className="va-pan mt-5 w-full max-w-[300px]" data-step="2">
-        <div className="rounded-[14px] p-3.5 flex items-center gap-2.5 bg-[#0A0E17]">
-          <span
-            className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-            style={{ background: 'rgba(34,197,94,0.18)' }}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M2 6.2L4.8 9 10 3.2" stroke="#22C55E" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </span>
-          <div className="flex-1 min-w-0">
-            <div
-              className="text-white text-[12.5px]"
-              style={{ fontFamily: 'var(--font-humanist)', fontWeight: 600 }}
-            >
-              New showing request
-            </div>
-            <div
-              className="text-white/55 text-[10.5px] truncate"
-              style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}
-            >
-              Maya C. · Sat 11:00 AM
-            </div>
-          </div>
-          <span
-            className="text-[9.5px] tracking-[0.14em] uppercase"
-            style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: '#7DDB9D' }}
-          >
-            Inbox
-          </span>
-        </div>
-      </div>
-    </SceneFrame>
+      ))}
+    </div>
   )
 }
 
@@ -1179,26 +1352,202 @@ function BuyerScene() {
    the claim CTA.
    ════════════════════════════════════════════════════════════════ */
 
+/* ════════════════════════════════════════════════════════════════
+   PortfolioShowcase — section 4. Text on the LEFT, animated 3D
+   exploded-view composition on the RIGHT: a tilted Reelst profile
+   mockup with floating chips orbiting it (verified badge, broker,
+   socials, and SOLD/FOR SALE/SPOTLIGHT pins) — each on its own
+   bob timer so the scene feels alive.
+   ════════════════════════════════════════════════════════════════ */
+
+function PortfolioShowcase() {
+  const navigate = useNavigate()
+  const groupRef = useRef<HTMLDivElement>(null)
+
+  // Scroll-driven 3D tilt — applied to the whole 3D group (phone + orbs)
+  // so the entire composition rotates as one rigid body. Group enters
+  // with rotateY(-22deg) and resolves face-on as it scrolls into view.
+  useEffect(() => {
+    let raf = 0
+    const update = () => {
+      const group = groupRef.current
+      if (!group) return
+      const rect = group.getBoundingClientRect()
+      const vh = window.innerHeight
+      // Progress 0 when group's top first enters the bottom of the viewport,
+      // 1 when its bottom leaves the top — so rotation starts the instant the
+      // composition peeks into frame and continues straight through.
+      let p = (vh - rect.top) / (vh + rect.height)
+      p = Math.max(0, Math.min(1, p))
+      // -25° (entering, slight left perspective) → 0° (centered, face-on)
+      // → +25° (exiting, mirrored right-side perspective).
+      const rotY = -25 + 50 * p
+      group.style.transform = `rotateY(${rotY}deg)`
+      raf = 0
+    }
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update) }
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', update)
+      cancelAnimationFrame(raf)
+    }
+  }, [])
+
+  return (
+    <section className="relative bg-marketing pt-2 md:pt-4 pb-24 md:pb-32">
+      <div className="max-w-[1240px] mx-auto px-6 md:px-10">
+        <div className="grid lg:grid-cols-2 gap-14 lg:gap-20 items-center">
+          {/* ── LEFT: text ── */}
+          <div className="reveal text-center lg:text-left">
+            <p
+              className="text-graphite mb-4"
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '11px',
+                fontWeight: 500,
+                letterSpacing: '0.18em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Make it yours
+            </p>
+            <h2
+              className="text-ink mb-5"
+              style={{
+                fontFamily: 'var(--font-humanist)',
+                fontSize: 'clamp(2rem, 4.4vw, 3.75rem)',
+                fontWeight: 500,
+                letterSpacing: '-0.035em',
+                lineHeight: 1.0,
+              }}
+            >
+              Your fonts.{' '}
+              <span className="brand-grad-text" style={{ fontWeight: 600 }}>
+                Your colors.
+              </span>{' '}
+              Your flair.
+            </h2>
+            <p
+              className="text-graphite mb-9 max-w-[520px] mx-auto lg:mx-0"
+              style={{
+                fontFamily: 'var(--font-humanist)',
+                fontSize: 'clamp(1rem, 1.18vw, 1.12rem)',
+                fontWeight: 400,
+                lineHeight: 1.55,
+              }}
+            >
+              Pick the typeface, palette, and layout that match your personal
+              brand. Tune the accent, swap fonts, reorder sections — your
+              Reelst link in bio should look as distinct as you do.
+            </p>
+            <button
+              onClick={() => navigate('/sign-up')}
+              className="brand-btn h-12 px-6 rounded-full text-[14px] md:text-[15px] inline-flex items-center gap-2 cursor-pointer"
+              style={{
+                fontFamily: 'var(--font-humanist)',
+                fontWeight: 600,
+                boxShadow:
+                  '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)',
+              }}
+            >
+              Claim your link <ArrowRight size={15} strokeWidth={2.5} />
+            </button>
+          </div>
+
+          {/* ── RIGHT: animated stage ── */}
+          <div className="portfolio-stage reveal mx-auto" data-delay="1">
+            <div
+              ref={groupRef}
+              className="portfolio-3d"
+              style={{ transform: 'rotateY(-22deg)' }}
+            >
+            {/* Phone mock — Reelst profile */}
+            <div className="portfolio-phone">
+              <div className="portfolio-phone-inner">
+                <div className="phone-status">9:41</div>
+
+                <div className="phone-hdr">
+                  <div className="phone-avatar" />
+                  <div className="phone-meta">
+                    <div className="phone-name">
+                      Maya Chen
+                      <BadgeCheck size={12} strokeWidth={2.5} />
+                    </div>
+                    <div className="phone-city">Brickell · Miami</div>
+                  </div>
+                </div>
+
+                <div className="phone-tabs">
+                  <span className="phone-tab phone-tab--active">Listings</span>
+                  <span className="phone-tab">Reels</span>
+                  <span className="phone-tab">About</span>
+                </div>
+
+                <div className="phone-map">
+                  <span className="phone-map-grid" />
+                  <span className="phone-mp" style={{ left: '22%', top: '40%', background: '#FF6B3D' }} />
+                  <span className="phone-mp" style={{ left: '54%', top: '28%', background: '#1A8A6B' }} />
+                  <span className="phone-mp" style={{ left: '76%', top: '60%', background: '#E0A547' }} />
+                </div>
+
+                <div className="phone-grid">
+                  <div className="phone-tile" style={{ background: 'linear-gradient(135deg,#FFD4B0,#FF8552)' }} />
+                  <div className="phone-tile" style={{ background: 'linear-gradient(135deg,#FFE6D1,#D94A1F)' }} />
+                  <div className="phone-tile" style={{ background: 'linear-gradient(135deg,#FF8552,#A8341A)' }} />
+                  <div className="phone-tile" style={{ background: 'linear-gradient(135deg,#FFD4B0,#FF6B3D)' }} />
+                </div>
+
+                <div className="phone-cta">
+                  <Heart size={11} strokeWidth={2.5} fill="currentColor" /> Save Maya
+                </div>
+              </div>
+            </div>
+
+            {/* Real-estate orbs only — same chip language as the pin creation flow */}
+            <div className="orb" style={{ left: '4%', bottom: '14%' }}>
+              <div className="orb-card orb-pin">
+                <span className="orb-pin-icon" style={{ background: '#3B82F6' }}>
+                  <HomeIcon size={12} strokeWidth={2.5} />
+                </span>
+                <span>For sale</span>
+              </div>
+            </div>
+
+            <div className="orb" style={{ right: '4%', bottom: '6%' }}>
+              <div className="orb-card orb-pin">
+                <span className="orb-pin-icon" style={{ background: '#34C759' }}>
+                  <BadgeCheck size={12} strokeWidth={2.5} />
+                </span>
+                <span>Sold</span>
+              </div>
+            </div>
+
+            <div className="orb" style={{ left: '20%', bottom: '-2%' }}>
+              <div className="orb-card orb-pin">
+                <span className="orb-pin-icon" style={{ background: '#FF6B3D' }}>
+                  <Compass size={12} strokeWidth={2.5} />
+                </span>
+                <span>Spotlight</span>
+              </div>
+            </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function Ready() {
   return (
-    <section className="relative bg-midnight grain overflow-hidden">
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(ellipse at 50% 55%, rgba(255,107,61,0.16), transparent 60%)',
-        }}
-      />
-
-      <div className="relative max-w-[1000px] mx-auto px-6 md:px-10 py-28 md:py-44 text-center">
-        <span
-          className="text-[11px] text-tangerine uppercase tracking-[0.18em] mb-6 inline-block"
-          style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}
-        >
-          Ready
-        </span>
-
+    <div className="bg-marketing">
+    <section className="ready-section relative overflow-hidden pb-8 md:pb-12 rounded-t-[40px] md:rounded-t-[64px]">
+      <div className="relative z-10 max-w-[1240px] mx-auto px-6 md:px-10 pt-24 md:pt-32 pb-20 md:pb-28 text-center">
         <h2
-          className="reveal text-white mb-12 md:mb-14"
+          className="reveal text-white mb-7 md:mb-8"
           style={{
             fontFamily: 'var(--font-humanist)',
             fontSize: 'clamp(2.75rem, 7vw, 6.5rem)',
@@ -1207,14 +1556,15 @@ function Ready() {
             lineHeight: 0.98,
           }}
         >
-          Claim{' '}
-          <ScrollBrushWord>yours</ScrollBrushWord>
+          Drop your{' '}
+          <ScrollBrushWord>pin</ScrollBrushWord>
           .
         </h2>
 
         <p
-          className="reveal text-white/60 max-w-[560px] mx-auto mb-10"
+          className="reveal max-w-[520px] mx-auto mb-9"
           style={{
+            color: 'rgba(244, 245, 248, 0.68)',
             fontFamily: 'var(--font-humanist)',
             fontSize: 'clamp(1rem, 1.22vw, 1.18rem)',
             fontWeight: 400,
@@ -1222,16 +1572,21 @@ function Ready() {
           }}
           data-delay="1"
         >
-          Claim your handle in 2 minutes. Drop your first pin the same day.
+          Claim your link in 2 minutes. Build your portfolio the same day.
           <br className="hidden md:block" />
           No card. No contract. Always free to start.
         </p>
 
         <div className="reveal flex justify-center" data-delay="2">
-          <ClaimInput variant="dark" data-pin="ready-cta" />
+          <ClaimInput variant="light" data-pin="ready-cta" />
         </div>
       </div>
+
+      <div className="ready-footer-card map-grid">
+        <FooterContent />
+      </div>
     </section>
+    </div>
   )
 }
 
@@ -1287,3 +1642,4 @@ function ScrollBrushWord({ children }: { children: ReactNode }) {
     </span>
   )
 }
+

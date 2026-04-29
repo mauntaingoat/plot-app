@@ -136,7 +136,7 @@ export default function Welcome() {
   const canGoBack = STEPS.indexOf(step) > 0 && step !== 'hero' && step !== 'done'
 
   return (
-    <div className="min-h-screen bg-[#FAFAF7] flex flex-col">
+    <div className="min-h-screen bg-[#FAFAF7] flex flex-col" style={{ fontFamily: 'var(--font-humanist)' }}>
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
 
       {step !== 'hero' && step !== 'done' && step !== 'moment' && (
@@ -162,20 +162,28 @@ export default function Welcome() {
                 className="text-center space-y-8">
                 <div className="flex items-center justify-center gap-3 mb-2">
                   <img src="/reelst-logo.png" alt="" className="w-11 h-11" />
-                  <span className="text-[30px] font-extrabold text-[#1A1A1A] tracking-tight" style={{ fontFamily: "'Outfit', sans-serif" }}>Reelst</span>
+                  <span className="text-[30px] text-[#1A1A1A]" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>Reelst</span>
                 </div>
                 <div className="space-y-3">
-                  <h1 className="text-[26px] font-bold text-[#1A1A1A] leading-tight" style={{ fontFamily: "'Outfit', sans-serif" }}>
-                    Where listings<br />come alive.
+                  <h1 className="text-[26px] text-[#1A1A1A] leading-tight" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>
+                    Your portfolio.<br />Your block. Your link.
                   </h1>
                   <p className="text-[14px] text-[#8A8A8A] leading-relaxed">
-                    Your map. Your content. Your brand.<br />
-                    Built for agents who show, not just tell.
+                    A live map of your listings — and the reels,<br />
+                    walkthroughs, and stories you already make.
                   </p>
                 </div>
-                <button onClick={() => setStep('username')}
-                  className="w-full py-4 rounded-full bg-tangerine text-white text-[15px] font-bold cursor-pointer hover:brightness-105 transition-all shadow-lg shadow-tangerine/20">
+                <button
+                  onClick={() => setStep('username')}
+                  className="brand-btn w-full h-12 px-6 rounded-full text-[15px] inline-flex items-center justify-center gap-2 cursor-pointer"
+                  style={{
+                    fontWeight: 600,
+                    boxShadow:
+                      '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)',
+                  }}
+                >
                   Get Started
+                  <ArrowRight size={16} strokeWidth={2.5} />
                 </button>
                 <p className="text-[13px] text-[#AAAAAA]">
                   Already have an account? <Link to="/sign-in" className="text-tangerine font-semibold hover:underline">Sign in</Link>
@@ -187,7 +195,7 @@ export default function Welcome() {
               <motion.div key="username" custom={dir} variants={pageVariants} initial="enter" animate="center" exit="exit" transition={pageTrans}
                 className="space-y-6">
                 <div>
-                  <h2 className="text-[26px] font-bold text-[#1A1A1A]" style={{ fontFamily: "'Outfit', sans-serif" }}>Claim your link</h2>
+                  <h2 className="text-[26px] text-[#1A1A1A]" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>Claim your link</h2>
                   <p className="text-[14px] text-[#8A8A8A] mt-1">This is where clients find you.</p>
                 </div>
                 <div className="flex items-center gap-3 p-2 rounded-2xl bg-white border-2 border-[#EAE7E0] shadow-sm focus-within:border-tangerine/40 transition-colors">
@@ -218,7 +226,7 @@ export default function Welcome() {
               <motion.div key="name" custom={dir} variants={pageVariants} initial="enter" animate="center" exit="exit" transition={pageTrans}
                 className="space-y-6">
                 <div>
-                  <h2 className="text-[26px] font-bold text-[#1A1A1A]" style={{ fontFamily: "'Outfit', sans-serif" }}>What should we<br />call you?</h2>
+                  <h2 className="text-[26px] text-[#1A1A1A]" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>What should we<br />call you?</h2>
                   <p className="text-[14px] text-[#8A8A8A] mt-1">Your name as it appears on your profile.</p>
                 </div>
                 <input type="text" placeholder="Your name" value={displayName} autoFocus
@@ -240,7 +248,7 @@ export default function Welcome() {
               <motion.div key="goals" custom={dir} variants={pageVariants} initial="enter" animate="center" exit="exit" transition={pageTrans}
                 className="space-y-6">
                 <div>
-                  <h2 className="text-[26px] font-bold text-[#1A1A1A]" style={{ fontFamily: "'Outfit', sans-serif" }}>What's your<br />main goal?</h2>
+                  <h2 className="text-[26px] text-[#1A1A1A]" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>What's your<br />main goal?</h2>
                   <p className="text-[14px] text-[#8A8A8A] mt-1">Select all that apply.</p>
                 </div>
                 <div className="space-y-3">
@@ -281,7 +289,7 @@ export default function Welcome() {
               <motion.div key="photo" custom={dir} variants={pageVariants} initial="enter" animate="center" exit="exit" transition={pageTrans}
                 className="space-y-6 text-center">
                 <div>
-                  <h2 className="text-[26px] font-bold text-[#1A1A1A]" style={{ fontFamily: "'Outfit', sans-serif" }}>Add a photo</h2>
+                  <h2 className="text-[26px] text-[#1A1A1A]" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>Add a photo</h2>
                   <p className="text-[14px] text-[#8A8A8A] mt-1">Agents with photos get 3x more engagement.</p>
                 </div>
                 <button onClick={() => fileRef.current?.click()}
@@ -316,7 +324,7 @@ export default function Welcome() {
               <motion.div key="license" custom={dir} variants={pageVariants} initial="enter" animate="center" exit="exit" transition={pageTrans}
                 className="space-y-5">
                 <div>
-                  <h2 className="text-[26px] font-bold text-[#1A1A1A]" style={{ fontFamily: "'Outfit', sans-serif" }}>License verification</h2>
+                  <h2 className="text-[26px] text-[#1A1A1A]" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>License verification</h2>
                   <p className="text-[14px] text-[#8A8A8A] mt-1">Required to publish your Reelst.</p>
                 </div>
                 <div>
@@ -348,7 +356,7 @@ export default function Welcome() {
               <motion.div key="bio" custom={dir} variants={pageVariants} initial="enter" animate="center" exit="exit" transition={pageTrans}
                 className="space-y-5">
                 <div>
-                  <h2 className="text-[26px] font-bold text-[#1A1A1A]" style={{ fontFamily: "'Outfit', sans-serif" }}>Almost there</h2>
+                  <h2 className="text-[26px] text-[#1A1A1A]" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>Almost there</h2>
                   <p className="text-[14px] text-[#8A8A8A] mt-1">Add a bio and connect your socials.</p>
                 </div>
                 <div>
@@ -412,7 +420,7 @@ export default function Welcome() {
               <motion.div key="auth" custom={dir} variants={pageVariants} initial="enter" animate="center" exit="exit" transition={pageTrans}
                 className="space-y-6">
                 <div>
-                  <h2 className="text-[26px] font-bold text-[#1A1A1A]" style={{ fontFamily: "'Outfit', sans-serif" }}>One last step</h2>
+                  <h2 className="text-[26px] text-[#1A1A1A]" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>One last step</h2>
                   <p className="text-[14px] text-[#8A8A8A] mt-1">Create your account to save everything.</p>
                 </div>
                 <button onClick={handleGoogle} disabled={loading}
@@ -452,7 +460,7 @@ export default function Welcome() {
                   </div>
                 </motion.div>
                 <div>
-                  <h2 className="text-[26px] font-bold text-[#1A1A1A]" style={{ fontFamily: "'Outfit', sans-serif" }}>You're all set!</h2>
+                  <h2 className="text-[26px] text-[#1A1A1A]" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>You're all set!</h2>
                   <p className="text-[14px] text-[#8A8A8A] mt-2">
                     Your Reelst is ready at <span className="font-semibold text-tangerine">reel.st/{username}</span>.<br />
                     Once verified, it'll go live for the world.
@@ -498,12 +506,12 @@ function MomentStep({ name, onComplete }: { name: string; onComplete: () => void
       <div className="space-y-3">
         <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="text-[30px] font-bold leading-snug" style={{ fontFamily: "'Outfit', sans-serif" }}>
+          className="text-[30px] leading-snug" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>
           <span className="text-tangerine">{name}</span>, let's bring
         </motion.p>
         <motion.p initial={{ opacity: 0, y: 12 }} animate={phase >= 1 ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="text-[30px] font-bold text-[#1A1A1A] leading-snug" style={{ fontFamily: "'Outfit', sans-serif", opacity: phase >= 1 ? 1 : 0 }}>
+          className="text-[30px] text-[#1A1A1A] leading-snug" style={{ fontWeight: 600, letterSpacing: '-0.025em', opacity: phase >= 1 ? 1 : 0 }}>
           your listings to life.
         </motion.p>
         <motion.p initial={{ opacity: 0, y: 12 }} animate={phase >= 2 ? { opacity: 1, y: 0 } : {}}

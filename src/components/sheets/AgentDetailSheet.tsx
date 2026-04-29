@@ -111,7 +111,7 @@ export function AgentDetailSheet({
               {([
                 { mode: 'single' as const, label: 'Select Agent', icon: UserCircle },
                 { mode: 'following' as const, label: 'Following', icon: Users },
-                { mode: 'explore' as const, label: 'Explore All', icon: Globe },
+                { mode: 'explore' as const, label: 'Explore', icon: Globe },
                 { mode: 'saved' as const, label: 'Saved', icon: Bookmark },
               ]).map(({ mode, label, icon: Icon }) => (
                 <motion.button

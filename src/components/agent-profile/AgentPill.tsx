@@ -54,7 +54,7 @@ export function AgentPill({
             <Globe size={18} className="text-tangerine" />
           </div>
           <div className="min-w-0 text-left">
-            <p className="text-[15px] font-bold text-ink">Explore All</p>
+            <p className="text-[15px] font-bold text-ink">Explore</p>
             <p className="text-[11px] font-medium text-smoke">All agents · {totalPins} pins</p>
           </div>
         </>

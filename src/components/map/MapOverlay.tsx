@@ -98,7 +98,7 @@ export function MapOverlay({ agent, pinCounts, onFollow, onShare, onProfileClick
         >
           <Globe size={18} className={isFeed ? 'text-tangerine' : 'text-tangerine'} />
           <div className="min-w-0">
-            <p className={`text-[14px] font-bold ${pillText}`}>Explore All</p>
+            <p className={`text-[14px] font-bold ${pillText}`}>Explore</p>
             <p className={`text-[11px] font-medium ${pillSecText}`}>
               All agents · {totalPins} pins
             </p>

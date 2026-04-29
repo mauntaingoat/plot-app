@@ -464,8 +464,16 @@ export const muxWebhook = onRequest(
 
         const snap = await docRef.get()
         if (!snap.exists) {
-          logger.warn('[mux] asset.ready for unknown asset', { assetId })
-          res.status(200).send('ok')
+          // The mapping at muxAssets/{assetId} should have been written
+          // during createMuxAsset BEFORE this webhook fires. If it's
+          // missing the most likely cause is the createMuxAsset write
+          // failed or hasn't propagated yet — return 503 so Mux retries
+          // with backoff (typically minutes apart). After Mux's retry
+          // budget is exhausted (~7 attempts over ~24h) the asset is
+          // permanently orphaned; we'll see the repeated logs and can
+          // unstick it manually.
+          logger.error('[mux] asset.ready missing muxAssets mapping — requesting retry', { assetId })
+          res.status(503).send('mapping not yet available')
           return
         }
         const { pinId, contentId, caption } = snap.data() as {

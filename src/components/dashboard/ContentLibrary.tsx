@@ -11,10 +11,12 @@ import { preloadImages } from '@/lib/imageCache'
 interface ContentLibraryProps {
   pins: Pin[]
   agentId: string
-  onUploadContent: (files: File[], type: 'reel' | 'photo') => void
   onAssignContent: (contentId: string, fromPinId: string, toPinId: string, contentItem?: ContentItem) => void
   onArchiveContent: (contentId: string, pinId: string) => void
   isDesktop: boolean
+  /** Routes to /dashboard/pin/new?tab=content — the canonical content
+   *  authoring flow. The library itself no longer accepts inline file
+   *  uploads; users always go through PinCreate's content editor. */
   onNavigateUpload?: () => void
   /** Called after a caption is saved so the parent can update local state. */
   onCaptionSaved?: (pinId: string, contentId: string, caption: string) => void
@@ -22,7 +24,7 @@ interface ContentLibraryProps {
   onEditContent?: (content: ContentItem, pin: Pin | null) => void
 }
 
-export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent, onArchiveContent, isDesktop, onNavigateUpload, onCaptionSaved, onEditContent }: ContentLibraryProps) {
+export function ContentLibrary({ pins, agentId, onAssignContent, onArchiveContent, isDesktop, onNavigateUpload, onCaptionSaved, onEditContent }: ContentLibraryProps) {
   const [filter, setFilter] = useState<'all' | 'reel' | 'photo' | 'no_listing'>('all')
   const [archiveTarget, setArchiveTarget] = useState<{ contentId: string; pinId: string | null } | null>(null)
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
@@ -38,8 +40,6 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
       return stored.filter((c) => !pinIds.has(c.id))
     } catch { return [] }
   })
-  const photoRef = useRef<HTMLInputElement>(null)
-  const videoRef = useRef<HTMLInputElement>(null)
 
   // Fetch standalone content from Firestore (the `content` collection).
   // This picks up content published via the standalone upload flow.
@@ -146,9 +146,6 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
 
   return (
     <div className={isDesktop ? 'space-y-4' : 'px-5 py-5 space-y-4'}>
-      <input ref={photoRef} type="file" accept="image/*" multiple onChange={(e) => { const f = Array.from(e.target.files || []); if (f.length) onUploadContent(f, 'photo'); e.target.value = '' }} className="hidden" />
-      <input ref={videoRef} type="file" accept="video/*" onChange={(e) => { const f = Array.from(e.target.files || []); if (f.length) onUploadContent(f.slice(0, 1), 'reel'); e.target.value = '' }} className="hidden" />
-
       {/* Header */}
       <div className="flex items-center gap-2 flex-wrap">
         {([
@@ -165,10 +162,8 @@ export function ContentLibrary({ pins, agentId, onUploadContent, onAssignContent
           </button>
         ))}
         <div className="flex-1" />
-        {onNavigateUpload ? (
+        {onNavigateUpload && (
           <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={onNavigateUpload}>Upload</Button>
-        ) : (
-          <UploadButton onPhoto={() => photoRef.current?.click()} onVideo={() => videoRef.current?.click()} />
         )}
       </div>
 
@@ -593,30 +588,3 @@ function MobileMenuBtn({ icon, label, onClick, danger }: { icon: React.ReactNode
   )
 }
 
-function UploadButton({ onPhoto, onVideo }: { onPhoto: () => void; onVideo: () => void }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div className="relative">
-      <motion.button whileTap={{ scale: 0.95 }} onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-tangerine text-[11px] font-bold text-white hover:brightness-110 cursor-pointer transition-all">
-        <Plus size={12} /> Upload
-      </motion.button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-[40]" onClick={() => setOpen(false)} />
-          <motion.div initial={{ opacity: 0, scale: 0.95, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.12 }}
-            className="absolute right-0 top-full mt-1.5 z-[50] bg-warm-white rounded-[12px] shadow-xl border border-border-light overflow-hidden min-w-[140px]">
-            <button onClick={() => { onPhoto() }}
-              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left text-[12px] font-medium text-ink hover:bg-cream cursor-pointer transition-colors">
-              <Image size={14} className="text-smoke" /> Photos
-            </button>
-            <button onClick={() => { onVideo() }}
-              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-left text-[12px] font-medium text-ink hover:bg-cream cursor-pointer transition-colors">
-              <Film size={14} className="text-tangerine" /> Video
-            </button>
-          </motion.div>
-        </>
-      )}
-    </div>
-  )
-}

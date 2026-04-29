@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { formatPrice } from '@/lib/firestore'
+import { displayAddressWithUnit } from '@/lib/format'
 import { OpenHouseBlock } from '@/components/listing/OpenHouseBlock'
 import type { Pin, ForSalePin, SoldPin, UserDoc } from '@/lib/types'
 
@@ -55,7 +56,7 @@ export function ListingOnlySheet({ pin, agent, onClose, isPreview, embedded, isS
             {'originalPrice' in lp && lp.originalPrice !== lp.soldPrice && <span className="text-[16px] text-ghost line-through font-mono">{formatPrice(lp.originalPrice)}</span>}
           </div>
         )}
-        <p className="text-[14px] text-mist flex items-center gap-1.5"><MapPin size={13} className="text-ghost" /> {pin.address}</p>
+        <p className="text-[14px] text-mist flex items-center gap-1.5"><MapPin size={13} className="text-ghost" /> {displayAddressWithUnit(pin.address, pin.unit)}</p>
         {pin.type === 'for_sale' && <OpenHouseBlock pin={lp as ForSalePin} agent={agent} />}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 bg-slate rounded-xl px-4 py-3 flex-1"><Bed size={16} className="text-tangerine" /><div><p className="text-[18px] font-bold text-white">{lp.beds}</p><p className="text-[10px] text-ghost uppercase tracking-wider">Beds</p></div></div>
@@ -103,7 +104,7 @@ export function ListingOnlySheet({ pin, agent, onClose, isPreview, embedded, isS
   if (embedded) return <div className="h-full overflow-y-auto bg-obsidian" style={{ WebkitOverflowScrolling: 'touch' }}>{content}</div>
 
   return (
-    <DarkBottomSheet isOpen={true} onClose={onClose} title={pin.address}>
+    <DarkBottomSheet isOpen={true} onClose={onClose} title={displayAddressWithUnit(pin.address, pin.unit)}>
       {content}
     </DarkBottomSheet>
   )

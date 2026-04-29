@@ -92,6 +92,11 @@ export interface ContentItem {
   /** The aspect ratio chosen in the editor (e.g. '9:16', '1:1', '4:5'). */
   aspect?: string
   uniqueViews?: number
+  /** Set when archived (used on standalone ContentDoc only — pins
+   *  archive at the pin level and cascade to their content). The
+   *  cleanupArchivedAssets scheduled function deletes the Mux asset
+   *  and hard-deletes the doc 7 days after this timestamp. */
+  archivedAt?: Timestamp | null
 }
 
 // ── Standalone content document (content collection) ──
@@ -197,10 +202,27 @@ export interface PinBase {
   type: PinType
   coordinates: Coordinates
   address: string
+  /** Apartment / unit / suite number — appended to the address when
+   *  hitting Rentcast (so condos in the same building get distinct
+   *  beds/baths/price/MLS#) and rendered as "Street #unit" in
+   *  public-facing displays. Optional; single-family homes leave it
+   *  blank. Stored without the leading '#'. */
+  unit?: string | null
   neighborhoodId: string
   geohash: string
   enabled: boolean
   status: PinStatus // 'active' | 'archived' — archived pins are soft-deleted
+  /** When the pin was archived. The cleanupArchivedAssets scheduled
+   *  function deletes Storage + Mux assets and hard-deletes the doc
+   *  7 days after this timestamp. Null/undefined while pin is active. */
+  archivedAt?: Timestamp | null
+  /** Records the most recent diff the agent rejected via the property
+   *  sync review modal. The next syncPropertyData run skips diffs that
+   *  match this snapshot so a rejected change isn't re-suggested. */
+  rejectedSnapshot?: {
+    price?: number
+    type?: 'for_sale' | 'sold'
+  } | null
   createdAt: Timestamp
   updatedAt: Timestamp
   views: number
@@ -262,6 +284,76 @@ export interface SpotlightPin extends PinBase {
 }
 
 export type Pin = ForSalePin | SoldPin | SpotlightPin
+
+/**
+ * Property-data diff produced by the syncPropertyData scheduled
+ * Cloud Function and stored at /pins/{pinId}/pendingChanges/latest.
+ * The dashboard reads these on load to surface a review modal/sheet.
+ * Mutations on the diff (approve/reject) are done via firestore.ts
+ * helpers — never directly written by the client.
+ */
+export interface PendingPinChange {
+  /** Same as the parent pin id — denormalized for easier client use. */
+  pinId: string
+  agentId: string
+  syncedAt: Timestamp
+  /** Set when Rentcast reports a different price than what we store. */
+  priceChange?: { from: number; to: number }
+  /** Set on for_sale ↔ sold transitions. */
+  typeChange?: { from: 'for_sale' | 'sold'; to: 'for_sale' | 'sold' }
+  /** Populated alongside typeChange when transitioning to sold. ISO date. */
+  soldDate?: string
+  /** Latest MLS# from Rentcast — applied silently on approve. */
+  mlsNumber?: string | null
+}
+
+/**
+ * Fields that are *specific* to a single pin type (not in PinBase).
+ * Used by `updatePinType` in firestore.ts to wipe stale fields when an
+ * existing pin's type changes — e.g., flipping a for_sale to sold
+ * shouldn't leave behind `openHouse`, `listingStatus`, or `isLive`.
+ */
+export const TYPE_SPECIFIC_FIELDS: Record<PinType, ReadonlyArray<string>> = {
+  for_sale: [
+    'price',
+    'beds',
+    'baths',
+    'sqft',
+    'pricePerSqft',
+    'homeType',
+    'yearBuilt',
+    'lotSize',
+    'heroPhotoUrl',
+    'photos',
+    'description',
+    'listingStatus',
+    'daysOnMarket',
+    'mlsNumber',
+    'openHouse',
+    'isLive',
+  ],
+  sold: [
+    'soldPrice',
+    'originalPrice',
+    'soldDate',
+    'beds',
+    'baths',
+    'sqft',
+    'pricePerSqft',
+    'homeType',
+    'yearBuilt',
+    'heroPhotoUrl',
+    'photos',
+    'description',
+    'daysOnMarket',
+    'mlsNumber',
+  ],
+  spotlight: [
+    'name',
+    'description',
+    'heroPhotoUrl',
+  ],
+}
 
 // ── Social ──
 

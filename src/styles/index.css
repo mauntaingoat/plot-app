@@ -261,20 +261,30 @@ input:focus, textarea:focus {
 }
 
 /* ── Brand button — shared hover behavior
-   On hover the pill tilts a subtle 1.5° in the direction of the cursor:
-   cursor on the right of center → clockwise lean (+1.5°); cursor on
-   the left → counter-clockwise lean (-1.5°). A small JS effect (see
-   MarketingLayout) updates the --btn-tilt custom property at the
-   moment of mouseenter; if the cursor is exactly centered (or no value
-   has been set) the default falls back to a clockwise lean.
-   No upward translate — the pill stays planted. */
+   On hover the pill tilts subtly counter-clockwise (-2°). Background
+   gradient stays static. */
 .brand-btn {
   background: var(--brand-grad);
   color: #fff;
-  transition: transform 0.3s cubic-bezier(0.33, 1, 0.68, 1);
+  transition: transform 0.4s cubic-bezier(0.33, 1, 0.68, 1);
 }
 .brand-btn:hover {
-  transform: rotate(var(--btn-tilt, 1.5deg));
+  transform: rotate(-2deg);
+}
+
+/* ── Brand button (flat) — same gradient, no rotate on hover.
+   For surfaces like the dashboard where the playful tilt is too
+   marketing-y. Subtle brightness lift instead. */
+.brand-btn-flat {
+  background: var(--brand-grad);
+  color: #fff;
+  transition: filter 0.2s ease, transform 0.15s ease;
+}
+.brand-btn-flat:hover {
+  filter: brightness(1.06);
+}
+.brand-btn-flat:active {
+  transform: scale(0.98);
 }
 
 /* ── Map-grid pattern for the hero inner card ──
@@ -370,6 +380,302 @@ input:focus, textarea:focus {
   right: calc(var(--pin-u) * 0.35);
   width: calc(var(--pin-u) * 10.5);
   transform: rotate(-12deg);
+}
+
+/* Ready-section pin — planted on top of the clay earth like a flag.
+   Bulb (bottom of the pin image) rests on the upper crown of the orb
+   so the shaft rises above the earth into the cloud band. Subtle
+   left lean mirrors the hero pins' playful tilt. */
+/* Stage holds the earth wrap (image + pin) and the footer card.
+   No bg-color — the section's cream shows through. */
+/* Dark Ready section — solid ink bg matching the Features section.
+   Tangerine streak SVG layer sits behind the CTA, drawn on scroll. */
+.ready-section {
+  background: #0A0E17;
+}
+
+/* ── Portfolio showcase ──
+   Animated 3D-ish exploded composition: a tilted phone mockup of the
+   Reelst profile centered in a stage, with chip-style "orbs" floating
+   around it (verified badge, broker, socials, map pins). Each orb has
+   its own bob timer so the scene never feels frozen. */
+.portfolio-stage {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 4 / 5;
+  perspective: 1400px;
+  perspective-origin: 50% 45%;
+}
+
+/* 3D group — phone + all orbs live inside this wrapper so a single
+   rotateY tilts the whole composition as one rigid body. */
+.portfolio-3d {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform-origin: 50% 50%;
+  transition: transform 0.08s linear;
+  will-change: transform;
+}
+
+.portfolio-phone {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  height: 88%;
+  aspect-ratio: 9 / 18;
+  background: linear-gradient(180deg, #1F1610 0%, #0E0904 100%);
+  border-radius: 38px;
+  padding: 11px;
+  z-index: 1;
+  transform: translate(-50%, -50%) rotateZ(-3deg);
+  backface-visibility: hidden;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 40px 90px -28px rgba(217, 74, 31, 0.35),
+    0 14px 36px -12px rgba(10, 14, 23, 0.30);
+}
+
+.portfolio-phone-inner {
+  width: 100%;
+  height: 100%;
+  background: #F6F1E9;
+  border-radius: 28px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 12px 12px;
+  font-family: var(--font-humanist);
+  color: #1A1A1A;
+}
+
+.phone-status {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-align: center;
+  color: #A8A29E;
+  margin-bottom: 8px;
+  letter-spacing: 0.08em;
+}
+
+.phone-hdr {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.phone-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FFD4B0 0%, #FF6B3D 50%, #A8341A 100%);
+  flex: 0 0 38px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.phone-meta { flex: 1; min-width: 0; }
+
+.phone-name {
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #1A1A1A;
+  letter-spacing: -0.01em;
+}
+
+.phone-name svg { color: #FF6B3D; flex: 0 0 12px; }
+
+.phone-city {
+  font-size: 9px;
+  color: #6B7280;
+  margin-top: 2px;
+  font-weight: 500;
+}
+
+.phone-tabs {
+  display: flex;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 999px;
+  padding: 3px;
+  margin-bottom: 10px;
+}
+
+.phone-tab {
+  flex: 1;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 600;
+  color: #6B7280;
+  padding: 5px 0;
+  border-radius: 999px;
+  letter-spacing: 0.01em;
+}
+
+.phone-tab--active {
+  background: #1A1A1A;
+  color: #F6F1E9;
+}
+
+.phone-map {
+  position: relative;
+  background: linear-gradient(135deg, #FFE6D1, #FFD4B0);
+  border-radius: 12px;
+  height: 56px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.phone-map-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(168, 52, 26, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(168, 52, 26, 0.08) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
+.phone-mp {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid #F6F1E9;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 1px 2px rgba(10, 14, 23, 0.35);
+}
+
+.phone-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.phone-tile {
+  aspect-ratio: 4 / 5;
+  border-radius: 9px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.phone-cta {
+  margin-top: auto;
+  background: #FF6B3D;
+  color: #FFF;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  letter-spacing: 0.01em;
+  box-shadow:
+    0 6px 14px -4px rgba(217, 74, 31, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.30);
+}
+
+/* Orbs — outer wrapper handles position; inner .orb-card carries
+   visuals + tilt rotation. Static (no animation) per spec. */
+.orb {
+  position: absolute;
+  z-index: 2;
+}
+
+.orb-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  background: #FFFFFF;
+  border-radius: 999px;
+  font-family: var(--font-humanist);
+  font-size: 12px;
+  font-weight: 600;
+  color: #1A1A1A;
+  white-space: nowrap;
+  letter-spacing: -0.005em;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 14px 32px -10px rgba(217, 74, 31, 0.32),
+    0 4px 12px -4px rgba(10, 14, 23, 0.18);
+  transform: rotate(var(--orb-tilt, 0deg));
+}
+
+.orb:nth-child(2) .orb-card  { --orb-tilt: -8deg; }
+.orb:nth-child(3) .orb-card  { --orb-tilt:  7deg; }
+.orb:nth-child(4) .orb-card  { --orb-tilt: 5deg; }
+
+.orb-pin {
+  background: #FFFFFF;
+  color: #1A1A1A;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 6px 12px 6px 6px;
+  gap: 6px;
+}
+
+/* Coloured circle chip that hosts the lucide creation-flow icon —
+   matches the visual language of the pin type pills in PinCreate. */
+.orb-pin-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.30);
+}
+.orb-pin-icon svg { color: #FFFFFF; }
+
+@media (max-width: 1024px) {
+  .portfolio-stage { max-width: 440px; }
+  .orb-card { font-size: 11px; padding: 8px 12px; }
+}
+
+@media (max-width: 640px) {
+  .portfolio-stage { max-width: 380px; }
+}
+
+/* Footer card sits on solid dark — uses .map-grid for the pale
+   tangerine grid pattern (matches Hero card and Why-Reelst card),
+   so the surface reads as the same brand language across the page. */
+.ready-footer-card {
+  position: relative;
+  z-index: 3;
+  margin: 0 auto;
+  width: 90%;
+  max-width: 1500px;
+  border-radius: 40px;
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 24px 60px -24px rgba(168, 52, 26, 0.22),
+    0 8px 24px -12px rgba(0, 0, 0, 0.35);
+}
+
+@media (max-width: 1024px) {
+  .ready-footer-card {
+    width: 92%;
+    border-radius: 32px;
+  }
+}
+
+@media (max-width: 768px) {
+  .ready-footer-card {
+    width: 95%;
+    border-radius: 24px;
+  }
 }
 
 /* ── Feature showcase chips ──
@@ -490,52 +796,13 @@ input:focus, textarea:focus {
   to { opacity: 1; }
 }
 
-/* ── GPU-accelerated scroll reveal ──
-   Elements start invisible, get class "in-view" via IntersectionObserver.
-   All transitions run on compositor thread (transform + opacity only). */
-.reveal {
-  opacity: 0;
-  transform: translateY(24px) translateZ(0);
-  will-change: transform, opacity;
-  transition: opacity 0.6s cubic-bezier(0.25, 0.1, 0.25, 1),
-              transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1);
-}
-
-.reveal.in-view {
-  opacity: 1;
-  transform: translateY(0) translateZ(0);
-}
-
-/* Stagger delays via CSS custom property */
-.reveal[data-delay="1"] { transition-delay: 0.08s; }
-.reveal[data-delay="2"] { transition-delay: 0.16s; }
-.reveal[data-delay="3"] { transition-delay: 0.24s; }
-.reveal[data-delay="4"] { transition-delay: 0.32s; }
-.reveal[data-delay="5"] { transition-delay: 0.40s; }
-.reveal[data-delay="6"] { transition-delay: 0.48s; }
-.reveal[data-delay="7"] { transition-delay: 0.56s; }
-
-.reveal-fade {
-  opacity: 0;
-  will-change: opacity;
-  transition: opacity 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
-}
-
-.reveal-fade.in-view {
-  opacity: 1;
-}
-
+/* Scroll-reveal animations disabled site-wide — all .reveal* classes
+   render as plain visible elements with no fade/translate/scale. */
+.reveal,
+.reveal-fade,
 .reveal-scale {
-  opacity: 0;
-  transform: scale(0.95) translateZ(0);
-  will-change: transform, opacity;
-  transition: opacity 0.5s cubic-bezier(0.25, 0.1, 0.25, 1),
-              transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
-}
-
-.reveal-scale.in-view {
   opacity: 1;
-  transform: scale(1) translateZ(0);
+  transform: none;
 }
 
 /* Content-visibility for below-fold sections */
@@ -1092,3 +1359,188 @@ input:focus, textarea:focus {
    dark mode) so text stays white/readable against any photo. */
 .editor-stage .ed-overlay-bg { background-color: rgba(0, 0, 0, 0.55); }
 .editor-stage .ed-overlay-bg-strong { background-color: rgba(0, 0, 0, 0.70); }
+
+/* ════════════════════════════════════════════════════════════════
+   Scroll-reveal essay (About page)
+   ────────────────────────────────────────────────────────────────
+   Words start as soft tangerine and brighten to full saturation
+   as they pass the reveal trigger. Inline app-icon glyphs start
+   with width 0 (taking no horizontal space) and pop in with a
+   subtle overshoot, physically pushing the word that follows to
+   the right. Reveal is one-shot — once a word/icon has flipped
+   to data-revealed="true", it stays revealed.
+   ════════════════════════════════════════════════════════════════ */
+.sft-word {
+  display: inline-block;
+  opacity: 0.34;
+  transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity;
+}
+.sft-word[data-revealed='true'] {
+  opacity: 1;
+}
+
+.sft-icon {
+  /* Pop into existence + push surrounding text. Every property
+     shares the SAME duration + easing so the width-driven push,
+     the scale-up, and the fade-in all advance at exactly the same
+     rate — no sub-property drifting out of sync, which is what
+     caused the seam-of-line flicker. `width` ramps to a hard 1em
+     (the icon's natural footprint) so there's no mid-transition
+     plateau either: the layout shift completes in lockstep with
+     the visual reveal. `overflow: visible` keeps the squircle's
+     drop-shadow rendered fully on both sides of the transition. */
+  display: inline-block;
+  vertical-align: middle;
+  width: 0;
+  margin-inline: 0;
+  padding: 0;
+  line-height: 1;
+  opacity: 0;
+  transform: scale(0.55);
+  transform-origin: center center;
+  transition:
+    width 1.1s cubic-bezier(0.4, 0, 0.2, 1),
+    margin-inline 1.1s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 1.1s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 1.1s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: width, transform, opacity;
+}
+.sft-icon[data-revealed='true'] {
+  width: 1em;
+  margin-inline: 0.16em;
+  opacity: 1;
+  transform: scale(1);
+}
+.sft-icon .sft-icon-img {
+  display: block;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   BLOG long-form prose styles
+   Applied to <div class="blog-prose"> wrapping ReactMarkdown output.
+   Mirrors the rest of the marketing site's General Sans + ink/graphite
+   palette. Tangerine accents on links + blockquote rule.
+   ──────────────────────────────────────────────────────────────── */
+.blog-prose {
+  font-family: var(--font-humanist);
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.7;
+  letter-spacing: -0.005em;
+  color: var(--color-graphite);
+}
+.blog-prose > * + * { margin-top: 1.4em; }
+.blog-prose h2 {
+  font-size: clamp(1.45rem, 2.2vw, 1.9rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--color-ink);
+  margin-top: 2.4em;
+  margin-bottom: 0.6em;
+}
+.blog-prose h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+  color: var(--color-ink);
+  margin-top: 2em;
+  margin-bottom: 0.5em;
+}
+.blog-prose h4 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+  margin-top: 1.6em;
+  margin-bottom: 0.4em;
+}
+.blog-prose p { color: var(--color-graphite); }
+.blog-prose strong { color: var(--color-ink); font-weight: 600; }
+.blog-prose em { color: var(--color-ink); font-style: italic; }
+.blog-prose a {
+  color: #D94A1F;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(217,74,31,0.4);
+  transition: text-decoration-color 0.15s ease;
+}
+.blog-prose a:hover { text-decoration-color: rgba(217,74,31,1); }
+.blog-prose ul, .blog-prose ol {
+  padding-left: 1.4em;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+.blog-prose ul { list-style: disc; }
+.blog-prose ol { list-style: decimal; }
+.blog-prose li { margin-top: 0.5em; }
+.blog-prose li::marker { color: rgba(217,74,31,0.6); }
+.blog-prose blockquote {
+  border-left: 3px solid #D94A1F;
+  padding: 0.2em 0 0.2em 1.2em;
+  margin: 1.8em 0;
+  color: var(--color-ink);
+  font-size: 1.1em;
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  background: rgba(255,133,82,0.04);
+  border-radius: 0 8px 8px 0;
+}
+.blog-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: rgba(10,14,23,0.06);
+  padding: 0.16em 0.42em;
+  border-radius: 5px;
+  color: var(--color-ink);
+}
+.blog-prose pre {
+  background: var(--color-midnight);
+  color: var(--color-ivory);
+  padding: 1.2em 1.4em;
+  border-radius: 14px;
+  overflow-x: auto;
+  font-size: 0.92em;
+  line-height: 1.55;
+  margin: 1.6em 0;
+}
+.blog-prose pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  border-radius: 0;
+}
+.blog-prose img {
+  width: 100%;
+  border-radius: 16px;
+  margin: 2em 0;
+  border: 1px solid rgba(255,133,82,0.18);
+}
+.blog-prose hr {
+  border: none;
+  border-top: 1px solid rgba(10,14,23,0.08);
+  margin: 3em 0;
+}
+.blog-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  margin: 1.8em 0;
+}
+.blog-prose th, .blog-prose td {
+  text-align: left;
+  padding: 0.8em 1em;
+  border-bottom: 1px solid rgba(10,14,23,0.08);
+}
+.blog-prose th {
+  font-family: var(--font-mono);
+  font-size: 0.78em;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-smoke);
+}

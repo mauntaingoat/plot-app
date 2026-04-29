@@ -44,8 +44,23 @@ service cloud.firestore {
     // Only the owning agent can write
     match /pins/{pinId} {
       allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.agentId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.agentId == request.auth.uid;
+      // New pins must default to enabled=false. Activation goes through
+      // the setPinEnabled callable so the per-tier active-pin cap is
+      // enforced server-side.
+      allow create: if isSignedIn()
+        && request.resource.data.agentId == request.auth.uid
+        && request.resource.data.enabled == false;
+      // Owners may freely update most fields and may DISABLE a pin
+      // (enabled: false), but flipping enabled to true must go through
+      // the setPinEnabled callable. archivePin sets enabled=false so it
+      // continues to work.
+      allow update: if isSignedIn()
+        && resource.data.agentId == request.auth.uid
+        && (
+          request.resource.data.enabled == resource.data.enabled
+          || request.resource.data.enabled == false
+        );
+      allow delete: if isSignedIn() && resource.data.agentId == request.auth.uid;
     }
 
     // ── FOLLOWS ──
@@ -156,6 +171,25 @@ service cloud.firestore {
         resource.data.pinAgentId == request.auth.uid
       );
       allow update: if false;
+    }
+
+    // ── RATE LIMITS ──
+    // Server-only — only Cloud Functions (admin SDK) write/read these.
+    // Backs the per-user rate limit on propertyLookup.
+    match /rateLimits/{key} {
+      allow read, write: if false;
+    }
+
+    // ── PIN PENDING CHANGES (subcollection of pins) ──
+    // Written by the syncPropertyData scheduled function. The pin's
+    // owning agent can read + delete (delete = approve/reject). No
+    // direct client writes — the Cloud Function is the only producer.
+    match /pins/{pinId}/pendingChanges/{changeId} {
+      allow read: if isSignedIn()
+        && get(/databases/$(database)/documents/pins/$(pinId)).data.agentId == request.auth.uid;
+      allow delete: if isSignedIn()
+        && get(/databases/$(database)/documents/pins/$(pinId)).data.agentId == request.auth.uid;
+      allow create, update: if false;
     }
 
     // ── DEFAULT DENY ──

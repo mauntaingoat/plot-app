@@ -101,6 +101,32 @@ export async function removeFcmTokenFromUser(uid: string, token: string) {
 }
 
 /**
+ * Clear ALL FCM tokens stored on the user doc. Called when we detect
+ * the browser has revoked notification permission — those tokens are
+ * dead and any send attempts to them will fail server-side. Safe to
+ * call repeatedly.
+ */
+export async function clearAllFcmTokens(uid: string) {
+  if (!db) return
+  await updateDoc(doc(db, 'users', uid), {
+    fcmTokens: [],
+  }).catch(() => {})
+}
+
+/**
+ * Reconcile the user's stored FCM tokens with the browser's current
+ * permission state. Call on app load, after sign-in. If permission has
+ * been revoked since the last session, the stored tokens are stale —
+ * clear them so server-side sends don't waste API calls on dead tokens.
+ */
+export async function reconcileFcmTokens(uid: string): Promise<void> {
+  if (!uid || typeof Notification === 'undefined') return
+  if (Notification.permission === 'denied') {
+    await clearAllFcmTokens(uid)
+  }
+}
+
+/**
  * Subscribes to foreground messages — these fire when the user has the
  * tab open. The browser does NOT show a system notification in that
  * case, so the app needs to render an in-app toast itself.

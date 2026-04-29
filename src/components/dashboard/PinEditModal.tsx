@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
-import { formatPrice, updatePin } from '@/lib/firestore'
+import { formatPrice, updatePin, updatePinType } from '@/lib/firestore'
+import { displayAddressWithUnit } from '@/lib/format'
 import { uploadFile, pinMediaPath } from '@/lib/storage'
 import { PIN_CONFIG, type Pin, type ForSalePin, type SoldPin, type ContentItem } from '@/lib/types'
 
@@ -53,8 +54,7 @@ function PinEditContent({ pin, onAddContent, onArchiveContent, onReorderContent,
     setSavingListing(true)
     try {
       const priceNum = Number(editPrice) || 0
-      const updates: any = { description: editDesc }
-      if (editType !== pin.type) updates.type = editType
+      const updates: Record<string, unknown> = { description: editDesc }
       if (editType === 'for_sale') {
         updates.price = priceNum
         updates.listingStatus = 'active'
@@ -62,8 +62,16 @@ function PinEditContent({ pin, onAddContent, onArchiveContent, onReorderContent,
         updates.soldPrice = priceNum
         updates.originalPrice = (pin as any).price || priceNum
       }
-      await updatePin(pin.id, updates)
-      onPinUpdated?.({ ...pin, ...updates } as Pin)
+      // When the type changes, route through updatePinType so stale
+      // type-specific fields (openHouse, listingStatus, isLive on a
+      // sold pin; soldPrice on a for_sale pin; etc.) get explicitly
+      // deleted instead of lingering as orphan data.
+      if (editType !== pin.type) {
+        await updatePinType(pin.id, pin.type, editType, updates)
+      } else {
+        await updatePin(pin.id, updates)
+      }
+      onPinUpdated?.({ ...pin, type: editType, ...updates } as Pin)
       setEditingListing(false)
     } catch (err) {
       console.error('Save listing failed:', err)
@@ -112,7 +120,7 @@ function PinEditContent({ pin, onAddContent, onArchiveContent, onReorderContent,
         )}
         <div className="min-w-0 flex-1">
           <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: config.color }}>{config.label}</span>
-          <p className="text-[14px] font-bold text-white truncate mt-0.5">{pin.address.split(',')[0]}</p>
+          <p className="text-[14px] font-bold text-white truncate mt-0.5">{displayAddressWithUnit(pin.address, pin.unit).split(',')[0]}</p>
           {fp && 'price' in fp && (
             <p className="text-[16px] font-extrabold text-white font-mono mt-0.5">{formatPrice(fp.price)}</p>
           )}

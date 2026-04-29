@@ -149,14 +149,14 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-screen bg-ivory flex">
+    <div className="min-h-screen bg-ivory flex" style={{ fontFamily: 'var(--font-humanist)' }}>
       <SEOHead title="Get Started" path="/sign-up" />
 
       {/* Left: form */}
       <div className="flex-1 flex flex-col justify-center px-6 md:px-16 lg:px-24 py-12 max-w-[600px] mx-auto md:mx-0">
-        <Link to="/" className="flex items-center gap-1.5 mb-10">
+        <Link to="/" className="flex items-center gap-2 mb-10">
           <img src="/reelst-logo.png" alt="Reelst" className="w-8 h-8" />
-          <span className="text-[20px] font-extrabold text-ink tracking-tight">Reelst</span>
+          <span className="text-[20px] text-ink" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>Reelst</span>
         </Link>
 
         <AnimatePresence mode="wait" custom={direction}>
@@ -164,7 +164,7 @@ export default function SignUp() {
           {step === 'role' && (
             <motion.div key="role" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 30 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -30 * d }) }} initial="enter" animate="center" exit="exit" className="space-y-6">
               <div>
-                <h1 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Get started with Reelst</h1>
+                <h1 className="text-[28px] md:text-[36px] text-ink mb-2" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>Get started with Reelst</h1>
                 <p className="text-[15px] text-smoke">How do you want to use Reelst?</p>
               </div>
 
@@ -176,7 +176,7 @@ export default function SignUp() {
                   </div>
                   <div>
                     <p className="text-[16px] font-bold text-ink">I'm an agent</p>
-                    <p className="text-[13px] text-smoke">Claim your Reelst link, add pins, grow your audience</p>
+                    <p className="text-[13px] text-smoke">Build your portfolio, share your neighborhood, grow your audience</p>
                   </div>
                 </motion.button>
 
@@ -204,7 +204,7 @@ export default function SignUp() {
                 <AtSign size={26} className="text-white" />
               </div>
               <div>
-                <h1 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Claim your Reelst</h1>
+                <h1 className="text-[28px] md:text-[36px] text-ink mb-2" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>Claim your Reelst</h1>
                 <p className="text-[15px] text-smoke">Choose your unique link</p>
               </div>
               <div className="bg-cream rounded-[16px] px-5 py-3">
@@ -221,7 +221,21 @@ export default function SignUp() {
                 </div>
               </div>
               {!checking && available === false && <p className="text-[12px] text-live-red -mt-3">Taken. Try another.</p>}
-              <Button variant="primary" size="xl" fullWidth onClick={() => setStep('license')} disabled={!available || checking || username.length < 3}>Continue</Button>
+              <button
+                type="button"
+                onClick={() => setStep('license')}
+                disabled={!available || checking || username.length < 3}
+                className="brand-btn w-full h-12 px-6 rounded-full text-[15px] inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  fontFamily: 'var(--font-humanist)',
+                  fontWeight: 600,
+                  boxShadow:
+                    '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)',
+                }}
+              >
+                Continue
+                <ArrowRight size={16} strokeWidth={2.5} />
+              </button>
               <p className="text-[11px] text-ash">3-24 characters. Letters, numbers, underscores.</p>
               <p className="text-[13px] text-smoke pt-2">
                 Not an agent? <button onClick={() => { setRole('consumer'); setStep('account') }} className="text-tangerine font-semibold cursor-pointer">I'm looking for homes</button>
@@ -237,7 +251,7 @@ export default function SignUp() {
                 <Shield size={26} className="text-tangerine" />
               </div>
               <div>
-                <h1 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Verify your license</h1>
+                <h1 className="text-[28px] md:text-[36px] text-ink mb-2" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>Verify your license</h1>
                 <p className="text-[15px] text-smoke">We verify all agents to protect homebuyers</p>
               </div>
 
@@ -304,9 +318,16 @@ export default function SignUp() {
 
               {error && <p className="text-[12px] text-live-red">{error}</p>}
 
-              <Button variant="primary" size="xl" fullWidth
+              <button
+                type="button"
                 disabled={!licenseName.trim() || !licenseNumber.trim() || !licenseState || !fairHousing || !dataSecurity || duplicateLicense?.exists || loading}
-                loading={loading}
+                className="brand-btn w-full h-12 px-6 rounded-full text-[15px] inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  fontFamily: 'var(--font-humanist)',
+                  fontWeight: 600,
+                  boxShadow:
+                    '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)',
+                }}
                 onClick={async () => {
                   setError(''); setLoading(true)
                   try {
@@ -343,8 +364,15 @@ export default function SignUp() {
                   finally { setLoading(false) }
                 }}
               >
-                Continue
-              </Button>
+                {loading ? (
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    Continue
+                    <ArrowRight size={16} strokeWidth={2.5} />
+                  </>
+                )}
+              </button>
             </motion.div>
           )}
 
@@ -353,7 +381,7 @@ export default function SignUp() {
             <motion.div key="account" custom={direction} variants={{ enter: (d: number) => ({ opacity: 0, x: 30 * d }), center: { opacity: 1, x: 0 }, exit: (d: number) => ({ opacity: 0, x: -30 * d }) }} initial="enter" animate="center" exit="exit" className="space-y-6">
               <button onClick={() => setStep(role === 'agent' ? 'license' : 'role')} className="flex items-center gap-1 text-[13px] text-smoke font-medium mb-2 cursor-pointer"><ArrowLeft size={14} /> Back</button>
               <div>
-                <h1 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Create your account</h1>
+                <h1 className="text-[28px] md:text-[36px] text-ink mb-2" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>Create your account</h1>
                 {role === 'agent' && username && <p className="text-[15px] text-smoke">Securing <span className="text-tangerine font-bold">reel.st/{username}</span></p>}
               </div>
 
@@ -392,9 +420,27 @@ export default function SignUp() {
                   />
                 )}
                 {error && <p className="text-[12px] text-live-red">{error}</p>}
-                <Button variant="primary" size="xl" fullWidth onClick={handleCreate} loading={loading} iconRight={<ArrowRight size={18} />}>
-                  {role === 'agent' ? 'Get started' : 'Create account'}
-                </Button>
+                <button
+                  type="button"
+                  onClick={handleCreate}
+                  disabled={loading}
+                  className="brand-btn w-full h-12 px-6 rounded-full text-[15px] inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    fontFamily: 'var(--font-humanist)',
+                    fontWeight: 600,
+                    boxShadow:
+                      '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)',
+                  }}
+                >
+                  {loading ? (
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      {role === 'agent' ? 'Get started' : 'Create account'}
+                      <ArrowRight size={16} strokeWidth={2.5} />
+                    </>
+                  )}
+                </button>
               </div>
 
               <p className="text-[13px] text-smoke">Already have an account? <Link to="/sign-in" className="text-tangerine font-semibold">Sign in</Link></p>

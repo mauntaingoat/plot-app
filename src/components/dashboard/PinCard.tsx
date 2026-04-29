@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { Eye, MousePointerClick, Bookmark, MapPin, MoreHorizontal, Home, BadgeCheck, Compass } from 'lucide-react'
 import { PIN_CONFIG, type Pin } from '@/lib/types'
 import { formatPrice } from '@/lib/firestore'
+import { displayAddressWithUnit } from '@/lib/format'
 import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
 
 interface PinCardProps {
@@ -11,9 +12,16 @@ interface PinCardProps {
   onMore?: () => void
   variant?: 'feed' | 'manage'
   dark?: boolean
+  /** True when the pin has an unactioned property-data change from
+   *  the daily Rentcast sync. Renders a small pulsing tangerine dot
+   *  in the top-right of the card. */
+  hasPendingChange?: boolean
+  /** Tap handler for the pending-change badge. Stops propagation so
+   *  it doesn't double-fire onClick. */
+  onPendingChangeClick?: () => void
 }
 
-export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark = true }: PinCardProps) {
+export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark = true, hasPendingChange, onPendingChangeClick }: PinCardProps) {
   const config = PIN_CONFIG[pin.type]
 
   // Priority: listing photo (heroPhotoUrl) > content thumbnail > content mediaUrl > none
@@ -59,6 +67,26 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
               {config.label}
             </span>
           </div>
+
+          {/* Pending property-data change badge */}
+          {hasPendingChange && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onPendingChangeClick?.() }}
+              aria-label="Property data updated"
+              className="absolute top-3 right-3 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
+              style={{
+                background: 'var(--brand-grad)',
+                boxShadow: '0 0 0 2px rgba(255,255,255,0.95), 0 4px 12px -2px rgba(217,74,31,0.6)',
+              }}
+            >
+              <span
+                aria-hidden
+                className="absolute inset-0 rounded-full animate-ping"
+                style={{ background: 'rgba(255,107,61,0.45)' }}
+              />
+              <span className="relative w-2 h-2 rounded-full bg-white" />
+            </button>
+          )}
 
           {/* Price pill */}
           {priceDisplay && (
@@ -119,6 +147,24 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
                 {config.label}
               </span>
             </div>
+            {hasPendingChange && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onPendingChangeClick?.() }}
+                aria-label="Property data updated"
+                className="absolute top-3 right-3 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
+                style={{
+                  background: 'var(--brand-grad)',
+                  boxShadow: '0 0 0 2px rgba(255,255,255,0.95), 0 4px 12px -2px rgba(217,74,31,0.6)',
+                }}
+              >
+                <span
+                  aria-hidden
+                  className="absolute inset-0 rounded-full animate-ping"
+                  style={{ background: 'rgba(255,107,61,0.45)' }}
+                />
+                <span className="relative w-2 h-2 rounded-full bg-white" />
+              </button>
+            )}
             {priceDisplay && (
               <div className="absolute bottom-3 left-3">
                 <span className="font-mono font-bold text-[18px] text-white drop-shadow-lg">
@@ -138,7 +184,7 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
             <div className="flex items-center gap-1.5">
               <MapPin size={13} className={dark ? 'text-ghost' : 'text-ash'} />
               <p className={`text-[13px] font-medium truncate ${dark ? 'text-mist' : 'text-graphite'}`}>
-                {pin.address}
+                {displayAddressWithUnit(pin.address, pin.unit)}
               </p>
             </div>
             {specs && (

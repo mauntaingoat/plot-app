@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { Check, X, ChevronDown, ArrowRight } from 'lucide-react'
+import { Check, X, ArrowRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { SEOHead } from '@/components/marketing/SEOHead'
@@ -22,7 +22,7 @@ const PLANS = [
     name: 'Free',
     price: '$0',
     period: 'forever',
-    desc: 'Create content and showcase your listings.',
+    desc: 'Build your portfolio on your own link.',
     cta: 'Start free',
     featured: false,
     features: [
@@ -39,7 +39,7 @@ const PLANS = [
     name: 'Pro',
     price: '$19',
     period: '/ mo',
-    desc: 'Get discovered. Understand your audience.',
+    desc: 'Get discovered. See who\'s watching.',
     cta: 'Go Pro',
     featured: true,
     features: [
@@ -56,7 +56,7 @@ const PLANS = [
     price: '$39',
     period: '/ mo',
     badge: 'Best value',
-    desc: 'The full suite for top producers.',
+    desc: 'The full kit for top producers.',
     cta: 'Go Studio',
     featured: false,
     features: [
@@ -69,30 +69,59 @@ const PLANS = [
   },
 ]
 
+type CompValue = boolean | 'partial' | string
+
 const COMP_ROWS: Array<{
   feature: string
-  reelst: boolean | 'partial'
-  ig: boolean | 'partial'
-  realtor: boolean | 'partial'
-  zillow: boolean | 'partial'
+  reelst: CompValue
+  zillow: CompValue
+  instagram: CompValue
+  linkbio: CompValue
 }> = [
-  { feature: 'Live map of your listings', reelst: true, ig: false, realtor: false, zillow: 'partial' },
-  { feature: 'Video reels on listings', reelst: true, ig: true, realtor: false, zillow: false },
-  { feature: 'Your own brand + URL', reelst: true, ig: 'partial', realtor: false, zillow: false },
-  { feature: 'Direct showing requests', reelst: true, ig: false, realtor: 'partial', zillow: 'partial' },
-  { feature: 'One link for everything', reelst: true, ig: false, realtor: false, zillow: false },
-  { feature: 'Built for agents, not platforms', reelst: true, ig: false, realtor: false, zillow: false },
-  { feature: 'Free to start', reelst: true, ig: true, realtor: false, zillow: false },
+  { feature: 'Live map of your listings',          reelst: true, zillow: 'partial', instagram: false,     linkbio: false   },
+  { feature: 'Reels & video walkthroughs on listings', reelst: true, zillow: 'partial', instagram: true,  linkbio: false   },
+  { feature: 'Your own brand and URL',             reelst: true, zillow: false,     instagram: 'partial', linkbio: true    },
+  { feature: 'You own every lead',                 reelst: true, zillow: false,     instagram: true,      linkbio: true    },
+  { feature: 'MLS data auto-fill on listings',     reelst: true, zillow: true,      instagram: false,     linkbio: false   },
+  { feature: 'Direct showing requests',            reelst: true, zillow: 'partial', instagram: false,     linkbio: false   },
+  { feature: 'One link for your whole presence',   reelst: true, zillow: false,     instagram: 'partial', linkbio: true    },
+  { feature: 'Per-listing analytics',              reelst: true, zillow: 'partial', instagram: false,     linkbio: 'partial' },
+  { feature: 'Built for real estate agents',       reelst: true, zillow: 'partial', instagram: false,     linkbio: false   },
 ]
 
 const FAQS = [
-  { q: 'Can I try Pro before committing?', a: 'Yes — start on Free and upgrade anytime. Your pins, content, and followers carry over seamlessly.' },
-  { q: 'What counts as an "active pin"?', a: 'Any pin that\'s visible on your public map. You can toggle pins on/off to manage your slots on the Free plan. Archived pins don\'t count.' },
-  { q: 'Can I cancel anytime?', a: 'Yes. Cancel from your dashboard settings. You\'ll keep your current plan features until the end of your billing period, then drop to Free.' },
-  { q: 'Do homebuyers need an account?', a: 'No. Anyone can view your Reelst profile, browse your map, and watch your reels without signing up. They only need an account to follow, save, or request a showing.' },
-  { q: 'What social platforms can I connect?', a: 'Instagram, TikTok, YouTube, Facebook, LinkedIn, and your personal website. All plans include platform connections.' },
-  { q: 'How does the MLS data auto-fill work?', a: 'When you create a pin, enter the address and we automatically pull property details — beds, baths, sqft, type, year built, listing price, days on market, and MLS number from public listing data.' },
-  { q: 'Is there a team or brokerage plan?', a: 'Coming soon. If you\'re a brokerage or team, reach out and we\'ll set you up with early access.' },
+  {
+    q: 'Do I need a real estate license to use Reelst?',
+    a: 'Yes. Every agent profile is verified against state licensure data — we confirm the license number, name, and state before your Reelst goes live. If you\'re a consumer or aspiring agent, you can still browse other Reelsts, just not publish one.',
+  },
+  {
+    q: 'Do I keep my leads, or does Reelst?',
+    a: 'You keep them. Showing requests, saves, follows, and contact submissions land in your inbox — your contacts, your CRM, your relationship. Reelst never resells leads or sends them to a competing agent.',
+  },
+  {
+    q: 'What happens if I switch brokerages?',
+    a: 'Your Reelst goes with you. Your reel.st link, your followers, your pins, and your analytics are tied to you, not your brokerage. Update your brokerage on your profile and keep moving — no lost audience, no rebuilding.',
+  },
+  {
+    q: 'Does Reelst replace my MLS or my CRM?',
+    a: 'Neither. Reelst is your front door — the place you send buyers and the public to see your work. Your MLS is your sourcing layer, your CRM is your back office. We pull MLS data into your pins automatically and you can export leads to any CRM.',
+  },
+  {
+    q: 'Will my license number and required disclaimers display?',
+    a: 'Yes. License #, brokerage, and state are auto-displayed on your public profile. Fair-housing disclosure and equal-opportunity language are baked into the layout so your Reelst stays compliant in every state.',
+  },
+  {
+    q: 'Can I import my existing listings?',
+    a: 'Just enter the address. Reelst auto-fills property details — beds, baths, sqft, type, year built, listing price, days on market, MLS #. You drop the videos and walkthroughs on top.',
+  },
+  {
+    q: 'Can I cancel or downgrade anytime?',
+    a: 'Yes. Cancel or downgrade from your dashboard at any time — you keep your current plan through the end of the billing period, then drop to Free. Your pins, content, and followers stay with you.',
+  },
+  {
+    q: 'Is there a team or brokerage plan?',
+    a: 'Coming soon. If you\'re running a team or a brokerage, reach out at hello@reelst.co and we\'ll set you up with early access plus volume pricing.',
+  },
 ]
 
 export default function Pricing() {
@@ -114,35 +143,46 @@ export default function Pricing() {
       />
 
       <div className="bg-marketing">
-        {/* ── PAGE HEADLINE ─────────────────────────────────────── */}
-        <section className="max-w-[1200px] mx-auto px-6 md:px-10 pt-20 md:pt-28 pb-10 md:pb-16 text-center">
-          <h1
-            className="text-ink mb-6 max-w-[860px] mx-auto"
-            style={{
-              fontFamily: 'var(--font-humanist)',
-              fontSize: 'clamp(2.5rem, 5.4vw, 5rem)',
-              fontWeight: 500,
-              letterSpacing: '-0.035em',
-              lineHeight: 0.98,
-            }}
-          >
-            Start free.
-            <br />
-            <span className="brand-grad-text" style={{ fontWeight: 600 }}>
-              Grow when you're ready.
-            </span>
-          </h1>
-          <p
-            className="text-graphite max-w-[560px] mx-auto"
-            style={{
-              fontFamily: 'var(--font-humanist)',
-              fontSize: 'clamp(1rem, 1.22vw, 1.18rem)',
-              fontWeight: 400,
-              lineHeight: 1.55,
-            }}
-          >
-            No hidden fees, no contracts. Upgrade when you're ready to grow.
-          </p>
+        {/* ── HERO CARD — same map-grid framing as Home hero ─────── */}
+        <section className="pt-20 md:pt-24 pb-12 md:pb-16">
+          <div className="max-w-[1320px] mx-auto px-4 md:px-6">
+            <div
+              className="map-grid relative rounded-[28px] md:rounded-[36px] px-6 md:px-10 pt-16 md:pt-24 pb-16 md:pb-20 text-center"
+              style={{
+                border: '1px solid rgba(255,133,82,0.22)',
+                boxShadow:
+                  '0 1px 0 rgba(255,255,255,0.8) inset, 0 30px 80px -30px rgba(217,74,31,0.20), 0 10px 32px -16px rgba(10,14,23,0.08)',
+              }}
+            >
+              <h1
+                className="text-ink mb-6 max-w-[860px] mx-auto"
+                style={{
+                  fontFamily: 'var(--font-humanist)',
+                  fontSize: 'clamp(2.5rem, 5.4vw, 5rem)',
+                  fontWeight: 500,
+                  letterSpacing: '-0.035em',
+                  lineHeight: 0.98,
+                }}
+              >
+                Start free.
+                <br />
+                <span className="brand-grad-text" style={{ fontWeight: 600 }}>
+                  Grow when you're ready.
+                </span>
+              </h1>
+              <p
+                className="text-graphite max-w-[560px] mx-auto"
+                style={{
+                  fontFamily: 'var(--font-humanist)',
+                  fontSize: 'clamp(1rem, 1.22vw, 1.18rem)',
+                  fontWeight: 400,
+                  lineHeight: 1.55,
+                }}
+              >
+                No hidden fees, no contracts. Upgrade when you're ready to grow.
+              </p>
+            </div>
+          </div>
         </section>
 
         {/* ── PRICING TIERS ─────────────────────────────────────── */}
@@ -157,8 +197,17 @@ export default function Pricing() {
                 className={`relative rounded-[24px] p-7 md:p-8 flex flex-col ${
                   plan.featured
                     ? 'bg-gradient-to-br from-midnight to-obsidian text-ivory ring-1 ring-tangerine/40 shadow-[0_24px_60px_-22px_rgba(10,14,23,0.45)]'
-                    : 'bg-white border border-black/[0.07]'
+                    : 'bg-white'
                 }`}
+                style={
+                  !plan.featured
+                    ? {
+                        border: '1px solid rgba(255,133,82,0.22)',
+                        boxShadow:
+                          '0 1px 0 rgba(255,255,255,0.85) inset, 0 30px 80px -30px rgba(217,74,31,0.20), 0 10px 32px -16px rgba(10,14,23,0.08)',
+                      }
+                    : undefined
+                }
               >
                 {plan.featured && (
                   <span
@@ -275,9 +324,9 @@ export default function Pricing() {
           </div>
         </section>
 
-        {/* ── COMPARED ───────────────────────────────────────────── */}
+        {/* ── COMPARISON — Reelst vs the alternatives agents already use ── */}
         <section className="max-w-[1200px] mx-auto px-6 md:px-10 py-20 md:py-28">
-          <div className="max-w-[760px] mb-12 md:mb-16">
+          <div className="max-w-[760px] mb-12 md:mb-16 text-center mx-auto">
             <h2
               className="text-ink"
               style={{
@@ -288,43 +337,78 @@ export default function Pricing() {
                 lineHeight: 0.98,
               }}
             >
-              Built for agents.
-              <br />
+              Built for agents,{' '}
               <span className="brand-grad-text" style={{ fontWeight: 600 }}>
-                Not platforms.
+                not platforms.
               </span>
             </h2>
+            <p
+              className="text-graphite mt-5 max-w-[520px] mx-auto"
+              style={{
+                fontFamily: 'var(--font-humanist)',
+                fontSize: '15px',
+                fontWeight: 400,
+                lineHeight: 1.55,
+              }}
+            >
+              The tools you patch together today — a portal profile, a social feed,
+              a generic link-in-bio — each solve a slice. Reelst is the home base.
+            </p>
           </div>
 
           <div
-            className="rounded-[22px] bg-white border border-black/[0.07] overflow-hidden"
-            style={{ boxShadow: '0 10px 30px -16px rgba(10,14,23,0.08)' }}
+            className="rounded-[22px] bg-white overflow-hidden"
+            style={{
+              border: '1px solid rgba(255,133,82,0.22)',
+              boxShadow:
+                '0 1px 0 rgba(255,255,255,0.85) inset, 0 30px 80px -30px rgba(217,74,31,0.20), 0 10px 32px -16px rgba(10,14,23,0.08)',
+            }}
           >
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] border-collapse">
+              <table className="w-full min-w-[760px] border-collapse">
                 <thead>
                   <tr style={{ background: 'rgba(255,247,240,0.6)' }}>
                     <th
-                      className="text-left py-4 pl-6 pr-4 text-[11px] text-smoke uppercase tracking-[0.18em]"
+                      className="text-left py-5 pl-6 pr-4 text-[11px] text-smoke uppercase tracking-[0.18em]"
                       style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}
                     >
                       Feature
                     </th>
-                    <th className="py-4 px-3 text-center">
-                      <div className="inline-flex items-center gap-1.5">
-                        <span className="text-[13px] text-ink uppercase tracking-[0.1em]" style={{ fontFamily: 'var(--font-humanist)', fontWeight: 600 }}>Reelst</span>
-                      </div>
+                    <th
+                      className="py-5 px-3 text-center text-[13px] uppercase tracking-[0.16em]"
+                      style={{
+                        fontFamily: 'var(--font-humanist)',
+                        fontWeight: 700,
+                        color: '#D94A1F',
+                        background: 'rgba(255,133,82,0.08)',
+                      }}
+                    >
+                      Reelst
                     </th>
-                    <th className="py-4 px-3 text-center text-[13px] text-smoke" style={{ fontFamily: 'var(--font-humanist)', fontWeight: 500 }}>IG bio</th>
-                    <th className="py-4 px-3 text-center text-[13px] text-smoke" style={{ fontFamily: 'var(--font-humanist)', fontWeight: 500 }}>Realtor.com</th>
-                    <th className="py-4 px-3 text-center text-[13px] text-smoke" style={{ fontFamily: 'var(--font-humanist)', fontWeight: 500 }}>Zillow</th>
+                    <th
+                      className="py-5 px-3 text-center text-[13px] text-smoke uppercase tracking-[0.16em]"
+                      style={{ fontFamily: 'var(--font-humanist)', fontWeight: 600 }}
+                    >
+                      Listing portal
+                    </th>
+                    <th
+                      className="py-5 px-3 text-center text-[13px] text-smoke uppercase tracking-[0.16em]"
+                      style={{ fontFamily: 'var(--font-humanist)', fontWeight: 600 }}
+                    >
+                      Social feed
+                    </th>
+                    <th
+                      className="py-5 px-3 text-center text-[13px] text-smoke uppercase tracking-[0.16em]"
+                      style={{ fontFamily: 'var(--font-humanist)', fontWeight: 600 }}
+                    >
+                      Link-in-bio
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {COMP_ROWS.map((row, i) => (
                     <tr
                       key={row.feature}
-                      className={i % 2 === 0 ? 'bg-white' : ''}
                       style={i % 2 === 1 ? { background: 'rgba(255,247,240,0.35)' } : undefined}
                     >
                       <td
@@ -333,10 +417,15 @@ export default function Pricing() {
                       >
                         {row.feature}
                       </td>
-                      <td className="text-center py-4 px-3"><CompMark value={row.reelst} highlight /></td>
-                      <td className="text-center py-4 px-3"><CompMark value={row.ig} /></td>
-                      <td className="text-center py-4 px-3"><CompMark value={row.realtor} /></td>
+                      <td
+                        className="text-center py-4 px-3"
+                        style={{ background: 'rgba(255,133,82,0.06)' }}
+                      >
+                        <CompMark value={row.reelst} highlight />
+                      </td>
                       <td className="text-center py-4 px-3"><CompMark value={row.zillow} /></td>
+                      <td className="text-center py-4 px-3"><CompMark value={row.instagram} /></td>
+                      <td className="text-center py-4 px-3"><CompMark value={row.linkbio} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -345,69 +434,116 @@ export default function Pricing() {
           </div>
         </section>
 
-        {/* ── FAQ ────────────────────────────────────────────────── */}
-        <section className="max-w-[760px] mx-auto px-6 md:px-10 pt-12 md:pt-16 pb-24 md:pb-32">
-          <h2
-            className="text-ink text-center mb-10 md:mb-14"
-            style={{
-              fontFamily: 'var(--font-humanist)',
-              fontSize: 'clamp(2rem, 4vw, 3.25rem)',
-              fontWeight: 500,
-              letterSpacing: '-0.035em',
-              lineHeight: 0.98,
-            }}
-          >
-            Questions,{' '}
-            <span className="brand-grad-text" style={{ fontWeight: 600 }}>
-              answered.
-            </span>
-          </h2>
+        {/* ── FAQ — magazine-style numbered list ─────────────────── */}
+        <section className="max-w-[860px] mx-auto px-6 md:px-10 pt-12 md:pt-16 pb-24 md:pb-32">
+          <div className="text-center mb-12 md:mb-16">
+            <h2
+              className="text-ink"
+              style={{
+                fontFamily: 'var(--font-humanist)',
+                fontSize: 'clamp(2rem, 4vw, 3.25rem)',
+                fontWeight: 500,
+                letterSpacing: '-0.035em',
+                lineHeight: 0.98,
+              }}
+            >
+              Frequently asked{' '}
+              <span className="brand-grad-text" style={{ fontWeight: 600 }}>
+                questions.
+              </span>
+            </h2>
+            <p
+              className="text-graphite mt-5 max-w-[460px] mx-auto"
+              style={{
+                fontFamily: 'var(--font-humanist)',
+                fontSize: '15px',
+                fontWeight: 400,
+                lineHeight: 1.55,
+              }}
+            >
+              The questions agents actually ask before signing up.
+            </p>
+          </div>
 
-          <div className="space-y-2.5">
-            {FAQS.map((faq, i) => (
-              <div
-                key={i}
-                className="bg-white rounded-[16px] border border-black/[0.06] overflow-hidden"
-              >
-                <button
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  className="w-full flex items-center justify-between p-5 text-left cursor-pointer"
-                  style={{ fontFamily: 'var(--font-humanist)' }}
-                >
-                  <span
-                    className="text-[15px] text-ink pr-4"
-                    style={{ fontWeight: 500, letterSpacing: '-0.005em' }}
+          <div className="border-t border-black/[0.08]">
+            {FAQS.map((faq, i) => {
+              const isOpen = openFaq === i
+              return (
+                <div key={i} className="border-b border-black/[0.08]">
+                  <button
+                    onClick={() => setOpenFaq(isOpen ? null : i)}
+                    className="w-full flex items-start gap-5 md:gap-8 py-6 md:py-7 text-left cursor-pointer group"
+                    style={{ fontFamily: 'var(--font-humanist)' }}
                   >
-                    {faq.q}
-                  </span>
-                  <motion.div animate={{ rotate: openFaq === i ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                    <ChevronDown size={18} className="text-smoke shrink-0" />
-                  </motion.div>
-                </button>
-                <AnimatePresence>
-                  {openFaq === i && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.25 }}
-                      className="overflow-hidden"
+                    <span
+                      className="shrink-0 pt-[7px] md:pt-[9px] w-10 md:w-12"
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        letterSpacing: '0.16em',
+                        color: '#D94A1F',
+                      }}
                     >
-                      <p
-                        className="px-5 pb-5 text-[14px] text-graphite"
-                        style={{
-                          fontFamily: 'var(--font-humanist)',
-                          fontWeight: 400,
-                          lineHeight: 1.6,
-                        }}
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <span
+                      className="flex-1 text-ink"
+                      style={{
+                        fontSize: 'clamp(1.05rem, 1.6vw, 1.3rem)',
+                        fontWeight: 500,
+                        letterSpacing: '-0.015em',
+                        lineHeight: 1.32,
+                      }}
+                    >
+                      {faq.q}
+                    </span>
+                    <motion.span
+                      animate={{ rotate: isOpen ? 45 : 0 }}
+                      transition={{ duration: 0.28, ease: [0.25, 0.1, 0.25, 1] }}
+                      className="shrink-0 mt-[6px] md:mt-[10px] w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+                      style={{
+                        backgroundColor: isOpen ? 'rgba(217,74,31,0.1)' : 'rgba(10,14,23,0.05)',
+                      }}
+                    >
+                      <Plus
+                        size={15}
+                        strokeWidth={2.25}
+                        className={isOpen ? 'text-tangerine' : 'text-graphite group-hover:text-tangerine transition-colors'}
+                      />
+                    </motion.span>
+                  </button>
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.32, ease: [0.25, 0.1, 0.25, 1] }}
+                        className="overflow-hidden"
                       >
-                        {faq.a}
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            ))}
+                        <div className="flex gap-5 md:gap-8 pb-7 md:pb-8 -mt-1">
+                          <span className="shrink-0 w-10 md:w-12" aria-hidden />
+                          <p
+                            className="flex-1 text-graphite max-w-[640px]"
+                            style={{
+                              fontFamily: 'var(--font-humanist)',
+                              fontSize: '15.5px',
+                              fontWeight: 400,
+                              lineHeight: 1.65,
+                              letterSpacing: '-0.005em',
+                            }}
+                          >
+                            {faq.a}
+                          </p>
+                          <span className="shrink-0 w-7" aria-hidden />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )
+            })}
           </div>
         </section>
       </div>
@@ -415,7 +551,7 @@ export default function Pricing() {
   )
 }
 
-function CompMark({ value, highlight = false }: { value: boolean | 'partial'; highlight?: boolean }) {
+function CompMark({ value, highlight = false }: { value: CompValue; highlight?: boolean }) {
   if (value === true) {
     return (
       <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full ${highlight ? 'bg-tangerine' : 'bg-ink/5'}`}>
@@ -425,14 +561,40 @@ function CompMark({ value, highlight = false }: { value: boolean | 'partial'; hi
   }
   if (value === 'partial') {
     return (
-      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-black/[0.04]">
+      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-black/[0.04]" aria-label="partial">
         <span className="w-2.5 h-0.5 bg-smoke rounded-full" />
       </span>
     )
   }
+  if (value === false) {
+    return <span className="inline-block w-3 h-px bg-ink/15" aria-label="not included" />
+  }
+  if (typeof value === 'string' && value.toLowerCase() === 'soon') {
+    return (
+      <span
+        className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.14em]"
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontWeight: 600,
+          color: '#D94A1F',
+          background: 'rgba(217,74,31,0.1)',
+        }}
+      >
+        Soon
+      </span>
+    )
+  }
   return (
-    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-black/[0.03]">
-      <X size={13} className="text-ash" strokeWidth={2} />
+    <span
+      className={`inline-block text-[14px] ${highlight ? '' : 'text-ink'}`}
+      style={{
+        fontFamily: 'var(--font-humanist)',
+        fontWeight: 600,
+        letterSpacing: '-0.01em',
+        color: highlight ? '#D94A1F' : undefined,
+      }}
+    >
+      {value}
     </span>
   )
 }

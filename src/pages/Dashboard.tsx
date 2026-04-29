@@ -7,7 +7,7 @@ import {
   ExternalLink, LogOut, ChevronRight, CreditCard,
   User, Trash2, Edit3, EyeOff, Link2, Shield,
   Film, Share2, Copy, Check, X, QrCode, CalendarDays, Inbox,
-  Bell, Camera, Sun, Moon, RefreshCw, AlertTriangle,
+  Bell, Camera, Sun, Moon, RefreshCw, AlertTriangle, ArrowRight,
 } from 'lucide-react'
 import { TabBar } from '@/components/ui/TabBar'
 import { Button } from '@/components/ui/Button'
@@ -28,6 +28,9 @@ import { ShowingInbox } from '@/components/dashboard/ShowingInbox'
 import { NotificationSettings } from '@/components/dashboard/NotificationSettings'
 import { ContentLibrary } from '@/components/dashboard/ContentLibrary'
 import { useUnreadCount } from '@/components/dashboard/ShowingInbox'
+import { PendingChangesModal, PendingChangeCard } from '@/components/dashboard/PendingChangesModal'
+import { subscribeToAgentPendingChanges } from '@/lib/firestore'
+import type { PendingPinChange } from '@/lib/types'
 import { preloadImages } from '@/lib/imageCache'
 import { canActivatePin, hasFeature, getUserTier, type Tier } from '@/lib/tiers'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
@@ -92,6 +95,19 @@ export default function Dashboard() {
   const [copied, setCopied] = useState(false)
   const [paywall, setPaywall] = useState<{ open: boolean; reason: string; upgradeTo?: Tier }>({ open: false, reason: '' })
   const [qrPin, setQrPin] = useState<Pin | null>(null)
+  const [errorBanner, setErrorBanner] = useState<string | null>(null)
+  const errorTimerRef = useRef<number | null>(null)
+  const [pendingChanges, setPendingChanges] = useState<PendingPinChange[]>([])
+  const [pendingModalOpen, setPendingModalOpen] = useState(false)
+  const [singlePendingPinId, setSinglePendingPinId] = useState<string | null>(null)
+  const showError = useCallback((msg: string) => {
+    setErrorBanner(msg)
+    if (errorTimerRef.current) window.clearTimeout(errorTimerRef.current)
+    errorTimerRef.current = window.setTimeout(() => setErrorBanner(null), 4500)
+  }, [])
+  useEffect(() => () => {
+    if (errorTimerRef.current) window.clearTimeout(errorTimerRef.current)
+  }, [])
   const [openHousePin, setOpenHousePin] = useState<ForSalePin | null>(null)
   const [editPin, setEditPin] = useState<Pin | null>(null)
   const [showEditProfile, setShowEditProfile] = useState(false)
@@ -182,54 +198,95 @@ export default function Dashboard() {
   }, [userDoc?.uid])
 
   const handleTogglePin = useCallback(async (pinId: string, enabled: boolean) => {
-    // Gate activation — block if at active pin cap (tier limits)
+    // Activation goes through the setPinEnabled Cloud Function so the
+    // per-tier active-pin cap is enforced server-side. Disabling can
+    // happen via direct Firestore write (rules permit), but we route
+    // both through the callable for a single code path.
     if (enabled) {
+      // Cheap client-side pre-check so we can show the paywall sheet
+      // without a network round trip when we're already over.
       const gate = canActivatePin(currentUser, pins)
       if (!gate.allowed) {
         setPaywall({ open: true, reason: gate.reason || '', upgradeTo: gate.upgradeTo })
         return
       }
     }
+    // Optimistic local flip.
     setPins((prev) => prev.map((p) => p.id === pinId ? { ...p, enabled } : p))
-    const { updatePin } = await import('@/lib/firestore')
-    await updatePin(pinId, { enabled }).catch(() => {})
+    try {
+      const { setPinEnabled } = await import('@/lib/firestore')
+      await setPinEnabled(pinId, enabled)
+    } catch (err: any) {
+      // Server cap check rejected — roll back optimistic update and
+      // surface the paywall.
+      setPins((prev) => prev.map((p) => p.id === pinId ? { ...p, enabled: !enabled } : p))
+      const reason = err?.message || 'Could not update pin.'
+      const upgradeTo = err?.details?.upgradeTo as 'pro' | 'studio' | undefined
+      setPaywall({ open: true, reason, upgradeTo })
+    }
   }, [currentUser, pins])
 
   const handleDeletePin = useCallback(async (pinId: string) => {
     const pin = pins.find((p) => p.id === pinId)
+    if (!pin) return
+    // Snapshot for rollback. Archive is the user-facing action; if it
+    // fails we restore the pin to the list and surface the failure.
+    const prevIndex = pins.findIndex((p) => p.id === pinId)
     setPins((prev) => prev.filter((p) => p.id !== pinId))
     setShowDeleteConfirm(null)
     setShowPinActions(null)
-    // Soft delete — archive the pin
-    const { archivePin, createContent } = await import('@/lib/firestore')
-    await archivePin(pinId).catch(() => {})
-    // Unlink content — save each content item as standalone so it
-    // appears in the content library under "No Listing" instead of
-    // being lost with the archived pin.
-    if (pin?.content?.length && userDoc?.uid) {
-      for (const item of pin.content) {
-        await createContent({
-          agentId: userDoc.uid,
-          pinId: null,
-          type: item.type,
-          mediaUrl: item.mediaUrl,
-          ...(item.mediaUrls ? { mediaUrls: item.mediaUrls } : {}),
-          thumbnailUrl: item.thumbnailUrl,
-          caption: item.caption,
-          ...(item.sourceUrl ? { sourceUrl: item.sourceUrl } : {}),
-          ...(item.aspect ? { aspect: item.aspect } : {}),
-          ...(item.duration != null ? { duration: item.duration } : {}),
-          publishAt: null,
-        }).catch(() => {})
+    try {
+      const { archivePin, createContent } = await import('@/lib/firestore')
+      await archivePin(pinId)
+      // Best-effort: unlink content items into the standalone library.
+      // These are not user-blocking; if any individual write fails we
+      // log but don't roll back the archive (it succeeded).
+      if (pin.content?.length && userDoc?.uid) {
+        for (const item of pin.content) {
+          try {
+            await createContent({
+              agentId: userDoc.uid,
+              pinId: null,
+              type: item.type,
+              mediaUrl: item.mediaUrl,
+              ...(item.mediaUrls ? { mediaUrls: item.mediaUrls } : {}),
+              thumbnailUrl: item.thumbnailUrl,
+              caption: item.caption,
+              ...(item.sourceUrl ? { sourceUrl: item.sourceUrl } : {}),
+              ...(item.aspect ? { aspect: item.aspect } : {}),
+              ...(item.duration != null ? { duration: item.duration } : {}),
+              publishAt: null,
+            })
+          } catch (err) {
+            console.warn('[handleDeletePin] failed to unlink content item:', item.id, err)
+          }
+        }
       }
+    } catch (err) {
+      console.error('[handleDeletePin] archivePin failed:', err)
+      setPins((prev) => {
+        const next = prev.slice()
+        const insertAt = Math.min(prevIndex >= 0 ? prevIndex : next.length, next.length)
+        next.splice(insertAt, 0, pin)
+        return next
+      })
+      showError("Couldn't archive that pin — try again in a moment.")
     }
-  }, [pins, userDoc?.uid])
+  }, [pins, userDoc?.uid, showError])
 
   const handleSaveOpenHouse = useCallback(async (pinId: string, openHouse: OpenHouse | null) => {
+    const prevPin = pins.find((p) => p.id === pinId)
+    const prevOpenHouse = prevPin && prevPin.type === 'for_sale' ? prevPin.openHouse ?? null : null
     setPins((prev) => prev.map((p) => (p.id === pinId && p.type === 'for_sale' ? { ...p, openHouse } : p)))
-    const { updatePin } = await import('@/lib/firestore')
-    await updatePin(pinId, { openHouse }).catch(() => {})
-  }, [])
+    try {
+      const { updatePin } = await import('@/lib/firestore')
+      await updatePin(pinId, { openHouse })
+    } catch (err) {
+      console.error('[handleSaveOpenHouse] updatePin failed:', err)
+      setPins((prev) => prev.map((p) => (p.id === pinId && p.type === 'for_sale' ? { ...p, openHouse: prevOpenHouse } : p)))
+      showError("Couldn't save the open house — try again.")
+    }
+  }, [pins, showError])
 
   const stats = useMemo(() => {
     let views = 0, taps = 0, saves = 0
@@ -300,12 +357,47 @@ export default function Dashboard() {
   const activeUser = impersonating || currentUser
   const profileUrl = `reel.st/${activeUser?.username || 'you'}`
 
+  // Only fetch when (a) the user is actually viewing Insights, and
+  // (b) their tier unlocks advanced analytics. Free users see a blurred
+  // paywall — pulling 7 days of real events for them would burn reads
+  // and put real numbers in their DOM behind the blur.
   useEffect(() => {
     if (!activeUser?.uid) return
+    if (activeTab !== 'insights') return
+    if (!hasFeature(activeUser, 'advancedAnalytics')) return
     import('@/lib/firestore').then(({ getAgentEvents }) =>
       getAgentEvents(activeUser.uid, 7).then(setWeeklyEvents).catch(() => {})
     )
+  }, [activeUser, activeTab])
+
+  // ── Property-data pending changes (Rentcast sync diffs) ──
+  // Live subscription so the modal disappears immediately when a
+  // change is approved/rejected on another device. Auto-opens the
+  // modal once per session per agent — sessionStorage tracks dismiss.
+  useEffect(() => {
+    if (!activeUser?.uid) return
+    const unsub = subscribeToAgentPendingChanges(activeUser.uid, (changes) => {
+      setPendingChanges(changes)
+    })
+    return () => { unsub?.() }
   }, [activeUser?.uid])
+
+  useEffect(() => {
+    if (!activeUser?.uid || pendingChanges.length === 0) return
+    const dismissKey = `reelst_pending_dismissed_${activeUser.uid}`
+    if (sessionStorage.getItem(dismissKey) === '1') return
+    setPendingModalOpen(true)
+  }, [activeUser?.uid, pendingChanges.length])
+
+  const closePendingModal = useCallback(() => {
+    if (activeUser?.uid) {
+      sessionStorage.setItem(`reelst_pending_dismissed_${activeUser.uid}`, '1')
+    }
+    setPendingModalOpen(false)
+  }, [activeUser?.uid])
+
+  const closeSinglePending = useCallback(() => setSinglePendingPinId(null), [])
+  const openSinglePending = useCallback((pinId: string) => setSinglePendingPinId(pinId), [])
 
   // Compute real setup percent to match checklist (fix mismatch)
   const computedSetupPercent = useMemo(() => {
@@ -444,6 +536,8 @@ export default function Dashboard() {
                       onToggle={(enabled) => handleTogglePin(pin.id, enabled)}
                       onMore={() => setShowPinActions(showPinActions?.id === pin.id ? null : pin)}
                       onClick={() => setEditPin(pin)}
+                      hasPendingChange={pendingChanges.some((c) => c.pinId === pin.id)}
+                      onPendingChangeClick={() => openSinglePending(pin.id)}
                     />
 
                     {/* Desktop popover menu — anchored to the card */}
@@ -517,9 +611,13 @@ export default function Dashboard() {
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-warm-white/60 rounded-[18px]">
                       <p className="text-[14px] font-bold text-ink mb-1">Saved Map Insights</p>
                       <p className="text-[12px] text-smoke mb-3">See cross-listing save patterns</p>
-                      <button onClick={() => setPaywall({ open: true, reason: 'Saved map insights is a Studio feature.', upgradeTo: 'studio' })}
-                        className="px-5 py-2 rounded-full bg-tangerine text-white text-[13px] font-bold cursor-pointer hover:brightness-105 transition-all">
+                      <button
+                        onClick={() => setPaywall({ open: true, reason: 'Saved map insights is a Studio feature.', upgradeTo: 'studio' })}
+                        className="brand-btn-flat h-10 px-5 rounded-full text-[13px] cursor-pointer inline-flex items-center gap-1.5"
+                        style={{ fontWeight: 600, boxShadow: '0 6px 16px -6px rgba(217,74,31,0.42), inset 0 1px 0 rgba(255,255,255,0.24)' }}
+                      >
                         Upgrade to Studio
+                        <ArrowRight size={14} strokeWidth={2.4} />
                       </button>
                     </div>
                   </div>
@@ -535,9 +633,13 @@ export default function Dashboard() {
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-warm-white/50 rounded-[18px]">
                   <p className="text-[16px] font-bold text-ink mb-1">Unlock full analytics</p>
                   <p className="text-[13px] text-smoke mb-4 text-center max-w-[280px]">Per-pin breakdown, viewer cities, peak hours, save rates, and more.</p>
-                  <button onClick={() => setPaywall({ open: true, reason: 'Advanced analytics is a Pro feature.', upgradeTo: 'pro' })}
-                    className="px-6 py-2.5 rounded-full bg-tangerine text-white text-[14px] font-bold cursor-pointer hover:brightness-105 transition-all shadow-lg shadow-tangerine/20">
+                  <button
+                    onClick={() => setPaywall({ open: true, reason: 'Advanced analytics is a Pro feature.', upgradeTo: 'pro' })}
+                    className="brand-btn-flat h-11 px-6 rounded-full text-[14px] cursor-pointer inline-flex items-center gap-1.5"
+                    style={{ fontWeight: 600, boxShadow: '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)' }}
+                  >
                     Go Pro — $19/mo
+                    <ArrowRight size={15} strokeWidth={2.4} />
                   </button>
                 </div>
               </div>
@@ -589,10 +691,6 @@ export default function Dashboard() {
             }}
             onEditContent={(content, pin) => {
               navigate('/dashboard/content/edit', { state: { content, pin } })
-            }}
-            onUploadContent={(files, type) => {
-              // TODO: upload files to Storage, create content items
-              console.log('Upload', files.length, type, 'files')
             }}
             onArchiveContent={(contentId, pinId) => {
               const pin = pins.find((p) => p.id === pinId)
@@ -739,7 +837,85 @@ export default function Dashboard() {
   // ── Shared sheets (bottom sheets for mobile, modals for desktop platform connect) ──
   const renderSheets = () => (
     <>
+      {/* Transient error banner — surfaces silent Firestore-write
+          failures from optimistic handlers (delete pin, save open
+          house, etc.) instead of leaving the UI desynced. */}
+      <AnimatePresence>
+        {errorBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] px-4 py-3 rounded-full bg-live-red text-white shadow-xl flex items-center gap-2 max-w-[90vw]"
+            style={{ fontFamily: 'var(--font-humanist)', fontSize: '13.5px', fontWeight: 500 }}
+            onClick={() => setErrorBanner(null)}
+          >
+            <AlertTriangle size={15} />
+            <span>{errorBanner}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <SetupChecklist isOpen={showSetup} onClose={() => setShowSetup(false)} user={activeUser} pinCount={pins.length} />
+
+      {/* Bulk pending-changes modal — auto-opens on first dashboard
+          load when there are diffs to review, dismissable per session. */}
+      <PendingChangesModal
+        isOpen={pendingModalOpen}
+        onClose={closePendingModal}
+        changes={pendingChanges}
+        pins={pins}
+        isDesktop={isDesktop}
+      />
+
+      {/* Single-pin re-opener — used when the agent taps a pin's
+          pending-change badge after dismissing the bulk modal. */}
+      <AnimatePresence>
+        {singlePendingPinId && (() => {
+          const change = pendingChanges.find((c) => c.pinId === singlePendingPinId)
+          if (!change) return null
+          const pin = pins.find((p) => p.id === singlePendingPinId)
+          return (
+            <motion.div
+              key="single-pending"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 z-[150] flex items-center justify-center px-4"
+              style={{ background: 'rgba(10,14,23,0.55)' }}
+              onClick={closeSinglePending}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 8 }}
+                transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-[440px]"
+                style={{ fontFamily: 'var(--font-humanist)' }}
+              >
+                <PendingChangeCard
+                  change={change}
+                  pin={pin}
+                  busy={false}
+                  onApprove={async () => {
+                    const { approvePendingChange } = await import('@/lib/firestore')
+                    await approvePendingChange(change).catch(() => {})
+                    closeSinglePending()
+                  }}
+                  onReject={async () => {
+                    const { rejectPendingChange } = await import('@/lib/firestore')
+                    await rejectPendingChange(change).catch(() => {})
+                    closeSinglePending()
+                  }}
+                />
+              </motion.div>
+            </motion.div>
+          )
+        })()}
+      </AnimatePresence>
 
       {/* Pin actions — mobile only (desktop uses inline popover) */}
       <DarkBottomSheet isOpen={!isDesktop && !!showPinActions} onClose={() => setShowPinActions(null)} title={showPinActions?.address}>
@@ -799,7 +975,7 @@ export default function Dashboard() {
                 transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
                 className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[210] w-[calc(100vw-48px)] max-w-[380px] bg-obsidian rounded-[22px] shadow-2xl border border-border-dark p-6 space-y-4"
               >
-                <h2 className="text-[16px] font-extrabold text-white tracking-tight">Archive this pin?</h2>
+                <h2 className="text-[16px] text-white" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>Archive this pin?</h2>
                 <p className="text-[14px] text-mist">This will remove the pin from your map. The data is kept and can be restored later.</p>
                 <div className="flex gap-3">
                   <Button variant="glass" size="lg" fullWidth onClick={() => setShowDeleteConfirm(null)}>Cancel</Button>
@@ -965,13 +1141,24 @@ export default function Dashboard() {
       {/* Hidden photo file input */}
       <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
         const file = e.target.files?.[0]
+        e.target.value = ''
         if (!file || !activeUser?.uid) return
+        // Validate size before doing any work.
+        const storageMod = await import('@/lib/storage')
+        try {
+          storageMod.assertFileWithinLimit(file, storageMod.PHOTO_MAX_BYTES)
+        } catch (err) {
+          if (err instanceof storageMod.FileTooLargeError) {
+            showError(err.message)
+            return
+          }
+          throw err
+        }
         // Show preview immediately, then upload in background.
         const localUrl = URL.createObjectURL(file)
         setEditProfileData((prev) => ({ ...prev, photoURL: localUrl }))
         try {
-          const { uploadFile, avatarPath } = await import('@/lib/storage')
-          const firebaseUrl = await uploadFile({ path: avatarPath(activeUser.uid), file })
+          const firebaseUrl = await storageMod.uploadFile({ path: storageMod.avatarPath(activeUser.uid), file })
           setEditProfileData((prev) => ({ ...prev, photoURL: firebaseUrl }))
           // Persist to Firestore so it survives page reload.
           const { updateUserDoc } = await import('@/lib/firestore')
@@ -979,8 +1166,8 @@ export default function Dashboard() {
           setUserDoc({ ...activeUser, photoURL: firebaseUrl })
         } catch (err) {
           console.warn('Photo upload failed:', err)
+          showError("Couldn't upload photo — try again.")
         }
-        e.target.value = ''
       }} />
 
       {/* Edit Profile — desktop: modal, mobile: bottom sheet */}
@@ -1044,14 +1231,14 @@ export default function Dashboard() {
     ]
 
     return (
-      <div className="h-screen flex bg-ivory overflow-hidden">
+      <div className="h-screen flex bg-ivory overflow-hidden" style={{ fontFamily: 'var(--font-humanist)' }}>
         {/* ── Left Sidebar ── */}
         <aside className="w-[240px] shrink-0 border-r border-border-light flex flex-col" style={{ background: 'linear-gradient(180deg, var(--color-ivory) 0%, var(--color-cream) 100%)' }}>
           {/* Logo */}
           <div className="px-5 pt-6 pb-2">
             <div className="flex items-center gap-2.5">
               <img src="/reelst-logo.png" alt="Reelst" className="w-7 h-7" />
-              <span className="text-[17px] font-bold text-ink tracking-tight">Reelst</span>
+              <span className="text-[17px] text-ink" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>Reelst</span>
             </div>
           </div>
 
@@ -1122,9 +1309,10 @@ export default function Dashboard() {
           <div className="px-4 pb-6">
             <button
               onClick={() => navigate('/dashboard/pin/new')}
-              className={`w-full flex items-center justify-center gap-2 px-3 py-3 rounded-2xl font-semibold text-[13px] cursor-pointer shadow-lg hover:shadow-xl transition-shadow ${isDark ? 'bg-tangerine text-white' : 'bg-midnight text-white'}`}
+              className="brand-btn-flat w-full h-11 px-4 rounded-full text-[13px] cursor-pointer inline-flex items-center justify-center gap-1.5"
+              style={{ fontWeight: 600, boxShadow: '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)' }}
             >
-              <Plus size={16} />
+              <Plus size={16} strokeWidth={2.5} />
               <span>Add Pin</span>
             </button>
             <button
@@ -1141,7 +1329,7 @@ export default function Dashboard() {
         <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
           {/* Top bar */}
           <div className="shrink-0 flex items-center justify-between px-8 h-[64px] border-b border-border-light bg-ivory">
-            <h1 className="text-[20px] font-bold text-ink tracking-tight">
+            <h1 className="text-[20px] text-ink" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>
               {activeTab === 'reelst' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'inbox' ? 'Inbox' : activeTab === 'content' ? 'Content' : 'Settings'}
             </h1>
             <div className="flex items-center gap-3">
@@ -1229,14 +1417,14 @@ export default function Dashboard() {
   // MOBILE: Original layout (unchanged)
   // ═══════════════════════════════════════════
   return (
-    <div className="min-h-screen bg-ivory pb-tab-safe">
+    <div className="min-h-screen bg-ivory pb-tab-safe" style={{ fontFamily: 'var(--font-humanist)' }}>
       {/* Header */}
       <div className="sticky top-0 z-[100] bg-ivory/95 backdrop-blur-xl border-b border-border-light">
         <div className="px-5 flex items-center justify-between" style={{ paddingTop: 'calc(env(safe-area-inset-top, 12px) + 8px)', paddingBottom: '12px' }}>
           <div className="flex items-center gap-3">
             <Avatar src={activeUser.photoURL} name={activeUser.displayName || 'Agent'} size={36} />
             <div>
-              <p className="text-[16px] font-bold text-ink tracking-tight">
+              <p className="text-[16px] text-ink" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>
                 {activeTab === 'reelst' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'inbox' ? 'Inbox' : activeTab === 'content' ? 'Content' : 'Settings'}
               </p>
               <p className="text-[12px] text-smoke">@{activeUser.username || 'you'}</p>
@@ -1315,8 +1503,11 @@ function EditProfileContent({ data, setData, onPhoto, onSave, dark }: {
           placeholder="Tell visitors about yourself..." />
         <span className={`text-[11px] ${subColor} mt-1 block`}>{data.bio.length}/250</span>
       </div>
-      <button onClick={onSave}
-        className="w-full px-4 py-3 rounded-full bg-tangerine text-white text-[14px] font-bold cursor-pointer hover:brightness-110 transition-all">
+      <button
+        onClick={onSave}
+        className="brand-btn-flat w-full h-12 px-4 rounded-full text-[14px] cursor-pointer inline-flex items-center justify-center"
+        style={{ fontWeight: 600, boxShadow: '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)' }}
+      >
         Save Changes
       </button>
     </div>

@@ -73,19 +73,19 @@ export default function SignIn() {
   }
 
   return (
-    <div className="min-h-screen bg-ivory flex">
+    <div className="min-h-screen bg-ivory flex" style={{ fontFamily: 'var(--font-humanist)' }}>
       <SEOHead title="Sign In" path="/sign-in" />
 
       {/* Left: form */}
       <div className="flex-1 flex flex-col justify-center px-6 md:px-16 lg:px-24 py-12 max-w-[600px] mx-auto md:mx-0">
-        <Link to="/" className="flex items-center gap-1.5 mb-10">
+        <Link to="/" className="flex items-center gap-2 mb-10">
           <img src="/reelst-logo.png" alt="Reelst" className="w-8 h-8" />
-          <span className="text-[20px] font-extrabold text-ink tracking-tight">Reelst</span>
+          <span className="text-[20px] text-ink" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>Reelst</span>
         </Link>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
           <div>
-            <h1 className="text-[28px] md:text-[36px] font-extrabold text-ink tracking-tight mb-2">Welcome back</h1>
+            <h1 className="text-[28px] md:text-[36px] text-ink mb-2" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>Welcome back</h1>
             <p className="text-[15px] text-smoke">Sign in to your Reelst account</p>
           </div>
 
@@ -123,7 +123,26 @@ export default function SignIn() {
               />
             )}
             {error && <p className="text-[12px] text-live-red">{error}</p>}
-            <Button variant="primary" size="xl" fullWidth type="submit" loading={loading} iconRight={<ArrowRight size={18} />}>Sign in</Button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="brand-btn w-full h-12 px-6 rounded-full text-[15px] inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                fontFamily: 'var(--font-humanist)',
+                fontWeight: 600,
+                boxShadow:
+                  '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)',
+              }}
+            >
+              {loading ? (
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  Sign in
+                  <ArrowRight size={16} strokeWidth={2.5} />
+                </>
+              )}
+            </button>
           </form>
 
           <p className="text-[13px] text-smoke">Don't have an account? <Link to="/sign-up" className="text-tangerine font-semibold">Get started</Link></p>

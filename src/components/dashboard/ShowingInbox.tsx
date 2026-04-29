@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, Phone, Calendar, MessageSquare, Inbox, Check, Clock, UserPlus, Bookmark, ChevronRight, Eye } from 'lucide-react'
-import { listShowingRequests, updateShowingRequestStatus, getNotifications, markNotificationsRead, type NotificationDoc } from '@/lib/firestore'
+import { subscribeToShowingRequests, updateShowingRequestStatus, subscribeToNotifications, markNotificationsRead, type NotificationDoc } from '@/lib/firestore'
 import { formatDateShort, formatTime12h } from '@/lib/ics'
 import type { ShowingRequest, ShowingRequestStatus } from '@/lib/types'
 
@@ -39,19 +39,22 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
   const [tab, setTab] = useState<TabId>('all')
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null)
 
+  // Real-time subscriptions — both showings (status changes by buyer)
+  // and follows/saves (new docs from Cloud Function triggers) push live.
   useEffect(() => {
-    let cancelled = false
+    if (!agentId) return
     setLoading(true)
-    listShowingRequests(agentId)
-      .then((data) => { if (!cancelled) setRequests(data) })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
+    const unsub = subscribeToShowingRequests(agentId, (data) => {
+      setRequests(data)
+      setLoading(false)
+    })
+    return () => { unsub?.() }
   }, [agentId])
 
   useEffect(() => {
     if (!agentId) return
-    getNotifications(agentId).then(setNotifications).catch(() => {})
+    const unsub = subscribeToNotifications(agentId, setNotifications)
+    return () => { unsub?.() }
   }, [agentId])
 
   const follows = useMemo(() => notifications.filter((n) => n.type === 'follow'), [notifications])
@@ -244,22 +247,25 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
 }
 
 // ── Unread count hook for the tab badge ──
+// Real-time via two onSnapshot subscriptions. Showings come from
+// showing_requests (unread = status==='new'); follows + saves come from
+// notifications (unread = !read). We exclude type='showing_request'
+// from the notifications side so legacy docs (written before we stopped
+// duplicating to /notifications) don't double-count.
 export function useUnreadCount(agentId: string | undefined) {
-  const [count, setCount] = useState(0)
+  const [notifUnread, setNotifUnread] = useState(0)
+  const [showingUnread, setShowingUnread] = useState(0)
   useEffect(() => {
     if (!agentId) return
-    let cancelled = false
-    const load = () => {
-      Promise.all([
-        getNotifications(agentId).then((docs) => docs.filter((d) => !d.read).length).catch(() => 0),
-        listShowingRequests(agentId).then((reqs) => reqs.filter((r) => r.status === 'new').length).catch(() => 0),
-      ]).then(([n, s]) => { if (!cancelled) setCount(n + s) })
-    }
-    load()
-    const interval = setInterval(load, 10000)
-    return () => { cancelled = true; clearInterval(interval) }
+    const unsubN = subscribeToNotifications(agentId, (docs) => {
+      setNotifUnread(docs.filter((d) => !d.read && d.type !== 'showing_request').length)
+    })
+    const unsubS = subscribeToShowingRequests(agentId, (reqs) => {
+      setShowingUnread(reqs.filter((r) => r.status === 'new').length)
+    })
+    return () => { unsubN?.(); unsubS?.() }
   }, [agentId])
-  return count
+  return notifUnread + showingUnread
 }
 
 function RequestCard({
