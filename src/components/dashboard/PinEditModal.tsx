@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion'
 import { useScrollLock } from '@/hooks/useScrollLock'
-import { X, Trash2, GripVertical, Play, Image, Radio, MapPin, ChevronUp, ChevronDown, Camera, DollarSign } from 'lucide-react'
+import { X, Trash as Trash2, DotsSixVertical as GripVertical, Play, Image, Radio, MapPin, CaretUp as ChevronUp, CaretDown as ChevronDown, Camera, CurrencyDollar as DollarSign } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'

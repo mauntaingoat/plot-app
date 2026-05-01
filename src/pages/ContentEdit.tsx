@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { X, Loader2 } from 'lucide-react'
+import { X, CircleNotch as Loader2 } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { useThemeStore } from '@/stores/themeStore'
 import { EditorStep } from '@/features/content-editor/EditorStep'

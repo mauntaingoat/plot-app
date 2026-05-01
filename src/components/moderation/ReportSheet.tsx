@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Flag, Check, AlertTriangle, Ban, Copyright, MessageSquare, ShieldAlert } from 'lucide-react'
+import { X, Flag, Check, Warning as AlertTriangle, Prohibit as Ban, Copyright, ChatCenteredText as MessageSquare, ShieldWarning as ShieldAlert } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { createReport } from '@/lib/firestore'
 import { useAuthStore } from '@/stores/authStore'

@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mail, Phone, Calendar, MessageSquare, Inbox, Check, Clock, UserPlus, Bookmark, ChevronRight, Eye } from 'lucide-react'
+import { Envelope as Mail, Phone, Calendar, ChatCenteredText as MessageSquare, Tray as Inbox, Check, Clock, UserPlus, BookmarkSimple as Bookmark, CaretRight as ChevronRight, Eye, Heart, HandWaving as Hand } from '@phosphor-icons/react'
 import { subscribeToShowingRequests, updateShowingRequestStatus, subscribeToNotifications, markNotificationsRead, type NotificationDoc } from '@/lib/firestore'
 import { formatDateShort, formatTime12h } from '@/lib/ics'
 import type { ShowingRequest, ShowingRequestStatus } from '@/lib/types'
@@ -16,7 +16,7 @@ const STATUS_COLORS: Record<ShowingRequestStatus, { bg: string; text: string; la
   closed:    { bg: 'bg-smoke',         text: 'text-white',       label: 'Closed' },
 }
 
-type TabId = 'all' | 'showings' | 'follows' | 'saves'
+type TabId = 'all' | 'showings' | 'subscribers' | 'waves'
 
 function dateKey(ts: any): string {
   if (!ts) return 'unknown'
@@ -57,32 +57,38 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
     return () => { unsub?.() }
   }, [agentId])
 
-  const follows = useMemo(() => notifications.filter((n) => n.type === 'follow'), [notifications])
-  const saves = useMemo(() => notifications.filter((n) => n.type === 'save'), [notifications])
+  // ── Notification type partitioning ──
+  // Legacy 'follow' and 'save' types exist in production data from
+  // the old buyer-account flow but are no longer surfaced — those
+  // affordances are gone from the public profile. The new model
+  // surfaces 'subscriber' (Save Maya email captures) and 'wave'
+  // (buyer questions on listings).
+  const subscribers = useMemo(() => notifications.filter((n) => n.type === 'subscriber'), [notifications])
+  const waves = useMemo(() => notifications.filter((n) => n.type === 'wave'), [notifications])
 
-  const followsByDay = useMemo(() => {
+  const subscribersByDay = useMemo(() => {
     const map = new Map<string, NotificationDoc[]>()
-    for (const n of follows) {
+    for (const n of subscribers) {
       const key = dateKey(n.createdAt)
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(n)
     }
     return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]))
-  }, [follows])
+  }, [subscribers])
 
-  const savesByDay = useMemo(() => {
+  const wavesByDay = useMemo(() => {
     const map = new Map<string, NotificationDoc[]>()
-    for (const n of saves) {
+    for (const n of waves) {
       const key = dateKey(n.createdAt)
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(n)
     }
     return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]))
-  }, [saves])
+  }, [waves])
 
   const unreadShowings = requests.filter((r) => r.status === 'new').length
-  const unreadFollows = follows.filter((n) => !n.read).length
-  const unreadSaves = saves.filter((n) => !n.read).length
+  const unreadSubscribers = subscribers.filter((n) => !n.read).length
+  const unreadWaves = waves.filter((n) => !n.read).length
 
   const updateStatus = async (id: string, status: ShowingRequestStatus) => {
     setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)))
@@ -99,15 +105,15 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
   }
 
   const tabs: { id: TabId; label: string; count: number }[] = [
-    { id: 'all', label: 'All', count: unreadShowings + unreadFollows + unreadSaves },
+    { id: 'all', label: 'All', count: unreadShowings + unreadSubscribers + unreadWaves },
     { id: 'showings', label: 'Showings', count: unreadShowings },
-    { id: 'follows', label: 'Followers', count: unreadFollows },
-    { id: 'saves', label: 'Saves', count: unreadSaves },
+    { id: 'subscribers', label: 'Subscribers', count: unreadSubscribers },
+    { id: 'waves', label: 'Waves', count: unreadWaves },
   ]
 
   const showShowings = tab === 'all' || tab === 'showings'
-  const showFollows = tab === 'all' || tab === 'follows'
-  const showSaves = tab === 'all' || tab === 'saves'
+  const showSubscribers = tab === 'all' || tab === 'subscribers'
+  const showWaves = tab === 'all' || tab === 'waves'
 
   const isEmpty = requests.length === 0 && notifications.length === 0
 
@@ -150,14 +156,14 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
           </div>
           <h3 className="text-[16px] font-bold text-ink mb-1">No notifications yet</h3>
           <p className="text-[13px] text-smoke">
-            Showing requests, new followers, and saves will appear here.
+            Showing requests, new subscribers, and waves will appear here.
           </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {showFollows && followsByDay.map(([day, items]) => {
+          {showSubscribers && subscribersByDay.map(([day, items]) => {
             const unread = items.some((n) => !n.read)
-            const groupKey = `follows-${day}`
+            const groupKey = `subs-${day}`
             const expanded = expandedGroup === groupKey
             return (
               <motion.div key={groupKey} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
@@ -165,11 +171,11 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
                 <button onClick={() => handleExpandGroup(groupKey, items)}
                   className="w-full flex items-center gap-3 p-4 text-left cursor-pointer hover:bg-cream/50 transition-colors">
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${unread ? 'bg-tangerine/15' : 'bg-pearl'}`}>
-                    <UserPlus size={16} className={unread ? 'text-tangerine' : 'text-smoke'} />
+                    <Heart size={15} className={unread ? 'text-tangerine' : 'text-smoke'} fill={unread ? 'currentColor' : 'none'} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-[14px] font-semibold ${unread ? 'text-ink' : 'text-graphite'}`}>
-                      {items.length} new follower{items.length !== 1 ? 's' : ''}
+                      {items.length} new subscriber{items.length !== 1 ? 's' : ''}
                     </p>
                     <p className="text-[11px] text-smoke">{formatGroupDate(day)}</p>
                   </div>
@@ -182,8 +188,8 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
                       <div className="px-4 pb-3 space-y-1.5">
                         {items.map((n) => (
                           <div key={n.id} className="flex items-center gap-2.5 py-1.5 text-[12px] text-graphite">
-                            <UserPlus size={12} className="text-ash shrink-0" />
-                            <span>{n.actorName || 'Someone'}</span>
+                            <Mail size={11} className="text-ash shrink-0" />
+                            <span className="truncate">{n.body || n.actorName || 'Subscriber'}</span>
                           </div>
                         ))}
                       </div>
@@ -194,35 +200,38 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
             )
           })}
 
-          {showSaves && savesByDay.map(([day, items]) => {
+          {showWaves && wavesByDay.map(([day, items]) => {
             const unread = items.some((n) => !n.read)
-            const groupKey = `saves-${day}`
+            const groupKey = `waves-${day}`
             const expanded = expandedGroup === groupKey
             return (
               <motion.div key={groupKey} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                className={`rounded-[16px] border overflow-hidden ${unread ? 'bg-[#A855F7]/5 border-[#A855F7]/15' : 'bg-warm-white border-border-light'}`}>
+                className={`rounded-[16px] border overflow-hidden ${unread ? 'bg-tangerine/5 border-tangerine/15' : 'bg-warm-white border-border-light'}`}>
                 <button onClick={() => handleExpandGroup(groupKey, items)}
                   className="w-full flex items-center gap-3 p-4 text-left cursor-pointer hover:bg-cream/50 transition-colors">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${unread ? 'bg-[#A855F7]/15' : 'bg-pearl'}`}>
-                    <Bookmark size={16} className={unread ? 'text-[#A855F7]' : 'text-smoke'} />
+                  <div
+                    className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${unread ? '' : 'bg-pearl'}`}
+                    style={unread ? { background: 'linear-gradient(135deg, #FFD089 0%, #FF8552 100%)' } : undefined}
+                  >
+                    <Hand weight="bold" size={16} className={unread ? 'text-white' : 'text-smoke'} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-[14px] font-semibold ${unread ? 'text-ink' : 'text-graphite'}`}>
-                      {items.length} listing save{items.length !== 1 ? 's' : ''}
+                      {items.length} new wave{items.length !== 1 ? 's' : ''}
                     </p>
                     <p className="text-[11px] text-smoke">{formatGroupDate(day)}</p>
                   </div>
-                  {unread && <div className="w-2 h-2 rounded-full bg-[#A855F7] shrink-0" />}
+                  {unread && <div className="w-2 h-2 rounded-full bg-tangerine shrink-0" />}
                   <ChevronRight size={14} className={`text-ash transition-transform ${expanded ? 'rotate-90' : ''}`} />
                 </button>
                 <AnimatePresence>
                   {expanded && (
                     <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
-                      <div className="px-4 pb-3 space-y-1.5">
+                      <div className="px-4 pb-3 space-y-2">
                         {items.map((n) => (
-                          <div key={n.id} className="flex items-center gap-2.5 py-1.5 text-[12px] text-graphite">
-                            <Bookmark size={12} className="text-ash shrink-0" />
-                            <span>{n.pinAddress || 'A listing'}</span>
+                          <div key={n.id} className="text-[12.5px] text-graphite">
+                            <p className="text-ink" style={{ fontWeight: 600 }}>{n.actorName || 'Someone'}</p>
+                            <p className="text-smoke text-[11.5px] truncate">about {n.pinAddress?.split(',')[0] || 'a listing'}</p>
                           </div>
                         ))}
                       </div>
@@ -248,17 +257,19 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
 
 // ── Unread count hook for the tab badge ──
 // Real-time via two onSnapshot subscriptions. Showings come from
-// showing_requests (unread = status==='new'); follows + saves come from
-// notifications (unread = !read). We exclude type='showing_request'
-// from the notifications side so legacy docs (written before we stopped
-// duplicating to /notifications) don't double-count.
+// showing_requests (unread = status==='new'); subscribers + waves come
+// from notifications (unread = !read). We exclude legacy types
+// (showing_request, follow, save) which are no longer surfaced in the
+// new product model — their unread counts shouldn't pollute the badge.
 export function useUnreadCount(agentId: string | undefined) {
   const [notifUnread, setNotifUnread] = useState(0)
   const [showingUnread, setShowingUnread] = useState(0)
   useEffect(() => {
     if (!agentId) return
     const unsubN = subscribeToNotifications(agentId, (docs) => {
-      setNotifUnread(docs.filter((d) => !d.read && d.type !== 'showing_request').length)
+      setNotifUnread(
+        docs.filter((d) => !d.read && (d.type === 'subscriber' || d.type === 'wave')).length,
+      )
     })
     const unsubS = subscribeToShowingRequests(agentId, (reqs) => {
       setShowingUnread(reqs.filter((r) => r.status === 'new').length)

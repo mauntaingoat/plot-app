@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { RotateCcw, Sparkles, Mic } from 'lucide-react'
+import { ArrowCounterClockwise as RotateCcw, Sparkle as Sparkles, Microphone as Mic } from '@phosphor-icons/react'
 import { useEditorStore } from '../state/editorStore'
 import { ASPECT_OPTIONS, FONT_OPTIONS, TEXT_SIZES } from '../state/types'
 import type { Adjustments, ClipSpeed, FontKey, TextOverlay } from '../state/types'

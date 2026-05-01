@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Bookmark } from 'lucide-react'
+import { ArrowLeft, BookmarkSimple as Bookmark } from '@phosphor-icons/react'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { MapCanvas } from '@/components/map/MapCanvas'
 import { ListingModal } from '@/components/viewers/ListingModal'

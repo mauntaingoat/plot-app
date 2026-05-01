@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertTriangle, X } from 'lucide-react'
+import { Warning as AlertTriangle, X } from '@phosphor-icons/react'
 import { PreviewCanvas } from './components/PreviewCanvas'
 import { TransportBar } from './components/TransportBar'
 import { Timeline } from './components/Timeline'

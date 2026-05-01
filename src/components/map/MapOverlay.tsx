@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Share2, UserPlus, UserCheck, ChevronDown, Map, Layers, Users, Globe, Locate, Bookmark } from 'lucide-react'
+import { ShareNetwork as Share2, UserPlus, UserCircleCheck as UserCheck, CaretDown as ChevronDown, MapTrifold as Map, Stack as Layers, Users, Globe, Crosshair as Locate, BookmarkSimple as Bookmark } from '@phosphor-icons/react'
 import { Avatar } from '@/components/ui/Avatar'
 import { formatCompact } from '@/lib/format'
 import { FilterBar } from '@/components/ui/FilterPill'

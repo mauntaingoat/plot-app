@@ -8,8 +8,7 @@ import { useOnboardingStore } from '@/stores/onboardingStore'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { GoogleLogo, AppleLogo } from '@/components/icons/PlatformLogos'
-import { Mail, Lock, Shield } from 'lucide-react'
-
+import { Envelope as Mail, Lock, Shield } from '@phosphor-icons/react'
 export function StepAuth() {
   const { email, setEmail, password, setPassword, username, nextStep } = useOnboardingStore()
   const { claim } = useUsername()

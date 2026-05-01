@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import { Timestamp } from 'firebase/firestore'
-import { ArrowRight, Mail, Lock } from 'lucide-react'
+import { ArrowRight, Envelope as Mail, Lock } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { SEOHead } from '@/components/marketing/SEOHead'
@@ -139,7 +139,7 @@ export default function SignIn() {
               ) : (
                 <>
                   Sign in
-                  <ArrowRight size={16} strokeWidth={2.5} />
+                  <ArrowRight weight="bold" size={16} />
                 </>
               )}
             </button>

@@ -142,13 +142,13 @@ export function ScrollFadeText({
    natural width, physically pushing the next word to the right. */
 
 import {
-  Film,
-  Map as MapIcon,
-  TrendingUp,
-  Bot,
+  FilmStrip as Film,
+  MapTrifold as MapIcon,
+  TrendUp as TrendingUp,
+  Robot as Bot,
   Link as LinkIcon,
-} from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+} from '@phosphor-icons/react'
+import type { Icon as LucideIcon } from '@phosphor-icons/react'
 
 const TANGERINE = '#FF6B3D'
 
@@ -198,7 +198,7 @@ export function Glyph({ name }: { name: GlyphName }) {
             width="0.78em"
             height="0.78em"
             color={TANGERINE}
-            strokeWidth={2.3}
+            weight="bold"
             style={{ display: 'block' }}
           />
         )

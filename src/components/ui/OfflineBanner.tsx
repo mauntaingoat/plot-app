@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { WifiOff } from 'lucide-react'
-
-/**
+import { WifiSlash as WifiOff } from '@phosphor-icons/react'/**
  * Subtle banner that appears when the user loses internet connection.
  * Slides down from the top, auto-hides when back online.
  */

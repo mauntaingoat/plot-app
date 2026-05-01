@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Bookmark, Palette, Check, Sparkles, TrendingUp } from 'lucide-react'
+import { BookmarkSimple as Bookmark, Palette, Check, Sparkle as Sparkles, TrendUp as TrendingUp } from '@phosphor-icons/react'
 import { getSavedMapInsights } from '@/lib/firestore'
 import type { Pin, UserDoc } from '@/lib/types'
 

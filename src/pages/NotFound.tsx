@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { MapPin } from 'lucide-react'
+import { MapPin } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 
 export default function NotFound() {

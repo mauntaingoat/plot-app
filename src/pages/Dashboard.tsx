@@ -1,14 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  MapPin, BarChart3, Users, Settings, Plus,
-  Eye, MousePointerClick, Bookmark,
-  ExternalLink, LogOut, ChevronRight, CreditCard,
-  User, Trash2, Edit3, EyeOff, Link2, Shield,
-  Film, Share2, Copy, Check, X, QrCode, CalendarDays, Inbox,
-  Bell, Camera, Sun, Moon, RefreshCw, AlertTriangle, ArrowRight,
-} from 'lucide-react'
+import { MapPin, ChartBar as BarChart3, Users, Gear as Settings, Plus, Eye, CursorClick as MousePointerClick, BookmarkSimple as Bookmark, ArrowSquareOut as ExternalLink, SignOut as LogOut, CaretRight as ChevronRight, CreditCard, User, Trash as Trash2, PencilSimple as Edit3, EyeSlash as EyeOff, LinkSimple as Link2, Shield, FilmStrip as Film, ShareNetwork as Share2, Copy, Check, X, QrCode, CalendarDots as CalendarDays, Tray as Inbox, Bell, Camera, Sun, Moon, ArrowsClockwise as RefreshCw, Warning as AlertTriangle, ArrowRight, Buildings as Building, Palette } from '@phosphor-icons/react'
 import { TabBar } from '@/components/ui/TabBar'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
@@ -27,9 +20,10 @@ import { PinEditModal } from '@/components/dashboard/PinEditModal'
 import { ShowingInbox } from '@/components/dashboard/ShowingInbox'
 import { NotificationSettings } from '@/components/dashboard/NotificationSettings'
 import { ContentLibrary } from '@/components/dashboard/ContentLibrary'
+import { StyleTab } from '@/components/dashboard/StyleTab'
 import { useUnreadCount } from '@/components/dashboard/ShowingInbox'
 import { PendingChangesModal, PendingChangeCard } from '@/components/dashboard/PendingChangesModal'
-import { subscribeToAgentPendingChanges } from '@/lib/firestore'
+import { subscribeToAgentPendingChanges, subscribeToAgentSubscriberCount } from '@/lib/firestore'
 import type { PendingPinChange } from '@/lib/types'
 import { preloadImages } from '@/lib/imageCache'
 import { canActivatePin, hasFeature, getUserTier, type Tier } from '@/lib/tiers'
@@ -46,7 +40,7 @@ import { AdminPanel } from '@/components/dashboard/AdminPanel'
 import { isAdmin } from '@/lib/admin'
 import { PIN_CONFIG, type Pin, type Platform, type ForSalePin, type OpenHouse, type ContentItem } from '@/lib/types'
 
-type DashTab = 'reelst' | 'insights' | 'inbox' | 'content' | 'settings' | 'admin'
+type DashTab = 'reelst' | 'insights' | 'inbox' | 'content' | 'style' | 'settings' | 'admin'
 
 /* Desktop layout (sidebar + content) kicks in early — sidebar is
    ~240px, so anything wider than ~760px has enough room for both
@@ -100,6 +94,10 @@ export default function Dashboard() {
   const [pendingChanges, setPendingChanges] = useState<PendingPinChange[]>([])
   const [pendingModalOpen, setPendingModalOpen] = useState(false)
   const [singlePendingPinId, setSinglePendingPinId] = useState<string | null>(null)
+  const [subscriberCount, setSubscriberCount] = useState<number>(0)
+  const [showEditBrokerage, setShowEditBrokerage] = useState(false)
+  const [brokerageDraft, setBrokerageDraft] = useState('')
+  const [savingBrokerage, setSavingBrokerage] = useState(false)
   const showError = useCallback((msg: string) => {
     setErrorBanner(msg)
     if (errorTimerRef.current) window.clearTimeout(errorTimerRef.current)
@@ -382,6 +380,13 @@ export default function Dashboard() {
     return () => { unsub?.() }
   }, [activeUser?.uid])
 
+  // Live subscriber count — replaces the legacy followerCount stat.
+  useEffect(() => {
+    if (!activeUser?.uid) return
+    const unsub = subscribeToAgentSubscriberCount(activeUser.uid, setSubscriberCount)
+    return () => { unsub?.() }
+  }, [activeUser?.uid])
+
   useEffect(() => {
     if (!activeUser?.uid || pendingChanges.length === 0) return
     const dismissKey = `reelst_pending_dismissed_${activeUser.uid}`
@@ -476,8 +481,8 @@ export default function Dashboard() {
                   </div>
                   <div className="w-px h-8 bg-border-light" />
                   <div className="text-center">
-                    <p className="text-[22px] font-extrabold text-ink font-mono">{activeUser.followerCount}</p>
-                    <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Followers</p>
+                    <p className="text-[22px] font-extrabold text-ink font-mono">{subscriberCount}</p>
+                    <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Subscribers</p>
                   </div>
                 </div>
               </div>
@@ -495,8 +500,8 @@ export default function Dashboard() {
                   <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Views</p>
                 </div>
                 <div className="bg-cream rounded-[14px] p-3 text-center">
-                  <p className="text-[20px] font-extrabold text-ink font-mono">{activeUser.followerCount}</p>
-                  <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Followers</p>
+                  <p className="text-[20px] font-extrabold text-ink font-mono">{subscriberCount}</p>
+                  <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Subscribers</p>
                 </div>
               </div>
             )}
@@ -589,8 +594,8 @@ export default function Dashboard() {
             <div className="grid grid-cols-2 gap-3">
               <StatCard label="Views" value={stats.views} icon={<Eye size={18} />} format="compact" tooltip="Times your content was seen in the feed" />
               <StatCard label="Taps" value={stats.taps} icon={<MousePointerClick size={18} />} color="#3B82F6" format="compact" tooltip="Times someone tapped your pin on the map" />
-              <StatCard label="Saves" value={stats.saves} icon={<Bookmark size={18} />} color="#A855F7" format="compact" tooltip="Times someone bookmarked your content" />
-              <StatCard label="Followers" value={activeUser.followerCount} icon={<Users size={18} />} color="#34C759" tooltip="People following your Reelst" />
+              <StatCard label="Subscribes" value={subscriberCount} icon={<Bookmark size={18} />} color="#A855F7" format="compact" tooltip="Buyers who saved you for the weekly digest" />
+              <StatCard label="Profile Visits" value={stats.views} icon={<Users size={18} />} color="#34C759" tooltip="Visits to your reel.st link" />
             </div>
             <InsightsChart data={chartData} />
 
@@ -598,7 +603,7 @@ export default function Dashboard() {
               <>
                 <PinBreakdown pins={pins} metric="views" />
                 <ContentConversion pins={pins} />
-                <FollowerGrowth currentFollowers={activeUser.followerCount} agentId={activeUser.uid} />
+                <FollowerGrowth currentFollowers={subscriberCount} agentId={activeUser.uid} />
                 <TimeOfDay pins={pins} agentId={activeUser.uid} />
                 <GeoHeatmap pins={pins} agentId={activeUser.uid} />
                 {hasFeature(activeUser, 'savedMapInsights') ? (
@@ -609,15 +614,15 @@ export default function Dashboard() {
                       <SavedMapInsights pins={pins} agentId={activeUser.uid} />
                     </div>
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-warm-white/60 rounded-[18px]">
-                      <p className="text-[14px] font-bold text-ink mb-1">Saved Map Insights</p>
-                      <p className="text-[12px] text-smoke mb-3">See cross-listing save patterns</p>
+                      <p className="text-[14px] font-bold text-ink mb-1">Subscriber Insights</p>
+                      <p className="text-[12px] text-smoke mb-3">See where your subscribers also browse — by area and listing type, no PII.</p>
                       <button
-                        onClick={() => setPaywall({ open: true, reason: 'Saved map insights is a Studio feature.', upgradeTo: 'studio' })}
+                        onClick={() => setPaywall({ open: true, reason: 'Subscriber insights is a Studio feature.', upgradeTo: 'studio' })}
                         className="brand-btn-flat h-10 px-5 rounded-full text-[13px] cursor-pointer inline-flex items-center gap-1.5"
                         style={{ fontWeight: 600, boxShadow: '0 6px 16px -6px rgba(217,74,31,0.42), inset 0 1px 0 rgba(255,255,255,0.24)' }}
                       >
                         Upgrade to Studio
-                        <ArrowRight size={14} strokeWidth={2.4} />
+                        <ArrowRight weight="bold" size={14} />
                       </button>
                     </div>
                   </div>
@@ -628,7 +633,7 @@ export default function Dashboard() {
                 <div className="blur-[6px] pointer-events-none select-none opacity-60 space-y-4">
                   <PinBreakdown pins={pins} metric="views" />
                   <ContentConversion pins={pins} />
-                  <InsightsChart data={[{ label: 'Mon', value: 12 }, { label: 'Tue', value: 18 }, { label: 'Wed', value: 8 }, { label: 'Thu', value: 25 }, { label: 'Fri', value: 15 }, { label: 'Sat', value: 20 }, { label: 'Sun', value: 10 }]} title="Follower Growth" />
+                  <InsightsChart data={[{ label: 'Mon', value: 12 }, { label: 'Tue', value: 18 }, { label: 'Wed', value: 8 }, { label: 'Thu', value: 25 }, { label: 'Fri', value: 15 }, { label: 'Sat', value: 20 }, { label: 'Sun', value: 10 }]} title="Subscriber Growth" />
                 </div>
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-warm-white/50 rounded-[18px]">
                   <p className="text-[16px] font-bold text-ink mb-1">Unlock full analytics</p>
@@ -639,7 +644,7 @@ export default function Dashboard() {
                     style={{ fontWeight: 600, boxShadow: '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)' }}
                   >
                     Go Pro — $19/mo
-                    <ArrowRight size={15} strokeWidth={2.4} />
+                    <ArrowRight weight="bold" size={15} />
                   </button>
                 </div>
               </div>
@@ -733,12 +738,35 @@ export default function Dashboard() {
           />
         )}
 
+        {/* ═══ STYLE ═══ — agent profile aesthetic editor.
+             Live-edits the user doc; the preview iframe re-fetches
+             so changes show up the moment Firestore acks. */}
+        {activeTab === 'style' && (
+          <StyleTab
+            user={activeUser}
+            isDesktop={isDesktop}
+            onUpdateUser={async (patch) => {
+              if (!activeUser?.uid) return
+              setUserDoc({ ...activeUser, ...patch })
+              const { updateUserDoc } = await import('@/lib/firestore')
+              updateUserDoc(activeUser.uid, patch).catch(() => {})
+            }}
+            onOpenEditProfile={() => {
+              setEditProfileData({ displayName: activeUser.displayName || '', bio: activeUser.bio || '', photoURL: activeUser.photoURL || '' })
+              setShowEditProfile(true)
+            }}
+            onOpenAddPlatform={() => setShowAddPlatform(true)}
+            onRemovePlatform={handleRemovePlatform}
+          />
+        )}
+
         {/* ═══ SETTINGS ═══ */}
         {activeTab === 'settings' && (
           <div className={isDesktop ? 'space-y-2' : 'px-5 py-5 space-y-2'}>
             <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1">Account</p>
             {[
               { icon: User, label: 'Edit Profile', desc: 'Name, bio, photo', onClick: () => { setEditProfileData({ displayName: activeUser.displayName || '', bio: activeUser.bio || '', photoURL: activeUser.photoURL || '' }); setShowEditProfile(true) } },
+              { icon: Building, label: 'Brokerage / Company', desc: activeUser.brokerage || 'Add to amplify your About page', onClick: () => setShowEditBrokerage(true) },
               { icon: Link2, label: 'Social Links', desc: 'Connected platforms', onClick: () => setShowAddPlatform(true) },
               { icon: Shield, label: 'License Verification', desc: activeUser.verificationStatus === 'verified' ? `Verified · ${activeUser.licenseState} #${activeUser.licenseNumber}` : activeUser.verificationStatus === 'pending' ? 'Pending review' : 'Not verified', onClick: () => {} },
             ].map((item, i) => (
@@ -858,6 +886,97 @@ export default function Dashboard() {
       </AnimatePresence>
 
       <SetupChecklist isOpen={showSetup} onClose={() => setShowSetup(false)} user={activeUser} pinCount={pins.length} />
+
+      {/* Brokerage editor — desktop: centered modal (matches Edit
+          Profile pattern), mobile: dark bottom sheet. Same save
+          handler in both layouts; only chrome differs. */}
+      {(() => {
+        const saveBrokerage = async () => {
+          if (!activeUser?.uid) return
+          setSavingBrokerage(true)
+          try {
+            const trimmed = brokerageDraft.trim()
+            const { updateUserDoc } = await import('@/lib/firestore')
+            await updateUserDoc(activeUser.uid, { brokerage: trimmed || null })
+            setUserDoc({ ...activeUser, brokerage: trimmed || null })
+            setShowEditBrokerage(false)
+            setBrokerageDraft('')
+          } catch (err) {
+            console.warn('[brokerage] save failed:', err)
+            showError("Couldn't save brokerage — try again.")
+          } finally {
+            setSavingBrokerage(false)
+          }
+        }
+        const cancel = () => { setShowEditBrokerage(false); setBrokerageDraft('') }
+        const currentValue = showEditBrokerage ? brokerageDraft || activeUser.brokerage || '' : ''
+        return isDesktop ? (
+          <AnimatePresence>
+            {showEditBrokerage && (
+              <>
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-[200] bg-black/50" onClick={cancel} />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.96, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.96, y: 20 }}
+                  transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[210] w-[calc(100vw-48px)] max-w-[440px] bg-warm-white rounded-[22px] shadow-2xl border border-border-light overflow-hidden"
+                >
+                  <div className="flex items-center justify-between px-6 pt-5 pb-3">
+                    <h2 className="text-[18px] font-bold text-ink">Brokerage / Company</h2>
+                    <button onClick={cancel} className="w-8 h-8 rounded-full bg-cream flex items-center justify-center cursor-pointer hover:bg-pearl transition-colors">
+                      <X size={16} className="text-smoke" />
+                    </button>
+                  </div>
+                  <div className="px-6 pb-6 space-y-4" style={{ fontFamily: 'var(--font-humanist)' }}>
+                    <p className="text-[13.5px] text-smoke" style={{ lineHeight: 1.5 }}>
+                      Shows up on your About tab and helps buyers know who you work with. Leave blank if you're independent.
+                    </p>
+                    <input
+                      type="text"
+                      value={currentValue}
+                      onChange={(e) => setBrokerageDraft(e.target.value)}
+                      onFocus={() => { if (!brokerageDraft) setBrokerageDraft(activeUser.brokerage || '') }}
+                      placeholder="e.g. Compass · Coral Gables"
+                      className="w-full h-12 px-4 rounded-[14px] bg-cream border border-border-light text-[15px] text-ink placeholder:text-ash outline-none focus:border-tangerine/40"
+                    />
+                    <div className="flex gap-2.5 pt-1">
+                      <Button variant="secondary" size="lg" fullWidth onClick={cancel}>Cancel</Button>
+                      <Button variant="primary" size="lg" fullWidth loading={savingBrokerage} onClick={saveBrokerage}>Save</Button>
+                    </div>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        ) : (
+          <DarkBottomSheet
+            isOpen={showEditBrokerage}
+            onClose={cancel}
+            title="Brokerage / Company"
+          >
+            <div className="px-5 pb-8 space-y-4" style={{ fontFamily: 'var(--font-humanist)' }}>
+              <p className="text-[13.5px] text-mist" style={{ lineHeight: 1.5 }}>
+                Shows up on your About tab and helps buyers know who you work with. Leave blank if you're independent.
+              </p>
+              <input
+                type="text"
+                value={currentValue}
+                onChange={(e) => setBrokerageDraft(e.target.value)}
+                onFocus={() => { if (!brokerageDraft) setBrokerageDraft(activeUser.brokerage || '') }}
+                placeholder="e.g. Compass · Coral Gables"
+                className="w-full h-12 px-4 rounded-[14px] bg-white/8 border border-white/10 text-[15px] text-white placeholder:text-ghost outline-none focus:border-tangerine/40"
+              />
+              <div className="flex gap-2.5">
+                <Button variant="secondary" size="lg" fullWidth onClick={cancel}>Cancel</Button>
+                <Button variant="primary" size="lg" fullWidth loading={savingBrokerage} onClick={saveBrokerage}>Save</Button>
+              </div>
+            </div>
+          </DarkBottomSheet>
+        )
+      })()}
 
       {/* Bulk pending-changes modal — auto-opens on first dashboard
           load when there are diffs to review, dismissable per session. */}
@@ -1227,6 +1346,7 @@ export default function Dashboard() {
       { id: 'insights', label: 'Insights', icon: BarChart3 },
       { id: 'inbox', label: 'Inbox', icon: Inbox },
       { id: 'content', label: 'Content', icon: Film },
+      { id: 'style', label: 'Style', icon: Palette },
       { id: 'settings', label: 'Settings', icon: Settings },
     ]
 
@@ -1312,7 +1432,7 @@ export default function Dashboard() {
               className="brand-btn-flat w-full h-11 px-4 rounded-full text-[13px] cursor-pointer inline-flex items-center justify-center gap-1.5"
               style={{ fontWeight: 600, boxShadow: '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)' }}
             >
-              <Plus size={16} strokeWidth={2.5} />
+              <Plus weight="bold" size={16} />
               <span>Add Pin</span>
             </button>
             <button
@@ -1330,7 +1450,7 @@ export default function Dashboard() {
           {/* Top bar */}
           <div className="shrink-0 flex items-center justify-between px-8 h-[64px] border-b border-border-light bg-ivory">
             <h1 className="text-[20px] text-ink" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>
-              {activeTab === 'reelst' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'inbox' ? 'Inbox' : activeTab === 'content' ? 'Content' : 'Settings'}
+              {activeTab === 'reelst' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'inbox' ? 'Inbox' : activeTab === 'content' ? 'Content' : activeTab === 'style' ? 'Style' : 'Settings'}
             </h1>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 bg-warm-white border border-border-light rounded-full pl-4 pr-1.5 py-1.5">
@@ -1379,16 +1499,19 @@ export default function Dashboard() {
                       title="Profile preview"
                     />
                   </div>
-                  {/* Reload button — top-right of phone frame */}
+                  {/* Reload button — bottom-right of phone frame so
+                      it doesn't sit over the preview's header content
+                      (avatar/name) and stays out of the way of where
+                      the user's eye naturally lands when reviewing. */}
                   <button
                     onClick={() => {
                       const iframe = previewIframeRef.current
                       if (iframe) iframe.src = iframe.src
                     }}
-                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-warm-white/90 shadow border border-border-light flex items-center justify-center text-smoke hover:text-ink cursor-pointer transition-colors"
+                    className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-warm-white/90 shadow border border-border-light flex items-center justify-center text-smoke hover:text-ink cursor-pointer transition-colors"
                     title="Reload preview"
                   >
-                    <RefreshCw size={13} strokeWidth={2.3} />
+                    <RefreshCw weight="bold" size={13} />
                   </button>
                 </div>
 
@@ -1425,7 +1548,7 @@ export default function Dashboard() {
             <Avatar src={activeUser.photoURL} name={activeUser.displayName || 'Agent'} size={36} />
             <div>
               <p className="text-[16px] text-ink" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>
-                {activeTab === 'reelst' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'inbox' ? 'Inbox' : activeTab === 'content' ? 'Content' : 'Settings'}
+                {activeTab === 'reelst' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'inbox' ? 'Inbox' : activeTab === 'content' ? 'Content' : activeTab === 'style' ? 'Style' : 'Settings'}
               </p>
               <p className="text-[12px] text-smoke">@{activeUser.username || 'you'}</p>
             </div>
@@ -1439,6 +1562,17 @@ export default function Dashboard() {
             <Button variant="secondary" size="sm" icon={<ExternalLink size={14} />} onClick={() => activeUser?.username && navigate(`/${activeUser.username}?preview=true`)}>
               Preview
             </Button>
+            {/* Settings — moved out of the bottom tab bar so the
+                tab slot can host the new Style editor. Right of
+                Preview, icon-only at this scale. */}
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setActiveTab('settings')}
+              aria-label="Settings"
+              className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer border border-border-light bg-warm-white text-ink"
+            >
+              <Settings weight="bold" size={16} />
+            </motion.button>
           </div>
         </div>
       </div>
@@ -1451,7 +1585,7 @@ export default function Dashboard() {
           { id: 'insights', label: 'Insights', icon: <BarChart3 size={20} /> },
           { id: 'inbox', label: 'Inbox', icon: <Inbox size={20} />, badge: inboxUnread },
           { id: 'content', label: 'Content', icon: <Film size={20} /> },
-          { id: 'settings', label: 'More', icon: <Settings size={20} /> },
+          { id: 'style', label: 'Style', icon: <Palette size={20} /> },
         ]}
         active={activeTab}
         onChange={(id) => { setActiveTab(id as DashTab); window.scrollTo(0, 0) }}

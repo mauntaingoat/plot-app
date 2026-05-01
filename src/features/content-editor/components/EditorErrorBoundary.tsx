@@ -1,6 +1,5 @@
-import { Component, type ReactNode } from 'react'
-import { AlertTriangle, RefreshCw } from 'lucide-react'
-
+import { Component, ReactNode } from 'react'
+import { Warning as AlertTriangle, ArrowsClockwise as RefreshCw } from '@phosphor-icons/react'
 interface State {
   error: Error | null
 }

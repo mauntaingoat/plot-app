@@ -1,6 +1,6 @@
 import { useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { Camera, User } from 'lucide-react'
+import { Camera, User } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useOnboardingStore } from '@/stores/onboardingStore'

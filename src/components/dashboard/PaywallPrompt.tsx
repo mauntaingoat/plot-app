@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Sparkles, Check, ArrowRight } from 'lucide-react'
+import { X, Sparkle as Sparkles, Check, ArrowRight } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
 import { TIERS, type Tier } from '@/lib/tiers'
 import { useScrollLock } from '@/hooks/useScrollLock'

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence, useMotionValue, animate, type PanInfo } from 'framer-motion'
-import { MessageCircle, Bookmark, Share2, Music2, X } from 'lucide-react'
+import { motion, AnimatePresence, useMotionValue, animate, PanInfo } from 'framer-motion'
+import { ChatCircle as MessageCircle, BookmarkSimple as Bookmark, ShareNetwork as Share2, MusicNote as Music2, X } from '@phosphor-icons/react'
 import { Avatar } from '@/components/ui/Avatar'
 import { type Pin, type UserDoc, type ContentItem, isTallAspect } from '@/lib/types'
 

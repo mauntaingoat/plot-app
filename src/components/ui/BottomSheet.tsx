@@ -1,5 +1,5 @@
-import { type ReactNode, useCallback, useRef, useState, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { ReactNode, useCallback, useRef, useState, useEffect } from 'react'
+import { X } from '@phosphor-icons/react'
 import { useScrollLock } from '@/hooks/useScrollLock'
 
 interface BottomSheetProps {

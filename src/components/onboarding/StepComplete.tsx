@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, ExternalLink } from 'lucide-react'
+import { Sparkle as Sparkles, ArrowSquareOut as ExternalLink } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { useOnboardingStore } from '@/stores/onboardingStore'

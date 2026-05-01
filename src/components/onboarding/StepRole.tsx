@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Home, Users, Building2 } from 'lucide-react'
+import { House as Home, Users, Buildings as Building2 } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { useOnboardingStore } from '@/stores/onboardingStore'
 import type { AgentType } from '@/lib/types'

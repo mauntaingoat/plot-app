@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Home as HomeIcon, BadgeCheck, Compass } from 'lucide-react'
+import { ArrowRight, House as HomeIcon, SealCheck as BadgeCheck, Compass } from '@phosphor-icons/react'
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { SEOHead } from '@/components/marketing/SEOHead'
 import { ScrollFadeText, Glyph } from '@/components/marketing/ScrollFadeText'
@@ -202,7 +202,7 @@ export default function About() {
                   '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)',
               }}
             >
-              Claim your link <ArrowRight size={15} strokeWidth={2.5} />
+              Claim your link <ArrowRight weight="bold" size={15} />
             </button>
           </div>
         </section>

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Check, X, Loader2, AtSign } from 'lucide-react'
+import { Check, X, CircleNotch as Loader2, At as AtSign } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { useOnboardingStore } from '@/stores/onboardingStore'
 import { useUsername } from '@/hooks/useUsername'

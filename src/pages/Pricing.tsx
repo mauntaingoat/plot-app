@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { Check, X, ArrowRight, Plus } from 'lucide-react'
+import { Check, X, ArrowRight, Plus } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { SEOHead } from '@/components/marketing/SEOHead'
@@ -285,13 +285,12 @@ export default function Pricing() {
                   {plan.features.map((f) => (
                     <li key={f.text} className="flex items-start gap-2.5">
                       {f.included ? (
-                        <Check
+                        <Check weight="bold"
                           size={15}
                           className={`shrink-0 mt-0.5 ${plan.featured ? 'text-tangerine' : 'text-sold-green'}`}
-                          strokeWidth={2.5}
                         />
                       ) : (
-                        <X size={15} className="shrink-0 mt-0.5 text-ash/40" strokeWidth={2} />
+                        <X size={15} className="shrink-0 mt-0.5 text-ash/40" />
                       )}
                       <span
                         className={
@@ -506,9 +505,8 @@ export default function Pricing() {
                         backgroundColor: isOpen ? 'rgba(217,74,31,0.1)' : 'rgba(10,14,23,0.05)',
                       }}
                     >
-                      <Plus
+                      <Plus weight="bold"
                         size={15}
-                        strokeWidth={2.25}
                         className={isOpen ? 'text-tangerine' : 'text-graphite group-hover:text-tangerine transition-colors'}
                       />
                     </motion.span>
@@ -555,7 +553,7 @@ function CompMark({ value, highlight = false }: { value: CompValue; highlight?: 
   if (value === true) {
     return (
       <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full ${highlight ? 'bg-tangerine' : 'bg-ink/5'}`}>
-        <Check size={14} className={highlight ? 'text-white' : 'text-ink'} strokeWidth={3} />
+        <Check weight="bold" size={14} className={highlight ? 'text-white' : 'text-ink'} />
       </span>
     )
   }

@@ -11,7 +11,7 @@ import { ResponsiveSheet } from '@/components/ui/ResponsiveSheet'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { GoogleLogo, AppleLogo } from '@/components/icons/PlatformLogos'
-import { Mail, Lock, ArrowRight, ArrowLeft, MapPin, Eye, AtSign, Check, X, Loader2, Shield, AlertTriangle } from 'lucide-react'
+import { Envelope as Mail, Lock, ArrowRight, ArrowLeft, MapPin, Eye, At as AtSign, Check, X, CircleNotch as Loader2, Shield, Warning as AlertTriangle } from '@phosphor-icons/react'
 import { useUsername } from '@/hooks/useUsername'
 import type { UserDoc } from '@/lib/types'
 

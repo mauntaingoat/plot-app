@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Menu, X, ArrowRight, ArrowUpRight, ChevronDown, Mail } from 'lucide-react'
+import { List as Menu, X, ArrowRight, ArrowUpRight, CaretDown as ChevronDown, Envelope as Mail } from '@phosphor-icons/react'
 import { useAuthModalStore } from '@/stores/authModalStore'
 import { useAuthStore } from '@/stores/authStore'
 import {
@@ -75,7 +75,7 @@ const COMMUNITY_CHANNELS: Channel[] = [
         className="w-[22px] h-[22px] rounded-[6px] flex items-center justify-center"
         style={{ background: 'var(--brand-grad)' }}
       >
-        <Mail size={13} color="white" strokeWidth={2.4} />
+        <Mail weight="bold" size={13} color="white" />
       </div>
     ),
   },
@@ -185,7 +185,7 @@ export function Navbar() {
                   }}
                 >
                   Dashboard
-                  <ArrowRight size={15} strokeWidth={2.25} />
+                  <ArrowRight weight="bold" size={15} />
                 </button>
               ) : (
                 <>
@@ -216,7 +216,7 @@ export function Navbar() {
                     }}
                   >
                     Get started
-                    <ArrowRight size={15} strokeWidth={2.25} />
+                    <ArrowRight weight="bold" size={15} />
                   </button>
                 </>
               )}
@@ -236,7 +236,7 @@ export function Navbar() {
                   }}
                 >
                   Start
-                  <ArrowRight size={13} strokeWidth={2.5} />
+                  <ArrowRight weight="bold" size={13} />
                 </button>
               )}
               <button
@@ -403,9 +403,8 @@ function CommunityDropdown() {
           style={{ backgroundColor: 'rgba(10,14,23,0.05)' }}
         />
         <span className="relative">Community</span>
-        <ChevronDown
+        <ChevronDown weight="bold"
           size={14}
-          strokeWidth={2.25}
           className="relative transition-transform duration-200"
           style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
         />
@@ -469,9 +468,8 @@ function CommunityDropdown() {
                 {c.tagline}
               </span>
             </span>
-            <ArrowUpRight
+            <ArrowUpRight weight="bold"
               size={15}
-              strokeWidth={2.25}
               className="shrink-0 text-ash transition-all duration-200 group-hover/row:text-tangerine group-hover/row:-translate-y-0.5 group-hover/row:translate-x-0.5"
             />
           </a>

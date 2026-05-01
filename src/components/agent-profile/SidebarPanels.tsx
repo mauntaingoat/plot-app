@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Bookmark, Share2, Check } from 'lucide-react'
+import { X, BookmarkSimple as Bookmark, ShareNetwork as Share2, Check } from '@phosphor-icons/react'
 import { Avatar } from '@/components/ui/Avatar'
 import { createSharedMap } from '@/lib/firestore'
 import { useAuthStore } from '@/stores/authStore'

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Camera, ChevronLeft, ChevronRight, Crop, Trash2, RefreshCw } from 'lucide-react'
+import { Camera, CaretLeft as ChevronLeft, CaretRight as ChevronRight, Crop, Trash as Trash2, ArrowsClockwise as RefreshCw } from '@phosphor-icons/react'
 import { AspectChips } from './components/AspectChips'
 import { PhotoStrip } from './components/PhotoStrip'
 import { probePhoto } from './lib/probe'
@@ -231,7 +231,7 @@ export function CarouselStep({ draft, onChange }: CarouselStepProps) {
                 }`}
                 aria-label="Frame"
               >
-                <Crop size={16} strokeWidth={2.3} />
+                <Crop weight="bold" size={16} />
               </button>
 
               {/* Delete + Replace — top-left, matching reel editor sub-tools */}
@@ -242,7 +242,7 @@ export function CarouselStep({ draft, onChange }: CarouselStepProps) {
                   className="w-9 h-9 rounded-full bg-black/55 text-white/90 backdrop-blur-sm hover:bg-black/70 flex items-center justify-center cursor-pointer transition-all active:scale-95"
                   aria-label="Replace"
                 >
-                  <RefreshCw size={14} strokeWidth={2.3} />
+                  <RefreshCw weight="bold" size={14} />
                 </button>
                 <button
                   type="button"
@@ -250,7 +250,7 @@ export function CarouselStep({ draft, onChange }: CarouselStepProps) {
                   className="w-9 h-9 rounded-full bg-black/55 text-live-red backdrop-blur-sm hover:bg-black/70 flex items-center justify-center cursor-pointer transition-all active:scale-95"
                   aria-label="Delete"
                 >
-                  <Trash2 size={14} strokeWidth={2.3} />
+                  <Trash2 weight="bold" size={14} />
                 </button>
               </div>
             </>

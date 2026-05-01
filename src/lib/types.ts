@@ -1,4 +1,5 @@
 import type { Timestamp } from 'firebase/firestore'
+import type { AgentStyle } from './style/types'
 
 // ── User types ──
 
@@ -14,9 +15,18 @@ export type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'reject
 export type UserTier = 'free' | 'pro' | 'studio'
 
 export interface NotificationPrefs {
+  /** Legacy — kept on the type so older user docs still parse. The
+   *  new product model uses `newSubscriber` instead; `newFollower`
+   *  is no longer surfaced in the dashboard UI. */
   newFollower: boolean
   showingRequest: boolean
-  pinSaved: boolean // off by default — can get noisy
+  /** Legacy — kept for older user docs. Replaced by `newSubscriber`
+   *  in the new public-profile flow. */
+  pinSaved: boolean
+  /** New (Save Maya). True = ping me on each new email subscriber. */
+  newSubscriber: boolean
+  /** New (Wave). True = ping me when buyers wave at a listing. */
+  newWave: boolean
 }
 
 export interface UserDoc {
@@ -52,6 +62,10 @@ export interface UserDoc {
   giftTier?: UserTier
   giftExpiry?: Timestamp | null
   lastActiveAt?: Timestamp
+  /** Agent profile customization (palette, font, map shape, frames,
+   *  section visibility, ticker stats, CTA labels). Optional — when
+   *  unset the public profile renders with `DEFAULT_STYLE`. */
+  style?: AgentStyle
 }
 
 // ── Pin types — 2 listing types + spotlight ──
@@ -305,6 +319,51 @@ export interface PendingPinChange {
   soldDate?: string
   /** Latest MLS# from Rentcast — applied silently on approve. */
   mlsNumber?: string | null
+}
+
+/**
+ * Email-based subscription to an agent's weekly digest. Replaces the
+ * account-based `follows` flow on the new agent profile — buyers tap
+ * "Save Maya," drop their email, and Reelst writes one of these.
+ *
+ * Phase 1: doc is created + an inbox notification fires for the agent.
+ * No emails actually send. Phase 2 introduces the digest engine.
+ */
+export interface DigestSubscription {
+  id: string
+  agentId: string
+  email: string                         // raw email (lowercased on write)
+  emailHash: string                     // sha256 of the email — for dedup without exposing
+  source?: 'profile' | 'listing' | 'reels' | string
+  status: 'active' | 'unsubscribed'
+  unsubToken: string                    // signed/random token for one-click unsubscribe
+  newListings: boolean                  // opt-in flags (default true)
+  newReels: boolean
+  statusChanges: boolean
+  lastSentAt: Timestamp | null
+  createdAt: Timestamp
+  updatedAt: Timestamp
+}
+
+/**
+ * A "wave" — buyer's question on a listing, captured with name +
+ * email so the agent can respond externally. Replaces the public
+ * comment system entirely. Lives at /pins/{pinId}/waves/{waveId}
+ * (subcollection so the pin can carry its own thread; the agent
+ * sees aggregated waves in their dashboard inbox).
+ */
+export interface Wave {
+  id: string
+  pinId: string
+  agentId: string
+  pinAddress: string                    // denormalized for inbox rendering
+  visitorName: string
+  visitorEmail: string
+  visitorPhone?: string | null          // optional — buyer may skip
+  question: string                      // the message, max ~500 chars
+  read: boolean                         // agent toggles read state
+  status: 'new' | 'responded' | 'closed'
+  createdAt: Timestamp
 }
 
 /**

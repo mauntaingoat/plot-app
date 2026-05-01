@@ -24,7 +24,7 @@ interface NotifPayload {
   tag?: string
 }
 
-async function notifyUser(uid: string, prefKey: 'newFollower' | 'showingRequest' | 'pinSaved', payload: NotifPayload) {
+async function notifyUser(uid: string, prefKey: 'newFollower' | 'showingRequest' | 'pinSaved' | 'newSubscriber' | 'newWave', payload: NotifPayload) {
   const db = admin.firestore()
   const userSnap = await db.collection('users').doc(uid).get()
   if (!userSnap.exists) return
@@ -39,6 +39,8 @@ async function notifyUser(uid: string, prefKey: 'newFollower' | 'showingRequest'
     newFollower: true,
     showingRequest: true,
     pinSaved: true,
+    newSubscriber: true,
+    newWave: true,
   }
   const enabled = prefs[prefKey] ?? defaultsOn[prefKey]
   if (!enabled) {
@@ -93,7 +95,7 @@ async function notifyUser(uid: string, prefKey: 'newFollower' | 'showingRequest'
 
 async function writeNotification(data: {
   agentId: string
-  type: 'follow' | 'save' | 'showing_request'
+  type: 'follow' | 'save' | 'showing_request' | 'subscriber' | 'wave'
   title: string
   body: string
   actorName?: string
@@ -226,6 +228,65 @@ export const onPinSaved = onDocumentCreated(
       actorUid: data.userId,
       pinId: data.pinId,
       pinAddress: pin.address,
+    })
+  },
+)
+
+// ── Trigger: new digest subscription (Save Maya) ──
+// Fires when a buyer captures their email via the public agent
+// profile's "Save Maya" CTA. Inbox notif + FCM push to the agent.
+// Re-subscriptions (status flipping back to 'active') do NOT retrigger
+// this — the trigger only fires on doc create.
+export const onNewDigestSubscription = onDocumentCreated(
+  { document: 'digestSubscriptions/{subId}', region: 'us-central1' },
+  async (event) => {
+    const data = event.data?.data()
+    if (!data?.agentId || !data?.email) return
+
+    await notifyUser(data.agentId, 'newSubscriber', {
+      title: 'New subscriber',
+      body: data.email as string,
+      url: '/dashboard?tab=inbox',
+      tag: `sub_${event.params.subId}`,
+    })
+
+    await writeNotification({
+      agentId: data.agentId,
+      type: 'subscriber',
+      title: 'New subscriber',
+      body: data.email as string,
+      actorName: data.email as string,
+      refId: event.params.subId,
+    })
+  },
+)
+
+// ── Trigger: new wave (buyer question on a listing) ──
+export const onNewWave = onDocumentCreated(
+  { document: 'pins/{pinId}/waves/{waveId}', region: 'us-central1' },
+  async (event) => {
+    const data = event.data?.data()
+    if (!data?.agentId) return
+
+    const visitor = (data.visitorName as string) || 'Someone'
+    const addressShort = ((data.pinAddress as string) || '').split(',')[0] || 'a listing'
+
+    await notifyUser(data.agentId, 'newWave', {
+      title: 'New wave 👋',
+      body: `${visitor} has a question about ${addressShort}`,
+      url: '/dashboard?tab=inbox',
+      tag: `wave_${event.params.waveId}`,
+    })
+
+    await writeNotification({
+      agentId: data.agentId,
+      type: 'wave',
+      title: 'New wave 👋',
+      body: `${visitor} has a question about ${addressShort}`,
+      actorName: visitor,
+      pinId: event.params.pinId,
+      pinAddress: data.pinAddress as string,
+      refId: event.params.waveId,
     })
   },
 )

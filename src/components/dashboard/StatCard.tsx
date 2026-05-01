@@ -1,7 +1,6 @@
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
-import { useEffect, useState, type ReactNode } from 'react'
-import { TrendingUp, TrendingDown } from 'lucide-react'
-
+import { useEffect, useState, ReactNode } from 'react'
+import { TrendUp as TrendingUp, TrendDown as TrendingDown } from '@phosphor-icons/react'
 interface StatCardProps {
   label: string
   value: number

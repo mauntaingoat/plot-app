@@ -2,7 +2,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { ArrowLeft, ArrowUpRight, Twitter, Link as LinkIcon } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, TwitterLogo as Twitter, Link as LinkIcon } from '@phosphor-icons/react'
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { SEOHead } from '@/components/marketing/SEOHead'
 import {

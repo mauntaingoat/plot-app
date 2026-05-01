@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Check, Calendar, User as UserIcon, Mail, Phone, MessageSquare } from 'lucide-react'
+import { X, Check, Calendar, User as UserIcon, Envelope as Mail, Phone, ChatCenteredText as MessageSquare } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { createShowingRequest } from '@/lib/firestore'
 import type { Pin, ForSalePin, UserDoc } from '@/lib/types'

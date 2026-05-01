@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, Search, Check, Home, DollarSign, TreePine } from 'lucide-react'
+import { MapPin, MagnifyingGlass as Search, Check, House as Home, CurrencyDollar as DollarSign, Tree as TreePine } from '@phosphor-icons/react'
 import { Timestamp } from 'firebase/firestore'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'

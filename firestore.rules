@@ -180,6 +180,40 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ── DIGEST SUBSCRIPTIONS (Save Maya — email-only) ──
+    // Buyers create subscriptions anonymously (no auth required) — the
+    // doc id is deterministic (`{agentId}_{emailHash}`) so duplicate
+    // saves dedupe naturally. The owning agent can read their own
+    // subscriber list. Updates restricted to status flips (active ↔
+    // unsubscribed) — full doc shape is owned by the server when we
+    // add the digest engine.
+    match /digestSubscriptions/{subId} {
+      allow read: if isSignedIn()
+        && resource.data.agentId == request.auth.uid;
+      allow create: if request.resource.data.status == 'active'
+        && request.resource.data.agentId is string
+        && request.resource.data.email is string;
+      allow update: if isSignedIn()
+        && resource.data.agentId == request.auth.uid
+        && request.resource.data.agentId == resource.data.agentId
+        && request.resource.data.email == resource.data.email;
+      allow delete: if isSignedIn()
+        && resource.data.agentId == request.auth.uid;
+    }
+
+    // ── WAVES (buyer questions on listings) ──
+    // Subcollection of pins. Buyer creates go through the submitWave
+    // callable Cloud Function (rate-limited, validated, admin-SDK
+    // write) — direct client creates are denied. Owning agent can
+    // read + update (mark read / change status).
+    match /pins/{pinId}/waves/{waveId} {
+      allow read: if isSignedIn()
+        && get(/databases/$(database)/documents/pins/$(pinId)).data.agentId == request.auth.uid;
+      allow update: if isSignedIn()
+        && get(/databases/$(database)/documents/pins/$(pinId)).data.agentId == request.auth.uid;
+      allow create, delete: if false;
+    }
+
     // ── PIN PENDING CHANGES (subcollection of pins) ──
     // Written by the syncPropertyData scheduled function. The pin's
     // owning agent can read + delete (delete = approve/reject). No

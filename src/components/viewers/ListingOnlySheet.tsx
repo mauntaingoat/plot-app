@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bed, Bath, Maximize, MapPin, Bookmark, Share2, Phone, ChevronLeft, ChevronRight, CalendarCheck, Calendar, Clock, Mail, MessageSquare, User as UserIcon, Check } from 'lucide-react'
+import { Bed, Bathtub as Bath, ArrowsOut as Maximize, MapPin, BookmarkSimple as Bookmark, ShareNetwork as Share2, Phone, CaretLeft as ChevronLeft, CaretRight as ChevronRight, CalendarCheck, Calendar, Clock, Envelope as Mail, ChatCenteredText as MessageSquare, User as UserIcon, Check } from '@phosphor-icons/react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -90,6 +90,7 @@ export function ListingOnlySheet({ pin, agent, onClose, isPreview, embedded, isS
               Request a Showing
             </Button>
           )}
+
         </div>
 
         {showRequestForm && (

@@ -1,4 +1,4 @@
-import { Calendar, Download } from 'lucide-react'
+import { Calendar, Download } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { expandSessions, formatSession, downloadOpenHouseICS } from '@/lib/openHouse'
 import type { ForSalePin, UserDoc } from '@/lib/types'

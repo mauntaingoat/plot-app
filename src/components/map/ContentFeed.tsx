@@ -1,8 +1,9 @@
 import { useRef, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Eye, MapPin, Home, X, Bookmark, Share2, MessageCircle, UserPlus, UserCheck, Volume2, VolumeX } from 'lucide-react'
+import { Eye, MapPin, House as Home, X, BookmarkSimple as Bookmark, ShareNetwork as Share2, ChatCircle as MessageCircle, UserPlus, UserCircleCheck as UserCheck, SpeakerHigh as Volume2, SpeakerSlash as VolumeX, Heart, HandWaving as Hand } from '@phosphor-icons/react'
 import { Avatar } from '@/components/ui/Avatar'
 import { ListingOnlySheet } from '@/components/viewers/ListingOnlySheet'
+import { WaveModal } from '@/components/agent-profile/WaveModal'
 import { type Pin, type UserDoc, type ContentItem, isTallAspect } from '@/lib/types'
 import { getAllContent } from '@/lib/contentUtils'
 import { useSaves } from '@/hooks/useSaves'
@@ -20,14 +21,42 @@ interface ContentFeedProps {
   onAuthRequired?: () => void
   agentMode?: string
   isOwnProfile?: boolean
+  /** Drives chrome density. 'standalone' (default) keeps the
+   *  full right-rail (save / comment / follow / listing / share).
+   *  'immersive' drops save/comment/follow — used by the new
+   *  agent-profile Reels tab where saves are agent-level (Save
+   *  Maya) and comments are replaced by waves on listings. */
+  viewerMode?: 'standalone' | 'immersive'
+  /** When set, renders an X dismiss button in the top-right
+   *  (used by the immersive viewer to return to the grid). */
+  onClose?: () => void
+  /** Start the feed at a particular pin's first content item. */
+  startAtContentId?: string
+  /** Agent-level save state for the TikTok-style avatar+heart in
+   *  the immersive viewer. Falls back to undefined for the legacy
+   *  rail. */
+  agentSaved?: boolean
+  /** Tap handler for the avatar+heart in the immersive viewer. */
+  onSaveAgent?: () => void
+  /** Called whenever a child sheet (Wave or Listing-only) opens or
+   *  closes, so the parent immersive viewer can pause its own
+   *  swipe-to-dismiss while a sheet is layered on top. */
+  onChildSheetOpenChange?: (open: boolean) => void
 }
 
 const PAGE_SIZE = 6
 
-export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAuthRequired, agentMode = 'single', isOwnProfile }: ContentFeedProps) {
+export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAuthRequired, agentMode = 'single', isOwnProfile, viewerMode = 'standalone', onClose, startAtContentId, agentSaved, onSaveAgent, onChildSheetOpenChange }: ContentFeedProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const allContent = getAllContent(pins)
   const [listingSheet, setListingSheet] = useState<Pin | null>(null)
+  // Wave state lifted to ContentFeed so only one wave is ever open at
+  // a time AND the parent immersive viewer can be told to pause its
+  // own swipe-to-dismiss while this stacked sheet is on top.
+  const [wavePin, setWavePin] = useState<Pin | null>(null)
+  useEffect(() => {
+    onChildSheetOpenChange?.(!!listingSheet || !!wavePin)
+  }, [listingSheet, wavePin, onChildSheetOpenChange])
   const { isFollowing: following, toggle: toggleFollow } = useFollow(agent?.uid)
   const [commentTarget, setCommentTarget] = useState<{ pinId: string; contentId: string; agentId: string } | null>(null)
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({})
@@ -35,6 +64,21 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   useEffect(() => { setVisibleCount(PAGE_SIZE) }, [allContent.length])
+
+  // When the parent passes a startAtContentId (immersive viewer
+  // jumping in from the Reels grid), make sure that content is
+  // within the visible window AND scroll to it once mounted.
+  useEffect(() => {
+    if (!startAtContentId) return
+    const idx = allContent.findIndex(({ content }) => content.id === startAtContentId)
+    if (idx < 0) return
+    if (idx >= visibleCount) setVisibleCount(idx + PAGE_SIZE)
+    requestAnimationFrame(() => {
+      const el = scrollRef.current?.querySelector(`[data-content-id="${startAtContentId}"]`)
+      if (el && el instanceof HTMLElement) el.scrollIntoView({ block: 'start' })
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startAtContentId, allContent.length])
 
   // Batch-fetch signed playback URLs when content loads
   useEffect(() => {
@@ -94,12 +138,21 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
 
   return (
     <>
-      <div ref={scrollRef} className="absolute inset-0 bg-midnight overflow-y-auto"
+      {/* X dismiss is rendered per-card now (inside FeedCard's 9:16
+          media container), so it sits with the mute button as a
+          matched pair of corner controls scoped to each piece of
+          content. Layered child sheets (Listing, Wave, Comment)
+          naturally cover it via their higher z-index. */}
+      <div ref={scrollRef} data-immersive-scroll className="absolute inset-0 bg-midnight overflow-y-auto"
         style={{ scrollSnapType: 'y mandatory', overscrollBehavior: 'none', WebkitOverflowScrolling: 'touch' }}>
         {visibleContent.map(({ content, pin }) => (
           <FeedCard key={content.id} content={content} pin={pin} agent={agent}
             isPreview={isPreview} following={following}
-            showFollowButton={agentMode === 'single'}
+            showFollowButton={viewerMode === 'standalone' && agentMode === 'single'}
+            hideRailExtras={viewerMode === 'immersive'}
+            immersive={viewerMode === 'immersive'}
+            agentSaved={agentSaved}
+            onSaveAgent={onSaveAgent}
             isSignedIn={isSignedIn} onAuthRequired={onAuthRequired}
             isOwnProfile={isOwnProfile}
             onFollowToggle={() => {
@@ -107,7 +160,9 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
               toggleFollow()
             }}
             onListingTap={() => pin.type !== 'spotlight' && setListingSheet(pin)}
+            onWaveTap={() => pin.type !== 'spotlight' && setWavePin(pin)}
             onComment={() => setCommentTarget({ pinId: pin.id, contentId: content.id, agentId: pin.agentId })}
+            onClose={onClose}
             parentCommentCount={commentCounts[content.id]}
             signedUrl={content.muxPlaybackId ? signedUrls[content.muxPlaybackId]?.hls : undefined} />
         ))}
@@ -162,13 +217,26 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
           onCountChange={(count) => setCommentCounts((prev) => ({ ...prev, [commentTarget.contentId]: count }))}
         />
       )}
+
+      {/* Single Wave modal — only one pin's wave is open at a time.
+          Lives at ContentFeed level so the parent immersive viewer
+          can be told (via `onChildSheetOpenChange`) to pause its
+          swipe-to-dismiss while this stacked sheet is on top. */}
+      <WaveModal
+        isOpen={!!wavePin}
+        onClose={() => setWavePin(null)}
+        pinId={wavePin?.id ?? ''}
+        pinAddress={wavePin?.address ?? ''}
+        agentId={wavePin?.agentId ?? agent.uid}
+        agentName={agent.displayName}
+      />
     </>
   )
 }
 
-function FeedCard({ content, pin, agent, isPreview, following, showFollowButton, onFollowToggle, onListingTap, isSignedIn, onAuthRequired, isOwnProfile, onComment, parentCommentCount, signedUrl }: {
+function FeedCard({ content, pin, agent, isPreview, following, showFollowButton, hideRailExtras, immersive, agentSaved, onSaveAgent, onFollowToggle, onListingTap, onWaveTap, onClose, isSignedIn, onAuthRequired, isOwnProfile, onComment, parentCommentCount, signedUrl }: {
   content: ContentItem; pin: Pin; agent: UserDoc; isPreview?: boolean
-  following: boolean; showFollowButton?: boolean; onFollowToggle: () => void; onListingTap: () => void
+  following: boolean; showFollowButton?: boolean; hideRailExtras?: boolean; immersive?: boolean; agentSaved?: boolean; onSaveAgent?: () => void; onFollowToggle: () => void; onListingTap: () => void; onWaveTap?: () => void; onClose?: () => void
   isSignedIn?: boolean; onAuthRequired?: () => void; isOwnProfile?: boolean; onComment?: () => void; parentCommentCount?: number; signedUrl?: string
 }) {
   const requireAuth = () => { if (!isSignedIn && onAuthRequired) onAuthRequired() }
@@ -235,7 +303,7 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
   }, [])
 
   return (
-    <div ref={cardRef} className="w-full relative bg-black"
+    <div ref={cardRef} data-content-id={content.id} className="w-full relative bg-black"
       style={{ height: '100%', scrollSnapAlign: 'start', scrollSnapStop: 'always', willChange: 'transform', contain: 'layout style paint' }}>
       {/* Media container — constrained to 9:16 centered with dark bars
           on the sides when the viewport is wider than portrait. On narrow
@@ -275,9 +343,17 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
                   }
                 }}
               />
+              {/* Sound/mute — top-left, horizontally aligned with the
+                  X dismiss at top-right. Same 32×32 size as the X so
+                  the two corner controls feel like a matched pair. */}
               <button
                 onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); if (videoRef.current) videoRef.current.muted = !isMuted }}
-                className="absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center cursor-pointer"
+                className="absolute z-20 w-8 h-8 rounded-full bg-black/55 backdrop-blur-sm flex items-center justify-center cursor-pointer"
+                style={{
+                  top: 'max(env(safe-area-inset-top, 12px) + 8px, 16px)',
+                  left: 16,
+                  boxShadow: '0 6px 18px -6px rgba(0,0,0,0.5)',
+                }}
               >
                 {isMuted ? <VolumeX size={14} className="text-white" /> : <Volume2 size={14} className="text-white" />}
               </button>
@@ -315,6 +391,27 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
             </>
           ) : null}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/30 pointer-events-none" />
+
+          {/* X dismiss — top-right of this card's 9:16 frame, mirror
+              of the mute button at top-left. Per-card so it scrolls
+              with the snap-feed instead of floating at the viewer's
+              top corner. Only shown in immersive mode and when the
+              parent passes a close handler. Layered child sheets
+              (Listing, Wave, Comment) cover it via higher z-index. */}
+          {immersive && onClose && (
+            <button
+              onClick={onClose}
+              aria-label="Close viewer"
+              className="absolute z-20 w-8 h-8 rounded-full bg-black/55 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer"
+              style={{
+                top: 'max(env(safe-area-inset-top, 12px) + 8px, 16px)',
+                right: 16,
+                boxShadow: '0 6px 18px -6px rgba(0,0,0,0.5)',
+              }}
+            >
+              <X weight="bold" size={14} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -322,20 +419,46 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
 
       {/* Right sidebar */}
       <div className="absolute right-3 bottom-[22%] z-10 flex flex-col items-center gap-5" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }}>
-        {/* Agent avatar */}
-        <div className="relative w-10 h-10">
-          <Avatar src={agent.photoURL} name={agent.displayName} size={40} ring="none" />
-          {!isOwnProfile && (
-            <motion.button whileTap={!isPreview ? { scale: 0.9 } : undefined}
-              onClick={!isPreview ? onFollowToggle : undefined}
-              className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-[18px] h-[18px] rounded-full flex items-center justify-center ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}
-              style={{ background: following ? '#34C759' : '#FF6B3D' }}>
-              {following ? <UserCheck size={9} className="text-white" /> : <UserPlus size={9} className="text-white" />}
-            </motion.button>
-          )}
-        </div>
+        {/* Agent avatar — in immersive mode, sized to match the rest
+            of the rail glyphs (save heart, wave, share, listing) so
+            it reads as one in the vertical rhythm. Standalone mode
+            keeps the bigger 48px avatar with the follow pip. */}
+        {immersive ? (
+          <Avatar src={agent.photoURL} name={agent.displayName} size={26} ring="story" />
+        ) : (
+          <div className="relative w-12 h-12">
+            <Avatar src={agent.photoURL} name={agent.displayName} size={48} ring="none" />
+            {!isOwnProfile && !hideRailExtras && (
+              <motion.button whileTap={!isPreview ? { scale: 0.9 } : undefined}
+                onClick={!isPreview ? onFollowToggle : undefined}
+                className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-[18px] h-[18px] rounded-full flex items-center justify-center ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}
+                style={{ background: following ? '#34C759' : '#FF6B3D' }}>
+                {following ? <UserCheck size={9} className="text-white" /> : <UserPlus size={9} className="text-white" />}
+              </motion.button>
+            )}
+          </div>
+        )}
 
-        {!isOwnProfile && (
+        {/* Save-agent heart — immersive mode only. Sits directly
+            under the avatar in the same rhythm as the other glyphs
+            (avatar → save → wave → share → listing), so the gap
+            container's `gap-5` handles spacing — no manual margin
+            tweak needed now that the avatar is the same size. */}
+        {immersive && onSaveAgent && (
+          <motion.button
+            key={agentSaved ? 'saved' : 'unsaved'}
+            whileTap={{ scale: 0.78 }}
+            onClick={() => onSaveAgent()}
+            aria-label={agentSaved ? 'Saved' : `Save ${agent.displayName || 'agent'}`}
+            className="cursor-pointer flex items-center justify-center"
+          >
+            {agentSaved
+              ? <UserCheck weight="bold" size={26} className="text-tangerine" />
+              : <Heart weight="fill" size={26} className="text-white" />}
+          </motion.button>
+        )}
+
+        {!isOwnProfile && !hideRailExtras && (
           <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
             onClick={!isPreview ? handleSave : undefined}
             className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}>
@@ -344,49 +467,93 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
           </motion.button>
         )}
 
-        <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
-          onClick={!isPreview ? () => { if (!isSignedIn && onAuthRequired) { onAuthRequired(); return }; onComment?.() } : undefined}
-          className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}>
-          <MessageCircle size={24} className="text-white" />
-          <span className="text-[10px] text-white font-semibold">{formatCompact(commentCount)}</span>
-        </motion.button>
+        {!hideRailExtras && (
+          <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
+            onClick={!isPreview ? () => { if (!isSignedIn && onAuthRequired) { onAuthRequired(); return }; onComment?.() } : undefined}
+            className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}>
+            <MessageCircle size={24} className="text-white" />
+            <span className="text-[10px] text-white font-semibold">{formatCompact(commentCount)}</span>
+          </motion.button>
+        )}
+
+        {/* Wave — buyer's question on this listing. Replaces the
+            public comment system in the immersive viewer (waves are
+            scoped to listings, not content). Hand icon mirrors the
+            "Wave at agent" CTA in ListingModal. */}
+        {immersive && pin.type !== 'spotlight' && (
+          <motion.button
+            whileTap={{ scale: 0.75 }}
+            onClick={() => onWaveTap?.()}
+            className="flex flex-col items-center gap-0.5 cursor-pointer"
+            aria-label={`Wave at ${agent.displayName || 'agent'}`}
+          >
+            <Hand weight="bold" size={24} className="text-white" />
+          </motion.button>
+        )}
 
         <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
           className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}>
           <Share2 size={22} className="text-white" />
         </motion.button>
 
-        {/* House icon — listing only (no content tab) */}
+        {/* House icon — listing only (no content tab). Bare icon (no
+            backdrop circle) so it sits in the same rhythm as the
+            other rail glyphs (save heart, hand wave, share). The
+            "Listing" text label is hidden in immersive mode for a
+            cleaner TikTok-style rail. */}
         {pin.type !== 'spotlight' && (
           <motion.button whileTap={{ scale: 0.75 }} onClick={onListingTap}
-            className="flex flex-col items-center gap-0.5">
-            <div className="w-10 h-10 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center">
-              <Home size={18} className="text-white" />
-            </div>
-            <span className="text-[9px] text-white/60">Listing</span>
+            className="flex flex-col items-center gap-0.5 cursor-pointer">
+            <Home weight="bold" size={24} className="text-white" />
+            {!immersive && <span className="text-[9px] text-white/60">Listing</span>}
           </motion.button>
         )}
 
       </div>
 
-      {/* Bottom caption — type label inline with location */}
-      <div className="absolute bottom-0 left-0 right-16 z-10 pb-[calc(env(safe-area-inset-bottom,8px)+16px)] px-4">
-        <p className="text-[15px] font-bold text-white mb-1">{agent.displayName}</p>
-        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-          <MapPin size={11} className="text-white/50 shrink-0" />
-          <span className="text-[12px] text-white/50">{neighborhoodName}</span>
-          <span className="text-[10px] text-white/30">·</span>
-          <span className="text-[11px] text-white/40 uppercase font-semibold">{content.type.replace('_', ' ')}</span>
-          {hasOpenHouse && (
-            <><span className="text-[10px] text-white/30">·</span><span className="text-[11px] text-open-amber font-bold uppercase">Open House</span></>
+
+      {/* Bottom overlay — TikTok-style in immersive mode (just
+          @name + caption), richer in standalone mode (location +
+          type + open-house chip + view count). */}
+      {immersive ? (
+        <div
+          className="absolute bottom-0 left-0 right-20 z-10 pb-[calc(env(safe-area-inset-bottom,8px)+20px)] px-4"
+          style={{ fontFamily: 'var(--font-humanist)' }}
+        >
+          <p
+            className="text-white mb-1.5"
+            style={{ fontSize: '15px', fontWeight: 600, letterSpacing: '-0.005em', textShadow: '0 1px 3px rgba(0,0,0,0.45)' }}
+          >
+            @{agent.username || (agent.displayName || 'agent').toLowerCase().replace(/\s+/g, '')}
+          </p>
+          {content.caption && (
+            <p
+              className="text-white/95 line-clamp-3"
+              style={{ fontSize: '13.5px', fontWeight: 400, lineHeight: 1.45, textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
+            >
+              {content.caption}
+            </p>
           )}
         </div>
-        {content.caption && <p className="text-[13px] text-white/90 leading-relaxed line-clamp-3">{content.caption}</p>}
-        <div className="flex items-center gap-1 mt-2">
-          <Eye size={12} className="text-white/40" />
-          <span className="text-[11px] text-white/40 font-medium">{formatCompact(content.views || 0)} views</span>
+      ) : (
+        <div className="absolute bottom-0 left-0 right-16 z-10 pb-[calc(env(safe-area-inset-bottom,8px)+16px)] px-4">
+          <p className="text-[15px] font-bold text-white mb-1">{agent.displayName}</p>
+          <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+            <MapPin size={11} className="text-white/50 shrink-0" />
+            <span className="text-[12px] text-white/50">{neighborhoodName}</span>
+            <span className="text-[10px] text-white/30">·</span>
+            <span className="text-[11px] text-white/40 uppercase font-semibold">{content.type.replace('_', ' ')}</span>
+            {hasOpenHouse && (
+              <><span className="text-[10px] text-white/30">·</span><span className="text-[11px] text-open-amber font-bold uppercase">Open House</span></>
+            )}
+          </div>
+          {content.caption && <p className="text-[13px] text-white/90 leading-relaxed line-clamp-3">{content.caption}</p>}
+          <div className="flex items-center gap-1 mt-2">
+            <Eye size={12} className="text-white/40" />
+            <span className="text-[11px] text-white/40 font-medium">{formatCompact(content.views || 0)} views</span>
+          </div>
         </div>
-      </div>
+      )}
 
     </div>
   )

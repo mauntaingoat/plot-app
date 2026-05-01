@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Check, Camera, Loader2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Camera, CircleNotch as Loader2 } from '@phosphor-icons/react'
 import { GoogleLogo, PLATFORM_LIST, PLATFORM_LOGOS } from '@/components/icons/PlatformLogos'
 import { useUsername } from '@/hooks/useUsername'
 import { useAuthStore } from '@/stores/authStore'
@@ -183,7 +183,7 @@ export default function Welcome() {
                   }}
                 >
                   Get Started
-                  <ArrowRight size={16} strokeWidth={2.5} />
+                  <ArrowRight weight="bold" size={16} />
                 </button>
                 <p className="text-[13px] text-[#AAAAAA]">
                   Already have an account? <Link to="/sign-in" className="text-tangerine font-semibold hover:underline">Sign in</Link>

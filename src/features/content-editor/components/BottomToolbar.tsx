@@ -1,17 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useRef } from 'react'
-import {
-  ChevronLeft,
-  Type,
-  SlidersHorizontal,
-  Crop,
-  Mic,
-  Sparkles,
-  SplitSquareVertical,
-  RefreshCw,
-  Gauge,
-  Trash2,
-} from 'lucide-react'
+import { CaretLeft as ChevronLeft, TextAa as Type, Sliders as SlidersHorizontal, Crop, Microphone as Mic, Sparkle as Sparkles, Columns as SplitSquareVertical, ArrowsClockwise as RefreshCw, Gauge, Trash as Trash2 } from '@phosphor-icons/react'
 import { useEditorStore } from '../state/editorStore'
 import type { EditorView, FontKey, TextOverlay } from '../state/types'
 import { loadAllFonts } from '../lib/fonts'
@@ -162,7 +151,7 @@ export function BottomToolbar({ simpleMode = false }: { simpleMode?: boolean } =
                   className="flex items-center justify-center gap-2 h-10 rounded-[12px] ed-surface-06 hover:ed-surface-11 cursor-pointer transition-colors ed-fg-85 text-[11px] font-semibold"
                   aria-label="Back"
                 >
-                  <ChevronLeft size={15} strokeWidth={2.3} />
+                  <ChevronLeft weight="bold" size={15} />
                   Back
                 </button>
               )}
@@ -244,7 +233,6 @@ function Tile({
       >
         <Icon
           size={horizontal ? 19 : 17}
-          strokeWidth={2.1}
           className={
             disabled
               ? 'ed-fg-22'
@@ -279,7 +267,7 @@ function BackChevron({ onClick }: { onClick: () => void }) {
       style={{ minWidth: 56 }}
     >
       <div className="w-[44px] h-[44px] rounded-[13px] ed-surface-08 flex items-center justify-center">
-        <ChevronLeft size={18} strokeWidth={2.3} className="ed-fg-85" />
+        <ChevronLeft weight="bold" size={18} className="ed-fg-85" />
       </div>
       <span className="text-[11px] font-semibold tracking-tight ed-fg-65 leading-none">Back</span>
     </motion.button>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Timestamp } from 'firebase/firestore'
-import { ArrowRight, ArrowLeft, AtSign, MapPin, Eye, Check, X, Loader2, Mail, Lock, Shield, AlertTriangle } from 'lucide-react'
+import { ArrowRight, ArrowLeft, At as AtSign, MapPin, Eye, Check, X, CircleNotch as Loader2, Envelope as Mail, Lock, Shield, Warning as AlertTriangle } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { SEOHead } from '@/components/marketing/SEOHead'
@@ -97,7 +97,7 @@ export default function SignUp() {
 
     if (!firebaseConfigured || !auth) {
       setUserDoc(makeUser(`demo-${Date.now()}`)); setLoading(false)
-      navigate(role === 'agent' ? '/dashboard' : '/explore')
+      navigate(role === 'agent' ? '/dashboard' : '/')
       return
     }
 
@@ -122,7 +122,7 @@ export default function SignUp() {
           const { db } = await import('@/config/firebase')
           if (db) await setDoc(doc(db, 'usernames', username.toLowerCase()), { uid: cred.user.uid, createdAt: serverTimestamp() }).catch(() => {})
         }
-        navigate(role === 'agent' ? '/dashboard' : '/explore')
+        navigate(role === 'agent' ? '/dashboard' : '/')
       } catch (e: any) {
         clearTimeout(timeout)
         const msg = e.code === 'auth/email-already-in-use' ? 'Email already in use'
@@ -143,7 +143,7 @@ export default function SignUp() {
     try {
       const cred = await signInWithPopup(auth!, new GoogleAuthProvider())
       await createUserDoc(cred.user.uid, { email: cred.user.email || '', displayName: cred.user.displayName || '', role: role || 'consumer' }).catch(() => {})
-      navigate(role === 'agent' ? '/dashboard' : '/explore')
+      navigate(role === 'agent' ? '/dashboard' : '/')
     } catch { setError('Google sign-in failed') }
     finally { setLoading(false) }
   }
@@ -234,7 +234,7 @@ export default function SignUp() {
                 }}
               >
                 Continue
-                <ArrowRight size={16} strokeWidth={2.5} />
+                <ArrowRight weight="bold" size={16} />
               </button>
               <p className="text-[11px] text-ash">3-24 characters. Letters, numbers, underscores.</p>
               <p className="text-[13px] text-smoke pt-2">
@@ -369,7 +369,7 @@ export default function SignUp() {
                 ) : (
                   <>
                     Continue
-                    <ArrowRight size={16} strokeWidth={2.5} />
+                    <ArrowRight weight="bold" size={16} />
                   </>
                 )}
               </button>
@@ -437,7 +437,7 @@ export default function SignUp() {
                   ) : (
                     <>
                       {role === 'agent' ? 'Get started' : 'Create account'}
-                      <ArrowRight size={16} strokeWidth={2.5} />
+                      <ArrowRight weight="bold" size={16} />
                     </>
                   )}
                 </button>

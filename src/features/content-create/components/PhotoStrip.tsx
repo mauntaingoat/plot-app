@@ -1,5 +1,5 @@
 import { Reorder, motion } from 'framer-motion'
-import { Plus, X } from 'lucide-react'
+import { Plus, X } from '@phosphor-icons/react'
 import { useThemeStore } from '@/stores/themeStore'
 
 interface Item {
@@ -75,7 +75,7 @@ export function PhotoStrip({
                 }`}
                 aria-label="Remove"
               >
-                <X size={11} strokeWidth={2.6} />
+                <X weight="bold" size={11} />
               </button>
             </Reorder.Item>
           )
@@ -90,7 +90,7 @@ export function PhotoStrip({
             }`}
             aria-label="Add"
           >
-            <Plus size={22} strokeWidth={2.2} />
+            <Plus weight="bold" size={22} />
           </button>
         )}
       </Reorder.Group>

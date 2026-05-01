@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowUpRight } from 'lucide-react'
+import { ArrowUpRight } from '@phosphor-icons/react'
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { SEOHead } from '@/components/marketing/SEOHead'
 import {
@@ -199,7 +199,7 @@ function FeaturedCard({ post }: { post: BlogPost }) {
             {post.excerpt}
           </p>
           <div className="mt-6 inline-flex items-center gap-1.5 text-tangerine group-hover:gap-2.5 transition-all" style={{ fontSize: '14px', fontWeight: 600 }}>
-            Read the report <ArrowUpRight size={16} strokeWidth={2.4} />
+            Read the report <ArrowUpRight weight="bold" size={16} />
           </div>
         </div>
       </div>

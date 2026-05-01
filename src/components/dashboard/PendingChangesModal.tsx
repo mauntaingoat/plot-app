@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useEffect, useState } from 'react'
-import { X, Check, ArrowRight, BadgeCheck, Home, TrendingUp, TrendingDown } from 'lucide-react'
+import { X, Check, ArrowRight, SealCheck as BadgeCheck, House as Home, TrendUp as TrendingUp, TrendDown as TrendingDown } from '@phosphor-icons/react'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { approvePendingChange, rejectPendingChange } from '@/lib/firestore'
 import type { PendingPinChange, Pin } from '@/lib/types'
@@ -287,7 +287,7 @@ export function PendingChangeCard({
           {busy ? '…' : (
             <>
               Apply update
-              <ArrowRight size={13} strokeWidth={2.5} />
+              <ArrowRight weight="bold" size={13} />
             </>
           )}
         </button>

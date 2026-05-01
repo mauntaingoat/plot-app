@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { TrendingUp, Eye, MousePointerClick, Bookmark, Lock, Sparkles, MapPin, Clock, Film, Image, Radio, CalendarClock } from 'lucide-react'
+import { TrendUp as TrendingUp, Eye, CursorClick as MousePointerClick, BookmarkSimple as Bookmark, Lock, Sparkle as Sparkles, MapPin, Clock, FilmStrip as Film, Image, Radio, CalendarDots as CalendarClock } from '@phosphor-icons/react'
 import { getAgentEvents, getFollowerSnapshots, type AnalyticsEvent, type FollowerSnapshot } from '@/lib/firestore'
 import type { Pin } from '@/lib/types'
 
@@ -378,7 +378,7 @@ export function TimeOfDay({ pins, agentId }: TimeOfDayProps) {
   )
 }
 
-// ── Follower Growth Chart ──
+// ── Subscriber Growth Chart ──
 interface FollowerGrowthProps {
   currentFollowers: number
   agentId?: string
@@ -403,7 +403,7 @@ export function FollowerGrowth({ currentFollowers, agentId }: FollowerGrowthProp
   if (data.length === 0) {
     return (
       <div className="bg-warm-white rounded-[18px] border border-border-light p-5">
-        <h3 className="text-[14px] font-bold text-ink mb-1">Follower Growth</h3>
+        <h3 className="text-[14px] font-bold text-ink mb-1">Subscriber Growth</h3>
         <p className="text-[12px] text-smoke">No follower data yet. Growth tracking begins once you gain followers.</p>
       </div>
     )
@@ -436,7 +436,7 @@ export function FollowerGrowth({ currentFollowers, agentId }: FollowerGrowthProp
     <div className="bg-warm-white rounded-[18px] border border-border-light p-5 relative">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-[14px] font-bold text-ink">Follower Growth</h3>
+          <h3 className="text-[14px] font-bold text-ink">Subscriber Growth</h3>
           <p className="text-[11px] text-smoke mt-0.5">
             <span className="font-bold text-sold-green">+{growth}</span> ({growthPct}%) past 30 days
           </p>

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Eye, MousePointerClick, Bookmark, MapPin, MoreHorizontal, Home, BadgeCheck, Compass } from 'lucide-react'
+import { Eye, CursorClick as MousePointerClick, BookmarkSimple as Bookmark, MapPin, DotsThree as MoreHorizontal, House as Home, SealCheck as BadgeCheck, Compass } from '@phosphor-icons/react'
 import { PIN_CONFIG, type Pin } from '@/lib/types'
 import { formatPrice } from '@/lib/firestore'
 import { displayAddressWithUnit } from '@/lib/format'
@@ -141,7 +141,7 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
         const Icon = icons[pin.type] || Compass
         return (
           <div className="relative aspect-[16/10] overflow-hidden flex items-center justify-center" style={{ background: gradients[pin.type] || gradients.spotlight }}>
-            <Icon size={40} className="text-white/30" strokeWidth={1.5} />
+            <Icon size={40} weight="light" className="text-white/30" />
             <div className="absolute top-3 left-3">
               <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-sm text-[11px] font-bold shadow-sm" style={{ color: config.color }}>
                 {config.label}

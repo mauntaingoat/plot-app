@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, Check } from 'lucide-react'
-
+import { CaretDown as ChevronDown, Check } from '@phosphor-icons/react'
 interface FilterOption {
   value: string
   label: string

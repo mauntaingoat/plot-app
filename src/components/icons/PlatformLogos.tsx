@@ -30,11 +30,17 @@ export function TikTokLogo({ size = 20, className = '' }: { size?: number; class
 }
 
 export function YouTubeLogo({ size = 20, className = '' }: { size?: number; className?: string }) {
+  // Body + triangle drawn as one path with fill-rule="evenodd" so
+  // the play triangle is a true cut-out — whatever's behind the
+  // icon shows through. No white background rect (broke on light
+  // surfaces) and no opaque triangle fill (broke on dark surfaces).
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
-      <rect width="24" height="24" rx="6" fill="white" />
-      <path d="M21.38 7.6a2.47 2.47 0 00-1.74-1.75C18.25 5.5 12 5.5 12 5.5s-6.25 0-7.64.35A2.47 2.47 0 002.62 7.6 25.6 25.6 0 002.25 12c-.01 1.48.11 2.95.37 4.4a2.47 2.47 0 001.74 1.74c1.39.38 7.64.38 7.64.38s6.25 0 7.64-.38a2.47 2.47 0 001.74-1.74c.26-1.45.38-2.92.37-4.4.01-1.48-.11-2.95-.37-4.4z" fill="#FF0000" />
-      <path d="M10 15.25l5-3.25-5-3.25v6.5z" fill="white" />
+      <path
+        fill="#FF0000"
+        fillRule="evenodd"
+        d="M21.38 7.6a2.47 2.47 0 00-1.74-1.75C18.25 5.5 12 5.5 12 5.5s-6.25 0-7.64.35A2.47 2.47 0 002.62 7.6 25.6 25.6 0 002.25 12c-.01 1.48.11 2.95.37 4.4a2.47 2.47 0 001.74 1.74c1.39.38 7.64.38 7.64.38s6.25 0 7.64-.38a2.47 2.47 0 001.74-1.74c.26-1.45.38-2.92.37-4.4.01-1.48-.11-2.95-.37-4.4z M10 15.25l5-3.25-5-3.25v6.5z"
+      />
     </svg>
   )
 }
@@ -124,6 +130,85 @@ export const PLATFORM_LOGOS: Record<string, typeof InstagramLogo> = {
   realtor: RealtorLogo,
   mls: MLSLogo,
   website: WebsiteLogo,
+}
+
+/* ════════════════════════════════════════════════════════════════
+   MONOCHROME VARIANTS — paint via `currentColor` so the parent's
+   color attribute drives the entire icon. Used on the public agent
+   profile where the social row should match the surrounding ink
+   text rather than fighting with five different brand palettes.
+   The dashboard uses the colored logos above.
+   ──────────────────────────────────────────────────────────────── */
+
+interface MonoLogoProps { size?: number; className?: string }
+
+export function InstagramLogoMono({ size = 20, className = '' }: MonoLogoProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} fill="none">
+      <rect x="3.5" y="3.5" width="17" height="17" rx="4.5" stroke="currentColor" strokeWidth="1.7" />
+      <circle cx="12" cy="12" r="4.2" stroke="currentColor" strokeWidth="1.7" />
+      <circle cx="17.5" cy="6.5" r="1.05" fill="currentColor" />
+    </svg>
+  )
+}
+
+export function TikTokLogoMono({ size = 20, className = '' }: MonoLogoProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} fill="currentColor">
+      <path d="M17.07 8.44a4.05 4.05 0 01-2.42-1.68 3.04 3.04 0 01-.4-1.26h-2.5l-.01 10.02a2.33 2.33 0 01-2.32 2.13 2.33 2.33 0 01-2.33-2.33 2.33 2.33 0 012.33-2.33c.24 0 .47.04.69.1v-2.56a4.84 4.84 0 00-.69-.05 4.83 4.83 0 00-4.83 4.84 4.83 4.83 0 004.83 4.83 4.83 4.83 0 004.84-4.83v-5.1a6.52 6.52 0 003.81 1.22V9.1a4.06 4.06 0 01-1-.66z" />
+    </svg>
+  )
+}
+
+export function YouTubeLogoMono({ size = 20, className = '' }: MonoLogoProps) {
+  // Body + triangle as a single evenodd-filled path so the play
+  // triangle is a transparent cut-out (parent surface shows through).
+  // Works on every theme without the color-matching gymnastics the
+  // earlier hardcoded-white / var(--card-bg) approaches required.
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
+      <path
+        fill="currentColor"
+        fillRule="evenodd"
+        d="M21.38 7.6a2.47 2.47 0 00-1.74-1.75C18.25 5.5 12 5.5 12 5.5s-6.25 0-7.64.35A2.47 2.47 0 002.62 7.6 25.6 25.6 0 002.25 12c-.01 1.48.11 2.95.37 4.4a2.47 2.47 0 001.74 1.74c1.39.38 7.64.38 7.64.38s6.25 0 7.64-.38a2.47 2.47 0 001.74-1.74c.26-1.45.38-2.92.37-4.4.01-1.48-.11-2.95-.37-4.4z M10 15.25l5-3.25-5-3.25v6.5z"
+      />
+    </svg>
+  )
+}
+
+export function FacebookLogoMono({ size = 20, className = '' }: MonoLogoProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} fill="currentColor">
+      <path d="M12 2.04c-5.5 0-9.96 4.46-9.96 9.96 0 4.97 3.64 9.09 8.41 9.84v-6.96H7.9V12h2.55V9.85c0-2.51 1.5-3.9 3.78-3.9 1.1 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.45 2.88h-2.33v6.96A9.97 9.97 0 0021.96 12c0-5.5-4.46-9.96-9.96-9.96z" />
+    </svg>
+  )
+}
+
+export function LinkedInLogoMono({ size = 20, className = '' }: MonoLogoProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} fill="currentColor">
+      <path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.66H9.36V9h3.4v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 110-4.13 2.06 2.06 0 010 4.13zm1.78 13.02H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.55C0 23.23.79 24 1.77 24h20.45C23.21 24 24 23.23 24 22.27V1.72C24 .77 23.21 0 22.22 0z" />
+    </svg>
+  )
+}
+
+export function WebsiteLogoMono({ size = 20, className = '' }: MonoLogoProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} fill="none">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.7" />
+      <ellipse cx="12" cy="12" rx="4" ry="9" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M3 12h18" stroke="currentColor" strokeWidth="1.7" />
+    </svg>
+  )
+}
+
+export const PLATFORM_LOGOS_MONO: Record<string, typeof InstagramLogoMono> = {
+  instagram: InstagramLogoMono,
+  tiktok: TikTokLogoMono,
+  youtube: YouTubeLogoMono,
+  facebook: FacebookLogoMono,
+  linkedin: LinkedInLogoMono,
+  website: WebsiteLogoMono,
 }
 
 export const PLATFORM_LIST = [

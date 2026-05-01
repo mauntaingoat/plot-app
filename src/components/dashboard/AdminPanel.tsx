@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Eye, Gift, Clock, Users, Shield, CheckCircle, XCircle } from 'lucide-react'
+import { MagnifyingGlass as Search, Eye, Gift, Clock, Users, Shield, CheckCircle, XCircle } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { getUserByUsername } from '@/lib/firestore'
 import { resetFirestore, app } from '@/config/firebase'

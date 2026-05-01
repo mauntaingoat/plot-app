@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Radio, CalendarClock } from 'lucide-react'
+import { Radio, CalendarDots as CalendarClock } from '@phosphor-icons/react'
 import type { Pin, ForSalePin } from '@/lib/types'
 import { nextSession } from '@/lib/openHouse'
 

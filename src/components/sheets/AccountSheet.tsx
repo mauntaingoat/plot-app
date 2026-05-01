@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { LogOut, Camera, ChevronRight, Crown, X } from 'lucide-react'
+import { SignOut as LogOut, Camera, CaretRight as ChevronRight, Crown, X } from '@phosphor-icons/react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'

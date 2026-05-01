@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Download, Copy, Check } from 'lucide-react'
+import { X, Download, Copy, Check } from '@phosphor-icons/react'
 import { generateQRCode, downloadQRCode } from '@/lib/qrcode'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { useScrollLock } from '@/hooks/useScrollLock'

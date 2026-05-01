@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Bell, BellOff, Check, UserPlus, CalendarCheck, Bookmark } from 'lucide-react'
+import { Bell, BellSlash as BellOff, Check, CalendarCheck, Heart, HandWaving as Hand } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { useNotifications } from '@/hooks/useNotifications'
 import { updateUserDoc } from '@/lib/firestore'
@@ -8,15 +8,17 @@ import { useAuthStore } from '@/stores/authStore'
 import type { NotificationPrefs } from '@/lib/types'
 
 const DEFAULT_PREFS: NotificationPrefs = {
-  newFollower: true,
+  newFollower: false,
   showingRequest: true,
-  pinSaved: true,
+  pinSaved: false,
+  newSubscriber: true,
+  newWave: true,
 }
 
-const PREF_ROWS: { id: keyof NotificationPrefs; label: string; desc: string; icon: typeof UserPlus; color: string }[] = [
-  { id: 'newFollower', label: 'New followers', desc: 'Someone follows your Reelst.', icon: UserPlus, color: '#3B82F6' },
+const PREF_ROWS: { id: keyof NotificationPrefs; label: string; desc: string; icon: typeof Heart; color: string }[] = [
   { id: 'showingRequest', label: 'Showing requests', desc: 'A visitor wants to tour one of your listings.', icon: CalendarCheck, color: '#FF6B3D' },
-  { id: 'pinSaved', label: 'Listing saved', desc: 'Visitors save your pins to their map.', icon: Bookmark, color: '#A855F7' },
+  { id: 'newSubscriber', label: 'Profile Saves', desc: 'Someone subscribed to get updates from you.', icon: Heart, color: '#A855F7' },
+  { id: 'newWave', label: 'Waves', desc: 'A buyer asked a question about a listing.', icon: Hand, color: '#34C759' },
 ]
 
 export function NotificationSettings() {
@@ -27,7 +29,7 @@ export function NotificationSettings() {
   const [notificationsOn, setNotificationsOn] = useState(() => {
     if (!userDoc?.notificationPrefs) return true
     const p = userDoc.notificationPrefs
-    return p.newFollower || p.showingRequest || p.pinSaved
+    return p.showingRequest || p.newSubscriber || p.newWave
   })
 
   useEffect(() => {
@@ -53,7 +55,7 @@ export function NotificationSettings() {
 
   const handleToggleAll = () => {
     if (notificationsOn) {
-      const off: NotificationPrefs = { newFollower: false, showingRequest: false, pinSaved: false }
+      const off: NotificationPrefs = { newFollower: false, showingRequest: false, pinSaved: false, newSubscriber: false, newWave: false }
       setPrefs(off)
       setNotificationsOn(false)
       if (userDoc) {

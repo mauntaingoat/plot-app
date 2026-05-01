@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Trash2, X } from 'lucide-react'
+import { PaperPlaneTilt as Send, Trash as Trash2, X } from '@phosphor-icons/react'
 import { Avatar } from '@/components/ui/Avatar'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { getComments, addComment, deleteComment, type CommentDoc } from '@/lib/firestore'

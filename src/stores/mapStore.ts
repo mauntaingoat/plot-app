@@ -39,6 +39,17 @@ interface MapState {
 
   viewingAgentId: string | null
   setViewingAgentId: (id: string | null) => void
+
+  // Last viewport seen by any MapCanvas instance for the current
+  // agent — center + zoom captured on every `moveend`. Both the
+  // collapsed peek and the expanded map read from this so opening
+  // / closing the expanded view preserves the user's pan/zoom (and
+  // shows the same content in both states). `null` until the first
+  // `fitToPins` settles, after which fit-to-pins is suppressed so
+  // we don't snap the user back to the bounds-fit on every remount.
+  userViewport: { center: [number, number]; zoom: number } | null
+  setUserViewport: (center: [number, number], zoom: number) => void
+  resetUserViewport: () => void
 }
 
 const emptyPropertyFilters: PropertyFilters = {
@@ -83,7 +94,17 @@ export const useMapStore = create<MapState>((set, get) => ({
   setDrawerSnap: (drawerSnap) => set({ drawerSnap }),
 
   viewingAgentId: null,
-  setViewingAgentId: (viewingAgentId) => set({ viewingAgentId }),
+  setViewingAgentId: (viewingAgentId) => set((s) => ({
+    viewingAgentId,
+    // Crossing agent boundaries clears the cached viewport so the new
+    // profile lands on a fresh fit-to-pins instead of the previous
+    // agent's last pan/zoom. (Same-id repeats are a no-op.)
+    userViewport: viewingAgentId !== s.viewingAgentId ? null : s.userViewport,
+  })),
+
+  userViewport: null,
+  setUserViewport: (center, zoom) => set({ userViewport: { center, zoom } }),
+  resetUserViewport: () => set({ userViewport: null }),
 }))
 
 // ── Filter logic ──

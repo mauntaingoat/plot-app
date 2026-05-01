@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { Bell, X } from 'lucide-react'
+import { Bell, X } from '@phosphor-icons/react'
 import { useNotifications } from '@/hooks/useNotifications'
 
 /**

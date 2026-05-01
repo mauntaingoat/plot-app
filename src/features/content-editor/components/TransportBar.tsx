@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Play, Pause, Undo2, Redo2 } from 'lucide-react'
+import { Play, Pause, ArrowBendUpLeft as Undo2, ArrowBendUpRight as Redo2 } from '@phosphor-icons/react'
 import { useEditorStore } from '../state/editorStore'
 
 function fmt(t: number): string {
@@ -77,8 +77,8 @@ export function TransportBar() {
           aria-label={playing ? 'Pause' : 'Play'}
         >
           {playing
-            ? <Pause size={22} className="text-white" fill="currentColor" />
-            : <Play size={22} className="text-white ml-0.5" fill="currentColor" />}
+            ? <Pause weight="fill" size={22} className="text-white" />
+            : <Play weight="fill" size={22} className="text-white ml-0.5" />}
         </motion.button>
       </div>
 
@@ -94,7 +94,7 @@ export function TransportBar() {
           }`}
           aria-label="Undo"
         >
-          <Undo2 size={16} strokeWidth={2.2} />
+          <Undo2 weight="bold" size={16} />
         </button>
         <button
           onClick={canRedo ? redo : undefined}
@@ -106,7 +106,7 @@ export function TransportBar() {
           }`}
           aria-label="Redo"
         >
-          <Redo2 size={16} strokeWidth={2.2} />
+          <Redo2 weight="bold" size={16} />
         </button>
       </div>
     </div>

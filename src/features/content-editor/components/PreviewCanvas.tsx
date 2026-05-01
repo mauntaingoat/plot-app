@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Check, Image as ImageIcon, Film, Loader2, Crop } from 'lucide-react'
+import { X, Check, Image as ImageIcon, FilmStrip as Film, CircleNotch as Loader2, Crop } from '@phosphor-icons/react'
 import { useEditorStore } from '../state/editorStore'
 import { ASPECT_OPTIONS, FONT_OPTIONS } from '../state/types'
 
@@ -371,17 +371,17 @@ export function PreviewCanvas() {
           >
             {importingCount > 0 ? (
               <>
-                <Loader2 size={40} className="text-tangerine animate-spin" strokeWidth={2.2} />
+                <Loader2 weight="bold" size={40} className="text-tangerine animate-spin" />
                 <p className="ed-fg-85 text-[14px] font-semibold">Importing…</p>
               </>
             ) : (
               <>
                 <div className="relative w-[72px] h-[64px]">
                   <div className="absolute left-0 top-0 w-[52px] h-[52px] rounded-[14px] border-[1.5px] ed-border-15 flex items-center justify-center ed-surface-04 rotate-[-6deg]">
-                    <ImageIcon size={22} strokeWidth={1.7} className="ed-fg-85" />
+                    <ImageIcon weight="light" size={22} className="ed-fg-85" />
                   </div>
                   <div className="absolute right-0 bottom-0 w-[52px] h-[52px] rounded-[14px] border-[1.5px] ed-border-15 flex items-center justify-center ed-surface-06 rotate-[6deg]">
-                    <Film size={22} strokeWidth={1.7} className="ed-fg-85" />
+                    <Film weight="light" size={22} className="ed-fg-85" />
                   </div>
                 </div>
                 <div className="space-y-1">
@@ -441,7 +441,7 @@ export function PreviewCanvas() {
         {/* Importing badge */}
         {importingCount > 0 && !isEmpty && (
           <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/65 backdrop-blur-sm">
-            <Loader2 size={11} className="text-tangerine animate-spin" strokeWidth={2.4} />
+            <Loader2 weight="bold" size={11} className="text-tangerine animate-spin" />
             <span className="text-[10px] font-semibold ed-fg-85">Importing…</span>
           </div>
         )}
@@ -460,7 +460,7 @@ export function PreviewCanvas() {
             className="absolute top-3 left-3 z-30 h-9 px-3 rounded-full flex items-center gap-1.5 bg-black/55 text-white/95 text-[11px] font-semibold backdrop-blur-sm hover:bg-black/70 cursor-pointer transition-all active:scale-95"
             aria-label="Set thumbnail"
           >
-            <ImageIcon size={13} strokeWidth={2.3} />
+            <ImageIcon weight="bold" size={13} />
             Thumbnail
           </button>
         )}
@@ -475,7 +475,7 @@ export function PreviewCanvas() {
               exit={{ opacity: 0, y: -6 }}
               className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 h-7 px-3 rounded-full bg-sold-green/95 text-white text-[10px] font-bold pointer-events-none"
             >
-              <Check size={10} strokeWidth={3} />
+              <Check weight="bold" size={10} />
               Thumbnail saved
             </motion.div>
           )}
@@ -499,7 +499,7 @@ export function PreviewCanvas() {
             }`}
             aria-label="Frame"
           >
-            <Crop size={16} strokeWidth={2.3} />
+            <Crop weight="bold" size={16} />
           </button>
         )}
       </div>
@@ -515,7 +515,7 @@ export function PreviewCanvas() {
             onClick={() => setEditingOverlayId(null)}
             className="absolute top-3 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 h-9 px-4 rounded-full bg-tangerine text-white text-[12px] font-bold shadow-[0_8px_24px_rgba(255,107,61,0.55)] cursor-pointer"
           >
-            <Check size={13} strokeWidth={2.6} />
+            <Check weight="bold" size={13} />
             Done
           </motion.button>
         )}
@@ -650,7 +650,7 @@ function TextOverlayNode({ overlay, frameRef, editing, onStartEdit, onChange, on
             className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-black/80 flex items-center justify-center text-white/90 hover:bg-tangerine cursor-pointer"
             data-text-overlay
           >
-            <X size={10} strokeWidth={2.6} />
+            <X weight="bold" size={10} />
           </button>
         )}
       </div>

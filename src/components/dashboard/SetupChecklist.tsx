@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Camera, User, MapPin, Link2, FileText, Award, Layers, X } from 'lucide-react'
+import { Check, Camera, User, MapPin, LinkSimple as Link2, FileText, Medal as Award, Stack as Layers, X } from '@phosphor-icons/react'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import type { UserDoc } from '@/lib/types'
 

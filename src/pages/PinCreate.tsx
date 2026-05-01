@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, ArrowRight, MapPin, Search, Check, Upload, Video, Camera, X, DollarSign, Home, BadgeCheck, Compass, Plus, Film, Mic, Clock, Lock, Trash2, ChevronRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight, MapPin, MagnifyingGlass as Search, Check, UploadSimple as Upload, VideoCamera as Video, Camera, X, CurrencyDollar as DollarSign, House as Home, SealCheck as BadgeCheck, Compass, Plus, FilmStrip as Film, Microphone as Mic, Clock, Lock, Trash as Trash2, CaretRight as ChevronRight } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useGeocoding } from '@/hooks/useGeocoding'
@@ -1570,7 +1570,7 @@ export default function PinCreate() {
                             className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-ink text-warm-white flex items-center justify-center cursor-pointer hover:brightness-125 transition-all shadow"
                             aria-label="Remove draft"
                           >
-                            <X size={11} strokeWidth={2.6} />
+                            <X weight="bold" size={11} />
                           </button>
                         </div>
                       )

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { ChevronDown, UserPlus, UserCheck, Share2, Locate, Users, Globe, Bookmark } from 'lucide-react'
+import { CaretDown as ChevronDown, UserPlus, UserCircleCheck as UserCheck, ShareNetwork as Share2, Crosshair as Locate, Users, Globe, BookmarkSimple as Bookmark } from '@phosphor-icons/react'
 import { Avatar } from '@/components/ui/Avatar'
 import type { UserDoc } from '@/lib/types'
 import type { AgentMode } from '@/components/sheets/AgentDetailSheet'

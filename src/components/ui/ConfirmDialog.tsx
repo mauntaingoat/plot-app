@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertTriangle } from 'lucide-react'
+import { Warning as AlertTriangle } from '@phosphor-icons/react'
 import { Button } from './Button'
 import { useScrollLock } from '@/hooks/useScrollLock'
 

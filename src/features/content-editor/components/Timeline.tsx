@@ -1,6 +1,6 @@
 import { useRef, useCallback, useMemo, useEffect, useLayoutEffect, useState } from 'react'
 import { motion, Reorder, AnimatePresence } from 'framer-motion'
-import { Plus, Type, Music2, Loader2, Copy } from 'lucide-react'
+import { Plus, TextAa as Type, MusicNote as Music2, CircleNotch as Loader2, Copy } from '@phosphor-icons/react'
 import { useEditorStore } from '../state/editorStore'
 import type { Clip, TextOverlay } from '../state/types'
 
@@ -275,7 +275,7 @@ export function Timeline({ simpleMode = false }: { simpleMode?: boolean } = {}) 
           <div className="absolute inset-0 rounded-[14px] ed-surface-025 flex items-center justify-center ed-fg-45 text-[12px] font-medium pointer-events-none">
             {importingCount > 0 ? (
               <span className="inline-flex items-center gap-2">
-                <Loader2 size={12} className="text-tangerine animate-spin" strokeWidth={2.4} />
+                <Loader2 weight="bold" size={12} className="text-tangerine animate-spin" />
                 Loading clips…
               </span>
             ) : (
@@ -359,7 +359,7 @@ export function Timeline({ simpleMode = false }: { simpleMode?: boolean } = {}) 
                   style={{ width: 48, height: CLIP_HEIGHT }}
                   aria-label="Add clip"
                 >
-                  <Plus size={17} strokeWidth={2.2} />
+                  <Plus weight="bold" size={17} />
                 </button>
               </div>
             </>
@@ -398,7 +398,7 @@ export function Timeline({ simpleMode = false }: { simpleMode?: boolean } = {}) 
           onClick={() => setView('audio')}
           className="mt-1.5 w-full flex items-center gap-2 h-[26px] px-3 rounded-[8px] ed-surface-025 hover:ed-surface-05 cursor-pointer transition-colors group"
         >
-          <Music2 size={11} className="ed-fg-45 transition-colors" strokeWidth={2.2} />
+          <Music2 weight="bold" size={11} className="ed-fg-45 transition-colors" />
           <span className="text-[10px] font-semibold ed-fg-45 transition-colors tracking-tight">
             + Audio
           </span>
@@ -751,7 +751,7 @@ function TextTrack({ wrapperRef, clipsTotal, composedTime }: TextTrackProps) {
         }}
         className="mt-2 w-full flex items-center gap-2 h-[26px] px-3 rounded-[8px] ed-surface-025 hover:ed-surface-05 cursor-pointer transition-colors group"
       >
-        <Type size={11} className="ed-fg-45 transition-colors" strokeWidth={2.2} />
+        <Type weight="bold" size={11} className="ed-fg-45 transition-colors" />
         <span className="text-[10px] font-semibold ed-fg-45 transition-colors tracking-tight">
           + Text
         </span>
@@ -888,7 +888,7 @@ function TextBar({ overlay, updateOverlay, clipsTotal, onSelect }: TextBarProps)
         className="absolute -right-5 top-1/2 -translate-y-1/2 w-[16px] h-[16px] rounded-full bg-tangerine/14 hover:bg-tangerine/25 flex items-center justify-center cursor-pointer"
         aria-label="Duplicate text layer"
       >
-        <Copy size={8} className="text-tangerine" strokeWidth={2.5} />
+        <Copy weight="bold" size={8} className="text-tangerine" />
       </button>
     </div>
   )

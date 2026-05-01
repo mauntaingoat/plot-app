@@ -171,6 +171,8 @@ export const trackEngagement = onCall<{ pinId: string; action: 'tap' | 'save' | 
 )
 
 // ── Daily follower snapshot (runs at midnight UTC) ──
+// Legacy — still populated for backward compat with existing data,
+// but the dashboard's growth chart now reads subscriber_snapshots.
 export const dailyFollowerSnapshot = onSchedule(
   { schedule: '0 0 * * *', timeZone: 'UTC', region: 'us-central1' },
   async () => {
@@ -199,5 +201,60 @@ export const dailyFollowerSnapshot = onSchedule(
     }
     if (count % 400 !== 0) await batch.commit()
     logger.info(`[analytics] daily follower snapshot: ${count} agents`)
+  },
+)
+
+// ── Daily subscriber snapshot (runs at 00:30 UTC) ──
+// Counts active digestSubscriptions per agent and writes one
+// subscriber_snapshots doc per (agent, date). Powers the dashboard
+// "Subscriber Growth" chart in the Insights tab.
+export const dailySubscriberSnapshot = onSchedule(
+  { schedule: '30 0 * * *', timeZone: 'UTC', region: 'us-central1' },
+  async () => {
+    const db = admin.firestore()
+    const today = new Date().toISOString().slice(0, 10)
+
+    // Bulk-fetch all active subscriptions, then bucket by agentId.
+    // For Reelst's current scale this fits comfortably in memory; if
+    // we cross ~50k subscribers we can switch to per-agent streaming.
+    const subsSnap = await db
+      .collection('digestSubscriptions')
+      .where('status', '==', 'active')
+      .get()
+
+    const counts = new Map<string, number>()
+    for (const sub of subsSnap.docs) {
+      const agentId = (sub.data() as { agentId?: string }).agentId
+      if (!agentId) continue
+      counts.set(agentId, (counts.get(agentId) || 0) + 1)
+    }
+
+    // Write a snapshot for every agent (even those at 0) so the
+    // chart line is continuous instead of dropping out on quiet
+    // days. This means we walk the users collection to enumerate.
+    const agentsSnap = await db.collection('users').where('role', '==', 'agent').get()
+    let batch = db.batch()
+    let pending = 0
+    let total = 0
+
+    for (const agentDoc of agentsSnap.docs) {
+      const agentId = agentDoc.id
+      const count = counts.get(agentId) || 0
+      batch.set(db.collection('subscriber_snapshots').doc(`${agentId}_${today}`), {
+        agentId,
+        date: today,
+        count,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      })
+      pending++
+      total++
+      if (pending >= 400) {
+        await batch.commit()
+        batch = db.batch()
+        pending = 0
+      }
+    }
+    if (pending > 0) await batch.commit()
+    logger.info(`[analytics] daily subscriber snapshot: ${total} agents, total subs=${subsSnap.size}`)
   },
 )

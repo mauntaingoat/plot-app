@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, useMotionValue, animate, useDragControls } from 'framer-motion'
-import { X, Bed, Bath, Maximize, MapPin, Eye, Bookmark, Share2, Phone, ChevronLeft, ChevronRight, CalendarCheck, Calendar, Clock, MessageSquare, User as UserIcon, Check, Mail, Flag } from 'lucide-react'
+import { X, Bed, Bathtub as Bath, ArrowsOut as Maximize, MapPin, Eye, BookmarkSimple as Bookmark, ShareNetwork as Share2, Phone, CaretLeft as ChevronLeft, CaretRight as ChevronRight, CalendarCheck, Calendar, Clock, ChatCenteredText as MessageSquare, User as UserIcon, Check, Envelope as Mail, Flag } from '@phosphor-icons/react'
 import { ReportSheet } from '@/components/moderation/ReportSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
@@ -104,7 +104,11 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
 
   const [activeTab, setActiveTab] = useState<'content' | 'listing'>(() => {
     if (initialTab) return initialTab
-    if (hasListingData && !hasContent) return 'listing'
+    // Default to the listing tab when one exists. Listing-first matches
+    // buyer intent — they tap a pin to see the property, content is
+    // supporting media. Spotlight pins (no listing data) fall through
+    // to content as before.
+    if (hasListingData) return 'listing'
     return 'content'
   })
   // Keep activeTab in sync if content/initialTab change after mount
@@ -182,56 +186,72 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
     )
   }
 
-  // Mobile: full-screen sheet with swipe-to-dismiss
+  // Mobile: bottom sheet — slides up from the bottom edge, full
+  // width, rounded top corners only, takes most of the viewport
+  // height. Desktop: floating modal — fades + scales in centered,
+  // capped at a comfortable size so there's clear space around it.
+  // z-index sits ABOVE the expanded map (z-[120]) so pin taps from
+  // inside the expanded map surface the modal cleanly on top.
   return (
     <>
       <div
-        className="fixed inset-0 z-[90] will-change-[opacity]"
-        style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.25s ease', backgroundColor: 'rgba(0,0,0,0.6)' }}
+        className="fixed inset-0 z-[140] will-change-[opacity]"
+        style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.25s ease', backgroundColor: 'rgba(10,14,23,0.55)' }}
         onClick={dismiss}
       />
       <div
-        ref={sheetRef}
-        className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-midnight will-change-transform"
-        style={{
-          transform: visible ? 'translateY(0) translateZ(0)' : 'translateY(100%) translateZ(0)',
-          transition: 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)',
-        }}
+        className="fixed inset-0 z-[145] flex items-end md:items-center justify-center pointer-events-none"
       >
-        {/* Close button — always visible, listing tab save/share sit left of it */}
-        <div className="absolute top-[calc(env(safe-area-inset-top,12px)+8px)] right-4 z-[110] flex items-center gap-2">
-          <button onClick={dismiss} className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer">
-            <X size={18} />
-          </button>
-        </div>
-
-        {/* Tab toggle — overlay on top, translucent. Hidden when the pin
-            has no content (listing-only view). */}
-        {showTabToggle && (
-          <div className="absolute top-[calc(env(safe-area-inset-top,12px)+8px)] left-4 z-[110]">
-            <div className="flex bg-black/30 backdrop-blur-md rounded-full p-1 border border-white/10">
-              <button onClick={() => setActiveTab('content')}
-                className={`px-4 py-1.5 rounded-full text-[12px] font-semibold transition-all cursor-pointer ${activeTab === 'content' ? 'bg-tangerine text-white' : 'text-white/70'}`}>
-                Content
-              </button>
-              <button onClick={() => setActiveTab('listing')}
-                className={`px-4 py-1.5 rounded-full text-[12px] font-semibold transition-all cursor-pointer ${activeTab === 'listing' ? 'bg-tangerine text-white' : 'text-white/70'}`}>
-                Listing
-              </button>
-            </div>
+        <div
+          ref={sheetRef}
+          data-visible={visible ? 'true' : 'false'}
+          className="listing-modal-sheet relative w-full md:max-w-[620px] flex flex-col overflow-hidden bg-midnight rounded-t-[24px] md:rounded-[24px] will-change-transform pointer-events-auto"
+          style={{
+            boxShadow: '0 -16px 50px -16px rgba(10,14,23,0.55), 0 30px 80px -16px rgba(10,14,23,0.55)',
+          }}
+        >
+          {/* Drag handle — mobile only. */}
+          <div className="md:hidden pt-2 pb-1 flex justify-center shrink-0">
+            <div className="w-10 h-1 rounded-full bg-white/30" />
           </div>
-        )}
 
-        {/* Tab content — full screen, scrollable with swipe-to-dismiss ref + snap scroll on content */}
-        <div ref={mobileScrollRef} className="flex-1 overflow-y-auto overscroll-none" style={{
-          WebkitOverflowScrolling: 'touch',
-          ...(activeTab === 'content' ? { scrollSnapType: 'y mandatory' } : {}),
-        }}>
-          {activeTab === 'content' ? (
-            <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} isOwnProfile={isOwnProfile} />
-          ) : (
-            <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isFullScreen isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} isOwnProfile={isOwnProfile} />
+          {/* Close button — always visible, listing tab save/share sit left of it */}
+          <div className="absolute top-[calc(env(safe-area-inset-top,12px)+8px)] right-4 z-[110] flex items-center gap-2">
+            <button onClick={dismiss} className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer">
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Tab toggle — overlay on top, translucent. Hidden when the
+              pin has no content (listing-only view). Order: Listing
+              first, Content second. Default opens Listing. */}
+          {showTabToggle && (
+            <div className="absolute top-[calc(env(safe-area-inset-top,12px)+8px)] left-4 z-[110]">
+              <div className="flex bg-black/30 backdrop-blur-md rounded-full p-1 border border-white/10">
+                <button onClick={() => setActiveTab('listing')}
+                  className={`px-4 py-1.5 rounded-full text-[12px] font-semibold transition-all cursor-pointer ${activeTab === 'listing' ? 'bg-tangerine text-white' : 'text-white/70'}`}>
+                  Listing
+                </button>
+                <button onClick={() => setActiveTab('content')}
+                  className={`px-4 py-1.5 rounded-full text-[12px] font-semibold transition-all cursor-pointer ${activeTab === 'content' ? 'bg-tangerine text-white' : 'text-white/70'}`}>
+                  Content
+                </button>
+              </div>
+            </div>
           )}
+
+          {/* Tab content — scrollable with swipe-to-dismiss ref +
+              snap scroll on content tab. */}
+          <div ref={mobileScrollRef} className="flex-1 overflow-y-auto overscroll-none" style={{
+            WebkitOverflowScrolling: 'touch',
+            ...(activeTab === 'content' ? { scrollSnapType: 'y mandatory' } : {}),
+          }}>
+            {activeTab === 'content' ? (
+              <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} isOwnProfile={isOwnProfile} />
+            ) : (
+              <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isFullScreen isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} isOwnProfile={isOwnProfile} />
+            )}
+          </div>
         </div>
       </div>
     </>
@@ -383,16 +403,9 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
         </div>
       </div>
 
-      {/* Right sidebar */}
+      {/* Right sidebar — Share only. Saving is agent-level via the
+          Save Maya pill on the profile, not pin-level. */}
       <div className="absolute right-3 bottom-[20%] z-10 flex flex-col items-center gap-4" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }}>
-        {!isOwnProfile && (
-          <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
-            onClick={!isPreview ? handleSave : undefined}
-            className={isPreview ? 'opacity-40' : 'cursor-pointer'}>
-            <Bookmark size={24} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
-            <span className="text-[9px] text-white font-semibold block mt-0.5">{formatCompact(content.saves || 0)}</span>
-          </motion.button>
-        )}
         <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
           className={isPreview ? 'opacity-40' : 'cursor-pointer'}>
           <Share2 size={20} className="text-white" />

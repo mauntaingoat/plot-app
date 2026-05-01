@@ -28,13 +28,24 @@ const ringStyles = {
 
 export function Avatar({ src, name = '', size = 40, ring = 'none', className = '', onClick }: AvatarProps) {
   const [loaded, setLoaded] = useState(src ? isImageCached(src) : false)
+  const [errored, setErrored] = useState(false)
 
   useEffect(() => {
+    setErrored(false)
     if (!src) return
     if (isImageCached(src)) { setLoaded(true); return }
-    preloadImage(src).then(() => setLoaded(true))
+    setLoaded(false)
+    preloadImage(src)
+      .then(() => setLoaded(true))
+      .catch(() => setErrored(true))
   }, [src])
 
+  // Letters always render; image overlays them when loaded. On error
+  // we don't render the <img> at all so the browser's broken-image
+  // glyph never shows through (opacity:0 alone leaves the alt-text
+  // box visible in some browsers when offline).
+  const showImage = src && !errored
+  const showLetters = !showImage || !loaded
   const inner = (
     <div
       className="rounded-full overflow-hidden bg-charcoal flex items-center justify-center relative"
@@ -42,16 +53,17 @@ export function Avatar({ src, name = '', size = 40, ring = 'none', className = '
     >
       <span
         className="text-white font-semibold select-none absolute"
-        style={{ fontSize: size * 0.36, opacity: src && loaded ? 0 : 1 }}
+        style={{ fontSize: size * 0.36, opacity: showLetters ? 1 : 0, transition: 'opacity 0.18s ease' }}
       >
         {getInitials(name || '?')}
       </span>
-      {src && (
+      {showImage && (
         <img
           src={src}
           alt={name}
           className="w-full h-full object-cover absolute inset-0"
-          style={{ opacity: loaded ? 1 : 0 }}
+          style={{ opacity: loaded ? 1 : 0, transition: 'opacity 0.18s ease' }}
+          onError={() => setErrored(true)}
         />
       )}
     </div>

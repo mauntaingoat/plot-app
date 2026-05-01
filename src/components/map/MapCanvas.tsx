@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState, forwardRef, useImperativeHandle } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { useMapStore } from '@/stores/mapStore'
 import { formatPrice, getBounds } from '@/lib/firestore'
@@ -34,6 +34,50 @@ interface MapCanvasProps {
   onBack?: () => void
   /** Center to fly to when pins are empty (e.g. agent's licensed state) */
   defaultCenter?: [number, number]
+  /** When false, the map's WebGL context is NOT created. Used to
+   *  defer initialization until the visible map area (peek slot or
+   *  expanded viewport) actually scrolls into view. Once the parent
+   *  flips this to true the map inits and stays alive — flipping
+   *  back to false later doesn't tear it down. Defaults to true so
+   *  legacy call sites that don't gate get the original behavior. */
+  enabled?: boolean
+  /** Shape id of the visible viewport mask (heart, circle, etc).
+   *  fitBounds padding is computed off this so pins land INSIDE the
+   *  visible mask area on first load — not just inside the
+   *  rectangular WebGL canvas (which would cluster pins where the
+   *  shape clips them away). */
+  shapeId?: string
+  /** Explicit padding override used by fitBounds. When set, takes
+   *  precedence over the shape-aware default — needed by
+   *  ExpandedMapView since the peek isn't centered on the canvas
+   *  (it sits at a vertical offset inside the card), so the
+   *  canvas-centered default misses it. */
+  fitPadding?: { top: number; right: number; bottom: number; left: number }
+}
+
+/* Per-shape inset fractions [top, right, bottom, left] expressing how
+ * much of the rectangular bbox the shape DOESN'T fill. Used to push
+ * fit-bounds padding so pins always land in the visible mask area. */
+const SHAPE_INSETS: Record<string, [number, number, number, number]> = {
+  rectangle: [0.22, 0.05, 0.22, 0.05],
+  squircle:  [0.10, 0.10, 0.10, 0.10],
+  circle:    [0.18, 0.18, 0.18, 0.18],
+  hex:       [0.06, 0.16, 0.06, 0.16],
+  heart:     [0.08, 0.10, 0.18, 0.10],
+  house:     [0.06, 0.06, 0.08, 0.06],
+}
+
+function shapeAwarePadding(shapeId: string | undefined, w: number, h: number) {
+  const inset = SHAPE_INSETS[shapeId || 'rectangle'] || [0.10, 0.10, 0.10, 0.10]
+  const [t, r, b, l] = inset
+  // Baseline minimums so we always leave a bit of breathing room for
+  // chrome (agent pill, filter chips) when the shape inset is tiny.
+  return {
+    top: Math.max(80, h * t),
+    right: Math.max(40, w * r),
+    bottom: Math.max(40, h * b),
+    left: Math.max(40, w * l),
+  }
 }
 
 function pinsToGeoJSON(pins: Pin[]) {
@@ -117,6 +161,66 @@ const iconImageCache = new Map<string, HTMLImageElement>()
 })()
 function getPinTypeIcon(type: string): HTMLImageElement | null {
   return iconImageCache.get(type) ?? null
+}
+
+/**
+ * Static pin variant with an Instagram-Stories-style rainbow gradient
+ * outer ring. Used for `for_sale` listings that have an active or
+ * upcoming open-house session — replaces the morphing-into-house
+ * animation. Inner thumbnail stays the same; only the ring changes.
+ */
+function createOpenHousePin(img: HTMLImageElement | null, pinType: string, size: number = PIN_SIZE + RING_PAD): ImageData {
+  const canvas = document.createElement('canvas')
+  const s = size * 2
+  canvas.width = s; canvas.height = s
+  const ctx = canvas.getContext('2d')!
+  const cx = s / 2, cy = s / 2, outerR = s / 2
+  const ringW = (RING_PAD / 2) * 2, innerR = outerR - ringW
+
+  // Rainbow conic gradient — IG-stories style.
+  // Conic gradient isn't supported in older Canvas implementations, so
+  // fall back to a multi-stop linear gradient if the constructor fails.
+  let ringFill: CanvasGradient
+  try {
+    // @ts-expect-error createConicGradient may not be in TS lib version
+    ringFill = ctx.createConicGradient ? ctx.createConicGradient(-Math.PI / 2, cx, cy) : ctx.createLinearGradient(0, 0, s, s)
+  } catch {
+    ringFill = ctx.createLinearGradient(0, 0, s, s)
+  }
+  ringFill.addColorStop(0.00, '#FF6B3D')   // tangerine
+  ringFill.addColorStop(0.16, '#FFD089')   // warm yellow
+  ringFill.addColorStop(0.33, '#34C759')   // sold-green (echo)
+  ringFill.addColorStop(0.50, '#3B82F6')   // listing-blue
+  ringFill.addColorStop(0.66, '#A855F7')   // reel-purple
+  ringFill.addColorStop(0.83, '#FF3B7A')   // hot pink
+  ringFill.addColorStop(1.00, '#FF6B3D')   // back to tangerine
+
+  ctx.beginPath(); ctx.arc(cx, cy, outerR, 0, Math.PI * 2); ctx.fillStyle = ringFill; ctx.fill()
+  ctx.beginPath(); ctx.arc(cx, cy, innerR, 0, Math.PI * 2); ctx.fillStyle = '#0A0E17'; ctx.fill()
+
+  let tainted = false
+  if (img && img.complete && img.naturalWidth > 0) {
+    try {
+      ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, innerR - 2, 0, Math.PI * 2); ctx.clip()
+      const imgSize = (innerR - 2) * 2
+      drawImageCover(ctx, img, cx - innerR + 2, cy - innerR + 2, imgSize)
+      ctx.restore()
+      ctx.getImageData(0, 0, 1, 1)
+    } catch {
+      tainted = true
+      ctx.clearRect(0, 0, s, s)
+      ctx.beginPath(); ctx.arc(cx, cy, outerR, 0, Math.PI * 2); ctx.fillStyle = ringFill; ctx.fill()
+      ctx.beginPath(); ctx.arc(cx, cy, innerR, 0, Math.PI * 2); ctx.fillStyle = '#0A0E17'; ctx.fill()
+    }
+  }
+  if (tainted || !img || !img.complete || img.naturalWidth === 0) {
+    const icon = getPinTypeIcon(pinType)
+    if (icon && icon.complete && icon.naturalWidth > 0) {
+      const iconSize = innerR * 1.1
+      ctx.drawImage(icon, cx - iconSize / 2, cy - iconSize / 2, iconSize, iconSize)
+    }
+  }
+  return ctx.getImageData(0, 0, s, s)
 }
 
 function createPinImage(img: HTMLImageElement | null, ringColor: string, pinType: string, size: number = PIN_SIZE + RING_PAD): ImageData {
@@ -541,14 +645,66 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   })
 }
 
-export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, className = '', fitToPins = true, interactive = true, showBackButton, onBack, defaultCenter }: MapCanvasProps) {
+/** Imperative handle exposed via forwardRef — lets the parent fly the
+ *  existing map (e.g., a "fit to all pins" action chip) without
+ *  re-mounting. */
+export interface MapCanvasHandle {
+  /** Re-fit pins. Optional padding override is used by the parent
+   *  on peek↔expand transitions, where the visible area changes
+   *  shape and the original initial-fit padding is no longer right. */
+  fitToPins: (paddingOverride?: { top: number; right: number; bottom: number; left: number }) => void
+}
+
+export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function MapCanvas(
+  { pins, agentPhotoUrl, onPinClick, onMapMoved, className = '', fitToPins = true, interactive = true, showBackButton, onBack, defaultCenter, enabled = true, shapeId, fitPadding },
+  ref,
+) {
+  const fitPaddingRef = useRef(fitPadding)
+  fitPaddingRef.current = fitPadding
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const fittedRef = useRef(false)
+  // Lazy-init guard. We don't `new mapboxgl.Map()` until the
+  // container first intersects the viewport — saves a WebGL context
+  // (+ ~30 Mapbox shader slots) when the map sits below the fold and
+  // the visitor never scrolls down to it. Once true, stays true so
+  // re-mounts (peek ↔ expanded transitions, scroll-out-of-view) keep
+  // the same WebGL context instead of creating new ones.
+  const [mapShouldInit, setMapShouldInit] = useState(false)
   const pinsRef = useRef(pins); pinsRef.current = pins
   const loadedImagesRef = useRef<Set<string>>(new Set())
-  const { center, zoom } = useMapStore()
+  const { center: storeCenter, zoom: storeZoom, userViewport, setUserViewport } = useMapStore()
+  // Prefer the last-seen user viewport (peek + expanded share this so
+  // remounts preserve pan/zoom and feel like the same map). Falls back
+  // to the store's continental-US default for the very first mount.
+  const initialCenter = userViewport?.center ?? storeCenter
+  const initialZoom = userViewport?.zoom ?? storeZoom
+  // Once a viewport has been captured, stop forcing fit-to-pins on
+  // remount — that snap is what made closing the expanded view feel
+  // like a "reload" (the peek would jump back to its bounds-fit
+  // instead of preserving where the user was).
+  const skipFit = userViewport !== null
   const pinClickRef = useRef(onPinClick); pinClickRef.current = onPinClick
+
+  // Imperative API for parent components to fly the map without
+  // re-mounting (e.g., the "fit to all pins" action chip).
+  useImperativeHandle(ref, () => ({
+    fitToPins: (paddingOverride) => {
+      const map = mapRef.current
+      if (!map) return
+      const coords = pinsRef.current.map((p) => p.coordinates)
+      if (coords.length === 0) {
+        if (defaultCenter) map.easeTo({ center: defaultCenter, zoom: 7, duration: 600 })
+        return
+      }
+      if (coords.length === 1) {
+        map.easeTo({ center: [coords[0].lng, coords[0].lat], zoom: 15, duration: 600 })
+      } else {
+        const padding = paddingOverride ?? fitPaddingRef.current ?? shapeAwarePadding(shapeId, mapContainer.current?.clientWidth ?? 0, mapContainer.current?.clientHeight ?? 0)
+        map.fitBounds(getBounds(coords), { padding, duration: 600 })
+      }
+    },
+  }), [defaultCenter, shapeId])
 
   const animatedPinIds = useRef<{ openHouse: string[]; live: string[] }>({ openHouse: [], live: [] })
   const pinFrames = useRef<Map<string, number>>(new Map()) // per-pin frame counter
@@ -585,13 +741,9 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       const isLive = pin.type === 'for_sale' && 'isLive' in pin && pin.isLive
       const hasOpenHouse = pin.type === 'for_sale' && 'openHouse' in pin && !!pin.openHouse?.sessions?.length
 
-      // Queue animation frame generation (non-blocking)
-      if (hasOpenHouse) {
-        newOpenHouse.push(pin.id)
-        const ohImg = img, ohColor = color, ohGrad = RING_GRADIENT_COLORS[pin.type] || color, ohType = pType, ohId = pin.id
-        queueFrameGeneration(map, loadedImagesRef.current, ohId, 'oh', ANIM_FRAMES, (f) => createOpenHouseFrame(ohImg, ohType, f, ohColor, ohGrad))
-      }
-
+      // Open-house pins now get a static rainbow gradient ring (IG
+      // stories style) — no morphing-into-house animation, no pulse.
+      // Live pins still animate.
       if (isLive) {
         newLive.push(pin.id)
         const liveImg = img, liveColor = color, liveGrad = RING_GRADIENT_COLORS[pin.type] || color, liveType = pType, liveId = pin.id
@@ -601,8 +753,12 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       // Type-colored ring version (for individual pins).
       // Always regenerate — pin content/photos may have changed since
       // the last render, and the thumbnail should reflect the latest.
+      // Open-house pins get the rainbow-ringed variant in place of the
+      // type-colored ring, mirroring IG stories.
       const imgId = `pin-img-${pin.id}`
-      const imageData = createPinImage(img, color, pType)
+      const imageData = hasOpenHouse
+        ? createOpenHousePin(img, pType)
+        : createPinImage(img, color, pType)
       if (map.hasImage(imgId)) {
         map.removeImage(imgId)
       }
@@ -643,13 +799,35 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
     }
   }, [agentPhotoUrl])
 
+  // Lazy-init: when the parent passes `enabled={false}` we skip
+  // creating the WebGL context (and ~30 Mapbox shader slots that
+  // come with it). Once enabled, stays initialized — re-disabling
+  // doesn't tear the map down.
   useEffect(() => {
+    if (!enabled) return
+    if (mapShouldInit) return
+    setMapShouldInit(true)
+  }, [enabled, mapShouldInit])
+
+  useEffect(() => {
+    if (!mapShouldInit) return
     if (!mapContainer.current || mapRef.current) return
     const map = new mapboxgl.Map({
-      container: mapContainer.current, style: MAPBOX_STYLE, center, zoom,
+      container: mapContainer.current, style: MAPBOX_STYLE,
+      center: initialCenter, zoom: initialZoom,
       attributionControl: false, interactive, pitchWithRotate: false,
       dragRotate: false, touchPitch: false, minZoom: 3, maxZoom: 16.8, fadeDuration: 0,
     })
+
+    // Snapshot viewport on every settle so the next mount (peek ↔
+    // expanded transitions, tab switches, etc.) starts where the user
+    // left off. Uses moveend so we don't thrash the store mid-pan.
+    const onMoveEnd = () => {
+      const c = map.getCenter()
+      setUserViewport([c.lng, c.lat], map.getZoom())
+    }
+    map.on('moveend', onMoveEnd)
+    map.on('zoomend', onMoveEnd)
 
     map.on('style.load', () => {
       // Recolor the Mapbox style's bottom background layer so panning
@@ -662,6 +840,30 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       } catch {
         /* style has no 'background' layer — fine, CSS fallback catches it */
       }
+
+      // ── Shader trim ──
+      // Mapbox compiles a separate Metal/GL shader for every layer
+      // type that ends up in the style. On Apple Silicon, ANGLE caps
+      // the shared shader cache at 64 entries — when Mapbox fills it,
+      // unrelated tabs (Netflix, YouTube, anything with hardware-
+      // decoded video) get their shaders evicted and go black.
+      //
+      // We don't render anything in 3D and we don't surface terrain /
+      // hillshade / sky / atmosphere, so strip them. Cuts the shader
+      // footprint roughly in half on the default Mapbox style.
+      try {
+        const heavyTypes = new Set(['fill-extrusion', 'hillshade', 'sky'])
+        const layers = map.getStyle().layers || []
+        for (const layer of layers) {
+          if (heavyTypes.has(layer.type)) {
+            try { map.removeLayer(layer.id) } catch { /* layer already gone */ }
+          }
+        }
+        // Belt-and-suspenders: explicitly drop terrain + fog if the
+        // style happened to enable them (newer "standard" styles do).
+        try { map.setTerrain(null) } catch { /* not enabled */ }
+        try { map.setFog(null) } catch { /* not enabled */ }
+      } catch { /* style not ready — rare; pin layers will still load */ }
     })
 
     map.on('load', async () => {
@@ -767,12 +969,12 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       map.on('mouseenter', 'cluster-icons', () => { map.getCanvas().style.cursor = 'pointer' })
       map.on('mouseleave', 'cluster-icons', () => { map.getCanvas().style.cursor = '' })
 
-      if (fitToPins && pinsRef.current.length > 0 && !fittedRef.current) {
+      if (fitToPins && !skipFit && pinsRef.current.length > 0 && !fittedRef.current) {
         fittedRef.current = true
         const coords = pinsRef.current.map((p) => p.coordinates)
         if (coords.length === 1) map.easeTo({ center: [coords[0].lng, coords[0].lat], zoom: 15, duration: 800 })
-        else map.fitBounds(getBounds(coords), { padding: { top: 180, bottom: 80, left: 80, right: 80 }, duration: 800 })
-      } else if (fitToPins && pinsRef.current.length === 0 && defaultCenter && !fittedRef.current) {
+        else map.fitBounds(getBounds(coords), { padding: fitPaddingRef.current ?? shapeAwarePadding(shapeId, mapContainer.current?.clientWidth ?? 0, mapContainer.current?.clientHeight ?? 0), duration: 800 })
+      } else if (fitToPins && !skipFit && pinsRef.current.length === 0 && defaultCenter && !fittedRef.current) {
         fittedRef.current = true
         map.easeTo({ center: defaultCenter, zoom: 7, duration: 800 })
       }
@@ -848,11 +1050,39 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
 
     map.on('moveend', () => onMapMoved?.())
     mapRef.current = map
+
+    // ResizeObserver — Mapbox doesn't auto-resize when its parent
+    // toggles visibility / dimensions (e.g., agent-profile tab swap,
+    // peek↔expanded clip-path animation). Without this the map can
+    // render at a stale size and look "broken" or empty until the
+    // user pans. Calling map.resize() is cheap (no fetch).
+    const ro = new ResizeObserver(() => {
+      try { map.resize() } catch {}
+    })
+    if (mapContainer.current) ro.observe(mapContainer.current)
+
     return () => {
+      ro.disconnect()
       if (animIntervalRef.current) cancelAnimationFrame(animIntervalRef.current)
       loadedImagesRef.current.clear(); map.remove(); mapRef.current = null
     }
-  }, []) // eslint-disable-line
+  }, [mapShouldInit]) // eslint-disable-line
+
+  // Cross-instance viewport sync: when another MapCanvas (e.g. the
+  // expanded map) updates the shared userViewport, instantly slide
+  // this map to match so peek↔expanded transitions don't show a
+  // stale view. Threshold check prevents a feedback loop with our
+  // own moveend listener — only easeTo when the divergence is real.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !userViewport) return
+    const c = map.getCenter()
+    const dLng = Math.abs(c.lng - userViewport.center[0])
+    const dLat = Math.abs(c.lat - userViewport.center[1])
+    const dZoom = Math.abs(map.getZoom() - userViewport.zoom)
+    if (dLng < 0.0001 && dLat < 0.0001 && dZoom < 0.01) return
+    map.jumpTo({ center: userViewport.center, zoom: userViewport.zoom })
+  }, [userViewport])
 
   useEffect(() => {
     const map = mapRef.current
@@ -861,23 +1091,23 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       const source = map.getSource('pins') as mapboxgl.GeoJSONSource | undefined
       if (source) source.setData(pinsToGeoJSON(pins) as GeoJSON.FeatureCollection)
     })
-    if (fitToPins && pins.length > 0 && !fittedRef.current) {
+    if (fitToPins && !skipFit && pins.length > 0 && !fittedRef.current) {
       fittedRef.current = true
       const coords = pins.map((p) => p.coordinates)
       if (coords.length === 1) map.easeTo({ center: [coords[0].lng, coords[0].lat], zoom: 15, duration: 800 })
-      else map.fitBounds(getBounds(coords), { padding: { top: 180, bottom: 80, left: 80, right: 80 }, duration: 800 })
-    } else if (fitToPins && pins.length === 0 && defaultCenter && !fittedRef.current) {
+      else map.fitBounds(getBounds(coords), { padding: fitPaddingRef.current ?? shapeAwarePadding(shapeId, mapContainer.current?.clientWidth ?? 0, mapContainer.current?.clientHeight ?? 0), duration: 800 })
+    } else if (fitToPins && !skipFit && pins.length === 0 && defaultCenter && !fittedRef.current) {
       fittedRef.current = true
       map.easeTo({ center: defaultCenter, zoom: 7, duration: 800 })
     }
-  }, [pins, fitToPins, loadPinImages, defaultCenter])
+  }, [pins, fitToPins, loadPinImages, defaultCenter, skipFit])
 
   const fitTo = useCallback((targetPins: Pin[]) => {
     const map = mapRef.current
     if (!map || targetPins.length === 0) return
     const coords = targetPins.map((p) => p.coordinates)
     if (coords.length === 1) map.easeTo({ center: [coords[0].lng, coords[0].lat], zoom: 15, duration: 600 })
-    else map.fitBounds(getBounds(coords), { padding: { top: 180, bottom: 80, left: 80, right: 80 }, duration: 600 })
+    else map.fitBounds(getBounds(coords), { padding: fitPaddingRef.current ?? shapeAwarePadding(shapeId, mapContainer.current?.clientWidth ?? 0, mapContainer.current?.clientHeight ?? 0), duration: 600 })
   }, [])
 
   useEffect(() => { if (mapContainer.current) (mapContainer.current as any).__plotFitTo = fitTo }, [fitTo])
@@ -892,4 +1122,4 @@ export function MapCanvas({ pins, agentPhotoUrl, onPinClick, onMapMoved, classNa
       )}
     </div>
   )
-}
+})

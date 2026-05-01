@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, ReactNode, CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Eye, MousePointerClick, Bookmark, Users, Clock, Map as MapIcon, BadgeCheck, Heart, Home as HomeIcon, Compass } from 'lucide-react'
+import { ArrowRight, Eye, CursorClick as MousePointerClick, BookmarkSimple as Bookmark, Users, Clock, MapTrifold as MapIcon, SealCheck as BadgeCheck, Heart, House as HomeIcon, Compass } from '@phosphor-icons/react'
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { FooterContent } from '@/components/marketing/Footer'
 import { SEOHead } from '@/components/marketing/SEOHead'
@@ -377,7 +377,7 @@ function ClaimInput({
           boxShadow: '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)',
         }}
       >
-        Claim it <ArrowRight size={14} strokeWidth={2.5} />
+        Claim it <ArrowRight weight="bold" size={14} />
       </button>
     </div>
   )
@@ -1038,7 +1038,7 @@ function PinAnalytics() {
                 '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)',
             }}
           >
-            Become a Reelst agent <ArrowRight size={15} strokeWidth={2.5} />
+            Become a Reelst agent <ArrowRight weight="bold" size={15} />
           </button>
         </div>
 
@@ -1453,7 +1453,7 @@ function PortfolioShowcase() {
                   '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)',
               }}
             >
-              Claim your link <ArrowRight size={15} strokeWidth={2.5} />
+              Claim your link <ArrowRight weight="bold" size={15} />
             </button>
           </div>
 
@@ -1474,7 +1474,7 @@ function PortfolioShowcase() {
                   <div className="phone-meta">
                     <div className="phone-name">
                       Maya Chen
-                      <BadgeCheck size={12} strokeWidth={2.5} />
+                      <BadgeCheck weight="bold" size={12} />
                     </div>
                     <div className="phone-city">Brickell · Miami</div>
                   </div>
@@ -1501,7 +1501,7 @@ function PortfolioShowcase() {
                 </div>
 
                 <div className="phone-cta">
-                  <Heart size={11} strokeWidth={2.5} fill="currentColor" /> Save Maya
+                  <Heart weight="fill" size={11} /> Save Maya
                 </div>
               </div>
             </div>
@@ -1510,7 +1510,7 @@ function PortfolioShowcase() {
             <div className="orb" style={{ left: '4%', bottom: '14%' }}>
               <div className="orb-card orb-pin">
                 <span className="orb-pin-icon" style={{ background: '#3B82F6' }}>
-                  <HomeIcon size={12} strokeWidth={2.5} />
+                  <HomeIcon weight="bold" size={12} />
                 </span>
                 <span>For sale</span>
               </div>
@@ -1519,7 +1519,7 @@ function PortfolioShowcase() {
             <div className="orb" style={{ right: '4%', bottom: '6%' }}>
               <div className="orb-card orb-pin">
                 <span className="orb-pin-icon" style={{ background: '#34C759' }}>
-                  <BadgeCheck size={12} strokeWidth={2.5} />
+                  <BadgeCheck weight="bold" size={12} />
                 </span>
                 <span>Sold</span>
               </div>
@@ -1528,7 +1528,7 @@ function PortfolioShowcase() {
             <div className="orb" style={{ left: '20%', bottom: '-2%' }}>
               <div className="orb-card orb-pin">
                 <span className="orb-pin-icon" style={{ background: '#FF6B3D' }}>
-                  <Compass size={12} strokeWidth={2.5} />
+                  <Compass weight="bold" size={12} />
                 </span>
                 <span>Spotlight</span>
               </div>

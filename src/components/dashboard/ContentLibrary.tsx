@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, Play, Image, Film, MapPin, Plus, Eye, Bookmark, MoreHorizontal, Edit3, Trash2, Images, ChevronDown, ChevronLeft, ChevronRight, Pause } from 'lucide-react'
+import { UploadSimple as Upload, Play, Image, FilmStrip as Film, MapPin, Plus, Eye, BookmarkSimple as Bookmark, DotsThree as MoreHorizontal, PencilSimple as Edit3, Trash as Trash2, Images, CaretDown as ChevronDown, CaretLeft as ChevronLeft, CaretRight as ChevronRight, Pause } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
@@ -445,7 +445,7 @@ function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpe
           {/* Type pill */}
           <div className="absolute top-2.5 left-2.5">
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-sm text-[11px] font-bold text-[#1A1A1A] shadow-sm">
-              {isVideo ? <><Play size={9} fill="currentColor" /> Video</> : <><Image size={9} /> Photo</>}
+              {isVideo ? <><Play weight="fill" size={9} /> Video</> : <><Image size={9} /> Photo</>}
             </span>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Plus, Trash2, Calendar, Clock, Repeat } from 'lucide-react'
+import { X, Plus, Trash as Trash2, Calendar, Clock, Repeat } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { useScrollLock } from '@/hooks/useScrollLock'

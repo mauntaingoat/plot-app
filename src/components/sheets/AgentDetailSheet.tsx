@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { ExternalLink, Award, UserPlus, UserCheck, Globe, Users, Bookmark, UserCircle } from 'lucide-react'
+import { ArrowSquareOut as ExternalLink, Medal as Award, UserPlus, UserCircleCheck as UserCheck, Globe, Users, BookmarkSimple as Bookmark, UserCircle } from '@phosphor-icons/react'
 import { ResponsiveSheet } from '@/components/ui/ResponsiveSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'

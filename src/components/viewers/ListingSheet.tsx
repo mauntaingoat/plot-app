@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bookmark, Share2, Bed, Bath, Maximize, MapPin, ChevronLeft, ChevronRight, Phone, MessageSquare } from 'lucide-react'
+import { BookmarkSimple as Bookmark, ShareNetwork as Share2, Bed, Bathtub as Bath, ArrowsOut as Maximize, MapPin, CaretLeft as ChevronLeft, CaretRight as ChevronRight, Phone, ChatCenteredText as MessageSquare, HandWaving as Hand } from '@phosphor-icons/react'
+import { WaveModal } from '@/components/agent-profile/WaveModal'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
@@ -19,6 +20,7 @@ interface ListingSheetProps {
 export function ListingSheet({ pin, agent, isOpen, onClose }: ListingSheetProps) {
   const [photoIndex, setPhotoIndex] = useState(0)
   const [saved, setSaved] = useState(false)
+  const [waveOpen, setWaveOpen] = useState(false)
 
   const photos = 'photos' in pin ? pin.photos : []
   const price = 'price' in pin ? pin.price : 'soldPrice' in pin ? pin.soldPrice : 0
@@ -159,17 +161,43 @@ export function ListingSheet({ pin, agent, isOpen, onClose }: ListingSheetProps)
           )}
 
           {/* Agent card */}
-          <div className="bg-slate rounded-[18px] p-4 flex items-center gap-3">
-            <Avatar src={agent.photoURL} name={agent.displayName} size={48} />
-            <div className="flex-1 min-w-0">
-              <p className="text-[15px] font-bold text-white">{agent.displayName}</p>
-              {agent.brokerage && (
-                <p className="text-[12px] text-ghost">{agent.brokerage}</p>
-              )}
+          <div className="bg-slate rounded-[18px] p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <Avatar src={agent.photoURL} name={agent.displayName} size={48} />
+              <div className="flex-1 min-w-0">
+                <p className="text-[15px] font-bold text-white">{agent.displayName}</p>
+                {agent.brokerage && (
+                  <p className="text-[12px] text-ghost">{agent.brokerage}</p>
+                )}
+              </div>
             </div>
+
+            {/* Wave — buyer asks a question privately. */}
+            <button
+              onClick={() => setWaveOpen(true)}
+              className="w-full h-11 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 flex items-center justify-center gap-2 text-white cursor-pointer transition-colors"
+              style={{
+                fontFamily: 'var(--font-humanist)',
+                fontSize: '14px',
+                fontWeight: 600,
+                letterSpacing: '-0.005em',
+              }}
+            >
+              <Hand weight="bold" size={15} />
+              Wave at {(agent.displayName || 'agent').split(' ')[0]}
+            </button>
           </div>
         </div>
       </div>
+
+      <WaveModal
+        isOpen={waveOpen}
+        onClose={() => setWaveOpen(false)}
+        pinId={pin.id}
+        pinAddress={pin.address}
+        agentId={pin.agentId}
+        agentName={(agent.displayName || 'the agent').split(' ')[0]}
+      />
     </DarkBottomSheet>
   )
 }

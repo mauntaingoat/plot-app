@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Check } from 'lucide-react'
+import { Check } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { useOnboardingStore } from '@/stores/onboardingStore'
 import { PLATFORM_LIST, PLATFORM_LOGOS } from '@/components/icons/PlatformLogos'

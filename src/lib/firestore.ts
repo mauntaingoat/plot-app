@@ -5,7 +5,7 @@ import {
   type DocumentData, type Unsubscribe,
 } from 'firebase/firestore'
 import { db, firebaseConfigured } from '@/config/firebase'
-import type { UserDoc, Pin, ForSalePin, SoldPin, SpotlightPin, ContentItem, ContentDoc, Coordinates, PinType, ShowingRequest, ContentReport, ReportReason, LicenseDispute, DmcaRequest, PendingPinChange } from '@/lib/types'
+import type { UserDoc, Pin, ForSalePin, SoldPin, SpotlightPin, ContentItem, ContentDoc, Coordinates, PinType, ShowingRequest, ContentReport, ReportReason, LicenseDispute, DmcaRequest, PendingPinChange, DigestSubscription, Wave } from '@/lib/types'
 import { TYPE_SPECIFIC_FIELDS } from '@/lib/types'
 
 // ══════════════════════════════════════════
@@ -623,6 +623,216 @@ export async function updateShowingRequestStatus(
 }
 
 // ══════════════════════════════════════════
+// DIGEST SUBSCRIPTIONS (Save Maya — email-only)
+// ══════════════════════════════════════════
+
+/**
+ * Hash an email for de-dup without storing or transmitting plaintext
+ * outside the actual subscription doc. Uses SHA-256 via SubtleCrypto.
+ */
+async function hashEmail(email: string): Promise<string> {
+  const buf = new TextEncoder().encode(email.trim().toLowerCase())
+  const digest = await crypto.subtle.digest('SHA-256', buf)
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+/** Cryptographically random unsubscribe token (URL-safe). */
+function makeUnsubToken(): string {
+  const bytes = new Uint8Array(24)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+/**
+ * Subscribe a buyer's email to an agent's digest. Idempotent — calling
+ * twice with the same email + agent updates `updatedAt` and re-activates
+ * if previously unsubscribed, but doesn't create a duplicate.
+ *
+ * Phase 1: writes the doc + (separately) fires the dashboard inbox
+ * notification via writeNotification on the server. No emails go out.
+ */
+export async function subscribeToAgentDigest(args: {
+  agentId: string
+  email: string
+  source?: 'profile' | 'listing' | 'reels'
+}): Promise<{ id: string; alreadyExisted: boolean }> {
+  if (!db) {
+    // Demo fallback so the modal flow can be exercised offline.
+    const id = `sub_${Date.now()}`
+    const list = JSON.parse(localStorage.getItem('reelst_digest_subs') || '[]')
+    list.push({ id, ...args, status: 'active', createdAt: Date.now() })
+    localStorage.setItem('reelst_digest_subs', JSON.stringify(list))
+    return { id, alreadyExisted: false }
+  }
+  const cleanEmail = args.email.trim().toLowerCase()
+  const emailHash = await hashEmail(cleanEmail)
+  const dedupId = `${args.agentId}_${emailHash}`
+
+  // Use a deterministic doc id so re-subscribes hit the same doc.
+  const ref = doc(db, 'digestSubscriptions', dedupId)
+  const existing = await getDoc(ref)
+
+  if (existing.exists()) {
+    // Re-activate if it was previously unsubscribed; otherwise no-op.
+    if ((existing.data() as DigestSubscription).status === 'unsubscribed') {
+      await updateDoc(ref, {
+        status: 'active',
+        updatedAt: serverTimestamp(),
+      })
+    } else {
+      await updateDoc(ref, { updatedAt: serverTimestamp() })
+    }
+    return { id: dedupId, alreadyExisted: true }
+  }
+
+  await setDoc(ref, {
+    agentId: args.agentId,
+    email: cleanEmail,
+    emailHash,
+    source: args.source ?? 'profile',
+    status: 'active',
+    unsubToken: makeUnsubToken(),
+    newListings: true,
+    newReels: true,
+    statusChanges: true,
+    lastSentAt: null,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  })
+
+  // Notifications fan out via Cloud Function trigger
+  // (onNewDigestSubscription) — keeps the notifications collection
+  // server-write-only so the rule stays strict.
+  return { id: dedupId, alreadyExisted: false }
+}
+
+// ══════════════════════════════════════════
+// WAVES (buyer questions on listings)
+// ══════════════════════════════════════════
+
+/**
+ * Buyer "waves" at a listing — drops a question with name + email so
+ * the agent can respond externally. Replaces the public comment system.
+ *
+ * Routes through the `submitWave` callable Cloud Function so we can:
+ *   - Rate-limit anonymous submissions (per IP + per pin/email)
+ *   - Validate the pin exists + isn't archived
+ *   - Write the wave doc with the admin SDK (Firestore rules block
+ *     direct client writes to /pins/{pinId}/waves)
+ */
+export async function createWave(args: {
+  pinId: string
+  /** Ignored on the wire — server resolves agentId from the pin. */
+  agentId?: string
+  /** Ignored on the wire — server resolves pinAddress from the pin. */
+  pinAddress?: string
+  visitorName: string
+  visitorEmail: string
+  visitorPhone?: string
+  question: string
+}): Promise<string> {
+  if (!db) {
+    // Demo / offline fallback — keep the local capture path so the UI
+    // flow still works without Firebase.
+    const id = `wave_${Date.now()}`
+    const list = JSON.parse(localStorage.getItem('reelst_waves') || '[]')
+    list.push({ id, ...args, status: 'new', read: false, createdAt: Date.now() })
+    localStorage.setItem('reelst_waves', JSON.stringify(list))
+    return id
+  }
+  const { getFunctions, httpsCallable } = await import('firebase/functions')
+  const { app } = await import('@/config/firebase')
+  const functions = getFunctions(app ?? undefined)
+  const fn = httpsCallable<
+    {
+      pinId: string
+      visitorName: string
+      visitorEmail: string
+      visitorPhone?: string
+      question: string
+    },
+    { ok: boolean; waveId: string }
+  >(functions, 'submitWave')
+  const res = await fn({
+    pinId: args.pinId,
+    visitorName: args.visitorName,
+    visitorEmail: args.visitorEmail,
+    visitorPhone: args.visitorPhone,
+    question: args.question,
+  })
+  return res.data.waveId
+}
+
+/**
+ * Subscribe to all waves across an agent's pins. Uses a collectionGroup
+ * query against the 'waves' subcollection, filtered by agentId. Pushes
+ * an empty array if there's nothing to read.
+ */
+export function subscribeToAgentWaves(
+  agentId: string,
+  cb: (waves: Wave[]) => void,
+): Unsubscribe | null {
+  if (!db) return null
+  try {
+    const q = query(
+      collectionGroup(db, 'waves'),
+      where('agentId', '==', agentId),
+      orderBy('createdAt', 'desc'),
+      limit(500),
+    )
+    return onSnapshot(q, (snap) => {
+      cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Wave, 'id'>) })))
+    }, (err) => {
+      console.warn('[firestore] waves subscription error:', err.message)
+      cb([])
+    })
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Live subscription to an agent's active subscriber count. Fires the
+ * callback whenever a subscription is created, deleted, or flips from
+ * unsubscribed → active. Used by the dashboard "Subscribers" stat.
+ */
+export function subscribeToAgentSubscriberCount(
+  agentId: string,
+  cb: (count: number) => void,
+): Unsubscribe | null {
+  if (!db) return null
+  try {
+    const q = query(
+      collection(db, 'digestSubscriptions'),
+      where('agentId', '==', agentId),
+      where('status', '==', 'active'),
+    )
+    return onSnapshot(q, (snap) => cb(snap.size), () => cb(0))
+  } catch {
+    return null
+  }
+}
+
+export async function markWaveRead(pinId: string, waveId: string) {
+  if (!db) return
+  await updateDoc(doc(db, 'pins', pinId, 'waves', waveId), {
+    read: true,
+  })
+}
+
+export async function updateWaveStatus(pinId: string, waveId: string, status: Wave['status']) {
+  if (!db) return
+  await updateDoc(doc(db, 'pins', pinId, 'waves', waveId), {
+    status,
+    read: true,
+  })
+}
+
+// ══════════════════════════════════════════
 // PIN VIEWS (increment on tap)
 // ══════════════════════════════════════════
 
@@ -1114,6 +1324,33 @@ export async function getFollowerSnapshots(agentId: string, days = 30): Promise<
     return snap.docs.map((d) => d.data() as FollowerSnapshot)
   } catch {
     const q = query(collection(db, 'follower_snapshots'), where('agentId', '==', agentId), limit(90))
+    const snap = await getDocs(q)
+    return snap.docs.map((d) => d.data() as FollowerSnapshot)
+  }
+}
+
+/**
+ * Daily subscriber snapshots — the new primary source for the
+ * dashboard's growth chart. Populated by the dailySubscriberSnapshot
+ * Cloud Function. Same shape as FollowerSnapshot for drop-in use.
+ */
+export async function getSubscriberSnapshots(agentId: string, days = 30): Promise<FollowerSnapshot[]> {
+  if (!db) return []
+  const since = new Date()
+  since.setDate(since.getDate() - days)
+  const sinceStr = since.toISOString().slice(0, 10)
+  try {
+    const q = query(
+      collection(db, 'subscriber_snapshots'),
+      where('agentId', '==', agentId),
+      where('date', '>=', sinceStr),
+      orderBy('date', 'asc'),
+      limit(90),
+    )
+    const snap = await getDocs(q)
+    return snap.docs.map((d) => d.data() as FollowerSnapshot)
+  } catch {
+    const q = query(collection(db, 'subscriber_snapshots'), where('agentId', '==', agentId), limit(90))
     const snap = await getDocs(q)
     return snap.docs.map((d) => d.data() as FollowerSnapshot)
   }
