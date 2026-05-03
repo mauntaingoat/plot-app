@@ -2,16 +2,17 @@
  * Notification triggers — fire push messages and write persistent
  * notification docs on key Firestore events.
  *
- * Three triggers:
- *   - onNewFollower      : a follow doc is created → notify the followed agent
- *   - onNewShowingRequest: a showing request doc is created → notify the agent
- *   - onPinSaved         : a save doc is created → notify the listing's agent
+ * Triggers:
+ *   - onNewShowingRequest    : a showing request doc is created → notify the agent
+ *   - onPinSaved             : a save doc is created → notify the listing's agent
+ *   - onNewDigestSubscription: a digest subscription doc is created → notify the agent
+ *   - onNewWave              : a wave doc is created → notify the agent
  *
  * Each respects the user's notificationPrefs in their `users` doc.
  * Tokens that fail to deliver (unregistered, invalid) are pruned.
  */
 
-import { onDocumentCreated, onDocumentDeleted } from 'firebase-functions/v2/firestore'
+import { onDocumentCreated } from 'firebase-functions/v2/firestore'
 import { logger } from 'firebase-functions/v2'
 import * as admin from 'firebase-admin'
 
@@ -24,7 +25,7 @@ interface NotifPayload {
   tag?: string
 }
 
-async function notifyUser(uid: string, prefKey: 'newFollower' | 'showingRequest' | 'pinSaved' | 'newSubscriber' | 'newWave', payload: NotifPayload) {
+async function notifyUser(uid: string, prefKey: 'showingRequest' | 'pinSaved' | 'newSubscriber' | 'newWave', payload: NotifPayload) {
   const db = admin.firestore()
   const userSnap = await db.collection('users').doc(uid).get()
   if (!userSnap.exists) return
@@ -36,7 +37,6 @@ async function notifyUser(uid: string, prefKey: 'newFollower' | 'showingRequest'
 
   const prefs = user.notificationPrefs || {}
   const defaultsOn: Record<string, boolean> = {
-    newFollower: true,
     showingRequest: true,
     pinSaved: true,
     newSubscriber: true,
@@ -95,7 +95,7 @@ async function notifyUser(uid: string, prefKey: 'newFollower' | 'showingRequest'
 
 async function writeNotification(data: {
   agentId: string
-  type: 'follow' | 'save' | 'showing_request' | 'subscriber' | 'wave'
+  type: 'save' | 'showing_request' | 'subscriber' | 'wave'
   title: string
   body: string
   actorName?: string
@@ -103,6 +103,12 @@ async function writeNotification(data: {
   pinId?: string
   pinAddress?: string
   refId?: string
+  /** Wave-specific extras — captured at submitWave time. Stored on the
+   *  notification doc itself so the inbox can render contact info +
+   *  the question without an extra read against /pins/{pinId}/waves. */
+  visitorEmail?: string
+  visitorPhone?: string | null
+  question?: string
 }) {
   const db = admin.firestore()
   const today = new Date().toISOString().slice(0, 10)
@@ -126,55 +132,6 @@ async function writeNotification(data: {
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   })
 }
-
-// ── Trigger: new follower ──
-export const onNewFollower = onDocumentCreated(
-  { document: 'follows/{followId}', region: 'us-central1' },
-  async (event) => {
-    const data = event.data?.data()
-    logger.info('[onNewFollower] triggered', { hasData: !!data, followedUid: data?.followedUid, followerUid: data?.followerUid })
-    if (!data?.followedUid || !data?.followerUid) return
-
-    const db = admin.firestore()
-    const followerSnap = await db.collection('users').doc(data.followerUid).get()
-    const followerData = followerSnap.data()
-    const followerName = (followerData?.displayName as string) || 'Someone'
-
-    await notifyUser(data.followedUid, 'newFollower', {
-      title: 'New follower',
-      body: `${followerName} just followed your Reelst.`,
-      url: '/dashboard?tab=inbox',
-      tag: `follow_${data.followerUid}`,
-    })
-
-    await writeNotification({
-      agentId: data.followedUid,
-      type: 'follow',
-      title: 'New follower',
-      body: `${followerName} just followed your Reelst.`,
-      actorName: followerName,
-      actorUid: data.followerUid,
-    })
-
-    // Increment follower/following counts server-side
-    await db.collection('users').doc(data.followedUid).update({
-      followerCount: admin.firestore.FieldValue.increment(1),
-    }).catch(() => {})
-    await db.collection('users').doc(data.followerUid).update({
-      followingCount: admin.firestore.FieldValue.increment(1),
-    }).catch(() => {})
-
-    // Log follow event for analytics
-    await db.collection('events').add({
-      type: 'follow',
-      agentId: data.followedUid,
-      actorUid: data.followerUid,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      hour: new Date().getHours(),
-      date: new Date().toISOString().slice(0, 10),
-    }).catch(() => {})
-  },
-)
 
 // ── Trigger: new showing request ──
 // Showing requests live in their own `showing_requests` collection with
@@ -287,33 +244,21 @@ export const onNewWave = onDocumentCreated(
       pinId: event.params.pinId,
       pinAddress: data.pinAddress as string,
       refId: event.params.waveId,
+      visitorEmail: data.visitorEmail as string | undefined,
+      visitorPhone: (data.visitorPhone as string | null | undefined) ?? null,
+      question: data.question as string | undefined,
     })
-  },
-)
 
-// ── Trigger: unfollow (decrement counts) ──
-export const onUnfollow = onDocumentDeleted(
-  { document: 'follows/{followId}', region: 'us-central1' },
-  async (event) => {
-    const data = event.data?.data()
-    logger.info('[onUnfollow] triggered', { hasData: !!data, followedUid: data?.followedUid, followerUid: data?.followerUid })
-    if (!data?.followedUid || !data?.followerUid) return
-
-    const db = admin.firestore()
-
-    // Decrement but floor at 0
-    const followedSnap = await db.collection('users').doc(data.followedUid).get()
-    if (followedSnap.exists && (followedSnap.data()?.followerCount || 0) > 0) {
-      await db.collection('users').doc(data.followedUid).update({
-        followerCount: admin.firestore.FieldValue.increment(-1),
-      }).catch(() => {})
-    }
-
-    const followerSnap = await db.collection('users').doc(data.followerUid).get()
-    if (followerSnap.exists && (followerSnap.data()?.followingCount || 0) > 0) {
-      await db.collection('users').doc(data.followerUid).update({
-        followingCount: admin.firestore.FieldValue.increment(-1),
-      }).catch(() => {})
+    // Pin-level wave counter — used by the dashboard's "Top Pins by
+    // Waves" insight. Profile-level waves (no pinId) skip this since
+    // the synthetic agent_profile_${id} bucket isn't a real pin doc.
+    if (event.params.pinId && !event.params.pinId.startsWith('agent_profile_')) {
+      await admin.firestore()
+        .collection('pins')
+        .doc(event.params.pinId)
+        .update({ waves: admin.firestore.FieldValue.increment(1) })
+        .catch(() => {})
     }
   },
 )
+

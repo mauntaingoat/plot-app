@@ -8,7 +8,7 @@ import { SEOHead } from '@/components/marketing/SEOHead'
 import { useAuthStore } from '@/stores/authStore'
 
 /* ════════════════════════════════════════════════════════════════
-   PRICING — three tiers, then comparison table, then FAQ.
+   PRICING — two tiers (Free + Pro), comparison table, FAQ.
    Typography mirrors Hero/FeatureShowcase:
      fontFamily: var(--font-humanist), weight 500 (600 for the
      brand-grad accent on the second line), letterSpacing -0.035em,
@@ -31,39 +31,24 @@ const PLANS = [
       { text: 'Your own reel.st link', included: true },
       { text: 'MLS data auto-fill', included: true },
       { text: 'Showing request inbox', included: true },
-      { text: 'Discoverable in Explore', included: false },
-      { text: 'Advanced analytics', included: false },
+      { text: 'Email subscribers', included: true },
+      { text: 'Basic customization', included: true },
     ],
   },
   {
     name: 'Pro',
     price: '$19',
     period: '/ mo',
-    desc: 'Get discovered. See who\'s watching.',
+    desc: 'For agents serious about their pipeline.',
     cta: 'Go Pro',
     featured: true,
     features: [
+      { text: 'Everything in Free, plus:', included: true, header: true },
       { text: 'Unlimited pins', included: true },
-      { text: 'Listed in Explore', included: true },
       { text: 'Open house scheduling', included: true },
       { text: 'Full analytics dashboard', included: true },
-      { text: 'Email lead notifications', included: true },
-      { text: 'Viewer cities & peak hours', included: true },
-    ],
-  },
-  {
-    name: 'Studio',
-    price: '$39',
-    period: '/ mo',
-    badge: 'Best value',
-    desc: 'The full kit for top producers.',
-    cta: 'Go Studio',
-    featured: false,
-    features: [
-      { text: 'Everything in Pro', included: true },
-      { text: 'Saved map insights', included: true },
-      { text: 'Cross-listing patterns', included: true },
-      { text: 'Live streaming', included: true, comingSoon: true },
+      { text: 'Audience Crossover insights', included: true },
+      { text: 'Expanded customization', included: true },
       { text: 'Priority support', included: true },
     ],
   },
@@ -96,11 +81,11 @@ const FAQS = [
   },
   {
     q: 'Do I keep my leads, or does Reelst?',
-    a: 'You keep them. Showing requests, saves, follows, and contact submissions land in your inbox — your contacts, your CRM, your relationship. Reelst never resells leads or sends them to a competing agent.',
+    a: 'You keep them. Showing requests, email subscribers, waves, and contact submissions land in your inbox — your contacts, your CRM, your relationship. Reelst never resells leads or sends them to a competing agent.',
   },
   {
     q: 'What happens if I switch brokerages?',
-    a: 'Your Reelst goes with you. Your reel.st link, your followers, your pins, and your analytics are tied to you, not your brokerage. Update your brokerage on your profile and keep moving — no lost audience, no rebuilding.',
+    a: 'Your Reelst goes with you. Your reel.st link, your subscribers, your pins, and your analytics are tied to you, not your brokerage. Update your brokerage on your profile and keep moving — no lost audience, no rebuilding.',
   },
   {
     q: 'Does Reelst replace my MLS or my CRM?',
@@ -116,7 +101,7 @@ const FAQS = [
   },
   {
     q: 'Can I cancel or downgrade anytime?',
-    a: 'Yes. Cancel or downgrade from your dashboard at any time — you keep your current plan through the end of the billing period, then drop to Free. Your pins, content, and followers stay with you.',
+    a: 'Yes. Cancel from your dashboard at any time — you keep your current plan through the end of the billing period, then drop to Free. Your pins, content, and subscribers stay with you.',
   },
   {
     q: 'Is there a team or brokerage plan?',
@@ -138,7 +123,7 @@ export default function Pricing() {
     <MarketingLayout>
       <SEOHead
         title="Pricing"
-        description="Reelst is free to start. Go Pro at $19/mo for advanced analytics or Studio at $39/mo for live streaming and full insights."
+        description="Reelst is free to start. Go Pro at $19/mo for unlimited pins, full analytics, and expanded customization."
         path="/pricing"
       />
 
@@ -186,8 +171,8 @@ export default function Pricing() {
         </section>
 
         {/* ── PRICING TIERS ─────────────────────────────────────── */}
-        <section className="max-w-[1180px] mx-auto px-6 md:px-10 pb-20 md:pb-28">
-          <div className="grid md:grid-cols-3 gap-5 md:gap-6">
+        <section className="max-w-[860px] mx-auto px-6 md:px-10 pb-20 md:pb-28">
+          <div className="grid md:grid-cols-2 gap-5 md:gap-6">
             {PLANS.map((plan, i) => (
               <motion.div
                 key={plan.name}
@@ -209,23 +194,6 @@ export default function Pricing() {
                     : undefined
                 }
               >
-                {plan.featured && (
-                  <span
-                    className="absolute -top-3 right-6 px-3 py-1 rounded-full bg-tangerine text-white text-[10px] uppercase tracking-[0.16em]"
-                    style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
-                  >
-                    Most popular
-                  </span>
-                )}
-                {plan.badge && (
-                  <span
-                    className="absolute -top-3 right-6 px-3 py-1 rounded-full bg-ink text-ivory text-[10px] uppercase tracking-[0.16em]"
-                    style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
-                  >
-                    {plan.badge}
-                  </span>
-                )}
-
                 <h3
                   className={`mb-2 ${plan.featured ? 'text-ivory' : 'text-ink'}`}
                   style={{
@@ -282,41 +250,47 @@ export default function Pricing() {
                 </Button>
 
                 <ul className="mt-6 space-y-2.5">
-                  {plan.features.map((f) => (
-                    <li key={f.text} className="flex items-start gap-2.5">
-                      {f.included ? (
-                        <Check weight="bold"
-                          size={15}
-                          className={`shrink-0 mt-0.5 ${plan.featured ? 'text-tangerine' : 'text-sold-green'}`}
-                        />
-                      ) : (
-                        <X size={15} className="shrink-0 mt-0.5 text-ash/40" />
-                      )}
-                      <span
-                        className={
-                          f.included
-                            ? plan.featured ? 'text-white/85' : 'text-graphite'
-                            : 'text-ash/55 line-through'
-                        }
-                        style={{
-                          fontFamily: 'var(--font-humanist)',
-                          fontSize: '0.92rem',
-                          fontWeight: 400,
-                          lineHeight: 1.45,
-                        }}
-                      >
-                        {f.text}
-                        {(f as { comingSoon?: boolean }).comingSoon && (
-                          <span
-                            className="ml-1.5 text-[9px] text-tangerine bg-tangerine/12 px-1.5 py-0.5 rounded-full uppercase tracking-[0.12em]"
-                            style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
-                          >
-                            Soon
-                          </span>
+                  {plan.features.map((f) => {
+                    const isHeader = (f as { header?: boolean }).header
+                    if (isHeader) {
+                      return (
+                        <li
+                          key={f.text}
+                          className={`text-[12px] uppercase tracking-[0.14em] pt-0.5 pb-1 ${plan.featured ? 'text-white/55' : 'text-smoke'}`}
+                          style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
+                        >
+                          {f.text}
+                        </li>
+                      )
+                    }
+                    return (
+                      <li key={f.text} className="flex items-start gap-2.5">
+                        {f.included ? (
+                          <Check weight="bold"
+                            size={15}
+                            className={`shrink-0 mt-0.5 ${plan.featured ? 'text-tangerine' : 'text-sold-green'}`}
+                          />
+                        ) : (
+                          <X size={15} className="shrink-0 mt-0.5 text-ash/40" />
                         )}
-                      </span>
-                    </li>
-                  ))}
+                        <span
+                          className={
+                            f.included
+                              ? plan.featured ? 'text-white/85' : 'text-graphite'
+                              : 'text-ash/55 line-through'
+                          }
+                          style={{
+                            fontFamily: 'var(--font-humanist)',
+                            fontSize: '0.92rem',
+                            fontWeight: 400,
+                            lineHeight: 1.45,
+                          }}
+                        >
+                          {f.text}
+                        </span>
+                      </li>
+                    )
+                  })}
                 </ul>
               </motion.div>
             ))}

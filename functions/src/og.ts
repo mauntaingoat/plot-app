@@ -58,7 +58,6 @@ function buildAgentHTML(agent: any, url: string): string {
   const title = `${agent.displayName} on Reelst`
   const desc = agent.bio || `${agent.displayName} — interactive map of listings, reels, and spotlights.`
   const image = agent.photoURL || 'https://reel.st/icons/og-image.png'
-  const followers = agent.followerCount || 0
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -94,11 +93,6 @@ function buildAgentHTML(agent: any, url: string): string {
     description: desc,
     jobTitle: 'Real Estate Agent',
     worksFor: agent.brokerage ? { '@type': 'Organization', name: agent.brokerage } : undefined,
-    interactionStatistic: {
-      '@type': 'InteractionCounter',
-      interactionType: 'https://schema.org/FollowAction',
-      userInteractionCount: followers,
-    },
   })}
   </script>
 </head>

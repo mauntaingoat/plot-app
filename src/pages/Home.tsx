@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, ReactNode, CSSProperties } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, Eye, CursorClick as MousePointerClick, BookmarkSimple as Bookmark, Users, Clock, MapTrifold as MapIcon, SealCheck as BadgeCheck, Heart, House as HomeIcon, Compass } from '@phosphor-icons/react'
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
@@ -532,7 +532,7 @@ const FEATURES: Feature[] = [
     key: 'open-houses',
     label: 'Open Houses',
     title: 'Schedule. Share. Fill the room.',
-    desc: 'Create an open house from a pin in two taps. Auto-post to your map and push to your followers. RSVPs land in your inbox, not on a clipboard.',
+    desc: 'Create an open house from a pin in two taps. Auto-post to your map and email your subscribers. RSVPs land in your inbox, not on a clipboard.',
     video: '/marketing/feature-open-houses.mov',
   },
   {
@@ -546,15 +546,8 @@ const FEATURES: Feature[] = [
     key: 'analytics',
     label: 'Analytics',
     title: "Know what's actually working.",
-    desc: 'Views per reel, photo, and live. Taps and saves per pin. Follower growth, viewer cities, peak hours, and crosslist patterns — every signal in one place.',
+    desc: 'Visits per reel and photo. Taps and saves per pin. Save growth, visitor cities, peak hours, and audience crossover — every signal in one place.',
     video: '/marketing/feature-analytics.mov',
-  },
-  {
-    key: 'explore',
-    label: 'Get Discovered',
-    title: 'Show up on the map buyers are already browsing.',
-    desc: 'Buyers panning your city see your pins on the live discovery map — the same map your followers use, open to anyone browsing the area. Your listings find them, instead of waiting to be found.',
-    video: '/marketing/feature-explore.mov',
   },
 ]
 
@@ -934,10 +927,10 @@ function PinAnalytics() {
   // Each card's "exploded" offset (px). Mutated in place by the scroll
   // handler — at p=0 the card sits at this offset, at p=1 it's at 0,0.
   const explosions = [
-    { ox: -14, oy: -10 }, // 0 Views     — top-left
-    { ox:  16, oy: -12 }, // 1 Taps      — top-right
-    { ox: -18, oy:   0 }, // 2 Save rate — left
-    { ox:  14, oy:   0 }, // 3 Followers — right
+    { ox: -14, oy: -10 }, // 0 Visits      — top-left
+    { ox:  16, oy: -12 }, // 1 Taps        — top-right
+    { ox: -18, oy:   0 }, // 2 Save rate   — left
+    { ox:  14, oy:   0 }, // 3 Subscribers — right
     { ox: -10, oy:  14 }, // 4 Active    — bottom-left
     { ox:  20, oy:  10 }, // 5 Co-saves  — bottom-right
   ]
@@ -1024,7 +1017,7 @@ function PinAnalytics() {
               lineHeight: 1.55,
             }}
           >
-            Views, taps, save rate, follower growth, when your viewers are
+            Visits, taps, save rate, save growth, when your visitors are
             active, and which neighborhoods buyers save yours alongside —
             every signal in one place.
           </p>
@@ -1045,7 +1038,7 @@ function PinAnalytics() {
         {/* LEFT (bento) — second in DOM, ordered to col 1 on lg+. */}
         <div className="relative w-full max-w-[560px] mx-auto lg:order-1">
           <div className="relative grid grid-cols-3 gap-3 md:gap-4">
-            {/* Views — col-span 2, deep tangerine */}
+            {/* Visits — col-span 2, deep tangerine */}
             <StatCard
               cardRef={(el) => { cardRefs.current[0] = el }}
               initialStyle={initialStyle(0)}
@@ -1054,7 +1047,7 @@ function PinAnalytics() {
               bg="#FF6B3D"
               fg="white"
               icon={<Eye size={16} />}
-              label="Views"
+              label="Visits"
               value="12,408"
               caption="+18% week / week"
               graphic={<GrowthBars color="rgba(255,255,255,0.85)" />}
@@ -1087,7 +1080,7 @@ function PinAnalytics() {
               graphic={<Donut color="rgba(255,255,255,0.92)" track="rgba(255,255,255,0.18)" />}
             />
 
-            {/* Followers — col-span 2, mid tangerine */}
+            {/* Subscribers — col-span 2, mid tangerine */}
             <StatCard
               cardRef={(el) => { cardRefs.current[3] = el }}
               initialStyle={initialStyle(3)}
@@ -1096,7 +1089,7 @@ function PinAnalytics() {
               bg="#FF8552"
               fg="white"
               icon={<Users size={16} />}
-              label="Followers"
+              label="Subscribers"
               value="1,842"
               caption="+184 this month"
               graphic={<Sparkline color="rgba(255,255,255,0.92)" />}
@@ -1269,7 +1262,7 @@ function Donut({ color, track }: { color: string; track: string }) {
   )
 }
 
-/* GrowthBars — 8 ascending bars implying follower growth. */
+/* GrowthBars — 8 ascending bars implying subscriber growth. */
 function GrowthBars({ color }: { color: string }) {
   const heights = [22, 28, 26, 38, 44, 50, 58, 70]
   return (

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bed, Bathtub as Bath, ArrowsOut as Maximize, MapPin, House as Home, SealCheck as BadgeCheck, Compass, Play } from '@phosphor-icons/react'
+import { Bed, Bathtub as Bath, ArrowsOut as Maximize, House as Home, SealCheck as BadgeCheck, Compass, Play } from '@phosphor-icons/react'
 import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
 import { displayAddressWithUnit } from '@/lib/format'
 import { formatPrice } from '@/lib/firestore'
@@ -26,39 +26,25 @@ interface ListingsTabProps {
   defaultCenter?: [number, number]
   /** Tap on a card or pin opens the listing modal. */
   onSelectPin: (pin: Pin) => void
-  /** Tap on the map peek asks the parent to expand the map. The
-   *  parent uses `originRect` (the peek's current bounding box) to
-   *  drive a clip-path "viewport increase" animation from the peek's
-   *  position to fullscreen — children render at final layout the
-   *  whole time, so no scaling distortion. */
+  /** Tap on the map peek asks the parent to expand the map. */
   onRequestExpandMap: (originRect: DOMRect | null) => void
   /** When the expanded map is open, hide the peek so the user
-   *  doesn't see two copies of the map at once during the
-   *  clip-path reveal. */
+   *  doesn't see two copies of the map at once. */
   mapExpanded?: boolean
   /** Hands the peek slot's DOM element up so the parent's
-   *  always-mounted ExpandedMapView can read its bbox imperatively
-   *  in a rAF loop — bypassing React state-update cycles keeps the
-   *  collapsed clip-path glued to the peek slot during scroll and
-   *  through orientation changes. */
+   *  always-mounted ExpandedMapView can read its bbox imperatively. */
   onPeekElChange?: (el: HTMLElement | null) => void
-  /** Frame treatment for each compact listing card. Driven by the
-   *  agent's Style tab — none / border / shadow / both. */
   listingFrame?: FrameStyle
-  /** Frame treatment for the map peek slot. The peek itself is
-   *  transparent — this draws an outline / shadow around its bbox so
-   *  the map (which is clipped to the peek shape via the parent's
-   *  ExpandedMapView) reads as a "framed" element. */
   mapFrame?: FrameStyle
-  /** Whether the map section is enabled in the agent's Style. When
-   *  false, the peek slot doesn't render and the listings grid
-   *  starts flush at the top of the card. */
   showMap?: boolean
+  /** Layout strategy for listings — `scroller` (3 visible, drag right
+   *  to scroll) or `grid` (wraps onto more rows instead of scrolling). */
+  listingsLayout?: 'scroller' | 'grid'
 }
 
 export function ListingsTab({
   pins,
-  agent: _agent, // not used here anymore — parent owns expanded map
+  agent: _agent,
   agentPhotoUrl: _agentPhotoUrl,
   defaultCenter: _defaultCenter,
   onSelectPin,
@@ -68,6 +54,7 @@ export function ListingsTab({
   listingFrame = 'none',
   mapFrame = 'none',
   showMap = true,
+  listingsLayout = 'scroller',
 }: ListingsTabProps) {
 
   // mapFrame is consumed by ExpandedMapView (the component that
@@ -79,7 +66,7 @@ export function ListingsTab({
 
   // Visible pins on the public profile = enabled + non-archived.
   const visiblePins = useMemo(() => pins.filter((p) => p.enabled), [pins])
-  const peekRef = useRef<HTMLButtonElement>(null)
+  const peekRef = useRef<HTMLDivElement>(null)
 
   // Hand the peek element up so AgentProfile's always-mounted
   // ExpandedMapView can imperatively track its bbox each frame.
@@ -100,33 +87,37 @@ export function ListingsTab({
           Both share the same horizontal padding as the rest of the
           card content so the grid aligns with the map width above. */}
       <div className="px-5 md:px-7 pb-32" style={{ fontFamily: 'var(--font-humanist)' }}>
-        {/* Map peek — transparent placeholder reserving layout space.
-            The actual map renders at the agent-profile-card scope
-            (always-mounted in ExpandedMapView) and is clipped to this
-            slot's bbox via clip-path that's updated each animation
-            frame imperatively. */}
-        {showMap && <button
+        {/* Map peek — non-interactive layout placeholder. The empty
+            corners around the heart/circle/etc shape used to be
+            clickable here (the whole bbox was a button); now they
+            pass through. Tap-to-expand is handled by the map shape
+            itself (ExpandedMapView) — its clip-path means only the
+            visible shape is clickable — plus the "Open map" pill
+            below as a separate affordance. */}
+        {showMap && <div
           ref={peekRef}
-          onClick={() => onRequestExpandMap(peekRef.current?.getBoundingClientRect() ?? null)}
-          className="block w-full mb-6 rounded-[20px] cursor-pointer relative"
+          className="block w-full mb-6 rounded-[20px] relative"
           style={{
             // Bumped from 20vh / 220px so the heart-masked map
             // reads as a substantial shape, not a small icon.
             height: 'min(32vh, 320px)',
             background: 'transparent',
-            pointerEvents: mapExpanded ? 'none' : 'auto',
+            pointerEvents: 'none',
           }}
-          aria-label="Open fullscreen map"
         >
-          {/* "Open map" hint pill — only visible chrome on the peek.
-              z-50 so it stays above the map shell (which sits at z-40
-              inside the card on desktop). */}
-          <div
-            className="absolute bottom-3 right-3 z-50 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-warm-white/95 backdrop-blur-sm border border-black/[0.05]"
+          {/* "Open map" pill — its own clickable button. z-50 so it
+              stays above the map shell (which sits at z-40 inside
+              the card on desktop). */}
+          <button
+            type="button"
+            onClick={() => onRequestExpandMap(peekRef.current?.getBoundingClientRect() ?? null)}
+            disabled={mapExpanded}
+            aria-label="Open fullscreen map"
+            className="absolute bottom-3 right-3 z-50 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-warm-white/95 backdrop-blur-sm border border-black/[0.05] cursor-pointer"
             style={{
               opacity: mapExpanded ? 0 : 1,
               transition: 'opacity 0.18s ease',
-              pointerEvents: 'none',
+              pointerEvents: mapExpanded ? 'none' : 'auto',
             }}
           >
             <Maximize size={12} className="text-ink" />
@@ -136,30 +127,148 @@ export function ListingsTab({
             >
               Open map
             </span>
-          </div>
-        </button>}
+          </button>
+        </div>}
 
-        {/* IG-style 3-col grid — sits inside the same horizontal
-            padding as the map peek so it aligns with the map width.
-            Cards remain flush against each other inside the row;
-            the row itself is inset from the card edges. */}
-        {visiblePins.length === 0 ? (
-          <EmptyListings />
+        {visiblePins.length === 0 ? null : listingsLayout === 'grid' ? (
+          <GridLayout pins={visiblePins} listingFrame={listingFrame} onSelectPin={onSelectPin} />
         ) : (
-          <div className="grid grid-cols-3" style={{ gap: '8px' }}>
-            {visiblePins.map((pin) => (
-              <ListingCardCompact key={pin.id} pin={pin} frame={listingFrame} onClick={() => onSelectPin(pin)} />
-            ))}
-          </div>
+          <ScrollerLayout pins={visiblePins} listingFrame={listingFrame} onSelectPin={onSelectPin} />
         )}
       </div>
     </>
   )
 }
 
+/* ─────────────── Scroller layout ───────────────
+   1 → centered 1:1 square (half-width)
+   2 → two 1:1 squares filling the row
+   3 → three 9:16 portrait cards filling the row
+   4+ → first three 9:16 visible, overflow scrolls right; tile width
+        stays 1/3 of the row so the 4th card peeks in to signal
+        scrollability. Native horizontal scroll + scroll-snap, no
+        custom drag JS needed (mobile + trackpad both work). */
+function ScrollerLayout({
+  pins,
+  listingFrame,
+  onSelectPin,
+}: {
+  pins: Pin[]
+  listingFrame: FrameStyle
+  onSelectPin: (pin: Pin) => void
+}) {
+  const total = pins.length
+
+  if (total === 1) {
+    return (
+      <div className="flex justify-center">
+        <div className="w-1/2">
+          <ListingCardCompact pin={pins[0]} frame={listingFrame} aspect="1/1" onClick={() => onSelectPin(pins[0])} />
+        </div>
+      </div>
+    )
+  }
+
+  if (total === 2) {
+    return (
+      <div className="grid grid-cols-2" style={{ gap: '8px' }}>
+        {pins.map((pin) => (
+          <ListingCardCompact key={pin.id} pin={pin} frame={listingFrame} aspect="1/1" onClick={() => onSelectPin(pin)} />
+        ))}
+      </div>
+    )
+  }
+
+  // 3+ cards — horizontal scroller. Each card is exactly 1/3 of the
+  // row (with gap accounted for) so 3 fit perfectly when total === 3,
+  // and the 4th peeks in when total >= 4 to signal scroll affordance.
+  return (
+    <div
+      className="overflow-x-auto -mx-5 md:-mx-7 px-5 md:px-7 snap-x snap-mandatory"
+      style={{
+        scrollbarWidth: 'none',
+        WebkitOverflowScrolling: 'touch',
+      }}
+    >
+      <style>{`.listings-scroller::-webkit-scrollbar { display: none }`}</style>
+      <div className="listings-scroller flex" style={{ gap: '8px' }}>
+        {pins.map((pin) => (
+          <div
+            key={pin.id}
+            className="snap-start shrink-0"
+            // Width = (100% - 2 gaps of 8px) / 3 = calc((100% - 16px) / 3)
+            // so exactly three cards fit a 100%-width row.
+            style={{ width: 'calc((100% - 16px) / 3)' }}
+          >
+            <ListingCardCompact pin={pin} frame={listingFrame} aspect="9/16" onClick={() => onSelectPin(pin)} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────── Grid layout ───────────────
+   Same column scale as scroller for the first row, but 4+ wraps to
+   additional rows instead of scrolling sideways:
+     1   → centered 1:1 (half-width)
+     2   → 2 cols 1:1
+     3+  → 3-col grid at 9:16, wraps onto more rows */
+function GridLayout({
+  pins,
+  listingFrame,
+  onSelectPin,
+}: {
+  pins: Pin[]
+  listingFrame: FrameStyle
+  onSelectPin: (pin: Pin) => void
+}) {
+  const total = pins.length
+
+  if (total === 1) {
+    return (
+      <div className="flex justify-center">
+        <div className="w-1/2">
+          <ListingCardCompact pin={pins[0]} frame={listingFrame} aspect="1/1" onClick={() => onSelectPin(pins[0])} />
+        </div>
+      </div>
+    )
+  }
+
+  if (total === 2) {
+    return (
+      <div className="grid grid-cols-2" style={{ gap: '8px' }}>
+        {pins.map((pin) => (
+          <ListingCardCompact key={pin.id} pin={pin} frame={listingFrame} aspect="1/1" onClick={() => onSelectPin(pin)} />
+        ))}
+      </div>
+    )
+  }
+
+  // 3+ cards — 3-col grid at 9:16, wraps onto more rows.
+  return (
+    <div className="grid grid-cols-3" style={{ gap: '8px' }}>
+      {pins.map((pin) => (
+        <ListingCardCompact key={pin.id} pin={pin} frame={listingFrame} aspect="9/16" onClick={() => onSelectPin(pin)} />
+      ))}
+    </div>
+  )
+}
+
 /* ─────────────── Compact listing card ─────────────── */
 
-function ListingCardCompact({ pin, frame = 'none', onClick }: { pin: Pin; frame?: FrameStyle; onClick: () => void }) {
+function ListingCardCompact({
+  pin,
+  frame = 'none',
+  aspect = '9/16',
+  onClick,
+}: {
+  pin: Pin
+  frame?: FrameStyle
+  /** CSS aspect-ratio (e.g., "1/1", "9/16"). Caller decides per layout. */
+  aspect?: '1/1' | '9/16'
+  onClick: () => void
+}) {
   const wantsBorder = frame === 'border' || frame === 'border_shadow'
   const wantsShadow = frame === 'shadow' || frame === 'border_shadow'
   // Prefer the content's own thumbnail when one exists — content is
@@ -186,8 +295,11 @@ function ListingCardCompact({ pin, frame = 'none', onClick }: { pin: Pin; frame?
 
   // Top-right content-type icon — only shown when the listing has
   // rich content beyond a single hero photo. Single photos = no icon.
+  // Multi-photo "carousel" content is `type: 'photo'` with mediaUrls
+  // length > 1 (there is no separate 'carousel' ContentType — that
+  // string lives only in the editor's internal CarouselStep type).
   const contentType = firstContent?.type
-  const hasMultiplePhotos = contentType === 'carousel' || (firstContent?.mediaUrls?.length ?? 0) > 1
+  const hasMultiplePhotos = (firstContent?.mediaUrls?.length ?? 0) > 1
   const hasReel = contentType === 'reel'
 
   // Top-left status pill copy + color. Open House replaces "For Sale"
@@ -210,16 +322,17 @@ function ListingCardCompact({ pin, frame = 'none', onClick }: { pin: Pin; frame?
   return (
     <button
       onClick={onClick}
-      className="group relative block w-full aspect-[9/16] overflow-hidden text-left bg-cream cursor-pointer rounded-[14px]"
+      className="group relative block w-full overflow-hidden text-left bg-cream cursor-pointer rounded-[14px]"
       style={{
+        // Aspect comes from the parent layout (1:1 for ≤2-col layouts
+        // and the deck; 9:16 for the 3-col scroller). Image inside
+        // uses contain-blur so the photo's native framing is
+        // preserved regardless of the card's aspect.
+        aspectRatio: aspect.replace('/', ' / '),
         // Border + shadow both use the palette accent (dot color in
         // the swatch) for cohesion with the wave / save / verified
         // badge / map frame.
-        // outline-offset 0 keeps the stroke ON the card's edge
-        // (sits flush with the rounded corner). Negative offsets
-        // pull the line INSIDE the card, which read as an inset
-        // line over the photo — not what "border" should look like.
-        outline: wantsBorder ? '2.5px solid var(--accent, #D94A1F)' : undefined,
+        outline: wantsBorder ? '3px solid var(--accent, #D94A1F)' : undefined,
         outlineOffset: wantsBorder ? '0' : undefined,
         boxShadow: wantsShadow ? '6px 6px 0 0 var(--accent, #D94A1F)' : undefined,
       }}
@@ -233,17 +346,10 @@ function ListingCardCompact({ pin, frame = 'none', onClick }: { pin: Pin; frame?
           fallback={<TypeIconFallback isSold={isSold} isSpotlight={isSpotlight} />}
         />
       ) : (
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              isSold
-                ? 'linear-gradient(135deg, #34C759 0%, #1F8E3D 100%)'
-                : isSpotlight
-                  ? 'linear-gradient(135deg, #FF8552 0%, #D94A1F 100%)'
-                  : 'linear-gradient(135deg, #5BA8FF 0%, #2D6FD3 100%)',
-          }}
-        />
+        // No photos AND no content — show the type-icon fallback
+        // (For Sale → Home, Sold → BadgeCheck, Spotlight → Compass)
+        // on the same gradient instead of an empty colored card.
+        <TypeIconFallback isSold={isSold} isSpotlight={isSpotlight} />
       )}
 
       {/* Bottom gradient — for legibility of address/price text */}
@@ -346,40 +452,6 @@ function CarouselGlyph({ size = 16 }: { size?: number }) {
       {/* Front square — solid stroke, slight fill so it reads against any photo */}
       <rect x="3" y="7" width="14" height="14" rx="3" stroke="currentColor" strokeWidth="2.2" fill="currentColor" fillOpacity="0.0" />
     </svg>
-  )
-}
-
-/* ─────────────── Empty state ─────────────── */
-
-function EmptyListings() {
-  return (
-    <div
-      className="rounded-[20px] py-12 px-6 text-center"
-      style={{
-        background: 'linear-gradient(135deg, rgba(255,133,82,0.06) 0%, rgba(217,74,31,0.04) 100%)',
-        border: '1px solid rgba(255,133,82,0.18)',
-        fontFamily: 'var(--font-humanist)',
-      }}
-    >
-      <div
-        className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center"
-        style={{ background: 'var(--brand-grad)' }}
-      >
-        <MapPin size={18} className="text-white" />
-      </div>
-      <p
-        className="text-ink"
-        style={{ fontSize: '15px', fontWeight: 600, letterSpacing: '-0.01em' }}
-      >
-        No listings on the map yet
-      </p>
-      <p
-        className="text-graphite mt-1.5"
-        style={{ fontSize: '13.5px', fontWeight: 400, lineHeight: 1.5 }}
-      >
-        New listings drop here the moment they go live.
-      </p>
-    </div>
   )
 }
 

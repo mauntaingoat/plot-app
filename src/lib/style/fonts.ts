@@ -73,6 +73,38 @@ export const FONTS: FontPairing[] = [
     body: '"Inter", system-ui, sans-serif',
     googleFamilies: 'IBM+Plex+Mono:wght@500;700&family=Inter:wght@400;500;600',
   },
+  {
+    id: 'boutique',
+    name: 'Boutique',
+    vibe: 'Elegant luxury',
+    display: '"DM Serif Display", "Times New Roman", serif',
+    body: '"DM Sans", system-ui, sans-serif',
+    googleFamilies: 'DM+Serif+Display&family=DM+Sans:wght@400;500;600',
+  },
+  {
+    id: 'bold',
+    name: 'Bold',
+    vibe: 'Big statement, confident',
+    display: '"Archivo Black", "Helvetica Neue", sans-serif',
+    body: '"Archivo", system-ui, sans-serif',
+    googleFamilies: 'Archivo+Black&family=Archivo:wght@400;500;600',
+  },
+  {
+    id: 'handwritten',
+    name: 'Handwritten',
+    vibe: 'Personal, warm',
+    display: '"Caveat", "Bradley Hand", cursive',
+    body: '"Nunito", system-ui, sans-serif',
+    googleFamilies: 'Caveat:wght@500;700&family=Nunito:wght@400;500;600',
+  },
+  {
+    id: 'slab',
+    name: 'Slab',
+    vibe: 'Grounded, structured',
+    display: '"Roboto Slab", "Rockwell", serif',
+    body: '"Roboto", system-ui, sans-serif',
+    googleFamilies: 'Roboto+Slab:wght@500;700&family=Roboto:wght@400;500;600',
+  },
 ]
 
 export const FONT_BY_ID: Record<string, FontPairing> = Object.fromEntries(

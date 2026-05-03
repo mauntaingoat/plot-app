@@ -12,9 +12,15 @@ interface PaywallPromptProps {
 }
 
 const TIER_PERKS: Record<Tier, string[]> = {
-  free: ['5 active pins', '3 content per pin', '1 min videos', 'Basic analytics'],
-  pro: ['20 active pins', '5 content per pin', '3 min videos', 'Advanced analytics', 'Live streaming', 'Scheduled content'],
-  studio: ['50 active pins', '10 content per pin', '3 min videos', 'Everything in Pro', 'Saved map insights', 'Custom branding'],
+  free: ['3 active pins', '3-min reels & carousels', 'MLS data auto-fill', 'Showing request inbox'],
+  pro: [
+    'Unlimited pins',
+    'Open house scheduling',
+    'Full analytics dashboard',
+    'Audience Crossover insights',
+    'Expanded customization',
+    'Priority support',
+  ],
 }
 
 export function PaywallPrompt({ isOpen, onClose, reason, upgradeTo = 'pro' }: PaywallPromptProps) {

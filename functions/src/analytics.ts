@@ -7,7 +7,7 @@ if (!admin.apps.length) admin.initializeApp()
 
 // ── Event logging helper ──
 async function logEvent(data: {
-  type: 'view' | 'tap' | 'save' | 'unsave' | 'follow' | 'unfollow'
+  type: 'view' | 'tap' | 'save' | 'unsave' | 'profile_visit' | 'wave'
   agentId: string
   pinId?: string
   contentId?: string
@@ -45,12 +45,63 @@ function getClientIp(request: any): string {
     || ''
 }
 
+// ── Tracker rate limit ──
+// 200 events / hour / IP across each tracker. Generous enough that
+// real users (who typically fire 1-30 events per session) never hit
+// it, but tight enough to suffocate scripts trying to inflate
+// pin.views / pin.taps / agent.profileVisits or blow up the events
+// collection for cost-griefing. Returns true if the request should
+// proceed; false to silently drop. Fails OPEN on transaction errors
+// so legitimate tracking isn't lost under contention.
+const TRACKER_PER_HOUR = 200
+const TRACKER_WINDOW_MS = 60 * 60 * 1000
+
+interface RateLimitDoc {
+  count: number
+  windowStart: admin.firestore.Timestamp
+}
+
+async function allowTrackerCall(ipKey: string): Promise<boolean> {
+  // Anonymous viewers may have empty IP (local dev, some proxy
+  // configs). Don't gate them — too easy to over-block legit traffic.
+  if (!ipKey) return true
+  const ref = admin.firestore().collection('rateLimits').doc(ipKey)
+  try {
+    return await admin.firestore().runTransaction(async (tx) => {
+      const snap = await tx.get(ref)
+      const now = admin.firestore.Timestamp.now()
+      if (!snap.exists) {
+        tx.set(ref, { count: 1, windowStart: now } as RateLimitDoc)
+        return true
+      }
+      const data = snap.data() as RateLimitDoc
+      const elapsed = now.toMillis() - data.windowStart.toMillis()
+      if (elapsed >= TRACKER_WINDOW_MS) {
+        tx.set(ref, { count: 1, windowStart: now } as RateLimitDoc)
+        return true
+      }
+      if (data.count >= TRACKER_PER_HOUR) {
+        return false
+      }
+      tx.update(ref, { count: admin.firestore.FieldValue.increment(1) })
+      return true
+    })
+  } catch (err) {
+    logger.warn('[analytics] rate limit txn failed; allowing through', { ipKey, err: String(err) })
+    return true
+  }
+}
+
 // ── Track View ──
 export const trackView = onCall<{ pinId: string; contentId?: string; localHour?: number }>(
   { cors: true, maxInstances: 20 },
   async (request) => {
     const { pinId, contentId } = request.data
     if (!pinId) return
+
+    const ipRaw = getClientIp(request)
+    const ipKey = ipRaw.replace(/[^a-zA-Z0-9.:_-]/g, '_')
+    if (!(await allowTrackerCall(`tracker_view_ip_${ipKey}`))) return
 
     const db = admin.firestore()
     const pinRef = db.collection('pins').doc(pinId)
@@ -94,8 +145,7 @@ export const trackView = onCall<{ pinId: string; contentId?: string; localHour?:
       await pinRef.update({ views: admin.firestore.FieldValue.increment(1) })
     }
 
-    const ip = getClientIp(request)
-    const geo = await geolocateIp(ip)
+    const geo = await geolocateIp(ipRaw)
     await logEvent({
       type: 'view',
       agentId,
@@ -115,6 +165,9 @@ export const trackEngagement = onCall<{ pinId: string; action: 'tap' | 'save' | 
   async (request) => {
     const { pinId, action, contentId } = request.data
     if (!pinId || !action) return
+
+    const ipKey = getClientIp(request).replace(/[^a-zA-Z0-9.:_-]/g, '_')
+    if (!(await allowTrackerCall(`tracker_engage_ip_${ipKey}`))) return
 
     const db = admin.firestore()
     const pinRef = db.collection('pins').doc(pinId)
@@ -170,37 +223,43 @@ export const trackEngagement = onCall<{ pinId: string; action: 'tap' | 'save' | 
   },
 )
 
-// ── Daily follower snapshot (runs at midnight UTC) ──
-// Legacy — still populated for backward compat with existing data,
-// but the dashboard's growth chart now reads subscriber_snapshots.
-export const dailyFollowerSnapshot = onSchedule(
-  { schedule: '0 0 * * *', timeZone: 'UTC', region: 'us-central1' },
-  async () => {
-    const db = admin.firestore()
-    const today = new Date().toISOString().slice(0, 10)
+// ── Track Profile Visit ──
+// Fires when a buyer lands on /:username (the public agent profile).
+// De-duped per session client-side via sessionStorage so a refresh
+// doesn't double-count. `localHour` is the visitor's local hour
+// (0–23) so the dashboard's "When viewers are active" chart buckets
+// by visitor wall-clock time, not server UTC.
+export const trackProfileVisit = onCall<{ agentId: string; localHour?: number }>(
+  { cors: true, maxInstances: 20 },
+  async (request) => {
+    const { agentId, localHour } = request.data
+    if (!agentId) return
 
-    const agentsSnap = await db.collection('users').where('role', '==', 'agent').get()
-    const batch = db.batch()
-    let count = 0
+    // Skip self-views — agents previewing their own profile shouldn't
+    // pollute their own analytics.
+    if (request.auth?.uid === agentId) return
 
-    for (const doc of agentsSnap.docs) {
-      const data = doc.data()
-      batch.set(
-        db.collection('follower_snapshots').doc(`${doc.id}_${today}`),
-        {
-          agentId: doc.id,
-          date: today,
-          count: data.followerCount || 0,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-      )
-      count++
-      if (count % 400 === 0) {
-        await batch.commit()
-      }
-    }
-    if (count % 400 !== 0) await batch.commit()
-    logger.info(`[analytics] daily follower snapshot: ${count} agents`)
+    const ipRaw = getClientIp(request)
+    const ipKey = ipRaw.replace(/[^a-zA-Z0-9.:_-]/g, '_')
+    if (!(await allowTrackerCall(`tracker_visit_ip_${ipKey}`))) return
+
+    const geo = await geolocateIp(ipRaw)
+    await Promise.all([
+      logEvent({
+        type: 'profile_visit',
+        agentId,
+        actorUid: request.auth?.uid,
+        localHour,
+        ...(geo || {}),
+      }),
+      // Lifetime counter on the user doc — drives the dashboard's
+      // "Visits" stat card without scanning the events collection.
+      admin.firestore()
+        .collection('users')
+        .doc(agentId)
+        .update({ profileVisits: admin.firestore.FieldValue.increment(1) })
+        .catch(() => {}),
+    ])
   },
 )
 

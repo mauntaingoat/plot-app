@@ -114,7 +114,7 @@ export default function Welcome() {
       const { setDoc, doc, serverTimestamp } = await import('firebase/firestore')
       const { db } = await import('@/config/firebase')
       if (db) await setDoc(doc(db, 'usernames', username.toLowerCase()), { uid, createdAt: serverTimestamp() })
-      setAuthDoc({ uid, ...userData, createdAt: Timestamp.now(), followerCount: 0, followingCount: 0, setupPercent: 50, tier: 'free', brandColor: null, brokerage: null } as UserDoc)
+      setAuthDoc({ uid, ...userData, createdAt: Timestamp.now(), setupPercent: 50, tier: 'free', brandColor: null, brokerage: null } as UserDoc)
       setStep('done')
     } catch (err: any) {
       setError(err.message || 'Failed to save')
@@ -131,7 +131,7 @@ export default function Welcome() {
     center: { opacity: 1, x: 0 },
     exit: (d: number) => ({ opacity: 0, x: d > 0 ? -50 : 50 }),
   }
-  const pageTrans = { duration: 0.3, ease: [0.22, 1, 0.36, 1] }
+  const pageTrans = { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const }
 
   const canGoBack = STEPS.indexOf(step) > 0 && step !== 'hero' && step !== 'done'
 

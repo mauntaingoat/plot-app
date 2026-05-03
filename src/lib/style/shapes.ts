@@ -81,17 +81,30 @@ function roundedPolygon(vertices: Array<[number, number]>, cornerR: number): str
   return cmds.join(' ')
 }
 
-/* ── Rectangle (hard-edged, landscape) ──
-   The "no shape" option — sharp 90° corners. Drawn ~5:3 landscape
-   (full bbox width, 60% height) so it reads as a clear horizontal
-   frame instead of a square. */
+/* ── Rectangle (rounded, landscape) ──
+   Soft-corner rectangle, slightly taller than wide-strict 5:3 —
+   y ∈ [0.13, 0.87] gives a 0.74-tall body that reads as a generous
+   landscape rectangle without dominating the bbox. Corner radius is
+   a percent of the shape's short side so it scales with size and
+   stays visually consistent across breakpoints. Drawn as four
+   straight edges with quadratic-curve corners (Q control = corner). */
 export const rectangle: ShapePath = (cx, cy, size) => {
   const { X, Y } = withFrame(cx, cy, size)
+  // Bbox: x ∈ [0,1], y ∈ [0.13, 0.87]. Short side = 0.74 in normalized
+  // units. Radius ≈ 11% of short side = 0.082.
+  const top = 0.13
+  const bot = 0.87
+  const r = 0.082
   return [
-    `path('M ${X(0)} ${Y(0.20)}`,
-    `L ${X(1)} ${Y(0.20)}`,
-    `L ${X(1)} ${Y(0.80)}`,
-    `L ${X(0)} ${Y(0.80)}`,
+    `path('M ${X(r)} ${Y(top)}`,
+    `L ${X(1 - r)} ${Y(top)}`,
+    `Q ${X(1)} ${Y(top)}, ${X(1)} ${Y(top + r)}`,
+    `L ${X(1)} ${Y(bot - r)}`,
+    `Q ${X(1)} ${Y(bot)}, ${X(1 - r)} ${Y(bot)}`,
+    `L ${X(r)} ${Y(bot)}`,
+    `Q ${X(0)} ${Y(bot)}, ${X(0)} ${Y(bot - r)}`,
+    `L ${X(0)} ${Y(top + r)}`,
+    `Q ${X(0)} ${Y(top)}, ${X(r)} ${Y(top)}`,
     `Z')`,
   ].join(' ')
 }
@@ -155,16 +168,21 @@ export const hex: ShapePath = (cx, cy, size) => {
   return `path('${roundedPolygon(verts, size * 0.08)}')`
 }
 
-/* ── 5. House silhouette (rounded eaves + rounded door top + door cutout) ──
+/* ── 5. House silhouette (rounded peak + rounded eaves + rounded door top + door cutout) ──
    Soft eave/wall corners AND the door's top-left/top-right are
-   rounded so the cutout reads as a friendly arched-ish opening. */
+   rounded so the cutout reads as a friendly arched-ish opening.
+   The peak itself uses a Q curve (start ≈0.42, end ≈0.58, control
+   above the bbox) so the apex reads as a gentle dome instead of a
+   sharp point — the curve still peaks at y≈0.05 visually so the
+   overall silhouette doesn't lose height. */
 export const house: ShapePath = (cx, cy, size) => {
   const x0 = cx - size / 2
   const y0 = cy - size / 2
   const X = (n: number) => (x0 + n * size).toFixed(2)
   const Y = (n: number) => (y0 + n * size).toFixed(2)
   return [
-    `path('M ${X(0.5)} ${Y(0.05)}`,                                            // apex
+    `path('M ${X(0.42)} ${Y(0.10)}`,                                           // start: left roof slope, just below peak
+    `Q ${X(0.50)} ${Y(0.00)}, ${X(0.58)} ${Y(0.10)}`,                          // rounded peak (control above bbox keeps visible apex at y≈0.05)
     `L ${X(0.93)} ${Y(0.39)}`,                                                 // down to top-right eave
     `Q ${X(0.97)} ${Y(0.42)}, ${X(0.97)} ${Y(0.46)}`,                          // round eave corner
     `L ${X(0.97)} ${Y(0.91)}`,                                                 // down right wall
@@ -179,7 +197,7 @@ export const house: ShapePath = (cx, cy, size) => {
     `Q ${X(0.03)} ${Y(0.95)}, ${X(0.03)} ${Y(0.91)}`,                          // round corner
     `L ${X(0.03)} ${Y(0.46)}`,                                                 // up left wall
     `Q ${X(0.03)} ${Y(0.42)}, ${X(0.07)} ${Y(0.39)}`,                          // round eave
-    `Z')`,
+    `Z')`,                                                                     // Z closes left eave (0.07, 0.39) → start (0.42, 0.10) — left roof slope
   ].join(' ')
 }
 

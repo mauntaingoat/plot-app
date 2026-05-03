@@ -1,7 +1,7 @@
 import type { UserDoc, Pin } from './types'
 import { isAdmin } from './admin'
 
-export type Tier = 'free' | 'pro' | 'studio'
+export type Tier = 'free' | 'pro'
 
 export interface TierLimits {
   id: Tier
@@ -11,12 +11,19 @@ export interface TierLimits {
   maxContentPerPin: number
   maxSpotlightContent: number
   maxVideoSeconds: number
+  /** Pro only — unlocks the full analytics dashboard (visits, taps,
+   *  save growth, viewer cities, peak hours, content performance,
+   *  audience crossover). Free agents see the basic stat cards
+   *  (visits/taps/saves/waves) but not the deep charts. */
   advancedAnalytics: boolean
-  savedMapInsights: boolean
-  liveStreaming: boolean
+  /** Pro only — open house scheduling on for_sale pins. */
   openHouses: boolean
-  inExplore: boolean
+  /** Pro only — agent receives FCM/email pings for new buyer
+   *  email signups + waves. */
   emailNotifications: boolean
+  /** Pro only — expanded customization (custom ticker items, custom
+   *  CTA labels, brand color override, profile layout choices, etc.). */
+  expandedCustomization: boolean
 }
 
 export const TIERS: Record<Tier, TierLimits> = {
@@ -29,11 +36,9 @@ export const TIERS: Record<Tier, TierLimits> = {
     maxSpotlightContent: 999,
     maxVideoSeconds: 180,
     advancedAnalytics: false,
-    savedMapInsights: false,
-    liveStreaming: false,
     openHouses: false,
-    inExplore: false,
     emailNotifications: false,
+    expandedCustomization: false,
   },
   pro: {
     id: 'pro',
@@ -44,32 +49,17 @@ export const TIERS: Record<Tier, TierLimits> = {
     maxSpotlightContent: 999,
     maxVideoSeconds: 180,
     advancedAnalytics: true,
-    savedMapInsights: false,
-    liveStreaming: false,
     openHouses: true,
-    inExplore: true,
     emailNotifications: true,
-  },
-  studio: {
-    id: 'studio',
-    name: 'Studio',
-    price: 39,
-    maxActivePins: 9999,
-    maxContentPerPin: 999,
-    maxSpotlightContent: 999,
-    maxVideoSeconds: 180,
-    advancedAnalytics: true,
-    savedMapInsights: true,
-    liveStreaming: true,
-    openHouses: true,
-    inExplore: true,
-    emailNotifications: true,
+    expandedCustomization: true,
   },
 }
 
 export function getUserTier(user: UserDoc | null): Tier {
   if (!user) return 'free'
-  if (isAdmin(user.uid)) return 'studio'
+  // Admins get Pro automatically. Was Studio when we had three tiers;
+  // collapsed to Pro now that Studio is gone.
+  if (isAdmin(user.uid)) return 'pro'
   const giftTier = (user as any).giftTier as Tier | undefined
   const giftExpiry = (user as any).giftExpiry as any
   if (giftTier && giftExpiry) {
@@ -117,7 +107,7 @@ export function canAddContent(user: UserDoc | null, pin: Pin): GateResult {
     return {
       allowed: false,
       reason: `You've reached the content limit per pin on the ${limits.name} plan.`,
-      upgradeTo: limits.id === 'free' ? 'pro' : 'studio',
+      upgradeTo: 'pro',
     }
   }
   return { allowed: true }
@@ -134,6 +124,9 @@ export function canUploadVideo(user: UserDoc | null, durationSeconds: number): G
   return { allowed: true }
 }
 
-export function hasFeature(user: UserDoc | null, feature: keyof Pick<TierLimits, 'advancedAnalytics' | 'liveStreaming' | 'savedMapInsights' | 'openHouses' | 'inExplore' | 'emailNotifications'>): boolean {
+export function hasFeature(
+  user: UserDoc | null,
+  feature: keyof Pick<TierLimits, 'advancedAnalytics' | 'openHouses' | 'emailNotifications' | 'expandedCustomization'>,
+): boolean {
   return getTierLimits(user)[feature]
 }

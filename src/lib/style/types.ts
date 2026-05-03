@@ -10,6 +10,14 @@
 
 export type FrameStyle = 'none' | 'border' | 'shadow' | 'border_shadow'
 
+/** Listings/content card layout strategy.
+ *  - `scroller`: 1 = centered 1:1, 2 = side-by-side 1:1, 3 = thirds
+ *    9:16, 4+ horizontally scrolls (3 visible per viewport, drag for
+ *    more).
+ *  - `grid`: same column scale as scroller for 1/2/3 cards, but 4+
+ *    wraps onto additional rows instead of scrolling sideways. */
+export type ListingsLayout = 'scroller' | 'grid'
+
 export type TickerAutoKey = 'for_sale' | 'sold' | 'open_houses' | 'spotlights'
 
 export interface TickerCustomItem {
@@ -54,4 +62,8 @@ export interface AgentStyle {
     wave: string
     save: string
   }
+
+  /** How the listings/content cards lay out on the public profile.
+   *  See `ListingsLayout` for the two modes. */
+  listingsLayout: ListingsLayout
 }

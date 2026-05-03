@@ -32,6 +32,9 @@ const PER_PIN_EMAIL_WINDOW_MS = 24 * 60 * 60 * 1000 // 24 hours
 
 interface SubmitWaveData {
   pinId?: string
+  /** Required for profile-level waves (no pinId). Ignored when pinId
+   *  is provided since the server resolves agentId from the pin. */
+  agentId?: string
   visitorName?: string
   visitorEmail?: string
   visitorPhone?: string | null
@@ -73,13 +76,18 @@ async function checkRateLimit(key: string, limit: number, windowMs: number): Pro
 }
 
 export const submitWave = onCall<SubmitWaveData>(
-  { region: 'us-central1', maxInstances: 20, timeoutSeconds: 30 },
+  { region: 'us-central1', maxInstances: 20, timeoutSeconds: 30, cors: true },
   async (request) => {
-    const { pinId, visitorName, visitorEmail, visitorPhone, question } = request.data ?? {}
+    const { pinId, agentId: providedAgentId, visitorName, visitorEmail, visitorPhone, question } = request.data ?? {}
 
     // ── Validation ──
-    if (!pinId || typeof pinId !== 'string') {
-      throw new HttpsError('invalid-argument', 'pinId is required.')
+    // Either a pinId (listing-level wave) OR an agentId (profile-level
+    // wave from the header button) is required. Pin-level takes
+    // precedence — the server resolves agentId from the pin.
+    const hasPin = !!(pinId && typeof pinId === 'string')
+    const hasAgent = !!(providedAgentId && typeof providedAgentId === 'string')
+    if (!hasPin && !hasAgent) {
+      throw new HttpsError('invalid-argument', 'pinId or agentId is required.')
     }
     const name = (visitorName || '').trim()
     const email = (visitorEmail || '').trim().toLowerCase()
@@ -96,35 +104,57 @@ export const submitWave = onCall<SubmitWaveData>(
     await checkRateLimit(`wave_ip_${ip}`, PER_IP_LIMIT, PER_IP_WINDOW_MS)
 
     const emailHash = hashEmail(email)
+    const rateKey = hasPin ? `wave_pin_${pinId}` : `wave_agent_${providedAgentId}`
     await checkRateLimit(
-      `wave_pin_${pinId}_email_${emailHash}`,
+      `${rateKey}_email_${emailHash}`,
       PER_PIN_EMAIL_LIMIT,
       PER_PIN_EMAIL_WINDOW_MS,
     )
 
-    // ── Fetch the pin to get agentId + canonical address ──
-    const pinSnap = await admin.firestore().collection('pins').doc(pinId).get()
-    if (!pinSnap.exists) {
-      throw new HttpsError('not-found', 'Pin does not exist.')
-    }
-    const pin = pinSnap.data() as { agentId?: string; address?: string; status?: string; unit?: string | null }
-    if (!pin.agentId) {
-      throw new HttpsError('failed-precondition', 'Pin is missing agent.')
-    }
-    if (pin.status === 'archived') {
-      throw new HttpsError('failed-precondition', 'This listing is no longer accepting waves.')
+    // ── Resolve agent + pin context ──
+    let resolvedAgentId: string
+    let resolvedPinAddress = ''
+    let writeBucketPinId: string
+
+    if (hasPin) {
+      const pinSnap = await admin.firestore().collection('pins').doc(pinId!).get()
+      if (!pinSnap.exists) {
+        throw new HttpsError('not-found', 'Pin does not exist.')
+      }
+      const pin = pinSnap.data() as { agentId?: string; address?: string; status?: string }
+      if (!pin.agentId) {
+        throw new HttpsError('failed-precondition', 'Pin is missing agent.')
+      }
+      if (pin.status === 'archived') {
+        throw new HttpsError('failed-precondition', 'This listing is no longer accepting waves.')
+      }
+      resolvedAgentId = pin.agentId
+      resolvedPinAddress = pin.address || ''
+      writeBucketPinId = pinId!
+    } else {
+      // Profile-level wave — verify the agent exists.
+      const agentSnap = await admin.firestore().collection('users').doc(providedAgentId!).get()
+      if (!agentSnap.exists) {
+        throw new HttpsError('not-found', 'Agent does not exist.')
+      }
+      resolvedAgentId = providedAgentId!
+      // Synthetic bucket id keeps the wave under the existing
+      // collectionGroup('waves') query that the dashboard inbox
+      // already uses — no inbox-side changes needed.
+      writeBucketPinId = `agent_profile_${providedAgentId}`
     }
 
     // ── Write the wave doc via admin SDK (bypasses client-blocking rule) ──
     const ref = await admin
       .firestore()
       .collection('pins')
-      .doc(pinId)
+      .doc(writeBucketPinId)
       .collection('waves')
       .add({
-        pinId,
-        agentId: pin.agentId,
-        pinAddress: pin.address || '',
+        pinId: hasPin ? pinId : null,
+        agentId: resolvedAgentId,
+        pinAddress: resolvedPinAddress,
+        profileLevel: !hasPin,
         visitorName: name,
         visitorEmail: email,
         visitorPhone: (visitorPhone || '').trim() || null,
@@ -135,9 +165,10 @@ export const submitWave = onCall<SubmitWaveData>(
       })
 
     logger.info('[submitWave] created', {
-      pinId,
+      pinId: hasPin ? pinId : null,
+      profileLevel: !hasPin,
       waveId: ref.id,
-      agentId: pin.agentId,
+      agentId: resolvedAgentId,
       ip,
     })
 

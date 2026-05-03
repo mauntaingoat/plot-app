@@ -37,6 +37,12 @@ interface ExpandedMapViewProps {
    *  listings (the peek slot only exists on listings). */
   visible?: boolean
   onClose: () => void
+  /** Tap-to-expand handler. Called when the user taps inside the
+   *  visible (clip-path-shaped) map area while collapsed. Lets the
+   *  shape itself become the click target instead of the rectangular
+   *  peek bbox in ListingsTab — clicks on empty space around the
+   *  heart/circle/etc no longer trigger expand. */
+  onRequestOpen?: (rect: DOMRect | null) => void
   pins: Pin[]
   agent: UserDoc
   agentPhotoUrl?: string | null
@@ -66,6 +72,7 @@ export function ExpandedMapView({
   peekEl,
   visible = true,
   onClose,
+  onRequestOpen,
   pins,
   agent,
   agentPhotoUrl,
@@ -475,11 +482,12 @@ export function ExpandedMapView({
           transition={{ duration: 0 }}
           className={`expanded-map-shape${(open || closing) ? ' is-expanded' : ''}`}
           style={{
-            // Only the expanded fullscreen state should capture
-            // pointer events. While collapsed/hidden, the click
-            // target is the peek button in ListingsTab — clicks
-            // need to pass through this shell.
-            pointerEvents: open && visible ? 'auto' : 'none',
+            // The shape captures pointer events while visible — its
+            // clip-path means clicks only register inside the heart /
+            // circle / etc, not the empty corners of the bounding box.
+            // While hidden (other tab) we let events pass through so
+            // there's no invisible blocker.
+            pointerEvents: visible ? 'auto' : 'none',
           }}
         >
           <MapCanvas
@@ -500,8 +508,14 @@ export function ExpandedMapView({
               a uniform thickness regardless of the path's pixel size,
               so the heart's stroke reads identically in peek and
               expanded states. The d attribute is updated imperatively
-              alongside clipPath assignments above (see syncBorder). */}
-          {hasBorder && (
+              alongside clipPath assignments above (see syncBorder).
+              Same open/closing gate as the offset shadow above —
+              border only renders in the collapsed peek state. Hiding
+              it during the expand AND collapse animations stops the
+              stroke from briefly flashing on the wrong shape mid-tween
+              (e.g. revealing the peek-sized border before the shape
+              has finished morphing back from fullscreen). */}
+          {hasBorder && !open && !closing && (
             <svg
               className="absolute inset-0 pointer-events-none"
               width="100%"
@@ -512,10 +526,27 @@ export function ExpandedMapView({
                 ref={borderPathRef}
                 fill="none"
                 stroke="var(--accent, #D94A1F)"
-                strokeWidth="2.5"
+                strokeWidth="3"
                 vectorEffect="non-scaling-stroke"
               />
             </svg>
+          )}
+
+          {/* Tap-to-expand overlay — only mounted while collapsed and
+              an `onRequestOpen` handler is provided. Sits above the
+              MapCanvas so it absorbs drag/click attempts (the user
+              shouldn't be able to pan the map in peek state). The
+              parent shape's clip-path applies to this overlay too,
+              so the click target is automatically the heart / circle
+              / etc shape — not the rectangular bbox around it. */}
+          {!open && !closing && onRequestOpen && (
+            <button
+              type="button"
+              onClick={() => onRequestOpen(peekEl?.getBoundingClientRect() ?? null)}
+              aria-label="Open fullscreen map"
+              className="absolute inset-0 cursor-pointer"
+              style={{ background: 'transparent', border: 0, padding: 0 }}
+            />
           )}
 
           {/* Chrome — visible only when expanded. Outer wrapper has
@@ -630,12 +661,6 @@ export function ExpandedMapView({
                 <FilterDropdown label="Sqft"
                   options={[{ value: '0-1000', label: 'Under 1,000' }, { value: '1000-1500', label: '1,000–1,500' }, { value: '1500-2000', label: '1,500–2,000' }, { value: '2000-3000', label: '2,000–3,000' }, { value: '3000+', label: '3,000+' }]}
                   selected={propertyFilters.sqft} onToggle={(v) => togglePropertyFilter('sqft', v)} onClear={() => clearPropertyFilter('sqft')} />
-                <FilterDropdown label="Year"
-                  options={[{ value: '2020+', label: '2020+' }, { value: '2010-2019', label: '2010–2019' }, { value: '2000-2009', label: '2000–2009' }, { value: '1990-1999', label: '1990–1999' }, { value: 'pre-1990', label: 'Pre-1990' }]}
-                  selected={propertyFilters.yearBuilt} onToggle={(v) => togglePropertyFilter('yearBuilt', v)} onClear={() => clearPropertyFilter('yearBuilt')} />
-                <FilterDropdown label="DOM"
-                  options={[{ value: '0-7', label: '< 7 days' }, { value: '7-14', label: '7–14' }, { value: '14-30', label: '14–30' }, { value: '30-60', label: '30–60' }, { value: '60+', label: '60+' }]}
-                  selected={propertyFilters.dom} onToggle={(v) => togglePropertyFilter('dom', v)} onClear={() => clearPropertyFilter('dom')} />
               </FilterBar>
             </div>
           </div>

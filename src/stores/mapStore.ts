@@ -9,8 +9,6 @@ interface PropertyFilters {
   baths: Set<string>
   homeType: Set<string>
   sqft: Set<string>
-  yearBuilt: Set<string>
-  dom: Set<string>
 }
 
 interface MapState {
@@ -54,7 +52,7 @@ interface MapState {
 
 const emptyPropertyFilters: PropertyFilters = {
   price: new Set(), beds: new Set(), baths: new Set(),
-  homeType: new Set(), sqft: new Set(), yearBuilt: new Set(), dom: new Set(),
+  homeType: new Set(), sqft: new Set(),
 }
 
 export const useMapStore = create<MapState>((set, get) => ({
@@ -162,34 +160,6 @@ export function applyPropertyFilters(pins: Pin[], filters: PropertyFilters): Pin
         if (r === '1500-2000') return s >= 1500 && s < 2000
         if (r === '2000-3000') return s >= 2000 && s < 3000
         if (r === '3000+') return s >= 3000
-        return true
-      })
-      if (!match) return false
-    }
-
-    // Year built
-    if (filters.yearBuilt.size > 0 && 'yearBuilt' in pin && pin.yearBuilt) {
-      const y = pin.yearBuilt
-      const match = Array.from(filters.yearBuilt).some((r) => {
-        if (r === '2020+') return y >= 2020
-        if (r === '2010-2019') return y >= 2010 && y < 2020
-        if (r === '2000-2009') return y >= 2000 && y < 2010
-        if (r === '1990-1999') return y >= 1990 && y < 2000
-        if (r === 'pre-1990') return y < 1990
-        return true
-      })
-      if (!match) return false
-    }
-
-    // Days on market
-    if (filters.dom.size > 0 && 'daysOnMarket' in pin) {
-      const d = pin.daysOnMarket
-      const match = Array.from(filters.dom).some((r) => {
-        if (r === '0-7') return d <= 7
-        if (r === '7-14') return d > 7 && d <= 14
-        if (r === '14-30') return d > 14 && d <= 30
-        if (r === '30-60') return d > 30 && d <= 60
-        if (r === '60+') return d > 60
         return true
       })
       if (!match) return false

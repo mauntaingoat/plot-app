@@ -31,13 +31,6 @@ export function StructuredData({ agent, pins = [] }: StructuredDataProps) {
       ...(agent.brokerage && {
         worksFor: { '@type': 'Organization', name: agent.brokerage },
       }),
-      ...(agent.followerCount !== undefined && {
-        interactionStatistic: {
-          '@type': 'InteractionCounter',
-          interactionType: 'https://schema.org/FollowAction',
-          userInteractionCount: agent.followerCount,
-        },
-      }),
     }
 
     // Build RealEstateListing for each active for_sale pin

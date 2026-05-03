@@ -1,16 +1,14 @@
 import { useRef, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Eye, MapPin, House as Home, X, BookmarkSimple as Bookmark, ShareNetwork as Share2, ChatCircle as MessageCircle, UserPlus, UserCircleCheck as UserCheck, SpeakerHigh as Volume2, SpeakerSlash as VolumeX, Heart, HandWaving as Hand } from '@phosphor-icons/react'
+import { Eye, MapPin, House as Home, X, BookmarkSimple as Bookmark, ShareNetwork as Share2, SpeakerHigh as Volume2, SpeakerSlash as VolumeX, Heart, HandWaving as Hand } from '@phosphor-icons/react'
 import { Avatar } from '@/components/ui/Avatar'
 import { ListingOnlySheet } from '@/components/viewers/ListingOnlySheet'
 import { WaveModal } from '@/components/agent-profile/WaveModal'
 import { type Pin, type UserDoc, type ContentItem, isTallAspect } from '@/lib/types'
 import { getAllContent } from '@/lib/contentUtils'
 import { useSaves } from '@/hooks/useSaves'
-import { useFollow } from '@/hooks/useFollow'
 import { preloadImages } from '@/lib/imageCache'
 import { formatCompact } from '@/lib/format'
-import { CommentSheet } from '@/components/comments/CommentSheet'
 
 interface ContentFeedProps {
   pins: Pin[]
@@ -19,13 +17,12 @@ interface ContentFeedProps {
   isPreview?: boolean
   isSignedIn?: boolean
   onAuthRequired?: () => void
-  agentMode?: string
   isOwnProfile?: boolean
   /** Drives chrome density. 'standalone' (default) keeps the
-   *  full right-rail (save / comment / follow / listing / share).
-   *  'immersive' drops save/comment/follow — used by the new
-   *  agent-profile Reels tab where saves are agent-level (Save
-   *  Maya) and comments are replaced by waves on listings. */
+   *  full right-rail (save / listing / share). 'immersive' drops
+   *  the content-level save — used by the agent-profile Reels tab
+   *  where saves are agent-level (Save Maya) and waves replace
+   *  listing comments. */
   viewerMode?: 'standalone' | 'immersive'
   /** When set, renders an X dismiss button in the top-right
    *  (used by the immersive viewer to return to the grid). */
@@ -46,7 +43,7 @@ interface ContentFeedProps {
 
 const PAGE_SIZE = 6
 
-export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAuthRequired, agentMode = 'single', isOwnProfile, viewerMode = 'standalone', onClose, startAtContentId, agentSaved, onSaveAgent, onChildSheetOpenChange }: ContentFeedProps) {
+export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAuthRequired, isOwnProfile, viewerMode = 'standalone', onClose, startAtContentId, agentSaved, onSaveAgent, onChildSheetOpenChange }: ContentFeedProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const allContent = getAllContent(pins)
   const [listingSheet, setListingSheet] = useState<Pin | null>(null)
@@ -57,9 +54,6 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
   useEffect(() => {
     onChildSheetOpenChange?.(!!listingSheet || !!wavePin)
   }, [listingSheet, wavePin, onChildSheetOpenChange])
-  const { isFollowing: following, toggle: toggleFollow } = useFollow(agent?.uid)
-  const [commentTarget, setCommentTarget] = useState<{ pinId: string; contentId: string; agentId: string } | null>(null)
-  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({})
   const [signedUrls, setSignedUrls] = useState<Record<string, { hls: string; thumbnail: string }>>({})
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
@@ -147,23 +141,16 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
         style={{ scrollSnapType: 'y mandatory', overscrollBehavior: 'none', WebkitOverflowScrolling: 'touch' }}>
         {visibleContent.map(({ content, pin }) => (
           <FeedCard key={content.id} content={content} pin={pin} agent={agent}
-            isPreview={isPreview} following={following}
-            showFollowButton={viewerMode === 'standalone' && agentMode === 'single'}
+            isPreview={isPreview}
             hideRailExtras={viewerMode === 'immersive'}
             immersive={viewerMode === 'immersive'}
             agentSaved={agentSaved}
             onSaveAgent={onSaveAgent}
             isSignedIn={isSignedIn} onAuthRequired={onAuthRequired}
             isOwnProfile={isOwnProfile}
-            onFollowToggle={() => {
-              if (!isSignedIn && !isPreview && onAuthRequired) { onAuthRequired(); return }
-              toggleFollow()
-            }}
             onListingTap={() => pin.type !== 'spotlight' && setListingSheet(pin)}
             onWaveTap={() => pin.type !== 'spotlight' && setWavePin(pin)}
-            onComment={() => setCommentTarget({ pinId: pin.id, contentId: content.id, agentId: pin.agentId })}
             onClose={onClose}
-            parentCommentCount={commentCounts[content.id]}
             signedUrl={content.muxPlaybackId ? signedUrls[content.muxPlaybackId]?.hls : undefined} />
         ))}
       </div>
@@ -207,17 +194,6 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
         <ListingOnlySheet pin={listingSheet} agent={agent} onClose={() => setListingSheet(null)} isPreview={isPreview} isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
       ) : null}
 
-      {commentTarget && (
-        <CommentSheet
-          isOpen={!!commentTarget}
-          onClose={() => setCommentTarget(null)}
-          pinId={commentTarget.pinId}
-          contentId={commentTarget.contentId}
-          pinAgentId={commentTarget.agentId}
-          onCountChange={(count) => setCommentCounts((prev) => ({ ...prev, [commentTarget.contentId]: count }))}
-        />
-      )}
-
       {/* Single Wave modal — only one pin's wave is open at a time.
           Lives at ContentFeed level so the parent immersive viewer
           can be told (via `onChildSheetOpenChange`) to pause its
@@ -234,25 +210,16 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
   )
 }
 
-function FeedCard({ content, pin, agent, isPreview, following, showFollowButton, hideRailExtras, immersive, agentSaved, onSaveAgent, onFollowToggle, onListingTap, onWaveTap, onClose, isSignedIn, onAuthRequired, isOwnProfile, onComment, parentCommentCount, signedUrl }: {
+function FeedCard({ content, pin, agent, isPreview, hideRailExtras, immersive, agentSaved, onSaveAgent, onListingTap, onWaveTap, onClose, isSignedIn, onAuthRequired, isOwnProfile, signedUrl }: {
   content: ContentItem; pin: Pin; agent: UserDoc; isPreview?: boolean
-  following: boolean; showFollowButton?: boolean; hideRailExtras?: boolean; immersive?: boolean; agentSaved?: boolean; onSaveAgent?: () => void; onFollowToggle: () => void; onListingTap: () => void; onWaveTap?: () => void; onClose?: () => void
-  isSignedIn?: boolean; onAuthRequired?: () => void; isOwnProfile?: boolean; onComment?: () => void; parentCommentCount?: number; signedUrl?: string
+  hideRailExtras?: boolean; immersive?: boolean; agentSaved?: boolean; onSaveAgent?: () => void; onListingTap: () => void; onWaveTap?: () => void; onClose?: () => void
+  isSignedIn?: boolean; onAuthRequired?: () => void; isOwnProfile?: boolean; signedUrl?: string
 }) {
-  const requireAuth = () => { if (!isSignedIn && onAuthRequired) onAuthRequired() }
   const videoRef = useRef<HTMLVideoElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const [isNearViewport, setIsNearViewport] = useState(false)
   const [isMuted, setIsMuted] = useState(true)
   const [carouselIdx, setCarouselIdx] = useState(0)
-  const [commentCount, setCommentCount] = useState(0)
-
-  useEffect(() => {
-    if (parentCommentCount !== undefined) { setCommentCount(parentCommentCount); return }
-    import('@/lib/firestore').then(({ getComments }) =>
-      getComments(pin.id, content.id).then((c) => setCommentCount(c.length)).catch(() => {})
-    )
-  }, [pin.id, content.id, parentCommentCount])
 
   useEffect(() => {
     if (!content.mediaUrls) return
@@ -419,31 +386,12 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
 
       {/* Right sidebar */}
       <div className="absolute right-3 bottom-[22%] z-10 flex flex-col items-center gap-5" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }}>
-        {/* Agent avatar — in immersive mode, sized to match the rest
-            of the rail glyphs (save heart, wave, share, listing) so
-            it reads as one in the vertical rhythm. Standalone mode
-            keeps the bigger 48px avatar with the follow pip. */}
-        {immersive ? (
-          <Avatar src={agent.photoURL} name={agent.displayName} size={26} ring="story" />
-        ) : (
-          <div className="relative w-12 h-12">
-            <Avatar src={agent.photoURL} name={agent.displayName} size={48} ring="none" />
-            {!isOwnProfile && !hideRailExtras && (
-              <motion.button whileTap={!isPreview ? { scale: 0.9 } : undefined}
-                onClick={!isPreview ? onFollowToggle : undefined}
-                className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-[18px] h-[18px] rounded-full flex items-center justify-center ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}
-                style={{ background: following ? '#34C759' : '#FF6B3D' }}>
-                {following ? <UserCheck size={9} className="text-white" /> : <UserPlus size={9} className="text-white" />}
-              </motion.button>
-            )}
-          </div>
-        )}
+        {/* Agent avatar — sized to match the rest of the rail glyphs
+            (save heart, wave, share, listing) in immersive mode. */}
+        <Avatar src={agent.photoURL} name={agent.displayName} size={immersive ? 26 : 48} ring={immersive ? 'story' : 'none'} />
 
         {/* Save-agent heart — immersive mode only. Sits directly
-            under the avatar in the same rhythm as the other glyphs
-            (avatar → save → wave → share → listing), so the gap
-            container's `gap-5` handles spacing — no manual margin
-            tweak needed now that the avatar is the same size. */}
+            under the avatar in the same rhythm as the other glyphs. */}
         {immersive && onSaveAgent && (
           <motion.button
             key={agentSaved ? 'saved' : 'unsaved'}
@@ -452,9 +400,7 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
             aria-label={agentSaved ? 'Saved' : `Save ${agent.displayName || 'agent'}`}
             className="cursor-pointer flex items-center justify-center"
           >
-            {agentSaved
-              ? <UserCheck weight="bold" size={26} className="text-tangerine" />
-              : <Heart weight="fill" size={26} className="text-white" />}
+            <Heart weight="fill" size={26} className={agentSaved ? 'text-tangerine' : 'text-white'} />
           </motion.button>
         )}
 
@@ -464,15 +410,6 @@ function FeedCard({ content, pin, agent, isPreview, following, showFollowButton,
             className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}>
             <Bookmark size={26} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
             <span className="text-[10px] text-white font-semibold">{formatCompact(content.saves || 0)}</span>
-          </motion.button>
-        )}
-
-        {!hideRailExtras && (
-          <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
-            onClick={!isPreview ? () => { if (!isSignedIn && onAuthRequired) { onAuthRequired(); return }; onComment?.() } : undefined}
-            className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}>
-            <MessageCircle size={24} className="text-white" />
-            <span className="text-[10px] text-white font-semibold">{formatCompact(commentCount)}</span>
           </motion.button>
         )}
 

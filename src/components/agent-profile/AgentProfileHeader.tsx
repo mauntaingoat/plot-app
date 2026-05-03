@@ -151,7 +151,7 @@ export function AgentProfileHeader({
       >
         {saved
           ? <Check weight="bold" size={18} />
-          : <Heart weight="fill" size={18} />}
+          : <Heart weight="bold" size={18} />}
       </button>
 
       {/* Center-stacked identity */}
@@ -160,7 +160,7 @@ export function AgentProfileHeader({
 
         <div className="mt-3 flex items-center gap-1.5">
           <h1
-            className="truncate"
+            className="whitespace-nowrap"
             style={{
               fontFamily: font.display,
               fontSize: 'clamp(1.5rem, 5vw, 2rem)',
@@ -168,6 +168,13 @@ export function AgentProfileHeader({
               letterSpacing: '-0.025em',
               lineHeight: 1.05,
               color: palette.textPrimary,
+              // Script/handwritten fonts (e.g. Caveat) overshoot the
+              // glyph advance — italic strokes on letters like "t" /
+              // "f" extend past their bounding box. `truncate` adds
+              // overflow:hidden which clips that ink. We keep nowrap
+              // for layout sanity but drop the clip, and add a tiny
+              // inline-end padding to give italic ink breathing room.
+              paddingInlineEnd: '0.12em',
             }}
           >
             {agent.displayName || agent.username || 'Agent'}
@@ -206,7 +213,9 @@ export function AgentProfileHeader({
                   fontSize: '14px',
                   fontWeight: 400,
                   letterSpacing: '-0.005em',
-                  color: palette.textMuted,
+                  // Match the bio color (textSecondary) — sibling small
+                  // text under the name, reads as one cohesive group.
+                  color: palette.textSecondary,
                 }}
               >
                 {phrases[phraseIdx]}
@@ -316,8 +325,11 @@ function HeaderAvatar({
         // (the dot color in the swatch) so every framed surface and
         // every action chip on the profile reads as the same family.
         boxShadow: wantsShadow ? `5px 5px 0 0 ${palette.accent}` : undefined,
+        // Border flush against the photo (no inset gap) so the
+        // border + shadow combo reads as one cohesive sticker rather
+        // than a halo with a separate stroke.
         outline: wantsBorder ? `3px solid ${palette.accent}` : undefined,
-        outlineOffset: wantsBorder ? '2px' : undefined,
+        outlineOffset: wantsBorder ? '0' : undefined,
       }}
     >
       <span

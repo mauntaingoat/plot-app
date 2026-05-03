@@ -459,7 +459,7 @@ function ClipTile({ clip, active, onTap, setTrim, canMoveLeft, canMoveRight, onM
       dragListener={reorderEnabled}
       onDragEnd={() => setReorderEnabled(false)}
       whileDrag={{ scale: 1.04, zIndex: 10 }}
-      layout={reorderEnabled ? "position" : false}
+      layout={reorderEnabled ? "position" : undefined}
       className="relative"
       style={{ overflow: 'visible' }}
     >

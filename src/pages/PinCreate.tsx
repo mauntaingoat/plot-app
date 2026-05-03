@@ -59,7 +59,7 @@ export default function PinCreate() {
 
   /**
    * Accumulated content drafts. Union of the simple create-flow drafts
-   * (carousel / reel / multi-reel) and the legacy Studio-tier editor draft.
+   * (carousel / reel / multi-reel) and the legacy editor-tier draft.
    * On final publish, each draft maps to one or more ContentItems on the pin.
    */
   const [contentDrafts, setContentDrafts] = useState<ContentDraft[]>([])
@@ -299,7 +299,7 @@ export default function PinCreate() {
       setPaywall({
         open: true,
         reason: `You've reached ${tierLimits.maxContentPerPin} content items per pin on the ${tierLimits.name} plan.`,
-        upgradeTo: tierLimits.id === 'free' ? 'pro' : 'studio',
+        upgradeTo: 'pro',
       })
       return
     }
@@ -465,7 +465,7 @@ export default function PinCreate() {
         clearTimeout(timeout)
         setSaving(false)
         const reason = err?.message || "You're at your active-pin cap. The pin is saved as a draft — archive an active pin or upgrade to publish it."
-        const upgradeTo = err?.details?.upgradeTo as 'pro' | 'studio' | undefined
+        const upgradeTo = err?.details?.upgradeTo as 'pro' | undefined
         setPaywall({ open: true, reason, upgradeTo })
         // Pin lives as a draft; bounce to dashboard so they see it.
         navigate('/dashboard')
@@ -774,7 +774,9 @@ export default function PinCreate() {
 
         if (draft.kind === 'carousel') {
           const items = await runStep(`publishCarousel(${i + 1}/${contentDrafts.length})`, () =>
-            publishCarouselPhotos(draft, pinId, (phase, pct) => onDraftProgress(phase, pct)),
+            // 'crop' (PublishPhase) maps to 'queue' (RenderPhase) — both
+            // represent post-upload server-side work in the progress UI.
+            publishCarouselPhotos(draft, pinId, (phase, pct) => onDraftProgress(phase === 'crop' ? 'queue' : 'upload', pct)),
           )
           // Per-draft caption: applied to the FIRST item of the carousel
           // (the one that represents the post in the feed).
@@ -865,7 +867,7 @@ export default function PinCreate() {
       } catch (err: any) {
         setSaving(false)
         const reason = err?.message || "You're at your active-pin cap. The pin is saved as a draft — archive an active pin or upgrade to publish it."
-        const upgradeTo = err?.details?.upgradeTo as 'pro' | 'studio' | undefined
+        const upgradeTo = err?.details?.upgradeTo as 'pro' | undefined
         setPaywall({ open: true, reason, upgradeTo })
         navigate('/dashboard')
         return
@@ -1980,7 +1982,7 @@ function ContentKindCard({ title, description, icon, onSelect, locked }: Content
           <p className="text-[15px] font-bold text-ink">{title}</p>
           {locked && (
             <span className="inline-flex items-center gap-1 text-[9px] font-bold text-tangerine bg-tangerine-soft px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-              <Lock size={9} /> Studio
+              <Lock size={9} /> Pro
             </span>
           )}
         </div>
@@ -1996,13 +1998,13 @@ function ContentKindCard({ title, description, icon, onSelect, locked }: Content
 function ScheduleField({
   value,
   onChange,
-  locked,
+  locked = false,
   onLockedClick,
 }: {
   value: string
   onChange: (v: string) => void
-  locked: boolean
-  onLockedClick: () => void
+  locked?: boolean
+  onLockedClick?: () => void
 }) {
   const [open, setOpen] = useState(false)
 

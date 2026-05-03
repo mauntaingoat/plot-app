@@ -12,20 +12,13 @@ export interface Platform {
 }
 
 export type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'rejected'
-export type UserTier = 'free' | 'pro' | 'studio'
+export type UserTier = 'free' | 'pro'
 
 export interface NotificationPrefs {
-  /** Legacy — kept on the type so older user docs still parse. The
-   *  new product model uses `newSubscriber` instead; `newFollower`
-   *  is no longer surfaced in the dashboard UI. */
-  newFollower: boolean
   showingRequest: boolean
-  /** Legacy — kept for older user docs. Replaced by `newSubscriber`
-   *  in the new public-profile flow. */
-  pinSaved: boolean
-  /** New (Save Maya). True = ping me on each new email subscriber. */
+  /** True = ping me on each new email subscriber. */
   newSubscriber: boolean
-  /** New (Wave). True = ping me when buyers wave at a listing. */
+  /** True = ping me when buyers wave at a listing. */
   newWave: boolean
 }
 
@@ -47,11 +40,13 @@ export interface UserDoc {
   fairHousingAccepted: boolean
   dataSecurityAccepted: boolean
   emailVerified: boolean
-  tier: UserTier // 'free' | 'pro' | 'studio'
+  tier: UserTier // 'free' | 'pro'
   brandColor: string | null // Studio tier custom branding
   platforms: Platform[]
-  followerCount: number
-  followingCount: number
+  /** Lifetime count of profile visits — incremented server-side by
+   *  the trackProfileVisit callable. Drives the dashboard's "Visits"
+   *  stat card. */
+  profileVisits?: number
   onboardingComplete: boolean
   onboardingStep: number
   setupPercent: number
@@ -242,6 +237,10 @@ export interface PinBase {
   views: number
   taps: number
   saves: number
+  /** Per-pin wave count — incremented server-side by the onNewWave
+   *  trigger when a buyer submits a wave on this listing. Powers the
+   *  "Top Pins by Waves" insight. */
+  waves?: number
   content: ContentItem[]
   /** Earliest future publishAt in the content array — scheduling hint
    *  for the publishScheduledContent cron so it can skip pins with no
@@ -415,12 +414,6 @@ export const TYPE_SPECIFIC_FIELDS: Record<PinType, ReadonlyArray<string>> = {
 }
 
 // ── Social ──
-
-export interface FollowDoc {
-  followerUid: string
-  followedUid: string
-  createdAt: Timestamp
-}
 
 export interface SaveDoc {
   userId: string

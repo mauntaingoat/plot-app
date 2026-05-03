@@ -37,11 +37,33 @@ export const adminAction = onCall<{
         logger.info('[admin] rejected user', { targetUid, by: request.auth.uid })
         return { success: true }
 
-      case 'gift':
+      case 'gift': {
         if (!giftTier || !giftExpiry) throw new HttpsError('invalid-argument', 'giftTier and giftExpiry required')
         await userRef.update({ giftTier, giftExpiry: admin.firestore.Timestamp.fromMillis(giftExpiry) })
+
+        // Drop a notification into the gifted user's inbox so they
+        // see it the next time they open the dashboard. The 10-year
+        // expiry sentinel (~315M ms past now) is treated as "forever"
+        // in the body copy.
+        const tierName = String(giftTier).charAt(0).toUpperCase() + String(giftTier).slice(1)
+        const expiryDate = new Date(giftExpiry)
+        const isForever = giftExpiry - Date.now() > 365 * 5 * 86400000
+        const expiryStr = isForever
+          ? 'unlimited time'
+          : `until ${expiryDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+        await db.collection('notifications').add({
+          agentId: targetUid,
+          type: 'gift',
+          title: `${tierName} unlocked`,
+          body: `You've been gifted ${tierName} for ${expiryStr}.`,
+          read: false,
+          date: new Date().toISOString().slice(0, 10),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        })
+
         logger.info('[admin] gifted tier', { targetUid, giftTier, by: request.auth.uid })
         return { success: true }
+      }
 
       case 'revokeGift':
         await userRef.update({ giftTier: admin.firestore.FieldValue.delete(), giftExpiry: admin.firestore.FieldValue.delete() })

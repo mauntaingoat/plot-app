@@ -37,6 +37,7 @@ export const DEFAULT_STYLE: AgentStyle = {
     wave: 'Wave',
     save: 'Save',
   },
+  listingsLayout: 'scroller',
 }
 
 /** Merge a partial style (from Firestore) onto the defaults so we
@@ -54,5 +55,6 @@ export function resolveStyle(partial: Partial<AgentStyle> | null | undefined): A
     tickerCustom: partial.tickerCustom || DEFAULT_STYLE.tickerCustom,
     tickerOrder: partial.tickerOrder || DEFAULT_STYLE.tickerOrder,
     ctaLabels: { ...DEFAULT_STYLE.ctaLabels, ...(partial.ctaLabels || {}) },
+    listingsLayout: partial.listingsLayout || DEFAULT_STYLE.listingsLayout,
   }
 }

@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { TrendUp as TrendingUp, Eye, CursorClick as MousePointerClick, BookmarkSimple as Bookmark, Lock, Sparkle as Sparkles, MapPin, Clock, FilmStrip as Film, Image, Radio, CalendarDots as CalendarClock } from '@phosphor-icons/react'
-import { getAgentEvents, getFollowerSnapshots, type AnalyticsEvent, type FollowerSnapshot } from '@/lib/firestore'
+import { TrendUp as TrendingUp, Eye, CursorClick as MousePointerClick, BookmarkSimple as Bookmark, HandWaving as Hand, MapPin, Clock, FilmStrip as Film, Image, Radio, CalendarDots as CalendarClock } from '@phosphor-icons/react'
+import { getAgentEvents, getSubscriberSnapshots, type AnalyticsEvent, type SubscriberSnapshot } from '@/lib/firestore'
 import type { Pin } from '@/lib/types'
 
 // Dismiss tooltip on scroll (mobile fix)
@@ -18,30 +18,56 @@ function useDismissOnScroll(setHoverIdx: (v: null) => void) {
 }
 
 // ── Per-Pin Performance Breakdown ──
+type PinMetric = 'taps' | 'saves' | 'waves'
+
+const PIN_METRICS: { id: PinMetric; label: string; icon: typeof Eye }[] = [
+  { id: 'taps', label: 'Taps', icon: MousePointerClick },
+  { id: 'saves', label: 'Saves', icon: Bookmark },
+  { id: 'waves', label: 'Waves', icon: Hand },
+]
+
 interface PinBreakdownProps {
   pins: Pin[]
-  metric?: 'views' | 'taps' | 'saves'
 }
 
-export function PinBreakdown({ pins, metric = 'views' }: PinBreakdownProps) {
-  const sorted = useMemo(() => [...pins].sort((a, b) => b[metric] - a[metric]).slice(0, 10), [pins, metric])
-  const max = sorted[0]?.[metric] || 1
+export function PinBreakdown({ pins }: PinBreakdownProps) {
+  const [metric, setMetric] = useState<PinMetric>('taps')
+  const getValue = (p: Pin): number => (metric === 'waves' ? (p.waves || 0) : (p[metric] || 0))
+  const sorted = useMemo(
+    () => [...pins].sort((a, b) => getValue(b) - getValue(a)).slice(0, 10),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pins, metric],
+  )
+  const max = sorted[0] ? getValue(sorted[0]) : 1
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   useDismissOnScroll(() => setHoverIdx(null))
 
-  const Icon = metric === 'views' ? Eye : metric === 'taps' ? MousePointerClick : Bookmark
+  const activeMeta = PIN_METRICS.find((m) => m.id === metric)!
 
   return (
     <div className="bg-warm-white rounded-[18px] border border-border-light p-5 relative">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[14px] font-bold text-ink">Top Pins by {metric.charAt(0).toUpperCase() + metric.slice(1)}</h3>
-        <Icon size={14} className="text-smoke" />
+      <div className="flex items-center justify-between mb-4 gap-3">
+        <h3 className="text-[14px] font-bold text-ink">Top Pins by {activeMeta.label}</h3>
+        <div className="flex items-center bg-cream rounded-full p-0.5 shrink-0">
+          {PIN_METRICS.map((m) => {
+            const active = m.id === metric
+            return (
+              <button
+                key={m.id}
+                onClick={() => setMetric(m.id)}
+                className={`text-[11px] font-semibold px-2.5 py-1 rounded-full cursor-pointer transition-colors ${active ? 'bg-warm-white text-ink shadow-sm' : 'text-smoke hover:text-ink'}`}
+              >
+                {m.label}
+              </button>
+            )
+          })}
+        </div>
       </div>
       <div className="space-y-2.5" onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}>
         {sorted.map((pin, i) => {
-          const value = pin[metric]
-          const pct = (value / max) * 100
+          const value = getValue(pin)
+          const pct = max > 0 ? (value / max) * 100 : 0
           return (
             <div
               key={pin.id}
@@ -69,7 +95,7 @@ export function PinBreakdown({ pins, metric = 'views' }: PinBreakdownProps) {
         })}
         {sorted.length === 0 && <p className="text-[12px] text-smoke text-center py-4">No pins yet.</p>}
       </div>
-      {/* Cursor-following tooltip */}
+      {/* Cursor-following tooltip — shows all 3 per-pin metrics. */}
       {hoverIdx !== null && sorted[hoverIdx] && (
         <div
           className="fixed pointer-events-none z-[100] px-3 py-2 bg-ink text-warm-white rounded-[10px] shadow-xl"
@@ -77,11 +103,11 @@ export function PinBreakdown({ pins, metric = 'views' }: PinBreakdownProps) {
         >
           <p className="text-[11px] font-bold truncate max-w-[220px]">{sorted[hoverIdx].address}</p>
           <div className="flex items-center gap-3 mt-1">
-            <span className="text-[10px] opacity-70">{sorted[hoverIdx].views.toLocaleString()} views</span>
-            <span className="text-[10px] opacity-70">·</span>
             <span className="text-[10px] opacity-70">{sorted[hoverIdx].taps.toLocaleString()} taps</span>
             <span className="text-[10px] opacity-70">·</span>
             <span className="text-[10px] opacity-70">{sorted[hoverIdx].saves.toLocaleString()} saves</span>
+            <span className="text-[10px] opacity-70">·</span>
+            <span className="text-[10px] opacity-70">{(sorted[hoverIdx].waves || 0).toLocaleString()} waves</span>
           </div>
         </div>
       )}
@@ -90,57 +116,62 @@ export function PinBreakdown({ pins, metric = 'views' }: PinBreakdownProps) {
 }
 
 // ── Content Conversion Tracking ──
+type ContentMetric = 'visits' | 'taps'
+
+const CONTENT_METRICS: { id: ContentMetric; label: string }[] = [
+  { id: 'visits', label: 'Visits' },
+  { id: 'taps', label: 'Taps' },
+]
+
 interface ContentConversionProps {
   pins: Pin[]
 }
 
 export function ContentConversion({ pins }: ContentConversionProps) {
+  const [metric, setMetric] = useState<ContentMetric>('visits')
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   useDismissOnScroll(() => setHoverIdx(null))
 
   const stats = useMemo(() => {
-    // Bug fix: the initializers must include `uniqueViews: 0`, otherwise
-    // `t.uniqueViews += c.uniqueViews || 0` becomes `undefined + N = NaN`
-    // and all downstream `uniqueViews > 0` checks fail → "0 unique" and
-    // "0.0% save rate" everywhere.
-    const byType: Record<string, { count: number; views: number; uniqueViews: number; saves: number }> = {
-      reel: { count: 0, views: 0, uniqueViews: 0, saves: 0 },
-      live: { count: 0, views: 0, uniqueViews: 0, saves: 0 },
-      photo: { count: 0, views: 0, uniqueViews: 0, saves: 0 },
+    // Aggregate per-content metrics by type. `visits` are stored on
+    // each content item as `c.views` (legacy field name — surfaced
+    // here as "Visits" since each play is a visit to that content).
+    // `taps` are pin-level (a tap opens the pin's listing modal
+    // regardless of which content you tapped from), so a content
+    // type's tap count is its parent pin's tap count attributed to
+    // each content slot. For open-house pins we attribute pin-level
+    // views/taps directly.
+    // All four content categories are seeded with zeros so the
+    // Content Performance row list is stable — every type stays
+    // visible even when the agent has no items of that kind, so
+    // the layout doesn't shift around as content is added/removed.
+    const byType: Record<string, { count: number; visits: number; taps: number }> = {
+      reel: { count: 0, visits: 0, taps: 0 },
+      live: { count: 0, visits: 0, taps: 0 },
+      photo: { count: 0, visits: 0, taps: 0 },
+      open_house: { count: 0, visits: 0, taps: 0 },
     }
-    let openHouseCount = 0
-    let openHouseViews = 0
-    let openHouseSaves = 0
 
     for (const pin of pins) {
-      // Count open houses as a category (from for_sale pins with openHouse set)
       if (pin.type === 'for_sale' && 'openHouse' in pin && pin.openHouse) {
-        openHouseCount += 1
-        openHouseViews += pin.views
-        openHouseSaves += pin.saves
+        byType.open_house.count += 1
+        byType.open_house.visits += pin.views
+        byType.open_house.taps += pin.taps
       }
+      const tapsPerSlot = pin.content.length > 0 ? Math.round(pin.taps / pin.content.length) : 0
       for (const c of pin.content) {
-        if (c.type === 'video_note') continue // skip — removed
-        const t = byType[c.type] || (byType[c.type] = { count: 0, views: 0, uniqueViews: 0, saves: 0 })
+        if (c.type === 'video_note') continue // legacy type — skip
+        const t = byType[c.type] || (byType[c.type] = { count: 0, visits: 0, taps: 0 })
         t.count += 1
-        t.views += c.views || 0
-        t.uniqueViews += c.uniqueViews || 0
-        t.saves += c.saves || 0
+        t.visits += c.views || 0
+        t.taps += tapsPerSlot
       }
     }
 
-    if (openHouseCount > 0) {
-      // No per-content uniqueViews for open-house pins — use pin-level
-      // views as the denominator so the save rate isn't a div-by-zero.
-      byType.open_house = { count: openHouseCount, views: openHouseViews, uniqueViews: openHouseViews, saves: openHouseSaves }
-    }
-
-    return Object.entries(byType).map(([type, s]) => ({
-      type,
-      ...s,
-      conversionRate: s.uniqueViews > 0 ? (s.saves / s.uniqueViews) * 100 : 0,
-    })).filter((s) => s.count > 0)
+    // Always return all four rows. Empty types render with "0 items"
+    // and "0 visits / 0 taps", keeping the section layout consistent.
+    return Object.entries(byType).map(([type, s]) => ({ type, ...s }))
   }, [pins])
 
   const TYPE_META: Record<string, { label: string; icon: typeof Film; color: string }> = {
@@ -152,14 +183,28 @@ export function ContentConversion({ pins }: ContentConversionProps) {
 
   return (
     <div className="bg-warm-white rounded-[18px] border border-border-light p-5 relative">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 gap-3">
         <h3 className="text-[14px] font-bold text-ink">Content Performance</h3>
-        <span className="text-[11px] text-smoke">By type</span>
+        <div className="flex items-center bg-cream rounded-full p-0.5 shrink-0">
+          {CONTENT_METRICS.map((m) => {
+            const active = m.id === metric
+            return (
+              <button
+                key={m.id}
+                onClick={() => setMetric(m.id)}
+                className={`text-[11px] font-semibold px-2.5 py-1 rounded-full cursor-pointer transition-colors ${active ? 'bg-warm-white text-ink shadow-sm' : 'text-smoke hover:text-ink'}`}
+              >
+                {m.label}
+              </button>
+            )
+          })}
+        </div>
       </div>
       <div className="space-y-3" onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}>
         {stats.map((s, i) => {
           const meta = TYPE_META[s.type] || { label: s.type, icon: Film, color: '#6B7280' }
           const Icon = meta.icon
+          const value = metric === 'visits' ? s.visits : s.taps
           return (
             <motion.div
               key={s.type}
@@ -179,15 +224,12 @@ export function ContentConversion({ pins }: ContentConversionProps) {
                   <span className="text-[11px] text-smoke font-mono">{s.count} item{s.count !== 1 ? 's' : ''}</span>
                 </div>
                 <div className="flex items-center gap-3 mt-1">
-                  <span className="text-[11px] text-smoke">{(s.views || 0).toLocaleString()} views ({(s.uniqueViews || 0).toLocaleString()} unique)</span>
-                  <span className="text-[11px] text-smoke">·</span>
-                  <span className="text-[11px] font-semibold text-tangerine">{(s.conversionRate || 0).toFixed(1)}% save rate</span>
+                  <span className="text-[11px] font-semibold text-tangerine">{value.toLocaleString()} {metric}</span>
                 </div>
               </div>
             </motion.div>
           )
         })}
-        {stats.length === 0 && <p className="text-[12px] text-smoke text-center py-4">No content yet.</p>}
       </div>
       {hoverIdx !== null && stats[hoverIdx] && (
         <div
@@ -198,9 +240,9 @@ export function ContentConversion({ pins }: ContentConversionProps) {
           <div className="flex items-center gap-2 mt-1">
             <span className="text-[10px] opacity-70">{stats[hoverIdx].count} items</span>
             <span className="text-[10px] opacity-70">·</span>
-            <span className="text-[10px] opacity-70">{stats[hoverIdx].views.toLocaleString()} views</span>
+            <span className="text-[10px] opacity-70">{stats[hoverIdx].visits.toLocaleString()} visits</span>
             <span className="text-[10px] opacity-70">·</span>
-            <span className="text-[10px] opacity-70">{stats[hoverIdx].saves.toLocaleString()} saves</span>
+            <span className="text-[10px] opacity-70">{stats[hoverIdx].taps.toLocaleString()} taps</span>
           </div>
         </div>
       )}
@@ -227,23 +269,27 @@ export function GeoHeatmap({ pins, agentId }: GeoHeatmapProps) {
   const cities = useMemo(() => {
     const cityMap = new Map<string, number>()
     events.forEach((e) => {
+      // Only count profile-visit events — taps/saves/etc. happen
+      // anywhere on Reelst (not just on this agent's profile) and
+      // would distort the geographic picture of "who's looking at me".
+      if (e.type !== 'profile_visit') return
       if (e.city) cityMap.set(e.city, (cityMap.get(e.city) || 0) + 1)
     })
     const sorted = Array.from(cityMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6)
     const topCount = sorted[0]?.[1] || 1
     const total = sorted.reduce((s, [, c]) => s + c, 0) || 1
-    return sorted.map(([city, viewers]) => ({
+    return sorted.map(([city, visitors]) => ({
       city: `${city}`,
-      viewers,
-      pct: Math.round((viewers / topCount) * 100),
-      percentage: Math.round((viewers / total) * 100),
+      visitors,
+      pct: Math.round((visitors / topCount) * 100),
+      percentage: Math.round((visitors / total) * 100),
     }))
   }, [events])
 
   return (
     <div className="bg-warm-white rounded-[18px] border border-border-light p-5 relative">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[14px] font-bold text-ink">Top Viewer Cities</h3>
+        <h3 className="text-[14px] font-bold text-ink">Top Visitor Cities</h3>
         <MapPin size={14} className="text-smoke" />
       </div>
       <div className="space-y-2.5" onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}>
@@ -257,7 +303,7 @@ export function GeoHeatmap({ pins, agentId }: GeoHeatmapProps) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-[12px] font-semibold text-ink truncate">{c.city}</p>
-                <span className="text-[12px] font-bold text-ink font-mono ml-2">{c.viewers.toLocaleString()}</span>
+                <span className="text-[12px] font-bold text-ink font-mono ml-2">{c.visitors.toLocaleString()}</span>
               </div>
               <div className="h-1.5 rounded-full bg-cream overflow-hidden">
                 <motion.div
@@ -270,7 +316,7 @@ export function GeoHeatmap({ pins, agentId }: GeoHeatmapProps) {
             </div>
           </div>
         ))}
-        {cities.length === 0 && <p className="text-[12px] text-smoke text-center py-4">No view data yet.</p>}
+        {cities.length === 0 && <p className="text-[12px] text-smoke text-center py-4">No visitor data yet.</p>}
       </div>
       {hoverIdx !== null && cities[hoverIdx] && (
         <div
@@ -278,7 +324,7 @@ export function GeoHeatmap({ pins, agentId }: GeoHeatmapProps) {
           style={{ left: mousePos.x + 12, top: mousePos.y + 12 }}
         >
           <p className="text-[11px] font-bold">{cities[hoverIdx].city}</p>
-          <p className="text-[10px] opacity-70 mt-0.5">{cities[hoverIdx].viewers.toLocaleString()} viewers · {cities[hoverIdx].percentage}% of audience</p>
+          <p className="text-[10px] opacity-70 mt-0.5">{cities[hoverIdx].visitors.toLocaleString()} visitors · {cities[hoverIdx].percentage}% of audience</p>
         </div>
       )}
     </div>
@@ -286,12 +332,15 @@ export function GeoHeatmap({ pins, agentId }: GeoHeatmapProps) {
 }
 
 // ── Time-of-Day Engagement ──
+// Bucketed by VISITOR local hour (`event.hour`). The hour is captured
+// at log time from the visitor's wall-clock (`new Date().getHours()`),
+// so the chart bars represent when buyers actually opened your link
+// in their own time zone — not normalized to the agent's TZ.
 interface TimeOfDayProps {
-  pins: Pin[]
   agentId?: string
 }
 
-export function TimeOfDay({ pins, agentId }: TimeOfDayProps) {
+export function TimeOfDay({ agentId }: TimeOfDayProps) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   const [events, setEvents] = useState<AnalyticsEvent[]>([])
@@ -303,7 +352,10 @@ export function TimeOfDay({ pins, agentId }: TimeOfDayProps) {
 
   const hours = useMemo(() => {
     const counts = Array(24).fill(0)
-    events.forEach((e) => { if (e.hour >= 0 && e.hour < 24) counts[e.hour]++ })
+    events.forEach((e) => {
+      if (e.type !== 'profile_visit') return
+      if (e.hour >= 0 && e.hour < 24) counts[e.hour]++
+    })
     return counts
   }, [events])
 
@@ -321,7 +373,7 @@ export function TimeOfDay({ pins, agentId }: TimeOfDayProps) {
     <div className="bg-warm-white rounded-[18px] border border-border-light p-5 relative">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-[14px] font-bold text-ink">When viewers are active</h3>
+          <h3 className="text-[14px] font-bold text-ink">When visitors are active</h3>
           <p className="text-[11px] text-smoke mt-0.5">{max > 1 ? <>Peak hour: <span className="font-bold text-tangerine">{formatHour(peakHour)}</span></> : 'No data yet'}</p>
         </div>
         <Clock size={14} className="text-smoke" />
@@ -371,59 +423,73 @@ export function TimeOfDay({ pins, agentId }: TimeOfDayProps) {
           style={{ left: mousePos.x + 12, top: mousePos.y + 12 }}
         >
           <p className="text-[11px] font-bold">{formatHour(hoverIdx)}</p>
-          <p className="text-[10px] opacity-70 mt-0.5">{hours[hoverIdx]} active viewers</p>
+          <p className="text-[10px] opacity-70 mt-0.5">{hours[hoverIdx]} active visitors</p>
         </div>
       )}
     </div>
   )
 }
 
-// ── Subscriber Growth Chart ──
-interface FollowerGrowthProps {
-  currentFollowers: number
+// ── Saves over time (cumulative line chart) ──
+// `subscriber_snapshots` stores total active subs per agent per day,
+// so each data point is already cumulative — the line shows the
+// running total over the last 30 days.
+interface SaveGrowthProps {
+  currentSaves: number
   agentId?: string
 }
 
-export function FollowerGrowth({ currentFollowers, agentId }: FollowerGrowthProps) {
+export function SaveGrowth({ currentSaves, agentId }: SaveGrowthProps) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
-  const [snapshots, setSnapshots] = useState<FollowerSnapshot[]>([])
+  const [snapshots, setSnapshots] = useState<SubscriberSnapshot[]>([])
   useDismissOnScroll(() => setHoverIdx(null))
 
   useEffect(() => {
-    if (agentId) getFollowerSnapshots(agentId, 30).then(setSnapshots).catch(() => {})
+    if (agentId) getSubscriberSnapshots(agentId, 30).then(setSnapshots).catch(() => {})
   }, [agentId])
 
   const data = useMemo(() => {
-    if (snapshots.length > 0) return snapshots.map((s) => s.count)
-    if (currentFollowers === 0) return []
-    return [currentFollowers]
-  }, [snapshots, currentFollowers])
+    // Always seed with the current live count so the rightmost point
+    // reflects "today" even before the daily cron runs. If snapshots
+    // exist, they fill in the prior 30 days; otherwise we extend a
+    // flat baseline so the chart never collapses to the spike shape.
+    if (snapshots.length === 0) {
+      return Array(7).fill(currentSaves)
+    }
+    const points = snapshots.map((s) => s.count)
+    const last = points[points.length - 1]
+    if (last !== currentSaves) points.push(currentSaves)
+    return points
+  }, [snapshots, currentSaves])
 
-  if (data.length === 0) {
+  if (currentSaves === 0 && snapshots.length === 0) {
     return (
       <div className="bg-warm-white rounded-[18px] border border-border-light p-5">
-        <h3 className="text-[14px] font-bold text-ink mb-1">Subscriber Growth</h3>
-        <p className="text-[12px] text-smoke">No follower data yet. Growth tracking begins once you gain followers.</p>
+        <h3 className="text-[14px] font-bold text-ink mb-1">Saves over time</h3>
+        <p className="text-[12px] text-smoke">No save data yet. Growth tracking begins once buyers start saving you.</p>
       </div>
     )
   }
 
   const max = Math.max(...data, 1)
-  const min = Math.min(...data)
+  const min = Math.min(...data, 0)
   const range = max - min || 1
-  const growth = currentFollowers - data[0]
+  const growth = currentSaves - data[0]
   const growthPct = data[0] > 0 ? ((growth / data[0]) * 100).toFixed(1) : '—'
 
   const width = 100
   const height = 100
+  // Y axis is anchored at 0 so a flat-zero or flat-baseline line sits
+  // at the bottom of the chart instead of in the middle. The previous
+  // "spike" rendering came from min-anchoring + a single-point dataset
+  // bouncing the polyline up to the top.
+  const yFor = (v: number) => height - ((v - min) / range) * height
   const points = data.map((v, i) => {
     const x = data.length > 1 ? (i / (data.length - 1)) * width : width / 2
-    const y = (max === min) ? height * 0.3 : height - ((v - min) / range) * height
-    return `${x},${y}`
+    return `${x},${yFor(v)}`
   }).join(' ')
 
-  // Helper for chart hover — figure out which day index the cursor is over
   const handleMove = (e: React.MouseEvent<SVGSVGElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
     const xPct = (e.clientX - rect.left) / rect.width
@@ -432,11 +498,22 @@ export function FollowerGrowth({ currentFollowers, agentId }: FollowerGrowthProp
     setMousePos({ x: e.clientX, y: e.clientY })
   }
 
+  // Build a flat closed shape: line + horizontal closure to the
+  // baseline. If only one data point exists we render a flat
+  // horizontal line so the chart reads as "no movement yet" rather
+  // than a single peak.
+  const isFlat = data.length === 1
+  const flatY = isFlat ? yFor(data[0]) : null
+  const linePoints = isFlat ? `0,${flatY} ${width},${flatY}` : points
+  const fillPoints = isFlat
+    ? `0,${height} 0,${flatY} ${width},${flatY} ${width},${height}`
+    : `0,${height} ${points} ${width},${height}`
+
   return (
     <div className="bg-warm-white rounded-[18px] border border-border-light p-5 relative">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-[14px] font-bold text-ink">Subscriber Growth</h3>
+          <h3 className="text-[14px] font-bold text-ink">Saves over time</h3>
           <p className="text-[11px] text-smoke mt-0.5">
             <span className="font-bold text-sold-green">+{growth}</span> ({growthPct}%) past 30 days
           </p>
@@ -452,25 +529,22 @@ export function FollowerGrowth({ currentFollowers, agentId }: FollowerGrowthProp
           onMouseLeave={() => setHoverIdx(null)}
         >
           <defs>
-            <linearGradient id="grad-followers" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id="grad-saves" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#FF6B3D" stopOpacity="0.4" />
               <stop offset="100%" stopColor="#FF6B3D" stopOpacity="0" />
             </linearGradient>
           </defs>
-          <polyline
-            fill="url(#grad-followers)"
-            points={`0,${height} ${points} ${width},${height}`}
-          />
+          <polyline fill="url(#grad-saves)" points={fillPoints} />
           <polyline
             fill="none"
             stroke="#FF6B3D"
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
-            points={points}
+            points={linePoints}
             vectorEffect="non-scaling-stroke"
           />
-          {hoverIdx !== null && (
+          {hoverIdx !== null && !isFlat && (
             <>
               <line
                 x1={(hoverIdx / (data.length - 1)) * width}
@@ -484,7 +558,7 @@ export function FollowerGrowth({ currentFollowers, agentId }: FollowerGrowthProp
               />
               <circle
                 cx={(hoverIdx / (data.length - 1)) * width}
-                cy={height - ((data[hoverIdx] - min) / range) * height}
+                cy={yFor(data[hoverIdx])}
                 r="1.5"
                 fill="#FF6B3D"
                 stroke="white"
@@ -499,43 +573,17 @@ export function FollowerGrowth({ currentFollowers, agentId }: FollowerGrowthProp
         <span className="text-[10px] text-ash">30 days ago</span>
         <span className="text-[10px] text-ash">Today</span>
       </div>
-      {hoverIdx !== null && (
+      {hoverIdx !== null && !isFlat && (
         <div
           className="fixed pointer-events-none z-[100] px-3 py-2 bg-ink text-warm-white rounded-[10px] shadow-xl"
           style={{ left: mousePos.x + 12, top: mousePos.y + 12 }}
         >
-          <p className="text-[11px] font-bold">{data[hoverIdx].toLocaleString()} followers</p>
-          <p className="text-[10px] opacity-70 mt-0.5">{30 - hoverIdx} day{30 - hoverIdx !== 1 ? 's' : ''} ago</p>
+          <p className="text-[11px] font-bold">{data[hoverIdx].toLocaleString()} saves</p>
+          <p className="text-[10px] opacity-70 mt-0.5">{Math.round((1 - hoverIdx / (data.length - 1)) * 30)} day{Math.round((1 - hoverIdx / (data.length - 1)) * 30) !== 1 ? 's' : ''} ago</p>
         </div>
       )}
     </div>
   )
 }
 
-// ── Locked overlay for Free tier ──
-interface LockedFeatureProps {
-  title: string
-  description: string
-  onUpgrade: () => void
-}
-
-export function LockedFeature({ title, description, onUpgrade }: LockedFeatureProps) {
-  return (
-    <div className="bg-cream rounded-[18px] border border-border-light p-6 text-center relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-tangerine/5 to-transparent pointer-events-none" />
-      <div className="relative">
-        <div className="w-12 h-12 rounded-[14px] bg-tangerine/10 flex items-center justify-center mx-auto mb-3">
-          <Lock size={20} className="text-tangerine" />
-        </div>
-        <h3 className="text-[15px] font-bold text-ink mb-1">{title}</h3>
-        <p className="text-[12px] text-smoke mb-4 max-w-[240px] mx-auto">{description}</p>
-        <button
-          onClick={onUpgrade}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-tangerine to-ember text-white text-[12px] font-bold cursor-pointer hover:shadow-glow-tangerine transition-shadow"
-        >
-          <Sparkles size={12} /> Upgrade to Pro
-        </button>
-      </div>
-    </div>
-  )
-}
+// (LockedFeature removed — superseded by inline blur-overlay paywall pattern.)

@@ -62,8 +62,6 @@ export async function createUserDoc(uid: string, data: Partial<UserDoc>) {
     tier: 'free',
     brandColor: null,
     platforms: [],
-    followerCount: 0,
-    followingCount: 0,
     onboardingComplete: false,
     onboardingStep: 0,
     setupPercent: 0,
@@ -341,32 +339,6 @@ export async function getAgentPins(agentId: string): Promise<Pin[]> {
   }
 }
 
-export async function getExplorePins(): Promise<Pin[]> {
-  if (!db) return []
-  try {
-    const q = query(collection(db, 'pins'), where('enabled', '==', true), orderBy('createdAt', 'desc'), limit(1000))
-    const snap = await getDocs(q)
-    return snap.docs.filter((d) => d.data().status !== 'archived').map((d) => ({ id: d.id, ...d.data() } as Pin))
-  } catch {
-    const q = query(collection(db, 'pins'), where('enabled', '==', true), limit(1000))
-    const snap = await getDocs(q)
-    return snap.docs.filter((d) => d.data().status !== 'archived').map((d) => ({ id: d.id, ...d.data() } as Pin))
-  }
-}
-
-export async function getPinsByAgentIds(agentIds: string[]): Promise<Pin[]> {
-  if (!db || agentIds.length === 0) return []
-  const results: Pin[] = []
-  const chunks = []
-  for (let i = 0; i < agentIds.length; i += 10) chunks.push(agentIds.slice(i, i + 10))
-  for (const chunk of chunks) {
-    const q = query(collection(db, 'pins'), where('agentId', 'in', chunk), where('enabled', '==', true), limit(1000))
-    const snap = await getDocs(q)
-    results.push(...snap.docs.filter((d) => d.data().status !== 'archived').map((d) => ({ id: d.id, ...d.data() } as Pin)))
-  }
-  return results
-}
-
 export async function getPinsByIds(pinIds: string[]): Promise<Pin[]> {
   if (!db || pinIds.length === 0) return []
   const results: Pin[] = []
@@ -411,7 +383,13 @@ export function subscribeToAgentPins(agentId: string, callback: (pins: Pin[]) =>
  *  if the composite index doesn't exist yet. */
 export function subscribeToAllAgentPins(agentId: string, callback: (pins: Pin[]) => void): Unsubscribe | null {
   if (!db) return null
-  const filterArchived = (docs: typeof import('firebase/firestore').QuerySnapshot.prototype.docs) =>
+  // Excludes archived pins (those are soft-deleted) but INCLUDES
+  // disabled ones — Insights still counts pins the agent has toggled
+  // off, but archived pins drop out of analytics entirely. The My
+  // Pins tab adds an additional `enabled === true` filter via
+  // `displayPins` in Dashboard.tsx so disabled ones don't render in
+  // the user-facing card grid.
+  const toPins = (docs: typeof import('firebase/firestore').QuerySnapshot.prototype.docs) =>
     docs.filter((d) => d.data().status !== 'archived').map((d) => ({ id: d.id, ...d.data() }) as Pin)
   const q = query(
     collection(db, 'pins'),
@@ -422,7 +400,7 @@ export function subscribeToAllAgentPins(agentId: string, callback: (pins: Pin[])
   return onSnapshot(
     q,
     (snap) => {
-      callback(filterArchived(snap.docs))
+      callback(toPins(snap.docs))
     },
     (err) => {
       console.warn('[firestore] subscribeToAllAgentPins error (trying fallback):', err.message)
@@ -431,45 +409,9 @@ export function subscribeToAllAgentPins(agentId: string, callback: (pins: Pin[])
         where('agentId', '==', agentId),
         limit(1000)
       )
-      getDocs(fallbackQ).then((snap) => callback(filterArchived(snap.docs))).catch(() => callback([]))
+      getDocs(fallbackQ).then((snap) => callback(toPins(snap.docs))).catch(() => callback([]))
     },
   )
-}
-
-// ══════════════════════════════════════════
-// FOLLOWS
-// ══════════════════════════════════════════
-
-export async function followAgent(followerUid: string, agentUid: string) {
-  if (!db) return
-  const followId = `${followerUid}_${agentUid}`
-  await setDoc(doc(db, 'follows', followId), {
-    followerUid,
-    followedUid: agentUid,
-    createdAt: serverTimestamp(),
-  })
-  // Counter increments handled server-side by onNewFollower Cloud Function
-}
-
-export async function unfollowAgent(followerUid: string, agentUid: string) {
-  if (!db) return
-  const followId = `${followerUid}_${agentUid}`
-  await deleteDoc(doc(db, 'follows', followId))
-  // Counter decrements handled server-side by onUnfollow Cloud Function
-}
-
-export async function isFollowing(followerUid: string, agentUid: string): Promise<boolean> {
-  if (!db) return false
-  const followId = `${followerUid}_${agentUid}`
-  const snap = await getDoc(doc(db, 'follows', followId))
-  return snap.exists()
-}
-
-export async function getFollowers(agentUid: string): Promise<string[]> {
-  if (!db) return []
-  const q = query(collection(db, 'follows'), where('followedUid', '==', agentUid), limit(500))
-  const snap = await getDocs(q)
-  return snap.docs.map((d) => d.data().followerUid)
 }
 
 // ══════════════════════════════════════════
@@ -627,33 +569,13 @@ export async function updateShowingRequestStatus(
 // ══════════════════════════════════════════
 
 /**
- * Hash an email for de-dup without storing or transmitting plaintext
- * outside the actual subscription doc. Uses SHA-256 via SubtleCrypto.
- */
-async function hashEmail(email: string): Promise<string> {
-  const buf = new TextEncoder().encode(email.trim().toLowerCase())
-  const digest = await crypto.subtle.digest('SHA-256', buf)
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-}
-
-/** Cryptographically random unsubscribe token (URL-safe). */
-function makeUnsubToken(): string {
-  const bytes = new Uint8Array(24)
-  crypto.getRandomValues(bytes)
-  return Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-}
-
-/**
  * Subscribe a buyer's email to an agent's digest. Idempotent — calling
  * twice with the same email + agent updates `updatedAt` and re-activates
  * if previously unsubscribed, but doesn't create a duplicate.
  *
- * Phase 1: writes the doc + (separately) fires the dashboard inbox
- * notification via writeNotification on the server. No emails go out.
+ * Routes through `submitDigestSubscription` callable so anonymous buyers
+ * never need read or update permission on subscription docs (which would
+ * leak agent subscriber lists). Server-side rate limits also live there.
  */
 export async function subscribeToAgentDigest(args: {
   agentId: string
@@ -668,46 +590,19 @@ export async function subscribeToAgentDigest(args: {
     localStorage.setItem('reelst_digest_subs', JSON.stringify(list))
     return { id, alreadyExisted: false }
   }
-  const cleanEmail = args.email.trim().toLowerCase()
-  const emailHash = await hashEmail(cleanEmail)
-  const dedupId = `${args.agentId}_${emailHash}`
-
-  // Use a deterministic doc id so re-subscribes hit the same doc.
-  const ref = doc(db, 'digestSubscriptions', dedupId)
-  const existing = await getDoc(ref)
-
-  if (existing.exists()) {
-    // Re-activate if it was previously unsubscribed; otherwise no-op.
-    if ((existing.data() as DigestSubscription).status === 'unsubscribed') {
-      await updateDoc(ref, {
-        status: 'active',
-        updatedAt: serverTimestamp(),
-      })
-    } else {
-      await updateDoc(ref, { updatedAt: serverTimestamp() })
-    }
-    return { id: dedupId, alreadyExisted: true }
-  }
-
-  await setDoc(ref, {
+  const { getFunctions, httpsCallable } = await import('firebase/functions')
+  const { app } = await import('@/config/firebase')
+  const functions = getFunctions(app ?? undefined)
+  const fn = httpsCallable<
+    { agentId: string; email: string; source?: 'profile' | 'listing' | 'reels' },
+    { ok: boolean; subId: string; alreadyExisted: boolean }
+  >(functions, 'submitDigestSubscription')
+  const res = await fn({
     agentId: args.agentId,
-    email: cleanEmail,
-    emailHash,
-    source: args.source ?? 'profile',
-    status: 'active',
-    unsubToken: makeUnsubToken(),
-    newListings: true,
-    newReels: true,
-    statusChanges: true,
-    lastSentAt: null,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    email: args.email,
+    source: args.source,
   })
-
-  // Notifications fan out via Cloud Function trigger
-  // (onNewDigestSubscription) — keeps the notifications collection
-  // server-write-only so the rule stays strict.
-  return { id: dedupId, alreadyExisted: false }
+  return { id: res.data.subId, alreadyExisted: res.data.alreadyExisted }
 }
 
 // ══════════════════════════════════════════
@@ -725,8 +620,11 @@ export async function subscribeToAgentDigest(args: {
  *     direct client writes to /pins/{pinId}/waves)
  */
 export async function createWave(args: {
+  /** Empty string for profile-level waves (header button). For pin-level
+   *  waves, the server resolves agentId + pinAddress from the pin. */
   pinId: string
-  /** Ignored on the wire — server resolves agentId from the pin. */
+  /** Required when pinId is empty (profile-level). For pin-level
+   *  waves the server resolves agentId from the pin and ignores this. */
   agentId?: string
   /** Ignored on the wire — server resolves pinAddress from the pin. */
   pinAddress?: string
@@ -749,7 +647,8 @@ export async function createWave(args: {
   const functions = getFunctions(app ?? undefined)
   const fn = httpsCallable<
     {
-      pinId: string
+      pinId?: string
+      agentId?: string
       visitorName: string
       visitorEmail: string
       visitorPhone?: string
@@ -758,7 +657,10 @@ export async function createWave(args: {
     { ok: boolean; waveId: string }
   >(functions, 'submitWave')
   const res = await fn({
-    pinId: args.pinId,
+    // Only pass pinId when it's a real listing-level wave so the server
+    // routes to its profile-level branch instead of erroring.
+    pinId: args.pinId || undefined,
+    agentId: args.agentId,
     visitorName: args.visitorName,
     visitorEmail: args.visitorEmail,
     visitorPhone: args.visitorPhone,
@@ -856,9 +758,7 @@ export async function getFeaturedAgents(max = 10): Promise<UserDoc[]> {
     limit(max)
   )
   const snap = await getDocs(q)
-  return snap.docs
-    .map((d) => ({ uid: d.id, ...d.data() }) as UserDoc)
-    .sort((a, b) => b.followerCount - a.followerCount)
+  return snap.docs.map((d) => ({ uid: d.id, ...d.data() }) as UserDoc)
 }
 
 // ══════════════════════════════════════════
@@ -1132,7 +1032,7 @@ export async function archiveContent(contentId: string) {
 export interface NotificationDoc {
   id: string
   agentId: string
-  type: 'follow' | 'save' | 'showing_request'
+  type: 'save' | 'showing_request' | 'subscriber' | 'wave' | 'gift'
   title: string
   body: string
   read: boolean
@@ -1142,6 +1042,10 @@ export interface NotificationDoc {
   pinId?: string
   pinAddress?: string
   refId?: string
+  /** Wave-specific extras — populated by the onNewWave trigger. */
+  visitorEmail?: string
+  visitorPhone?: string | null
+  question?: string
 }
 
 export async function getNotifications(agentId: string): Promise<NotificationDoc[]> {
@@ -1244,15 +1148,6 @@ export async function deleteAccount(uid: string) {
     if (snap.docs.length > 0) await b.commit()
   }
 
-  // Delete follows (both directions)
-  for (const field of ['followerUid', 'followedUid']) {
-    const q = query(collection(db, 'follows'), where(field, '==', uid))
-    const snap = await getDocs(q)
-    const b = writeBatch(db)
-    snap.docs.forEach((d) => b.delete(d.ref))
-    if (snap.docs.length > 0) await b.commit()
-  }
-
   // Delete saves
   const savesQ = query(collection(db, 'saves'), where('userId', '==', uid))
   const savesSnap = await getDocs(savesQ)
@@ -1301,40 +1196,18 @@ export async function getAgentEvents(agentId: string, days = 30): Promise<Analyt
   }
 }
 
-export interface FollowerSnapshot {
+/**
+ * Daily subscriber snapshots — primary source for the dashboard's
+ * growth chart. Populated by the dailySubscriberSnapshot Cloud
+ * Function.
+ */
+export interface SubscriberSnapshot {
   agentId: string
   date: string
   count: number
 }
 
-export async function getFollowerSnapshots(agentId: string, days = 30): Promise<FollowerSnapshot[]> {
-  if (!db) return []
-  const since = new Date()
-  since.setDate(since.getDate() - days)
-  const sinceStr = since.toISOString().slice(0, 10)
-  try {
-    const q = query(
-      collection(db, 'follower_snapshots'),
-      where('agentId', '==', agentId),
-      where('date', '>=', sinceStr),
-      orderBy('date', 'asc'),
-      limit(90),
-    )
-    const snap = await getDocs(q)
-    return snap.docs.map((d) => d.data() as FollowerSnapshot)
-  } catch {
-    const q = query(collection(db, 'follower_snapshots'), where('agentId', '==', agentId), limit(90))
-    const snap = await getDocs(q)
-    return snap.docs.map((d) => d.data() as FollowerSnapshot)
-  }
-}
-
-/**
- * Daily subscriber snapshots — the new primary source for the
- * dashboard's growth chart. Populated by the dailySubscriberSnapshot
- * Cloud Function. Same shape as FollowerSnapshot for drop-in use.
- */
-export async function getSubscriberSnapshots(agentId: string, days = 30): Promise<FollowerSnapshot[]> {
+export async function getSubscriberSnapshots(agentId: string, days = 30): Promise<SubscriberSnapshot[]> {
   if (!db) return []
   const since = new Date()
   since.setDate(since.getDate() - days)
@@ -1348,11 +1221,11 @@ export async function getSubscriberSnapshots(agentId: string, days = 30): Promis
       limit(90),
     )
     const snap = await getDocs(q)
-    return snap.docs.map((d) => d.data() as FollowerSnapshot)
+    return snap.docs.map((d) => d.data() as SubscriberSnapshot)
   } catch {
     const q = query(collection(db, 'subscriber_snapshots'), where('agentId', '==', agentId), limit(90))
     const snap = await getDocs(q)
-    return snap.docs.map((d) => d.data() as FollowerSnapshot)
+    return snap.docs.map((d) => d.data() as SubscriberSnapshot)
   }
 }
 
@@ -1390,53 +1263,4 @@ export async function getSavedMapInsights(agentId: string): Promise<{ pattern: s
   }
 
   return insights.sort((a, b) => b.strength - a.strength).slice(0, 6)
-}
-
-// ══════════════════════════════════════════
-// COMMENTS
-// ══════════════════════════════════════════
-
-export interface CommentDoc {
-  id: string
-  pinId: string
-  contentId: string
-  pinAgentId: string
-  authorUid: string
-  authorName: string
-  authorPhotoURL: string | null
-  text: string
-  createdAt: import('firebase/firestore').Timestamp
-}
-
-export async function getComments(pinId: string, contentId: string): Promise<CommentDoc[]> {
-  if (!db) return []
-  try {
-    const q = query(
-      collection(db, 'comments'),
-      where('pinId', '==', pinId),
-      where('contentId', '==', contentId),
-      orderBy('createdAt', 'desc'),
-      limit(200),
-    )
-    const snap = await getDocs(q)
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as CommentDoc))
-  } catch {
-    const q = query(collection(db, 'comments'), where('pinId', '==', pinId), where('contentId', '==', contentId), limit(200))
-    const snap = await getDocs(q)
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as CommentDoc))
-  }
-}
-
-export async function addComment(data: Omit<CommentDoc, 'id' | 'createdAt'>): Promise<string> {
-  if (!db) return ''
-  const ref = await addDoc(collection(db, 'comments'), {
-    ...data,
-    createdAt: serverTimestamp(),
-  })
-  return ref.id
-}
-
-export async function deleteComment(commentId: string) {
-  if (!db) return
-  await deleteDoc(doc(db, 'comments', commentId))
 }

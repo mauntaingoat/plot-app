@@ -8,9 +8,7 @@ import { useAuthStore } from '@/stores/authStore'
 import type { NotificationPrefs } from '@/lib/types'
 
 const DEFAULT_PREFS: NotificationPrefs = {
-  newFollower: false,
   showingRequest: true,
-  pinSaved: false,
   newSubscriber: true,
   newWave: true,
 }
@@ -55,7 +53,7 @@ export function NotificationSettings() {
 
   const handleToggleAll = () => {
     if (notificationsOn) {
-      const off: NotificationPrefs = { newFollower: false, showingRequest: false, pinSaved: false, newSubscriber: false, newWave: false }
+      const off: NotificationPrefs = { showingRequest: false, newSubscriber: false, newWave: false }
       setPrefs(off)
       setNotificationsOn(false)
       if (userDoc) {

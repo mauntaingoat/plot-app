@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, ChartBar as BarChart3, Users, Gear as Settings, Plus, Eye, CursorClick as MousePointerClick, BookmarkSimple as Bookmark, ArrowSquareOut as ExternalLink, SignOut as LogOut, CaretRight as ChevronRight, CreditCard, User, Trash as Trash2, PencilSimple as Edit3, EyeSlash as EyeOff, LinkSimple as Link2, Shield, FilmStrip as Film, ShareNetwork as Share2, Copy, Check, X, QrCode, CalendarDots as CalendarDays, Tray as Inbox, Bell, Camera, Sun, Moon, ArrowsClockwise as RefreshCw, Warning as AlertTriangle, ArrowRight, Buildings as Building, Palette } from '@phosphor-icons/react'
+import { MapPin, ChartBar as BarChart3, Users, Gear as Settings, Plus, Eye, CursorClick as MousePointerClick, ArrowSquareOut as ExternalLink, SignOut as LogOut, CaretRight as ChevronRight, CreditCard, User, Trash as Trash2, PencilSimple as Edit3, EyeSlash as EyeOff, LinkSimple as Link2, Shield, FilmStrip as Film, ShareNetwork as Share2, Copy, Check, X, QrCode, CalendarDots as CalendarDays, Tray as Inbox, Bell, Camera, Sun, Moon, ArrowsClockwise as RefreshCw, Warning as AlertTriangle, ArrowRight, Buildings as Building, Palette, Heart, HandWaving as Hand } from '@phosphor-icons/react'
 import { TabBar } from '@/components/ui/TabBar'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
@@ -12,7 +12,7 @@ import { SetupRing } from '@/components/dashboard/SetupRing'
 import { SetupChecklist } from '@/components/dashboard/SetupChecklist'
 import { InsightsChart } from '@/components/dashboard/InsightsChart'
 import { PaywallPrompt } from '@/components/dashboard/PaywallPrompt'
-import { PinBreakdown, ContentConversion, GeoHeatmap, TimeOfDay, FollowerGrowth, LockedFeature } from '@/components/dashboard/AdvancedInsights'
+import { PinBreakdown, ContentConversion, GeoHeatmap, TimeOfDay, SaveGrowth } from '@/components/dashboard/AdvancedInsights'
 import { SavedMapInsights, CustomBranding } from '@/components/dashboard/StudioFeatures'
 import { QRCodeModal } from '@/components/dashboard/QRCodeModal'
 import { OpenHouseEditor } from '@/components/dashboard/OpenHouseEditor'
@@ -38,7 +38,7 @@ import { subscribeToAllAgentPins } from '@/lib/firestore'
 import { PLATFORM_LIST, PLATFORM_LOGOS, validatePlatformUrl } from '@/components/icons/PlatformLogos'
 import { AdminPanel } from '@/components/dashboard/AdminPanel'
 import { isAdmin } from '@/lib/admin'
-import { PIN_CONFIG, type Pin, type Platform, type ForSalePin, type OpenHouse, type ContentItem } from '@/lib/types'
+import { PIN_CONFIG, type Pin, type Platform, type ForSalePin, type OpenHouse, type ContentItem, type UserDoc } from '@/lib/types'
 
 type DashTab = 'reelst' | 'insights' | 'inbox' | 'content' | 'style' | 'settings' | 'admin'
 
@@ -95,6 +95,7 @@ export default function Dashboard() {
   const [pendingModalOpen, setPendingModalOpen] = useState(false)
   const [singlePendingPinId, setSinglePendingPinId] = useState<string | null>(null)
   const [subscriberCount, setSubscriberCount] = useState<number>(0)
+  const [waveCount, setWaveCount] = useState<number>(0)
   const [showEditBrokerage, setShowEditBrokerage] = useState(false)
   const [brokerageDraft, setBrokerageDraft] = useState('')
   const [savingBrokerage, setSavingBrokerage] = useState(false)
@@ -115,12 +116,41 @@ export default function Dashboard() {
   const previewIframeRef = useRef<HTMLIFrameElement>(null)
   const isDesktop = useIsDesktop()
   const isWide = useIsWide()
+  // Lazy-mount the preview iframe — only mount it the first time the
+  // user lands on the Style tab. Once mounted it stays in the DOM
+  // (just hidden via CSS on other tabs) so we don't re-init Mapbox
+  // every time the user switches tabs. Net effect: 1 map load per
+  // dashboard session instead of N (one per tab toggle).
+  const [previewMounted, setPreviewMounted] = useState(false)
 
   // Lock background scroll for desktop-only inline modals
   // (Mobile variants use DarkBottomSheet which locks scroll internally)
   useScrollLock(isDesktop && !!showDeleteConfirm)
   useScrollLock(isDesktop && showEditProfile)
   useScrollLock(isDesktop && showAddPlatform)
+
+  // First-time mount of the preview iframe — only when the user
+  // actually opens the Style tab. Other tabs don't need the live
+  // preview, and pre-mounting it on Dashboard load would burn a
+  // Mapbox map load every time someone opens the dashboard.
+  useEffect(() => {
+    if (activeTab === 'style' && !previewMounted) setPreviewMounted(true)
+  }, [activeTab, previewMounted])
+
+  // Manual reload cooldown — every iframe reload triggers a fresh
+  // Mapbox map init (paid load). 3-second debounce stops bored
+  // clicking from burning loads. The button visually spins + locks
+  // for the cooldown so the user gets immediate feedback.
+  const RELOAD_COOLDOWN_MS = 3000
+  const [previewReloading, setPreviewReloading] = useState(false)
+  const handleReloadPreview = useCallback(() => {
+    if (previewReloading) return
+    const iframe = previewIframeRef.current
+    if (!iframe) return
+    iframe.src = iframe.src
+    setPreviewReloading(true)
+    setTimeout(() => setPreviewReloading(false), RELOAD_COOLDOWN_MS)
+  }, [previewReloading])
 
   const themePreference = useThemeStore((s) => s.preference)
   const resolvedTheme = useThemeStore((s) => s.resolved)
@@ -219,7 +249,7 @@ export default function Dashboard() {
       // surface the paywall.
       setPins((prev) => prev.map((p) => p.id === pinId ? { ...p, enabled: !enabled } : p))
       const reason = err?.message || 'Could not update pin.'
-      const upgradeTo = err?.details?.upgradeTo as 'pro' | 'studio' | undefined
+      const upgradeTo = err?.details?.upgradeTo as 'pro' | undefined
       setPaywall({ open: true, reason, upgradeTo })
     }
   }, [currentUser, pins])
@@ -286,25 +316,45 @@ export default function Dashboard() {
     }
   }, [pins, showError])
 
+  // Aggregate over all pins. `taps` here is the new top-level "Taps"
+  // stat (sum of pin opens). The legacy `pin.views` field is no
+  // longer surfaced at agent-level — `views` (profile visits) is
+  // sourced from the events collection below.
   const stats = useMemo(() => {
-    let views = 0, taps = 0, saves = 0
-    pins.forEach((p) => { views += p.views; taps += p.taps; saves += p.saves })
-    return { views, taps, saves, pins: pins.length }
+    let taps = 0, saves = 0
+    pins.forEach((p) => { taps += p.taps; saves += p.saves })
+    return { taps, saves, pins: pins.length }
   }, [pins])
 
+  // My Pins tab shows only the user-visible set: enabled + non-archived.
+  // Insights uses the full `pins` array so analytics don't shrink when
+  // a pin is toggled off or archived.
+  const displayPins = useMemo(
+    () => pins.filter((p) => p.enabled && (p as any).status !== 'archived'),
+    [pins],
+  )
+
+  // Last 30 days of analytics events for this agent — feeds the
+  // weekly chart toggle. Only fetched on Pro+ tiers (see useEffect
+  // below). The lifetime "Visits" stat card reads `profileVisits`
+  // off the user doc directly (incremented by the trackProfileVisit
+  // Cloud Function), so it doesn't need this dataset.
   const [weeklyEvents, setWeeklyEvents] = useState<any[]>([])
+  const [chartMetric, setChartMetric] = useState<'profile_visit' | 'tap'>('profile_visit')
+  // 7 columns ending YESTERDAY (today excluded) — gives a clean
+  // "completed days" view since today's data is still incoming.
   const chartData = useMemo(() => {
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
     const result: { label: string; value: number }[] = []
-    for (let i = 6; i >= 0; i--) {
+    for (let i = 7; i >= 1; i--) {
       const d = new Date()
       d.setDate(d.getDate() - i)
       const dateStr = d.toISOString().slice(0, 10)
-      const count = weeklyEvents.filter((e) => e.type === 'view' && e.date === dateStr).length
+      const count = weeklyEvents.filter((e) => e.type === chartMetric && e.date === dateStr).length
       result.push({ label: dayNames[d.getDay()], value: count })
     }
     return result
-  }, [weeklyEvents])
+  }, [weeklyEvents, chartMetric])
 
   const confirmSignOut = async () => {
     setShowSignOutConfirm(false)
@@ -336,9 +386,9 @@ export default function Dashboard() {
 
   const handleAddPlatform = (platformId: string, username: string) => {
     if (!activeUser || !username.trim()) return
-    const existing = activeUser.platforms.find((p) => p.id === platformId)
-    const platforms = existing
-      ? activeUser.platforms.map((p) => p.id === platformId ? { ...p, username: username.trim() } : p)
+    const existing = activeUser.platforms.find((p: Platform) => p.id === platformId)
+    const platforms: Platform[] = existing
+      ? activeUser.platforms.map((p: Platform) => p.id === platformId ? { ...p, username: username.trim() } : p)
       : [...activeUser.platforms, { id: platformId, username: username.trim() }]
     const updated = { ...activeUser, platforms }
     setUserDoc(updated)
@@ -347,7 +397,7 @@ export default function Dashboard() {
 
   const handleRemovePlatform = (platformId: string) => {
     if (!activeUser) return
-    const platforms = activeUser.platforms.filter((p) => p.id !== platformId)
+    const platforms = activeUser.platforms.filter((p: Platform) => p.id !== platformId)
     setUserDoc({ ...activeUser, platforms })
     import('@/lib/firestore').then(({ updateUserDoc }) => updateUserDoc(activeUser.uid, { platforms }).catch(() => {}))
   }
@@ -363,8 +413,11 @@ export default function Dashboard() {
     if (!activeUser?.uid) return
     if (activeTab !== 'insights') return
     if (!hasFeature(activeUser, 'advancedAnalytics')) return
+    // 30-day window — chart only renders the last 7 (today-7 → today-1).
+    // The top "Visits" stat card reads the lifetime `profileVisits`
+    // counter from the user doc, so it doesn't depend on this window.
     import('@/lib/firestore').then(({ getAgentEvents }) =>
-      getAgentEvents(activeUser.uid, 7).then(setWeeklyEvents).catch(() => {})
+      getAgentEvents(activeUser.uid, 30).then(setWeeklyEvents).catch(() => {})
     )
   }, [activeUser, activeTab])
 
@@ -380,11 +433,21 @@ export default function Dashboard() {
     return () => { unsub?.() }
   }, [activeUser?.uid])
 
-  // Live subscriber count — replaces the legacy followerCount stat.
+  // Live subscriber count — drives the dashboard's primary growth stat.
   useEffect(() => {
     if (!activeUser?.uid) return
     const unsub = subscribeToAgentSubscriberCount(activeUser.uid, setSubscriberCount)
     return () => { unsub?.() }
+  }, [activeUser?.uid])
+
+  // Live wave count — Insights tab surfaces it next to Saves.
+  useEffect(() => {
+    if (!activeUser?.uid) return
+    let unsubWaves: (() => void) | null = null
+    import('@/lib/firestore').then(({ subscribeToAgentWaves }) => {
+      unsubWaves = subscribeToAgentWaves(activeUser.uid, (waves) => setWaveCount(waves.length)) || null
+    })
+    return () => { unsubWaves?.() }
   }, [activeUser?.uid])
 
   useEffect(() => {
@@ -414,8 +477,8 @@ export default function Dashboard() {
       { weight: 10, check: !!activeUser.bio && activeUser.bio.length > 0 },
       { weight: 15, check: activeUser.platforms.length > 0 },
       { weight: 10, check: !!activeUser.licenseNumber },
-      { weight: 20, check: pins.length >= 1 },
-      { weight: 10, check: pins.length >= 3 },
+      { weight: 20, check: displayPins.length >= 1 },
+      { weight: 10, check: displayPins.length >= 3 },
     ]
     return items.filter((i) => i.check).reduce((s, i) => s + i.weight, 0)
   }, [activeUser, pins])
@@ -476,13 +539,13 @@ export default function Dashboard() {
                   </div>
                   <div className="w-px h-8 bg-border-light" />
                   <div className="text-center">
-                    <p className="text-[22px] font-extrabold text-ink font-mono">{stats.views.toLocaleString()}</p>
-                    <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Views</p>
+                    <p className="text-[22px] font-extrabold text-ink font-mono">{(activeUser.profileVisits || 0).toLocaleString()}</p>
+                    <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Visits</p>
                   </div>
                   <div className="w-px h-8 bg-border-light" />
                   <div className="text-center">
                     <p className="text-[22px] font-extrabold text-ink font-mono">{subscriberCount}</p>
-                    <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Subscribers</p>
+                    <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Saves</p>
                   </div>
                 </div>
               </div>
@@ -496,12 +559,12 @@ export default function Dashboard() {
                   <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Pins</p>
                 </div>
                 <div className="bg-cream rounded-[14px] p-3 text-center">
-                  <p className="text-[20px] font-extrabold text-ink font-mono">{stats.views.toLocaleString()}</p>
-                  <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Views</p>
+                  <p className="text-[20px] font-extrabold text-ink font-mono">{(activeUser.profileVisits || 0).toLocaleString()}</p>
+                  <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Visits</p>
                 </div>
                 <div className="bg-cream rounded-[14px] p-3 text-center">
                   <p className="text-[20px] font-extrabold text-ink font-mono">{subscriberCount}</p>
-                  <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Subscribers</p>
+                  <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Saves</p>
                 </div>
               </div>
             )}
@@ -521,7 +584,7 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-            ) : pins.length === 0 ? (
+            ) : displayPins.length === 0 ? (
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-cream rounded-[20px] p-8 text-center">
                 <div className="w-16 h-16 rounded-full bg-tangerine-soft mx-auto mb-4 flex items-center justify-center">
                   <MapPin size={28} className="text-tangerine" />
@@ -531,8 +594,8 @@ export default function Dashboard() {
                 <Button variant="primary" size="lg" icon={<Plus size={18} />} onClick={() => navigate('/dashboard/pin/new')}>Create Pin</Button>
               </motion.div>
             ) : (
-              <div className={isDesktop ? 'grid grid-cols-2 gap-4' : 'grid grid-cols-1 sm:grid-cols-2 gap-3'}>
-                {pins.map((pin) => (
+              <div className={isDesktop ? 'grid grid-cols-2 gap-4' : 'grid grid-cols-2 gap-3'}>
+                {displayPins.map((pin) => (
                   <div key={pin.id} className="relative">
                     <PinCard
                       pin={pin}
@@ -592,52 +655,47 @@ export default function Dashboard() {
           <div className={isDesktop ? 'space-y-5' : 'px-5 py-5 space-y-4'}>
             {/* Basic stats — visible to all tiers */}
             <div className="grid grid-cols-2 gap-3">
-              <StatCard label="Views" value={stats.views} icon={<Eye size={18} />} format="compact" tooltip="Times your content was seen in the feed" />
-              <StatCard label="Taps" value={stats.taps} icon={<MousePointerClick size={18} />} color="#3B82F6" format="compact" tooltip="Times someone tapped your pin on the map" />
-              <StatCard label="Subscribes" value={subscriberCount} icon={<Bookmark size={18} />} color="#A855F7" format="compact" tooltip="Buyers who saved you for the weekly digest" />
-              <StatCard label="Profile Visits" value={stats.views} icon={<Users size={18} />} color="#34C759" tooltip="Visits to your reel.st link" />
+              <StatCard label="Visits" value={activeUser.profileVisits || 0} icon={<Eye size={18} />} format="compact" tooltip="Lifetime count of profile visits to your Reelst" />
+              <StatCard label="Taps" value={stats.taps} icon={<MousePointerClick size={18} />} color="#3B82F6" format="compact" tooltip="Times someone tapped a pin or content card to open it" />
+              <StatCard label="Saves" value={subscriberCount} icon={<Heart size={18} />} color="#FF6B6B" format="compact" tooltip="Buyers who saved you for the weekly digest" />
+              <StatCard label="Waves" value={waveCount} icon={<Hand size={18} />} color="#FF8552" format="compact" tooltip="Buyers who waved with a question on a listing" />
             </div>
-            <InsightsChart data={chartData} />
+            <InsightsChart
+              data={chartData}
+              title={chartMetric === 'profile_visit' ? 'Profile Visits' : 'Taps'}
+              subtitle="Last 7 days"
+              metricToggle={{
+                value: chartMetric,
+                onChange: (v) => setChartMetric(v as 'profile_visit' | 'tap'),
+                options: [
+                  { id: 'profile_visit', label: 'Profile Visits' },
+                  { id: 'tap', label: 'Taps' },
+                ],
+              }}
+            />
 
             {hasFeature(activeUser, 'advancedAnalytics') ? (
               <>
-                <PinBreakdown pins={pins} metric="views" />
+                <PinBreakdown pins={pins} />
                 <ContentConversion pins={pins} />
-                <FollowerGrowth currentFollowers={subscriberCount} agentId={activeUser.uid} />
-                <TimeOfDay pins={pins} agentId={activeUser.uid} />
+                <SaveGrowth currentSaves={subscriberCount} agentId={activeUser.uid} />
+                <TimeOfDay agentId={activeUser.uid} />
                 <GeoHeatmap pins={pins} agentId={activeUser.uid} />
-                {hasFeature(activeUser, 'savedMapInsights') ? (
-                  <SavedMapInsights pins={pins} agentId={activeUser.uid} />
-                ) : (
-                  <div className="relative">
-                    <div className="blur-[6px] pointer-events-none select-none opacity-60">
-                      <SavedMapInsights pins={pins} agentId={activeUser.uid} />
-                    </div>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-warm-white/60 rounded-[18px]">
-                      <p className="text-[14px] font-bold text-ink mb-1">Subscriber Insights</p>
-                      <p className="text-[12px] text-smoke mb-3">See where your subscribers also browse — by area and listing type, no PII.</p>
-                      <button
-                        onClick={() => setPaywall({ open: true, reason: 'Subscriber insights is a Studio feature.', upgradeTo: 'studio' })}
-                        className="brand-btn-flat h-10 px-5 rounded-full text-[13px] cursor-pointer inline-flex items-center gap-1.5"
-                        style={{ fontWeight: 600, boxShadow: '0 6px 16px -6px rgba(217,74,31,0.42), inset 0 1px 0 rgba(255,255,255,0.24)' }}
-                      >
-                        Upgrade to Studio
-                        <ArrowRight weight="bold" size={14} />
-                      </button>
-                    </div>
-                  </div>
-                )}
+                {/* Audience Crossover — included with Pro analytics now
+                    that Studio is gone. Anonymized competitive-set
+                    insight powered by digestSubscriptions overlap. */}
+                <SavedMapInsights pins={pins} agentId={activeUser.uid} />
               </>
             ) : (
               <div className="relative">
                 <div className="blur-[6px] pointer-events-none select-none opacity-60 space-y-4">
-                  <PinBreakdown pins={pins} metric="views" />
+                  <PinBreakdown pins={pins} />
                   <ContentConversion pins={pins} />
-                  <InsightsChart data={[{ label: 'Mon', value: 12 }, { label: 'Tue', value: 18 }, { label: 'Wed', value: 8 }, { label: 'Thu', value: 25 }, { label: 'Fri', value: 15 }, { label: 'Sat', value: 20 }, { label: 'Sun', value: 10 }]} title="Subscriber Growth" />
+                  <InsightsChart data={[{ label: 'Mon', value: 12 }, { label: 'Tue', value: 18 }, { label: 'Wed', value: 8 }, { label: 'Thu', value: 25 }, { label: 'Fri', value: 15 }, { label: 'Sat', value: 20 }, { label: 'Sun', value: 10 }]} title="Saves over time" />
                 </div>
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-warm-white/50 rounded-[18px]">
                   <p className="text-[16px] font-bold text-ink mb-1">Unlock full analytics</p>
-                  <p className="text-[13px] text-smoke mb-4 text-center max-w-[280px]">Per-pin breakdown, viewer cities, peak hours, save rates, and more.</p>
+                  <p className="text-[13px] text-smoke mb-4 text-center max-w-[280px]">Per-pin breakdown, visitor cities, peak hours, content stats, and more.</p>
                   <button
                     onClick={() => setPaywall({ open: true, reason: 'Advanced analytics is a Pro feature.', upgradeTo: 'pro' })}
                     className="brand-btn-flat h-11 px-6 rounded-full text-[14px] cursor-pointer inline-flex items-center gap-1.5"
@@ -658,7 +716,7 @@ export default function Dashboard() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-[16px] font-bold text-ink">Notifications</h3>
-                <p className="text-[12px] text-smoke mt-0.5">Showing requests, followers, and saves.</p>
+                <p className="text-[12px] text-smoke mt-0.5">Showing requests, saves, and waves.</p>
               </div>
             </div>
             {/* Prompt to enable notifications if not granted */}
@@ -684,7 +742,7 @@ export default function Dashboard() {
         {/* ═══ CONTENT LIBRARY ═══ */}
         {activeTab === 'content' && (
           <ContentLibrary
-            pins={pins}
+            pins={displayPins}
             agentId={activeUser.uid}
             isDesktop={isDesktop}
             onNavigateUpload={() => navigate('/dashboard/pin/new?tab=content')}
@@ -755,6 +813,10 @@ export default function Dashboard() {
               setEditProfileData({ displayName: activeUser.displayName || '', bio: activeUser.bio || '', photoURL: activeUser.photoURL || '' })
               setShowEditProfile(true)
             }}
+            onOpenEditBrokerage={() => {
+              setBrokerageDraft(activeUser.brokerage || '')
+              setShowEditBrokerage(true)
+            }}
             onOpenAddPlatform={() => setShowAddPlatform(true)}
             onRemovePlatform={handleRemovePlatform}
           />
@@ -804,9 +866,9 @@ export default function Dashboard() {
               <div className="w-10 h-10 rounded-[12px] bg-pearl flex items-center justify-center"><CreditCard size={18} className="text-graphite" /></div>
               <div className="flex-1">
                 <span className="text-[15px] font-medium text-ink block">Subscription</span>
-                <span className="text-[12px] text-smoke">{(() => { const t = getUserTier(activeUser); return t === 'studio' ? 'Studio plan' : t === 'pro' ? 'Pro plan · $19/mo' : 'Free plan' })()}</span>
+                <span className="text-[12px] text-smoke">{getUserTier(activeUser) === 'pro' ? 'Pro plan · $19/mo' : 'Free plan'}</span>
               </div>
-              <Badge>{(() => { const t = getUserTier(activeUser); return t === 'studio' ? 'Studio' : t === 'pro' ? 'Pro' : 'Free' })()}</Badge>
+              <Badge>{getUserTier(activeUser) === 'pro' ? 'Pro' : 'Free'}</Badge>
             </motion.button>
 
             <div className="flex gap-3 pt-4">
@@ -885,7 +947,7 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      <SetupChecklist isOpen={showSetup} onClose={() => setShowSetup(false)} user={activeUser} pinCount={pins.length} />
+      <SetupChecklist isOpen={showSetup} onClose={() => setShowSetup(false)} user={activeUser} pinCount={displayPins.length} />
 
       {/* Brokerage editor — desktop: centered modal (matches Edit
           Profile pattern), mobile: dark bottom sheet. Same save
@@ -1150,7 +1212,7 @@ export default function Dashboard() {
               </div>
               <h3 className="text-[18px] font-bold text-ink text-center">Delete your account?</h3>
               <p className="text-[13px] text-smoke text-center">
-                This permanently deletes your profile, pins, content, followers, and all data. This cannot be undone.
+                This permanently deletes your profile, pins, content, saves, and all data. This cannot be undone.
               </p>
               <div>
                 <label className="text-[12px] font-semibold text-smoke uppercase tracking-wider block mb-1.5">Type DELETE to confirm</label>
@@ -1342,11 +1404,11 @@ export default function Dashboard() {
   // ═══════════════════════════════════════════
   if (isDesktop) {
     const NAV_ITEMS: { id: DashTab; label: string; icon: typeof MapPin }[] = [
-      { id: 'reelst', label: 'My Reelst', icon: MapPin },
-      { id: 'insights', label: 'Insights', icon: BarChart3 },
-      { id: 'inbox', label: 'Inbox', icon: Inbox },
+      { id: 'reelst', label: 'My Pins', icon: MapPin },
       { id: 'content', label: 'Content', icon: Film },
       { id: 'style', label: 'Style', icon: Palette },
+      { id: 'inbox', label: 'Inbox', icon: Inbox },
+      { id: 'insights', label: 'Insights', icon: BarChart3 },
       { id: 'settings', label: 'Settings', icon: Settings },
     ]
 
@@ -1450,7 +1512,7 @@ export default function Dashboard() {
           {/* Top bar */}
           <div className="shrink-0 flex items-center justify-between px-8 h-[64px] border-b border-border-light bg-ivory">
             <h1 className="text-[20px] text-ink" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>
-              {activeTab === 'reelst' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'inbox' ? 'Inbox' : activeTab === 'content' ? 'Content' : activeTab === 'style' ? 'Style' : 'Settings'}
+              {activeTab === 'reelst' ? 'My Pins' : activeTab === 'insights' ? 'Insights' : activeTab === 'inbox' ? 'Inbox' : activeTab === 'content' ? 'Content' : activeTab === 'style' ? 'Style' : 'Settings'}
             </h1>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 bg-warm-white border border-border-light rounded-full pl-4 pr-1.5 py-1.5">
@@ -1484,8 +1546,18 @@ export default function Dashboard() {
             Only shown on wide screens (≥1200px). Between mobile and
             this width, the dashboard keeps the sidebar + content
             layout but drops the preview to give content more room. */}
-        {isWide && (
-          <aside className="w-[300px] shrink-0 border-l border-border-light flex flex-col items-center justify-center" style={{ background: 'linear-gradient(180deg, var(--color-cream) 0%, var(--color-pearl) 100%)' }}>
+        {isWide && previewMounted && (
+          <aside
+            className="w-[300px] shrink-0 border-l border-border-light flex-col items-center justify-center"
+            style={{
+              background: 'linear-gradient(180deg, var(--color-cream) 0%, var(--color-pearl) 100%)',
+              // Mounted on first Style-tab visit and stays in DOM after
+              // — hidden on other tabs so the Mapbox map inside the
+              // iframe doesn't re-init when the user toggles between
+              // Style and other tabs.
+              display: activeTab === 'style' ? 'flex' : 'none',
+            }}
+          >
             {activeUser.username ? (
               <>
                 {/* Phone frame with live preview — scaled to fit */}
@@ -1504,14 +1576,12 @@ export default function Dashboard() {
                       (avatar/name) and stays out of the way of where
                       the user's eye naturally lands when reviewing. */}
                   <button
-                    onClick={() => {
-                      const iframe = previewIframeRef.current
-                      if (iframe) iframe.src = iframe.src
-                    }}
-                    className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-warm-white/90 shadow border border-border-light flex items-center justify-center text-smoke hover:text-ink cursor-pointer transition-colors"
-                    title="Reload preview"
+                    onClick={handleReloadPreview}
+                    disabled={previewReloading}
+                    className={`absolute bottom-2 right-2 w-7 h-7 rounded-full bg-warm-white/90 shadow border border-border-light flex items-center justify-center transition-colors ${previewReloading ? 'text-tangerine cursor-not-allowed opacity-80' : 'text-smoke hover:text-ink cursor-pointer'}`}
+                    title={previewReloading ? 'Reloading…' : 'Reload preview'}
                   >
-                    <RefreshCw weight="bold" size={13} />
+                    <RefreshCw weight="bold" size={13} className={previewReloading ? 'animate-spin' : ''} />
                   </button>
                 </div>
 
@@ -1548,7 +1618,7 @@ export default function Dashboard() {
             <Avatar src={activeUser.photoURL} name={activeUser.displayName || 'Agent'} size={36} />
             <div>
               <p className="text-[16px] text-ink" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>
-                {activeTab === 'reelst' ? 'My Reelst' : activeTab === 'insights' ? 'Insights' : activeTab === 'inbox' ? 'Inbox' : activeTab === 'content' ? 'Content' : activeTab === 'style' ? 'Style' : 'Settings'}
+                {activeTab === 'reelst' ? 'My Pins' : activeTab === 'insights' ? 'Insights' : activeTab === 'inbox' ? 'Inbox' : activeTab === 'content' ? 'Content' : activeTab === 'style' ? 'Style' : 'Settings'}
               </p>
               <p className="text-[12px] text-smoke">@{activeUser.username || 'you'}</p>
             </div>
@@ -1581,11 +1651,11 @@ export default function Dashboard() {
 
       <TabBar
         tabs={[
-          { id: 'reelst', label: 'My Reelst', icon: <MapPin size={20} /> },
-          { id: 'insights', label: 'Insights', icon: <BarChart3 size={20} /> },
-          { id: 'inbox', label: 'Inbox', icon: <Inbox size={20} />, badge: inboxUnread },
+          { id: 'reelst', label: 'My Pins', icon: <MapPin size={20} /> },
           { id: 'content', label: 'Content', icon: <Film size={20} /> },
           { id: 'style', label: 'Style', icon: <Palette size={20} /> },
+          { id: 'inbox', label: 'Inbox', icon: <Inbox size={20} />, badge: inboxUnread },
+          { id: 'insights', label: 'Insights', icon: <BarChart3 size={20} /> },
         ]}
         active={activeTab}
         onChange={(id) => { setActiveTab(id as DashTab); window.scrollTo(0, 0) }}

@@ -58,8 +58,17 @@ export function WaveModal({ isOpen, onClose, pinId, pinAddress, agentId, agentNa
       })
       setSuccess(true)
     } catch (err: any) {
-      console.warn('[WaveModal] createWave failed:', err)
-      setError(err?.message || 'Couldn\'t send your wave — try again.')
+      console.warn('[WaveModal] createWave failed:', { code: err?.code, message: err?.message, details: err?.details, raw: err })
+      const friendly = err?.code === 'functions/resource-exhausted'
+        ? 'Slow down a sec — too many waves recently.'
+        : err?.code === 'functions/not-found'
+        ? 'This listing isn\'t available anymore.'
+        : err?.code === 'functions/invalid-argument'
+        ? (err?.message || 'Please check your details.')
+        : err?.code === 'functions/internal'
+        ? 'Something went wrong on our end. Try again in a moment.'
+        : err?.message || 'Couldn\'t send your wave — try again.'
+      setError(friendly)
     } finally {
       setSubmitting(false)
     }
@@ -91,9 +100,10 @@ export function WaveModal({ isOpen, onClose, pinId, pinAddress, agentId, agentNa
         ref={sheetRef}
         data-visible={visible}
         onClick={(e) => e.stopPropagation()}
-        className="capture-sheet relative w-full md:max-w-[460px] bg-warm-white rounded-t-[28px] md:rounded-[28px] overflow-hidden"
+        className="capture-sheet relative w-full md:max-w-[460px] rounded-t-[28px] md:rounded-[28px] overflow-hidden"
         style={{
-          fontFamily: 'var(--font-humanist)',
+          background: 'var(--page-canvas)',
+          color: 'var(--text-primary)',
           boxShadow: '0 -20px 60px -16px rgba(10,14,23,0.35), 0 30px 80px -30px rgba(10,14,23,0.4)',
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           touchAction: 'pan-y',
@@ -125,16 +135,17 @@ export function WaveModal({ isOpen, onClose, pinId, pinAddress, agentId, agentNa
                     <div
                       className="w-14 h-14 rounded-full flex items-center justify-center"
                       style={{
-                        background: 'linear-gradient(135deg, #FFD089 0%, #FF8552 100%)',
-                        boxShadow: '0 8px 22px -8px rgba(255,133,82,0.5)',
+                        background: 'var(--accent)',
+                        color: 'var(--accent-ink)',
+                        boxShadow: '0 8px 22px -8px var(--shadow-color)',
                       }}
                     >
-                      <Hand weight="bold" size={26} className="text-white" />
+                      <Hand weight="bold" size={26} />
                     </div>
                     <div className="flex-1">
                       <p
-                        className="text-tangerine"
                         style={{
+                          color: 'var(--accent)',
                           fontFamily: 'var(--font-mono)',
                           fontSize: '10.5px',
                           fontWeight: 600,
@@ -145,8 +156,8 @@ export function WaveModal({ isOpen, onClose, pinId, pinAddress, agentId, agentNa
                         Wave 👋
                       </p>
                       <h2
-                        className="text-ink"
                         style={{
+                          color: 'var(--text-primary)',
                           fontSize: '22px',
                           fontWeight: 600,
                           letterSpacing: '-0.025em',
@@ -159,8 +170,8 @@ export function WaveModal({ isOpen, onClose, pinId, pinAddress, agentId, agentNa
                   </div>
 
                   <p
-                    className="text-graphite mb-5"
-                    style={{ fontSize: '14px', fontWeight: 400, lineHeight: 1.55 }}
+                    className="mb-5"
+                    style={{ color: 'var(--text-secondary)', fontSize: '14px', fontWeight: 400, lineHeight: 1.55 }}
                   >
                     They'll respond directly to you — your question doesn't get posted publicly.
                   </p>
@@ -205,9 +216,7 @@ export function WaveModal({ isOpen, onClose, pinId, pinAddress, agentId, agentNa
                       />
                     </FieldRow>
 
-                    <div
-                      className="rounded-[14px] bg-cream border border-border-light p-4"
-                    >
+                    <div className="rounded-[14px] bg-cream border border-border-light p-4">
                       <textarea
                         value={question}
                         onChange={(e) => { setQuestion(e.target.value.slice(0, 500)); setError(null) }}
@@ -229,7 +238,6 @@ export function WaveModal({ isOpen, onClose, pinId, pinAddress, agentId, agentNa
                       disabled={submitting || !canSubmit}
                       className="brand-btn-flat w-full h-12 rounded-full inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{
-                        fontFamily: 'var(--font-humanist)',
                         fontSize: '15px',
                         fontWeight: 600,
                         boxShadow: '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)',
@@ -259,21 +267,22 @@ export function WaveModal({ isOpen, onClose, pinId, pinAddress, agentId, agentNa
                     transition={{ delay: 0.05, type: 'spring', stiffness: 420, damping: 22 }}
                     className="w-16 h-16 rounded-full mx-auto mb-5 flex items-center justify-center"
                     style={{
-                      background: 'linear-gradient(135deg, #FFD089 0%, #FF8552 100%)',
-                      boxShadow: '0 12px 28px -10px rgba(255,133,82,0.5)',
+                      background: 'var(--accent)',
+                      color: 'var(--accent-ink)',
+                      boxShadow: '0 12px 28px -10px var(--shadow-color)',
                     }}
                   >
-                    <Check weight="bold" size={28} className="text-white" />
+                    <Check weight="bold" size={28} />
                   </motion.div>
                   <h2
-                    className="text-ink mb-2"
-                    style={{ fontSize: '22px', fontWeight: 600, letterSpacing: '-0.025em' }}
+                    className="mb-2"
+                    style={{ color: 'var(--text-primary)', fontSize: '22px', fontWeight: 600, letterSpacing: '-0.025em' }}
                   >
                     Wave sent.
                   </h2>
                   <p
-                    className="text-graphite mb-6"
-                    style={{ fontSize: '14.5px', fontWeight: 400, lineHeight: 1.55 }}
+                    className="mb-6"
+                    style={{ color: 'var(--text-secondary)', fontSize: '14.5px', fontWeight: 400, lineHeight: 1.55 }}
                   >
                     {agentName || 'They'} will reply directly to {email || 'you'} soon.
                   </p>
@@ -281,7 +290,6 @@ export function WaveModal({ isOpen, onClose, pinId, pinAddress, agentId, agentNa
                     onClick={handleClose}
                     className="brand-btn-flat h-11 px-6 rounded-full inline-flex items-center gap-1.5 cursor-pointer"
                     style={{
-                      fontFamily: 'var(--font-humanist)',
                       fontSize: '14px',
                       fontWeight: 600,
                       boxShadow: '0 6px 18px -4px rgba(217,74,31,0.4), inset 0 1px 0 rgba(255,255,255,0.24)',
@@ -300,9 +308,7 @@ export function WaveModal({ isOpen, onClose, pinId, pinAddress, agentId, agentNa
 
 function FieldRow({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div
-      className="flex items-center gap-2.5 h-12 px-4 rounded-[14px] bg-cream border border-border-light"
-    >
+    <div className="flex items-center gap-2.5 h-12 px-4 rounded-[14px] bg-cream border border-border-light">
       <span className="text-smoke shrink-0">{icon}</span>
       {children}
     </div>

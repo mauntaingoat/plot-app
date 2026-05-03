@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { motion, useMotionValue, animate, PanInfo } from 'framer-motion'
+import { motion, useMotionValue, animate, type PanInfo } from 'framer-motion'
 import { X, BookmarkSimple as Bookmark, ShareNetwork as Share2 } from '@phosphor-icons/react'
 import { Avatar } from '@/components/ui/Avatar'
 import type { Pin, UserDoc } from '@/lib/types'

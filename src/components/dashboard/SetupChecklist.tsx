@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Camera, User, MapPin, LinkSimple as Link2, FileText, Medal as Award, Stack as Layers, X } from '@phosphor-icons/react'
+import { Check, Camera, User, MapPin, LinkSimple as Link2, FileText, Medal as Award, Stack as Layers, X, Palette, Buildings as Building } from '@phosphor-icons/react'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import type { UserDoc } from '@/lib/types'
+import { DEFAULT_PALETTE_ID } from '@/lib/style/palettes'
+import { DEFAULT_FONT_ID } from '@/lib/style/fonts'
+import { DEFAULT_SHAPE_ID } from '@/lib/style/shapes'
 
 interface SetupChecklistProps {
   isOpen: boolean
@@ -13,13 +16,21 @@ interface SetupChecklistProps {
 
 const ITEMS = [
   { key: 'username', label: 'Claim a username', icon: User, weight: 10, check: (u: UserDoc) => !!u.username },
-  { key: 'photo', label: 'Upload a profile photo', icon: Camera, weight: 15, check: (u: UserDoc) => !!u.photoURL },
-  { key: 'name', label: 'Set display name', icon: User, weight: 10, check: (u: UserDoc) => !!u.displayName && u.displayName.length > 0 },
+  { key: 'photo', label: 'Upload a profile photo', icon: Camera, weight: 10, check: (u: UserDoc) => !!u.photoURL },
+  { key: 'name', label: 'Set display name', icon: User, weight: 5, check: (u: UserDoc) => !!u.displayName && u.displayName.length > 0 },
   { key: 'bio', label: 'Write a bio', icon: FileText, weight: 10, check: (u: UserDoc) => !!u.bio && u.bio.length > 0 },
-  { key: 'platform', label: 'Connect a platform', icon: Link2, weight: 15, check: (u: UserDoc) => u.platforms.length > 0 },
   { key: 'license', label: 'Verify your license', icon: Award, weight: 10, check: (u: UserDoc) => !!u.licenseNumber },
+  { key: 'platform', label: 'Connect a platform', icon: Link2, weight: 10, check: (u: UserDoc) => (u.platforms?.length ?? 0) > 0 },
+  { key: 'brokerage', label: 'Add your brokerage', icon: Building, weight: 5, check: (u: UserDoc) => !!u.brokerage && u.brokerage.length > 0 },
+  { key: 'style', label: 'Pick a style — palette, font, shape', icon: Palette, weight: 10, check: (u: UserDoc) => {
+    const s = u.style
+    if (!s) return false
+    return (s.paletteId && s.paletteId !== DEFAULT_PALETTE_ID)
+      || (s.fontId && s.fontId !== DEFAULT_FONT_ID)
+      || (s.shapeId && s.shapeId !== DEFAULT_SHAPE_ID)
+  } },
   { key: 'pin1', label: 'Create your first pin', icon: MapPin, weight: 20, check: (_: UserDoc, pc: number) => pc >= 1 },
-  { key: 'pin3', label: 'Create 3 pins', icon: Layers, weight: 10, check: (_: UserDoc, pc: number) => pc >= 3 },
+  { key: 'pin3', label: 'Create 3+ pins', icon: Layers, weight: 10, check: (_: UserDoc, pc: number) => pc >= 3 },
 ]
 
 function ChecklistContent({ user, pinCount }: { user: UserDoc; pinCount: number }) {

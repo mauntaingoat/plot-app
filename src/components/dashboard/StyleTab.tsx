@@ -11,6 +11,8 @@ import {
   House,
   LinkSimple as Link2,
   DotsSixVertical as GripVertical,
+  Buildings as Building,
+  CaretRight as ChevronRight,
 } from '@phosphor-icons/react'
 import type { UserDoc, Platform } from '@/lib/types'
 import {
@@ -52,6 +54,7 @@ interface StyleTabProps {
   isDesktop: boolean
   onUpdateUser: (patch: Partial<UserDoc>) => Promise<void> | void
   onOpenEditProfile: () => void
+  onOpenEditBrokerage: () => void
   onOpenAddPlatform: () => void
   onRemovePlatform: (platformId: string) => void
 }
@@ -61,6 +64,7 @@ export function StyleTab({
   isDesktop,
   onUpdateUser,
   onOpenEditProfile,
+  onOpenEditBrokerage,
   onOpenAddPlatform,
   onRemovePlatform,
 }: StyleTabProps) {
@@ -72,6 +76,7 @@ export function StyleTab({
     },
     [onUpdateUser, style]
   )
+
 
   const updateFrames = useCallback(
     (patch: Partial<AgentStyle['frames']>) => updateStyle({ frames: { ...style.frames, ...patch } }),
@@ -125,7 +130,6 @@ export function StyleTab({
           <div className="flex-1 min-w-0">
             <p className="text-[14px] font-semibold text-ink truncate">{user.displayName || 'Add your name'}</p>
             <p className="text-[12px] text-smoke truncate">{user.bio || 'Add a short bio'}</p>
-            {user.brokerage && <p className="text-[11.5px] text-ash truncate">{user.brokerage}</p>}
           </div>
           <button
             onClick={onOpenEditProfile}
@@ -134,10 +138,37 @@ export function StyleTab({
             <Edit3 size={13} /> Edit
           </button>
         </div>
+
+        {/* Brokerage / company — separate row since it routes to its
+            own modal (not the name/bio/photo edit sheet) and reads as
+            a distinct piece of info. Empty state nudges the agent to
+            add it; filled state shows the value with a chevron. */}
+        <button
+          onClick={onOpenEditBrokerage}
+          className="mt-3 w-full flex items-center gap-3 p-3 rounded-[12px] bg-cream hover:bg-pearl transition-colors cursor-pointer text-left"
+        >
+          <div className="w-9 h-9 rounded-full bg-pearl flex items-center justify-center shrink-0">
+            <Building size={15} className="text-graphite" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13.5px] font-semibold text-ink truncate">
+              {user.brokerage || 'Add brokerage / company'}
+            </p>
+            <p className="text-[11.5px] text-smoke truncate">
+              {user.brokerage ? 'Tap to edit' : 'Shown on your About page + verified badge'}
+            </p>
+          </div>
+          <ChevronRight size={14} className="text-ash shrink-0" />
+        </button>
       </Section>
 
       {/* ── 2. Color palette ── */}
-      <Section title="Color palette" subtitle="12 themes — light, dark, gradient, pattern">
+      <Section
+        title="Color palette"
+        subtitle="12 themes — light, dark, gradient, pattern"
+        collapsible
+        collapsedPreview={<PaletteSwatchPreview palette={getPalette(style.paletteId)} />}
+      >
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
           {PALETTES.map((p) => (
             <PaletteCard
@@ -151,7 +182,12 @@ export function StyleTab({
       </Section>
 
       {/* ── 3. Font ── */}
-      <Section title="Font" subtitle="Headers + body pairings">
+      <Section
+        title="Font"
+        subtitle="Headers + body pairings"
+        collapsible
+        collapsedPreview={<FontNamePreview font={getFont(style.fontId)} />}
+      >
         <div className="grid grid-cols-2 gap-2.5">
           {FONTS.map((f) => (
             <FontCard
@@ -165,7 +201,12 @@ export function StyleTab({
       </Section>
 
       {/* ── 4. Map shape ── */}
-      <Section title="Map shape" subtitle="The signature element of your Reelst">
+      <Section
+        title="Map shape"
+        subtitle="The signature element of your Reelst"
+        collapsible
+        collapsedPreview={<ShapeGlyphPreview shape={getShape(style.shapeId)} accent={getPalette(style.paletteId).accent} />}
+      >
         <div className="grid grid-cols-3 gap-2.5">
           {SHAPES.map((s) => (
             <ShapeCard
@@ -185,6 +226,26 @@ export function StyleTab({
           <FrameRow label="Profile photo" icon={<Camera size={15} />} value={style.frames.avatar} onChange={(v) => updateFrames({ avatar: v })} />
           <FrameRow label="Map viewport" icon={<House size={15} />} value={style.frames.map} onChange={(v) => updateFrames({ map: v })} />
           <FrameRow label="Listings" icon={<Eye size={15} />} value={style.frames.listings} onChange={(v) => updateFrames({ listings: v })} />
+        </div>
+      </Section>
+
+      {/* ── Listings layout ── */}
+      <Section title="Listings layout" subtitle="How your content cards lay out below the map">
+        <div className="grid grid-cols-2 gap-2.5">
+          <LayoutCard
+            id="scroller"
+            name="Scroller"
+            vibe="Grid up to 3 · swipe sideways for more"
+            active={style.listingsLayout === 'scroller'}
+            onClick={() => updateStyle({ listingsLayout: 'scroller' })}
+          />
+          <LayoutCard
+            id="grid"
+            name="Grid"
+            vibe="Wraps onto more rows · no horizontal scroll"
+            active={style.listingsLayout === 'grid'}
+            onClick={() => updateStyle({ listingsLayout: 'grid' })}
+          />
         </div>
       </Section>
 
@@ -260,22 +321,64 @@ function Section({
   subtitle,
   action,
   children,
+  collapsible,
+  defaultCollapsed = true,
+  collapsedPreview,
 }: {
   title: string
   subtitle?: string
   action?: React.ReactNode
   children: React.ReactNode
+  /** Enables expand/collapse on the section. When collapsed, only
+   *  the header + `collapsedPreview` show — children are hidden. */
+  collapsible?: boolean
+  /** Initial collapse state when `collapsible` is true. Defaults to
+   *  collapsed so the Style tab opens compact. */
+  defaultCollapsed?: boolean
+  /** Slim preview of the currently-selected item, shown to the right
+   *  of the header while collapsed (e.g., active palette swatch,
+   *  font name, shape glyph). Only used when `collapsible` is true. */
+  collapsedPreview?: React.ReactNode
 }) {
+  const [collapsed, setCollapsed] = useState(collapsible ? defaultCollapsed : false)
+  const isCollapsed = collapsible && collapsed
+
+  const HeaderInner = (
+    <>
+      <div className="min-w-0 text-left flex-1">
+        <p className="text-[14px] font-bold text-ink">{title}</p>
+        {subtitle && <p className="text-[12px] text-smoke mt-0.5">{subtitle}</p>}
+      </div>
+      {collapsible ? (
+        <div className="flex items-center gap-2.5 shrink-0">
+          {isCollapsed && collapsedPreview}
+          <ChevronRight
+            size={14}
+            className="text-ash transition-transform"
+            style={{ transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)' }}
+          />
+        </div>
+      ) : (
+        action
+      )}
+    </>
+  )
+
   return (
     <div className="bg-warm-white border border-border-light rounded-[18px] p-4 sm:p-5">
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div>
-          <p className="text-[14px] font-bold text-ink">{title}</p>
-          {subtitle && <p className="text-[12px] text-smoke mt-0.5">{subtitle}</p>}
-        </div>
-        {action}
-      </div>
-      {children}
+      {collapsible ? (
+        <button
+          type="button"
+          onClick={() => setCollapsed((v) => !v)}
+          aria-expanded={!isCollapsed}
+          className={`w-full flex items-start justify-between gap-3 cursor-pointer ${isCollapsed ? '' : 'mb-3'}`}
+        >
+          {HeaderInner}
+        </button>
+      ) : (
+        <div className="flex items-start justify-between gap-3 mb-3">{HeaderInner}</div>
+      )}
+      {!isCollapsed && children}
     </div>
   )
 }
@@ -350,6 +453,55 @@ function FontCard({
       <p className="text-[12.5px] font-semibold text-ink mt-2">{font.name}</p>
       <p className="text-[10.5px] text-smoke truncate">{font.vibe}</p>
     </motion.button>
+  )
+}
+
+/* ───────────────────────────────────────────────────────────────
+   Collapsed-section previews — slim "active item" chips rendered to
+   the right of a Section header when it's collapsed. They give the
+   agent at-a-glance feedback for what's currently selected without
+   expanding the picker.
+   ─────────────────────────────────────────────────────────────── */
+function PaletteSwatchPreview({ palette }: { palette: ReturnType<typeof getPalette> }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex items-center -space-x-1">
+        <div className="w-4 h-4 rounded-full ring-1 ring-black/5" style={{ background: palette.cardBg }} />
+        <div className="w-4 h-4 rounded-full ring-1 ring-black/5" style={{ background: palette.accent }} />
+        <div className="w-4 h-4 rounded-full ring-1 ring-black/5" style={{ background: palette.textPrimary }} />
+      </div>
+      <span className="text-[12px] font-semibold text-ink truncate max-w-[100px]">{palette.name}</span>
+    </div>
+  )
+}
+
+function FontNamePreview({ font }: { font: ReturnType<typeof getFont> }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span
+        className="text-[16px] text-ink leading-none"
+        style={{ fontFamily: font.display, fontWeight: 600, letterSpacing: '-0.02em' }}
+      >
+        Aa
+      </span>
+      <span className="text-[12px] font-semibold text-ink truncate max-w-[100px]">{font.name}</span>
+    </div>
+  )
+}
+
+function ShapeGlyphPreview({ shape, accent }: { shape: (typeof SHAPES)[number]; accent: string }) {
+  // Same path-extraction trick as ShapeCard — pull the SVG `d` out of
+  // the wrapper string so we can render the actual silhouette.
+  const rawClip = shape.path(11, 11, 18)
+  const dMatch = rawClip.match(/path\('([^']+)'\)/)
+  const dAttr = dMatch ? dMatch[1] : ''
+  return (
+    <div className="flex items-center gap-2">
+      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden>
+        <path d={dAttr} fill={accent} />
+      </svg>
+      <span className="text-[12px] font-semibold text-ink truncate max-w-[100px]">{shape.name}</span>
+    </div>
   )
 }
 
@@ -442,6 +594,72 @@ function FrameRow({
 /* ───────────────────────────────────────────────────────────────
    ToggleRow — labeled iOS-style switch
    ─────────────────────────────────────────────────────────────── */
+function LayoutCard({
+  id,
+  name,
+  vibe,
+  active,
+  onClick,
+}: {
+  id: 'scroller' | 'grid'
+  name: string
+  vibe: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="relative rounded-[14px] p-3.5 text-left cursor-pointer transition-colors"
+      style={{
+        background: active ? 'var(--brand-soft, #FFE5DA)' : 'var(--color-warm-white, #FAFAF8)',
+        outline: active ? '2px solid var(--brand-orange, #D94A1F)' : '1px solid var(--color-border-light, rgba(10,14,23,0.10))',
+        outlineOffset: active ? '-2px' : '-1px',
+      }}
+    >
+      <div className="h-[54px] mb-2 rounded-[10px] bg-cream overflow-hidden relative">
+        {id === 'scroller' ? (
+          <div className="absolute inset-0 flex items-center gap-1.5 px-2">
+            <div className="w-[28%] h-[44px] rounded-[6px] bg-pearl shrink-0" />
+            <div className="w-[28%] h-[44px] rounded-[6px] bg-pearl shrink-0" />
+            <div className="w-[28%] h-[44px] rounded-[6px] bg-pearl shrink-0" />
+            <div className="w-[28%] h-[44px] rounded-[6px] bg-pearl/70 shrink-0" />
+            <div className="w-[28%] h-[44px] rounded-[6px] bg-pearl/40 shrink-0" />
+          </div>
+        ) : (
+          // 3×2 grid — illustrates the wrapping behavior (no horizontal
+          // scroll; rows stack downward as more cards are added).
+          <div className="absolute inset-0 grid grid-cols-3 gap-1 p-1.5">
+            <div className="rounded-[4px] bg-pearl" />
+            <div className="rounded-[4px] bg-pearl" />
+            <div className="rounded-[4px] bg-pearl" />
+            <div className="rounded-[4px] bg-pearl" />
+            <div className="rounded-[4px] bg-pearl" />
+            <div className="rounded-[4px] bg-pearl" />
+          </div>
+        )}
+      </div>
+      {/* Active card has a cream/peach bg that does NOT theme with
+          the dashboard — so theme-aware `text-ink` / `text-smoke`
+          (which flip to light in dark mode) become invisible on it.
+          Pin the colors to dark hex values when active so the labels
+          stay legible regardless of dashboard theme. */}
+      <p
+        className="text-[13px] font-bold text-ink"
+        style={active ? { color: '#0A0E17' } : undefined}
+      >
+        {name}
+      </p>
+      <p
+        className="text-[11px] text-smoke"
+        style={active ? { color: 'rgba(10,14,23,0.6)' } : undefined}
+      >
+        {vibe}
+      </p>
+    </button>
+  )
+}
+
 function ToggleRow({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
     <div className="flex items-center justify-between py-1">
@@ -546,20 +764,20 @@ function PlatformRow({
         {Logo ? <Logo size={16} /> : <Link2 size={14} />}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-semibold text-ink truncate">{meta?.label || platform.id}</p>
+        <p className="text-[13px] font-semibold text-ink truncate">{meta?.name || platform.id}</p>
         <p className="text-[11.5px] text-smoke truncate">{platform.username}</p>
       </div>
       <button
         onClick={onEdit}
         className="w-8 h-8 rounded-[8px] flex items-center justify-center text-graphite cursor-pointer hover:bg-pearl"
-        aria-label={`Edit ${meta?.label || platform.id}`}
+        aria-label={`Edit ${meta?.name || platform.id}`}
       >
         <Edit3 size={13} />
       </button>
       <button
         onClick={onRemove}
         className="w-8 h-8 rounded-[8px] flex items-center justify-center text-live-red/70 cursor-pointer hover:bg-live-red/10"
-        aria-label={`Remove ${meta?.label || platform.id}`}
+        aria-label={`Remove ${meta?.name || platform.id}`}
       >
         <X size={14} />
       </button>

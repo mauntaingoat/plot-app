@@ -45,7 +45,7 @@ export default function Terms() {
 
             <section>
               <h2>2. What Reelst Is</h2>
-              <p>Reelst is a map-based profile platform built for licensed real estate agents ("Agents"). Agents pin listings, sold properties, and neighborhood "Spotlights" to real addresses, attach reels, photos, video walkthroughs, and live broadcasts to those pins, and share a single public profile link with prospective buyers ("Visitors"). Visitors can browse a map, watch content, save pins, follow Agents, and request showings without creating an account.</p>
+              <p>Reelst is a map-based profile platform built for licensed real estate agents ("Agents"). Agents pin listings, sold properties, and neighborhood "Spotlights" to real addresses, attach reels, photos, and video walkthroughs to those pins, and share a single public profile link with prospective buyers ("Visitors"). Visitors can browse a map, watch content, save listings, subscribe to an Agent's email digest, and request showings without creating an account.</p>
             </section>
 
             <section>
@@ -61,12 +61,12 @@ export default function Terms() {
 
             <section>
               <h2>5. Visitor Conduct</h2>
-              <p>Visitors may browse public Agent profiles, follow Agents, save Pins, and submit Showing Requests. Visitors must provide truthful contact information when submitting a Showing Request and may only do so for legitimate property-touring purposes. Spam, harassment, and fraudulent inquiries will result in IP-level blocks.</p>
+              <p>Visitors may browse public Agent profiles, save listings, subscribe to an Agent's email digest, submit Showing Requests, and Wave at Agents with questions about a listing. Visitors must provide truthful contact information when submitting a Showing Request, digest signup, or Wave, and may only do so for legitimate property-touring purposes. Spam, harassment, and fraudulent inquiries will result in IP-level blocks.</p>
             </section>
 
             <section>
               <h2>6. Content Ownership & License</h2>
-              <p>You retain ownership of all content you post to Reelst — including reels, videos, photos, captions, Spotlight descriptions, and listing copy. By posting content, you grant Reelst a non-exclusive, worldwide, royalty-free license to host, transcode, display, reproduce, and distribute that content as needed to operate and promote the Service (including in our discovery surfaces such as Explore and Following feeds).</p>
+              <p>You retain ownership of all content you post to Reelst — including reels, videos, photos, captions, Spotlight descriptions, and listing copy. By posting content, you grant Reelst a non-exclusive, worldwide, royalty-free license to host, transcode, display, reproduce, and distribute that content as needed to operate and promote the Service (including on your public profile and in marketing materials with your permission).</p>
               <p>You represent that you own or have the rights to all content you post and that posting it does not infringe any third-party rights (including photography copyrights, music rights, and right-of-publicity).</p>
             </section>
 
@@ -77,7 +77,7 @@ export default function Terms() {
 
             <section>
               <h2>8. Subscriptions, Tiers & Billing</h2>
-              <p>Reelst offers a free tier and paid tiers (currently <strong>Pro</strong> and <strong>Studio</strong>). Paid subscriptions are billed monthly in advance. You can cancel from your dashboard at any time; cancellation takes effect at the end of the current billing period and your account drops to the Free tier. Tier-gated features (e.g., advanced analytics, Explore visibility, live broadcasts, unlimited active Pins) are available only while a qualifying subscription is active. We reserve the right to change pricing or tier composition with 30 days' notice. Refunds are handled on a case-by-case basis.</p>
+              <p>Reelst offers a free tier and a paid <strong>Pro</strong> tier. Paid subscriptions are billed monthly in advance. You can cancel from your dashboard at any time; cancellation takes effect at the end of the current billing period and your account drops to the Free tier. Tier-gated features (e.g., advanced analytics, unlimited active Pins, expanded customization) are available only while a qualifying subscription is active. We reserve the right to change pricing or tier composition with 30 days' notice. Refunds are handled on a case-by-case basis.</p>
             </section>
 
             <section>

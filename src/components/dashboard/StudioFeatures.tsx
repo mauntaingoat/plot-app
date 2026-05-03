@@ -1,16 +1,20 @@
 import { useMemo, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { BookmarkSimple as Bookmark, Palette, Check, Sparkle as Sparkles, TrendUp as TrendingUp } from '@phosphor-icons/react'
+import { Heart, Palette, Check, Sparkle as Sparkles, TrendUp as TrendingUp } from '@phosphor-icons/react'
 import { getSavedMapInsights } from '@/lib/firestore'
 import type { Pin, UserDoc } from '@/lib/types'
 
-// ── Saved Map Insights ──
+// ── Audience Crossover ──
+// Shows what other agents the people who saved you also save. Helps
+// you understand your competitive set + who your buyers are also
+// browsing. Backend aggregates digestSubscriptions by emailHash —
+// any email subscribed to multiple agents counts as a crossover.
 interface SavedMapInsightsProps {
   pins: Pin[]
   agentId?: string
 }
 
-export function SavedMapInsights({ pins, agentId }: SavedMapInsightsProps) {
+export function SavedMapInsights({ agentId }: SavedMapInsightsProps) {
   const [insights, setInsights] = useState<{ pattern: string; overlap: string; strength: number; savers: number }[]>([])
 
   useEffect(() => {
@@ -21,13 +25,12 @@ export function SavedMapInsights({ pins, agentId }: SavedMapInsightsProps) {
     <div className="bg-warm-white rounded-[18px] border border-border-light p-5">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-[14px] font-bold text-ink flex items-center gap-2">
-            Saved Map Insights
-            <span className="px-1.5 py-0.5 rounded-full bg-tangerine/15 text-[9px] font-bold text-tangerine uppercase tracking-wider">Studio</span>
+          <h3 className="text-[14px] font-bold text-ink">
+            Audience Crossover
           </h3>
-          <p className="text-[11px] text-smoke mt-0.5">Cross-listing patterns from your audience</p>
+          <p className="text-[11px] text-smoke mt-0.5">Other agents your saves also follow — your competitive set, anonymized.</p>
         </div>
-        <Bookmark size={14} className="text-smoke" />
+        <Heart size={14} className="text-smoke" />
       </div>
       <div className="space-y-2.5">
         {insights.map((ins, i) => (
@@ -40,8 +43,7 @@ export function SavedMapInsights({ pins, agentId }: SavedMapInsightsProps) {
           >
             <div className="flex items-start justify-between gap-3 mb-2">
               <div className="flex-1 min-w-0">
-                <p className="text-[12px] text-smoke">Users who save</p>
-                <p className="text-[13px] font-bold text-ink truncate">{ins.pattern}</p>
+                <p className="text-[12px] text-smoke">People who saved you</p>
                 <p className="text-[12px] text-smoke mt-1">also save</p>
                 <p className="text-[13px] font-bold text-tangerine truncate">{ins.overlap}</p>
               </div>
@@ -52,11 +54,15 @@ export function SavedMapInsights({ pins, agentId }: SavedMapInsightsProps) {
             </div>
             <div className="flex items-center gap-1.5 pt-2 border-t border-border-light">
               <TrendingUp size={11} className="text-sold-green" />
-              <span className="text-[11px] text-smoke">Based on {ins.savers} savers</span>
+              <span className="text-[11px] text-smoke">Based on {ins.savers} shared savers</span>
             </div>
           </motion.div>
         ))}
-        {insights.length === 0 && <p className="text-[12px] text-smoke text-center py-4">No save data yet.</p>}
+        {insights.length === 0 && (
+          <p className="text-[12px] text-smoke text-center py-4">
+            Not enough save data yet. Crossover unlocks once buyers start saving multiple agents.
+          </p>
+        )}
       </div>
     </div>
   )

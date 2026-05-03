@@ -194,8 +194,8 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
               <div className="grid grid-cols-2 gap-2 text-[12px]">
                 <Stat icon={<Clock size={12} />} label="Joined" value={fmtDate(lookedUp.createdAt)} />
                 <Stat icon={<Clock size={12} />} label="Last active" value={fmtDate((lookedUp as any).lastActiveAt)} />
-                <Stat icon={<Users size={12} />} label="Followers" value={String(lookedUp.followerCount)} />
-                <Stat icon={<Users size={12} />} label="Following" value={String(lookedUp.followingCount)} />
+                <Stat icon={<Users size={12} />} label="Saves" value={String((lookedUp as any).subscriberCount ?? 0)} />
+                <Stat icon={<Users size={12} />} label="Pins" value={String((lookedUp as any).pinCount ?? 0)} />
               </div>
 
               {lookedUp.licenseNumber && (
@@ -243,13 +243,11 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
                 <span className="text-[13px] font-bold text-ink">Gift Subscription</span>
               </div>
               <div className="flex flex-wrap gap-2">
-                {(['pro', 'studio'] as UserTier[]).map((tier) => (
-                  [30, 60, 90, null].map((days) => (
-                    <button key={`${tier}-${days}`} onClick={() => handleGift(tier, days)}
-                      className="px-3 py-1.5 rounded-full bg-warm-white border border-border-light text-[11px] font-semibold text-graphite hover:border-tangerine/30 cursor-pointer transition-colors">
-                      {tier} {days ? `${days}d` : '∞'}
-                    </button>
-                  ))
+                {([30, 60, 90, null] as Array<number | null>).map((days) => (
+                  <button key={`pro-${days}`} onClick={() => handleGift('pro', days)}
+                    className="px-3 py-1.5 rounded-full bg-warm-white border border-border-light text-[11px] font-semibold text-graphite hover:border-tangerine/30 cursor-pointer transition-colors">
+                    pro {days ? `${days}d` : '∞'}
+                  </button>
                 ))}
                 {lookedUp.giftTier && (
                   <button onClick={handleRevokeGift}

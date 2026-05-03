@@ -112,7 +112,7 @@ export default function ContentEdit() {
               id: content.id,
               kind: 'carousel',
               photos,
-              aspect: content.aspect || '4:5',
+              aspect: (content.aspect as import('@/features/content-create/types').CreateAspect) || '4:5',
             })
           }
         }

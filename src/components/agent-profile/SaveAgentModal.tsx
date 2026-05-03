@@ -42,6 +42,7 @@ export function SaveAgentModal({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [alreadySubscribed, setAlreadySubscribed] = useState(false)
   const sheetRef = useRef<HTMLDivElement>(null)
   // CSS data-visible lifecycle so swipe-to-dismiss (which mutates
   // transform) and the entry/exit animation share the same CSS
@@ -64,12 +65,22 @@ export function SaveAgentModal({
     setSubmitting(true)
     setError(null)
     try {
-      await subscribeToAgentDigest({ agentId, email: cleanEmail, source })
+      const res = await subscribeToAgentDigest({ agentId, email: cleanEmail, source })
+      setAlreadySubscribed(res.alreadyExisted)
       setSuccess(true)
       onSubscribed?.(cleanEmail)
     } catch (err: any) {
-      console.warn('[SaveAgentModal] subscribe failed:', err)
-      setError(err?.message || 'Something went wrong. Try again.')
+      console.warn('[SaveAgentModal] subscribe failed:', { code: err?.code, message: err?.message, details: err?.details, raw: err })
+      const friendly = err?.code === 'functions/resource-exhausted'
+        ? 'You\'ve already saved this agent recently.'
+        : err?.code === 'functions/not-found'
+        ? 'This agent isn\'t available anymore.'
+        : err?.code === 'functions/invalid-argument'
+        ? (err?.message || 'Please check your email.')
+        : err?.code === 'functions/internal'
+        ? 'Something went wrong on our end. Try again in a moment.'
+        : err?.message || 'Something went wrong. Try again.'
+      setError(friendly)
     } finally {
       setSubmitting(false)
     }
@@ -84,6 +95,7 @@ export function SaveAgentModal({
         setEmail('')
         setError(null)
         setSuccess(false)
+        setAlreadySubscribed(false)
       }
     }, 300)
   }
@@ -106,9 +118,10 @@ export function SaveAgentModal({
         ref={sheetRef}
         data-visible={visible}
         onClick={(e) => e.stopPropagation()}
-        className="capture-sheet relative w-full md:max-w-[440px] bg-warm-white rounded-t-[28px] md:rounded-[28px] overflow-hidden"
+        className="capture-sheet relative w-full md:max-w-[440px] rounded-t-[28px] md:rounded-[28px] overflow-hidden"
         style={{
-          fontFamily: 'var(--font-humanist)',
+          background: 'var(--page-canvas)',
+          color: 'var(--text-primary)',
           boxShadow: '0 -20px 60px -16px rgba(10,14,23,0.35), 0 30px 80px -30px rgba(10,14,23,0.4)',
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           touchAction: 'pan-y',
@@ -147,15 +160,15 @@ export function SaveAgentModal({
                     ) : (
                       <div
                         className="w-14 h-14 rounded-full flex items-center justify-center"
-                        style={{ background: 'var(--brand-grad)' }}
+                        style={{ background: 'var(--accent)', color: 'var(--accent-ink)' }}
                       >
-                        <Heart weight="fill" size={22} className="text-white" />
+                        <Heart weight="fill" size={22} />
                       </div>
                     )}
                     <div className="flex-1">
                       <p
-                        className="text-tangerine"
                         style={{
+                          color: 'var(--accent)',
                           fontFamily: 'var(--font-mono)',
                           fontSize: '10.5px',
                           fontWeight: 600,
@@ -166,8 +179,8 @@ export function SaveAgentModal({
                         Save Agent
                       </p>
                       <h2
-                        className="text-ink"
                         style={{
+                          color: 'var(--text-primary)',
                           fontSize: '22px',
                           fontWeight: 600,
                           letterSpacing: '-0.025em',
@@ -180,8 +193,9 @@ export function SaveAgentModal({
                   </div>
 
                   <p
-                    className="text-graphite mb-5"
+                    className="mb-5"
                     style={{
+                      color: 'var(--text-secondary)',
                       fontSize: '14.5px',
                       fontWeight: 400,
                       lineHeight: 1.55,
@@ -221,7 +235,6 @@ export function SaveAgentModal({
                       disabled={submitting || !email}
                       className="brand-btn-flat w-full h-12 rounded-full inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{
-                        fontFamily: 'var(--font-humanist)',
                         fontSize: '15px',
                         fontWeight: 600,
                         boxShadow: '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)',
@@ -239,8 +252,8 @@ export function SaveAgentModal({
                   </form>
 
                   <p
-                    className="text-smoke mt-4 text-center"
-                    style={{ fontSize: '11.5px', fontWeight: 400 }}
+                    className="mt-4 text-center"
+                    style={{ color: 'var(--text-muted)', fontSize: '11.5px', fontWeight: 400 }}
                   >
                     By subscribing, you agree to receive emails from {agentName} via Reelst.
                   </p>
@@ -259,32 +272,38 @@ export function SaveAgentModal({
                     transition={{ delay: 0.05, type: 'spring', stiffness: 420, damping: 22 }}
                     className="w-16 h-16 rounded-full mx-auto mb-5 flex items-center justify-center"
                     style={{
-                      background: 'linear-gradient(135deg, #34C759 0%, #1F8E3D 100%)',
-                      boxShadow: '0 12px 28px -10px rgba(52,199,89,0.5)',
+                      background: alreadySubscribed
+                        ? 'linear-gradient(135deg, #FF8552 0%, #D94A1F 100%)'
+                        : 'linear-gradient(135deg, #34C759 0%, #1F8E3D 100%)',
+                      boxShadow: alreadySubscribed
+                        ? '0 12px 28px -10px rgba(217,74,31,0.5)'
+                        : '0 12px 28px -10px rgba(52,199,89,0.5)',
                     }}
                   >
-                    <Check weight="bold" size={28} className="text-white" />
+                    {alreadySubscribed
+                      ? <Heart weight="fill" size={28} className="text-white" />
+                      : <Check weight="bold" size={28} className="text-white" />}
                   </motion.div>
 
                   <h2
-                    className="text-ink mb-2"
-                    style={{ fontSize: '22px', fontWeight: 600, letterSpacing: '-0.025em' }}
+                    className="mb-2"
+                    style={{ color: 'var(--text-primary)', fontSize: '22px', fontWeight: 600, letterSpacing: '-0.025em' }}
                   >
-                    You're on the list.
+                    {alreadySubscribed ? "You're already subscribed." : "You're on the list."}
                   </h2>
                   <p
-                    className="text-graphite mb-6"
-                    style={{ fontSize: '14.5px', fontWeight: 400, lineHeight: 1.55 }}
+                    className="mb-6"
+                    style={{ color: 'var(--text-secondary)', fontSize: '14.5px', fontWeight: 400, lineHeight: 1.55 }}
                   >
-                    We'll email you when {agentName} has fresh listings or reels.
-                    Look out for the first digest soon.
+                    {alreadySubscribed
+                      ? <>This email is already on {agentName}'s digest list. You'll get the next update when it goes out.</>
+                      : <>We'll email you when {agentName} has fresh listings or reels. Look out for the first digest soon.</>}
                   </p>
 
                   <button
                     onClick={handleClose}
                     className="brand-btn-flat h-11 px-6 rounded-full inline-flex items-center gap-1.5 cursor-pointer"
                     style={{
-                      fontFamily: 'var(--font-humanist)',
                       fontSize: '14px',
                       fontWeight: 600,
                       boxShadow: '0 6px 18px -4px rgba(217,74,31,0.4), inset 0 1px 0 rgba(255,255,255,0.24)',

@@ -3,21 +3,12 @@ import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSwipeToDismiss } from '@/hooks/useSwipeToDismiss'
 import { useSheetLifecycle } from '@/hooks/useSheetLifecycle'
-import { CaretRight as ChevronRight, CaretLeft as ChevronLeft, Users, Globe, X, MapTrifold as Map, Play, BookmarkSimple as Bookmark, UserCircle, SignIn as LogIn } from '@phosphor-icons/react'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
-import { displayAddressWithUnit } from '@/lib/format'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { MapCanvas } from '@/components/map/MapCanvas'
-import { MapOverlay } from '@/components/map/MapOverlay'
-import { PeekDrawer } from '@/components/map/PeekDrawer'
 import { ContentFeed } from '@/components/map/ContentFeed'
-import { PinCard } from '@/components/dashboard/PinCard'
 import { ListingModal } from '@/components/viewers/ListingModal'
-import { MapIndicators } from '@/components/map/MapIndicators'
-import { DarkBottomSheet } from '@/components/ui/BottomSheet'
-import { formatPrice } from '@/lib/firestore'
-import { Avatar } from '@/components/ui/Avatar'
-import { AgentDetailSheet, type AgentMode } from '@/components/sheets/AgentDetailSheet'
+import { AgentDetailSheet } from '@/components/sheets/AgentDetailSheet'
 import { AuthSheet } from '@/components/sheets/AuthSheet'
 import { AgentProfileHeader } from '@/components/agent-profile/AgentProfileHeader'
 import { SaveAgentModal } from '@/components/agent-profile/SaveAgentModal'
@@ -28,13 +19,9 @@ import { resolveStyle, getPalette, getFont, ensureFontLoaded, paletteShadowColor
 import { hasWebGL } from '@/lib/webgl'
 import { SEOHead } from '@/components/marketing/SEOHead'
 import { StructuredData } from '@/components/marketing/StructuredData'
-import { SidebarPanels, type SidebarPanelType } from '@/components/agent-profile/SidebarPanels'
-import { AgentPill } from '@/components/agent-profile/AgentPill'
-import { SidebarNavButton } from '@/components/agent-profile/SidebarNavButton'
 import { useMapStore, applyPropertyFilters } from '@/stores/mapStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAgent, useAgentPins } from '@/hooks/useQueries'
-import { useFollow, useFollowingList } from '@/hooks/useFollow'
 import { AccountSheet } from '@/components/sheets/AccountSheet'
 import { useSaves } from '@/hooks/useSaves'
 import { firebaseConfigured } from '@/config/firebase'
@@ -80,7 +67,7 @@ function useIsDesktop() {
 
 export default function AgentProfile() {
   const { username } = useParams<{ username: string }>()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const isPreview = searchParams.get('preview') === 'true'
   const navigate = useNavigate()
   const mapContainerRef = useRef<HTMLDivElement>(null)
@@ -95,7 +82,7 @@ export default function AgentProfile() {
   const isDesktop = useIsDesktop()
 
   // Data fetching via React Query (cached across navigations)
-  const { data: agent = null, isLoading: agentLoading, bumpFollowerCount } = useAgent(username)
+  const { data: agent = null, isLoading: agentLoading } = useAgent(username)
   const { data: allPins = [] } = useAgentPins(agent)
 
   // Resolve the agent's customization (palette / font / shape /
@@ -140,9 +127,6 @@ export default function AgentProfile() {
   const loading = agentLoading
   const notFound = !agentLoading && !agent
 
-  // Follow state via hook (Firestore in prod, localStorage in demo)
-  const { isFollowing, toggle: toggleFollow } = useFollow(agent?.uid)
-  const { followingIds } = useFollowingList()
   const { saves } = useSaves()
   const [viewMode, setViewMode] = useState<'map' | 'feed'>('map')
   const [loadingComplete, setLoadingComplete] = useState(false)
@@ -161,24 +145,6 @@ export default function AgentProfile() {
   const [showAgentDetail, setShowAgentDetail] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
   const [showAccount, setShowAccount] = useState(false)
-  const initialMode = (searchParams.get('mode') as AgentMode) || 'single'
-  const [agentMode, _setAgentMode] = useState<AgentMode>(
-    ['single', 'following', 'explore', 'saved'].includes(initialMode) ? initialMode : 'single'
-  )
-  const setAgentMode = useCallback((mode: AgentMode) => {
-    _setAgentMode(mode)
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev)
-      if (mode === 'single') next.delete('mode')
-      else next.set('mode', mode)
-      return next
-    }, { replace: true })
-  }, [setSearchParams])
-  const [sidebarPanel, setSidebarPanel] = useState<SidebarPanelType>(null)
-  const [enabledAgentIds, setEnabledAgentIds] = useState<Set<string>>(new Set())
-
-  // Following mode starts empty — user selects who to show
-  // (followingIds are available in the sidebar for selection, but nothing enabled by default)
 
   const { setViewingAgentId, activeFilters, propertyFilters } = useMapStore()
   const { userDoc: currentUser } = useAuthStore()
@@ -187,43 +153,25 @@ export default function AgentProfile() {
   // profile but doesn't share auth state across the iframe boundary).
   const isOwnProfile = isPreview || !!(currentUser?.uid && agent?.uid && currentUser.uid === agent.uid)
 
-  const [followingAgents, setFollowingAgents] = useState<UserDoc[]>([])
-  const nearbyAgents = followingAgents
-
+  // Track public profile visits — once per session per agent. Skipped
+  // when the viewer is the agent themselves OR when this is the
+  // dashboard preview iframe (those would pollute the agent's own
+  // analytics). `localHour` is the visitor's wall-clock hour so the
+  // dashboard's "When viewers are active" chart buckets by visitor
+  // time, not server UTC.
   useEffect(() => {
-    if (followingIds.length === 0) { setFollowingAgents([]); return }
-    Promise.all(followingIds.map((uid) =>
-      import('@/lib/firestore').then(({ getUserById }) => getUserById(uid))
-    )).then((results) => {
-      setFollowingAgents(results.filter(Boolean) as UserDoc[])
+    if (!agent?.uid || isOwnProfile) return
+    const sessionKey = `reelst-pv-${agent.uid}`
+    if (sessionStorage.getItem(sessionKey)) return
+    sessionStorage.setItem(sessionKey, '1')
+    Promise.all([
+      import('firebase/functions'),
+      import('@/config/firebase'),
+    ]).then(([{ getFunctions, httpsCallable }, { app }]) => {
+      const fn = httpsCallable(getFunctions(app ?? undefined), 'trackProfileVisit')
+      fn({ agentId: agent.uid, localHour: new Date().getHours() }).catch(() => {})
     }).catch(() => {})
-  }, [followingIds])
-  const [explorePins, setExplorePins] = useState<Pin[]>([])
-  const [followingPins, setFollowingPins] = useState<Pin[]>([])
-  const [savedPinsFull, setSavedPinsFull] = useState<Pin[]>([])
-
-  useEffect(() => {
-    import('@/lib/firestore').then(({ getExplorePins }) => getExplorePins().then(setExplorePins).catch(() => {}))
-  }, [])
-
-  useEffect(() => {
-    if (followingIds.length > 0) {
-      import('@/lib/firestore').then(({ getPinsByAgentIds }) => getPinsByAgentIds(followingIds).then(setFollowingPins).catch(() => {}))
-    } else {
-      setFollowingPins([])
-    }
-  }, [followingIds])
-
-  const savesKey = saves.map((s) => s.pinId).sort().join(',')
-  useEffect(() => {
-    if (saves.length > 0) {
-      const pinIds = [...new Set(saves.map((s) => s.pinId))]
-      import('@/lib/firestore').then(({ getPinsByIds }) => getPinsByIds(pinIds).then(setSavedPinsFull).catch(() => {}))
-    } else {
-      setSavedPinsFull([])
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [savesKey])
+  }, [agent?.uid, isOwnProfile])
 
   // Default map center: agent's licensed state when no pins exist
   const defaultCenter = useMemo<[number, number] | undefined>(() => {
@@ -259,33 +207,20 @@ export default function AgentProfile() {
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
-  // Merge pins based on agent mode
-  const visiblePins = useMemo(() => {
-    if (agentMode === 'saved') {
-      return savedPinsFull.length > 0 ? savedPinsFull : allPins.filter((p) => saves.some((s) => s.pinId === p.id))
-    }
-    if (agentMode === 'explore') {
-      return explorePins.length > 0 ? explorePins : allPins
-    }
-    if (agentMode === 'following') {
-      if (enabledAgentIds.size === 0) return []
-      return followingPins.filter((p) => enabledAgentIds.has(p.agentId))
-    }
-    return allPins
-  }, [allPins, agentMode, explorePins, followingPins, savedPinsFull, followingIds, saves, agent, enabledAgentIds])
-
+  // Visible pins = the agent's enabled pins. Multi-agent modes
+  // (Following / Explore / Saved) were retired with the picker UI.
   const filteredPins = useMemo(() => {
-    let result = visiblePins
+    let result = allPins
     if (activeFilters.size > 0) result = result.filter((p) => activeFilters.has(p.type))
     result = applyPropertyFilters(result, propertyFilters)
     return result
-  }, [visiblePins, activeFilters, propertyFilters])
+  }, [allPins, activeFilters, propertyFilters])
 
   const pinCounts = useMemo(() => {
     const counts: Record<string, number> = {}
-    visiblePins.forEach((p) => { counts[p.type] = (counts[p.type] || 0) + 1 })
+    allPins.forEach((p) => { counts[p.type] = (counts[p.type] || 0) + 1 })
     return counts
-  }, [visiblePins])
+  }, [allPins])
 
   const handleFilterChange = useCallback(() => {
     const container = mapContainerRef.current?.querySelector('.mapboxgl-canvas')?.parentElement?.parentElement
@@ -299,12 +234,11 @@ export default function AgentProfile() {
   }, [allPins])
 
   const handleFitToPins = useCallback(() => {
-    if (agentMode === 'explore') return // disabled in explore mode
     const container = mapContainerRef.current?.querySelector('.mapboxgl-canvas')?.parentElement?.parentElement
     if (container && (container as any).__plotFitTo) {
       (container as any).__plotFitTo(filteredPins)
     }
-  }, [filteredPins, agentMode])
+  }, [filteredPins])
 
   const handlePinClick = useCallback((pin: Pin) => {
     setSelectedPin(pin)
@@ -325,12 +259,6 @@ export default function AgentProfile() {
       setIndicatorPins({ pins, type })
     }
   }, [])
-
-  const handleFollow = async () => {
-    if (isPreview || isOwnProfile) return
-    bumpFollowerCount(isFollowing ? -1 : 1)
-    await toggleFollow()
-  }
 
   const handleShare = async () => {
     try { await navigator.share({ title: `${agent?.displayName} on Reelst`, url: window.location.href }) }
@@ -598,20 +526,13 @@ export default function AgentProfile() {
   )
 
   // ════════════════════════════════════════════
-  // NEW 3-TAB AGENT PROFILE (default render path)
+  // AGENT PROFILE
   // ════════════════════════════════════════════
-  // Listings / Reels / About — built from the new agent-profile
-  // components. Reuses MapCanvas (via ListingsTab), ContentFeed (via
-  // ReelsTab in immersive viewerMode), and ListingModal for pin taps.
-  // Save Maya CTA replaces follow + buyer-account saves.
-  //
-  // Default render path for everyone — including the agent themselves
-  // and the dashboard preview iframe (?preview=true). The legacy
-  // sidebar layout below is reachable only via ?layout=legacy as a
-  // safety hatch in case the preview iframe regresses on something.
-  const useLegacyLayout = searchParams.get('layout') === 'legacy'
-  if (!useLegacyLayout) {
-    const inventoryCounts = (() => {
+  // Single-agent profile card: header (avatar / name / ticker / bio /
+  // socials) → map peek → listings grid. Reuses MapCanvas (via
+  // ExpandedMapView), ContentFeed (via the immersive viewer launched
+  // from the listings grid), and ListingModal for pin taps.
+  const inventoryCounts = (() => {
       let forSale = 0
       let sold = 0
       let openHouse = 0
@@ -686,6 +607,16 @@ export default function AgentProfile() {
             // `--surround-bg`) on a route wrapper and everything
             // updates in lockstep.
             background: 'var(--card-bg)',
+            // Anchor the bg to the viewport — patterns (topography,
+            // brick, formal) and gradients now scale to viewport
+            // dimensions and stay still while content scrolls
+            // through. The bg is still clipped to the card's bbox,
+            // so on desktop the pattern is visible only within the
+            // 720px column but tiled/scaled relative to the full
+            // window. Note: shorthand `background:` resets
+            // `background-attachment`, so this longhand has to come
+            // AFTER it in source order.
+            backgroundAttachment: 'fixed',
             // When the map is expanded, the card locks to viewport
             // height so the map can fill it without scroll bleed.
             // Otherwise it grows naturally with content.
@@ -719,6 +650,7 @@ export default function AgentProfile() {
             listingFrame={style.frames.listings}
             mapFrame={style.frames.map}
             showMap={showMap}
+            listingsLayout={style.listingsLayout}
             onSelectPin={(pin) => {
               const firstContent = pin.content?.[0]
               if (firstContent) {
@@ -775,6 +707,10 @@ export default function AgentProfile() {
               shapeId={style.shapeId}
               frame={style.frames.map}
               onClose={dismissMap}
+              onRequestOpen={(rect) => {
+                if (rect) setMapOriginRect(rect)
+                setMapExpanded(true)
+              }}
               pins={allPins.filter((p) => p.enabled)}
               agent={agent}
               agentPhotoUrl={agent.photoURL}
@@ -872,7 +808,6 @@ export default function AgentProfile() {
                   isOwnProfile={false}
                   isPreview={false}
                   isSignedIn={false}
-                  agentMode="single"
                   agentSaved={savedSession}
                   onSaveAgent={() => setSaveModalOpen(true)}
                   onChildSheetOpenChange={setImmersiveChildOpen}
@@ -883,486 +818,6 @@ export default function AgentProfile() {
         )}
       </div>
     )
-  }
-
-  // ════════════════════════════════════════════
-  // LEGACY RENDER PATHS (kept for owner preview + /explore revival)
-  // ════════════════════════════════════════════
-  // The agent's own dashboard preview iframe still uses the legacy
-  // desktop layout so the existing preview embed continues to work.
-
-  if (isDesktop) {
-    return (
-      <div className="map-page" style={{ background: '#14161E', fontFamily: 'var(--font-humanist)' }} ref={mapContainerRef}>
-        {seoElement}
-
-        {/* ═══ LEFT SIDEBAR ═══ */}
-        <div className="fixed top-0 left-0 bottom-0 z-[70] flex flex-col" style={{ width: SIDEBAR_W, background: '#14161E', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
-          {/* Logo lockup */}
-          <div className="flex items-center justify-center gap-2.5 py-6 shrink-0">
-            <img src="/reelst-logo.png" alt="Reelst" className="w-8 h-8" />
-            <span className="text-[20px] text-white" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>Reelst</span>
-          </div>
-
-          {/* Nav buttons */}
-          <div className="flex-1 px-4 space-y-1">
-            {/* Select Agent (single mode) */}
-            <SidebarNavButton
-              active={agentMode === 'single'}
-              onClick={() => {
-                setAgentMode('single')
-                setSidebarPanel(sidebarPanel === 'selectAgent' ? null : 'selectAgent')
-              }}
-            >
-              {agentMode === 'single' ? (
-                <>
-                  <Avatar src={agent.photoURL} name={agent.displayName} size={22} ring="none" />
-                  <span className="truncate">{agent.displayName}</span>
-                </>
-              ) : (
-                <>
-                  <UserCircle size={18} />
-                  <span>Select Agent</span>
-                </>
-              )}
-            </SidebarNavButton>
-
-            <div className={isPreview ? 'opacity-40 pointer-events-none' : ''}>
-              <SidebarNavButton
-                active={agentMode === 'following'}
-                onClick={() => {
-                  setAgentMode('following')
-                  setSidebarPanel(sidebarPanel === 'following' ? null : 'following')
-                }}
-              >
-                <Users size={18} /> Following
-              </SidebarNavButton>
-
-              <SidebarNavButton
-                active={agentMode === 'explore'}
-                onClick={() => {
-                  setAgentMode('explore')
-                  setSidebarPanel(sidebarPanel === 'exploreAll' ? null : 'exploreAll')
-                }}
-              >
-                <Globe size={18} /> Explore
-              </SidebarNavButton>
-
-              <div className="h-px bg-white/6 !my-3" />
-
-              <SidebarNavButton
-                active={agentMode === 'saved'}
-                onClick={() => {
-                  setAgentMode('saved')
-                  setSidebarPanel(sidebarPanel === 'saved' ? null : 'saved')
-                }}
-              >
-                <Bookmark size={18} /> Saved
-              </SidebarNavButton>
-            </div>
-          </div>
-
-          {/* Bottom: account / auth */}
-          <div className="px-4 pb-5 pt-3 shrink-0 border-t border-white/6">
-            {currentUser ? (
-              <button onClick={() => setShowAccount(true)}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/5 cursor-pointer hover:bg-white/8 transition-colors text-left">
-                <Avatar src={currentUser.photoURL} name={currentUser.displayName || 'You'} size={28} ring="none" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[12px] font-semibold text-white truncate">{currentUser.displayName || 'You'}</p>
-                  <p className="text-[10px] text-white/35 truncate">@{currentUser.username || 'you'}</p>
-                </div>
-                <ChevronRight size={12} className="text-ghost shrink-0" />
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowAuth(true)}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-tangerine/10 text-tangerine text-[13px] font-semibold cursor-pointer hover:bg-tangerine/15 transition-colors"
-              >
-                <LogIn size={15} />
-                Sign in
-              </button>
-            )}
-            <p className="text-[10px] text-white/15 text-center mt-3">© {new Date().getFullYear()} Reelst</p>
-          </div>
-        </div>
-
-        {/* ═══ SIDEBAR OVERLAY PANELS ═══ */}
-        <SidebarPanels
-          sidebarPanel={sidebarPanel}
-          setSidebarPanel={setSidebarPanel}
-          sidebarWidth={SIDEBAR_W}
-          agent={agent}
-          nearbyAgents={nearbyAgents}
-          enabledAgentIds={enabledAgentIds}
-          onToggleAgent={(id) => {
-            setEnabledAgentIds((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next })
-          }}
-          onSelectAgent={(a) => {
-            setAgentMode('single')
-            if (a.uid !== agent.uid) navigate(`/${a.username}`)
-          }}
-          onSetMode={setAgentMode}
-          isSignedIn={DEMO_MODE || !!currentUser}
-          onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }}
-          savedPins={agentMode === 'saved' ? visiblePins : []}
-        />
-
-        {/* ═══ MAP (rounded rectangle, no extrusion) ═══ */}
-        <div
-          ref={mapShapeRef}
-          className="absolute overflow-hidden will-change-[left,right]"
-          style={{
-            top: PAD,
-            bottom: PAD,
-            left: mapLeft,
-            right: mapRight,
-            borderRadius: CORNER_R,
-            transition: MAP_EASE,
-            boxShadow: '0 8px 30px rgba(0,0,0,0.4), 0 2px 10px rgba(0,0,0,0.2)',
-          }}
-        >
-          <ErrorBoundary label="Map">
-          <MapCanvas
-            pins={filteredPins}
-            agentPhotoUrl={agent.photoURL}
-            onPinClick={handlePinClick}
-            className="absolute inset-0"
-            defaultCenter={defaultCenter}
-            showBackButton={isPreview}
-            onBack={() => navigate('/dashboard')}
-          />
-          </ErrorBoundary>
-
-          {/* ── Live / Open House indicators ── */}
-          <MapIndicators
-            pins={filteredPins}
-            onLiveTap={(livePins) => handleIndicatorTap(livePins, 'live')}
-            onOpenHouseTap={(ohPins) => handleIndicatorTap(ohPins, 'openhouse')}
-          />
-
-          {/* ── Pill + buttons inside map, near top ── */}
-          <AgentPill
-            agent={agent}
-            agentMode={agentMode}
-            totalPins={totalPins}
-            enabledAgentCount={enabledAgentIds.size}
-            isFollowing={isFollowing}
-            isPreview={isPreview}
-            isOwnProfile={isOwnProfile}
-            onProfileClick={() => setShowAgentDetail(true)}
-            onFollow={handleFollow}
-            onShare={handleShare}
-            onFitToPins={handleFitToPins}
-          />
-
-          {/* ── Filters inside map, below pill ── */}
-          <div className="absolute top-[80px] left-0 right-0 z-[35] pointer-events-none">
-            <MapOverlay
-              agent={agent} pinCounts={pinCounts}
-              onFollow={handleFollow} onShare={handleShare}
-              onProfileClick={() => setShowAgentDetail(true)}
-              onFilterChange={handleFilterChange}
-              isFollowing={isFollowing} viewMode="map"
-              isPreview={isPreview} agentMode={agentMode}
-              enabledAgentCount={enabledAgentIds.size}
-              hideHeader centerFilters
-            />
-          </div>
-        </div>
-
-        {/* ═══ EXPAND/COLLAPSE BUTTON ═══ */}
-        <button
-          onClick={() => setFeedExpanded(!feedExpanded)}
-          className="absolute z-[50] w-11 h-11 rounded-full bg-tangerine text-white shadow-lg flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-transform"
-          style={{ top: '50%', marginTop: -22, right: mapRight - 22, transition: MAP_EASE }}
-        >
-          {feedExpanded ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-        </button>
-
-        {/* ═══ CONTENT FEED (9:16) ═══ */}
-        <div
-          className="absolute rounded-2xl bg-midnight overflow-hidden will-change-transform"
-          style={{
-            top: PAD, bottom: PAD, right: PAD, width: FEED_W,
-            borderRadius: CORNER_R,
-            transform: feedExpanded ? 'translateX(0)' : `translateX(${FEED_W + PAD + 20}px)`,
-            opacity: feedExpanded ? 1 : 0,
-            transition: `transform 0.4s ${EASE}, opacity 0.3s ease`,
-            pointerEvents: feedExpanded ? 'auto' : 'none',
-            boxShadow: '0 8px 30px rgba(0,0,0,0.4), 0 2px 10px rgba(0,0,0,0.2)',
-          }}
-        >
-          <ErrorBoundary label="Feed"><ContentFeed pins={filteredPins} agent={agent} onPinTap={(p) => setSelectedPin(p)} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} isOwnProfile={isOwnProfile} /></ErrorBoundary>
-        </div>
-
-        {/* ═══ LISTING MODAL — centered to map ═══ */}
-        <AnimatePresence>
-          {selectedPin && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}
-              className="fixed inset-0 z-[200]" onClick={() => setSelectedPin(null)}>
-              <div className="absolute inset-0 bg-black/40" />
-              <div className="absolute top-0 bottom-0 flex items-center justify-center" style={{ left: mapLeft, right: mapRight, transition: MAP_EASE }}>
-                <motion.div initial={{ opacity: 0, scale: 0.97, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97, y: 20 }}
-                  transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }} onClick={(e) => e.stopPropagation()}
-                  className="bg-obsidian rounded-2xl shadow-2xl flex flex-col overflow-hidden" style={{ height: '88vh', aspectRatio: '9/16', maxWidth: '90vw' }}>
-                  <div className="px-5 pt-4 pb-3 shrink-0 flex items-center justify-between border-b border-border-dark">
-                    <h2 className="text-[16px] text-white truncate flex-1 mr-3" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>{displayAddressWithUnit(selectedPin.address, selectedPin.unit)}</h2>
-                    <button onClick={() => setSelectedPin(null)} className="w-8 h-8 rounded-full bg-charcoal flex items-center justify-center text-ghost hover:text-white cursor-pointer shrink-0"><X size={16} /></button>
-                  </div>
-                  <div className="flex-1 min-h-0 overflow-hidden">
-                    <ListingModal key={`modal-${modalKey}`} pin={selectedPin} agent={agent} onClose={() => { setSelectedPin(null); setSelectedPinTab(undefined) }} isPreview={isPreview} embedded isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} initialTab={selectedPinTab} isOwnProfile={isOwnProfile} />
-                  </div>
-                </motion.div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <AgentDetailSheet
-          isOpen={showAgentDetail}
-          onClose={() => setShowAgentDetail(false)}
-          agent={agent}
-          isFollowing={isFollowing}
-          onFollow={handleFollow}
-          nearbyAgents={nearbyAgents}
-          enabledAgentIds={enabledAgentIds}
-          mapBounds={{ left: mapLeft, right: mapRight }}
-          onToggleAgent={(id) => {
-            setEnabledAgentIds((prev) => {
-              const next = new Set(prev)
-              if (next.has(id)) next.delete(id)
-              else next.add(id)
-              return next
-            })
-          }}
-          onAgentTap={(a) => { setShowAgentDetail(false); navigate(`/${a.username}`) }}
-          isPreview={isPreview}
-          agentMode={agentMode}
-          onSetMode={setAgentMode}
-          currentUser={currentUser}
-          onAccountTap={() => { setShowAgentDetail(false); setShowAccount(true) }}
-          onSignIn={() => { setShowAgentDetail(false); setShowAuth(true) }}
-        />
-
-        <AuthSheet isOpen={showAuth} onClose={() => setShowAuth(false)} mode="signup" />
-        <AccountSheet isOpen={showAccount} onClose={() => setShowAccount(false)} isDesktop
-          onSignOut={async () => { setShowAccount(false); const { auth } = await import('@/config/firebase'); await auth?.signOut(); navigate('/') }}
-          onNavigatePricing={() => { setShowAccount(false); navigate('/pricing') }}
-        />
-
-        {/* Indicator picker — multiple livestreams or open houses.
-            Desktop uses a centered modal (mobile below uses a bottom
-            sheet). Portaled via `fixed` + backdrop so it floats above
-            the map and sidebars regardless of parent stacking. */}
-        <AnimatePresence>
-          {indicatorPins && (
-            <>
-              <motion.div
-                key="ind-backdrop"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="fixed inset-0 z-[400] bg-black/55"
-                onClick={() => setIndicatorPins(null)}
-              />
-              <motion.div
-                key="ind-modal"
-                initial={{ opacity: 0, scale: 0.96, y: 8 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.96, y: 8 }}
-                transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
-                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[410] w-[calc(100vw-48px)] max-w-[640px] max-h-[80vh] bg-obsidian rounded-[22px] shadow-2xl border border-border-dark flex flex-col overflow-hidden"
-              >
-                <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-border-dark">
-                  <h2 className="text-[17px] text-white" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>
-                    {indicatorPins.type === 'live'
-                      ? `${indicatorPins.pins.length} Livestream${indicatorPins.pins.length !== 1 ? 's' : ''}`
-                      : `${indicatorPins.pins.length} Open House${indicatorPins.pins.length !== 1 ? 's' : ''}`}
-                  </h2>
-                  <button
-                    onClick={() => setIndicatorPins(null)}
-                    className="w-8 h-8 rounded-full bg-charcoal flex items-center justify-center text-ghost hover:text-white cursor-pointer transition-colors"
-                    aria-label="Close"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-                <div className="flex-1 overflow-y-auto p-5">
-                  <div className="grid grid-cols-2 gap-3">
-                    {indicatorPins.pins.map((pin) => (
-                      <PinCard
-                        key={pin.id}
-                        pin={pin}
-                        dark
-                        onClick={() => {
-                          const tab = indicatorPins.type === 'openhouse' ? 'listing' as const : 'content' as const
-                          setIndicatorPins(null)
-                          setSelectedPinTab(tab)
-                          setSelectedPin(pin)
-                          setModalKey((k) => k + 1)
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-      </div>
-    )
-  }
-
-  // ═══════════════════════════════════════════
-  // MOBILE (unchanged)
-  // ═══════════════════════════════════════════
-  return (
-    <div className="map-page" ref={mapContainerRef} style={{ fontFamily: 'var(--font-humanist)' }}>
-      {seoElement}
-      <AnimatePresence mode="wait">
-        {viewMode === 'map' ? (
-          <motion.div key="map" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0">
-            <ErrorBoundary label="Map">
-            <MapCanvas
-              pins={filteredPins}
-              agentPhotoUrl={agent.photoURL}
-              onPinClick={handlePinClick}
-              className="absolute inset-0"
-              defaultCenter={defaultCenter}
-              showBackButton={isPreview}
-              onBack={() => navigate('/dashboard')}
-            />
-            </ErrorBoundary>
-            <MapIndicators
-              pins={filteredPins}
-              onLiveTap={(livePins) => handleIndicatorTap(livePins, 'live')}
-              onOpenHouseTap={(ohPins) => handleIndicatorTap(ohPins, 'openhouse')}
-            />
-            <PeekDrawer
-              collapsedContent={
-                <div className="flex items-center justify-between">
-                  <p className="text-[14px] font-semibold text-white">{filteredPins.length} pin{filteredPins.length !== 1 ? 's' : ''}</p>
-                  <p className="text-[12px] text-ghost">Drag up to explore</p>
-                </div>
-              }
-            >
-              <div className="px-4 pb-32">
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  {filteredPins.map((pin) => (
-                    <PinCard key={pin.id} pin={pin} onClick={() => handlePinClick(pin)} dark />
-                  ))}
-                </div>
-                {filteredPins.length === 0 && (
-                  <div className="py-16 text-center"><p className="text-[15px] text-ghost">No pins to show</p></div>
-                )}
-              </div>
-            </PeekDrawer>
-          </motion.div>
-        ) : (
-          <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0">
-            <ErrorBoundary label="Feed"><ContentFeed pins={filteredPins} agent={agent} onPinTap={(p) => setSelectedPin(p)} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} isOwnProfile={isOwnProfile} /></ErrorBoundary>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <MapOverlay
-        agent={agent}
-        pinCounts={pinCounts}
-        onFollow={handleFollow}
-        onShare={handleShare}
-        onProfileClick={() => setShowAgentDetail(true)}
-        onFilterChange={handleFilterChange}
-        isFollowing={isFollowing}
-        viewMode={viewMode}
-        isPreview={isPreview}
-        agentMode={agentMode}
-        enabledAgentCount={enabledAgentIds.size}
-        onFitToPins={handleFitToPins}
-      />
-
-      {/* Map/Feed toggle — bottom right */}
-      <motion.button
-        whileTap={{ scale: 0.88 }}
-        onClick={() => setViewMode(viewMode === 'map' ? 'feed' : 'map')}
-        className="fixed z-[40] right-4 rounded-full flex items-center justify-center cursor-pointer shadow-lg overflow-hidden"
-        style={{
-          bottom: 'calc(env(safe-area-inset-bottom, 8px) + 16px)',
-          width: 52,
-          height: 52,
-          background: viewMode === 'map' ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.30)',
-          backdropFilter: 'blur(16px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(16px) saturate(180%)',
-          border: viewMode === 'map' ? '1px solid rgba(255,255,255,0.35)' : '1px solid rgba(255,255,255,0.10)',
-        }}
-      >
-        {viewMode === 'map' ? <Play size={20} className="text-tangerine" fill="#FF6B3D" /> : <Map size={20} className="text-white" />}
-      </motion.button>
-
-      {selectedPin ? (
-        <ListingModal key={`modal-m-${modalKey}`} pin={selectedPin} agent={agent} onClose={() => { setSelectedPin(null); setSelectedPinTab(undefined) }} isPreview={isPreview} isSignedIn={DEMO_MODE || !!currentUser} onAuthRequired={() => { if (!DEMO_MODE) setShowAuth(true) }} initialTab={selectedPinTab} isOwnProfile={isOwnProfile} />
-      ) : null}
-
-      {/* Indicator picker — multiple livestreams or open houses */}
-      <DarkBottomSheet
-        isOpen={!!indicatorPins}
-        onClose={() => setIndicatorPins(null)}
-        title={indicatorPins?.type === 'live'
-          ? `${indicatorPins.pins.length} Livestream${indicatorPins.pins.length !== 1 ? 's' : ''}`
-          : `${indicatorPins?.pins.length || 0} Open House${(indicatorPins?.pins.length || 0) !== 1 ? 's' : ''}`
-        }
-      >
-        <div className="px-4 pb-8 grid grid-cols-2 gap-3">
-          {indicatorPins?.pins.map((pin) => (
-            <PinCard
-              key={pin.id}
-              pin={pin}
-              dark
-              onClick={() => {
-                const tab = indicatorPins?.type === 'openhouse' ? 'listing' as const : 'content' as const
-                setIndicatorPins(null)
-                setSelectedPinTab(tab)
-                setSelectedPin(pin)
-                setModalKey((k) => k + 1)
-              }}
-            />
-          ))}
-        </div>
-      </DarkBottomSheet>
-
-      <AgentDetailSheet
-        isOpen={showAgentDetail}
-        onClose={() => setShowAgentDetail(false)}
-        agent={agent}
-        isFollowing={isFollowing}
-        onFollow={handleFollow}
-        nearbyAgents={nearbyAgents}
-        enabledAgentIds={enabledAgentIds}
-        onToggleAgent={(id) => {
-          setEnabledAgentIds((prev) => {
-            const next = new Set(prev)
-            if (next.has(id)) next.delete(id)
-            else next.add(id)
-            return next
-          })
-        }}
-        onAgentTap={(a) => { setShowAgentDetail(false); navigate(`/${a.username}`) }}
-        isPreview={isPreview}
-        agentMode={agentMode}
-        onSetMode={setAgentMode}
-        currentUser={currentUser}
-        onAccountTap={() => { setShowAgentDetail(false); setShowAccount(true) }}
-        onSignIn={() => { setShowAgentDetail(false); setShowAuth(true) }}
-      />
-
-      <AuthSheet isOpen={showAuth} onClose={() => setShowAuth(false)} mode="signup" />
-      <AccountSheet isOpen={showAccount} onClose={() => setShowAccount(false)}
-        onSignOut={async () => { setShowAccount(false); const { auth } = await import('@/config/firebase'); await auth?.signOut(); navigate('/') }}
-        onNavigatePricing={() => { setShowAccount(false); navigate('/pricing') }}
-      />
-    </div>
-  )
 }
 
 /**

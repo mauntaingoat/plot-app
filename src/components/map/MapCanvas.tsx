@@ -182,7 +182,6 @@ function createOpenHousePin(img: HTMLImageElement | null, pinType: string, size:
   // fall back to a multi-stop linear gradient if the constructor fails.
   let ringFill: CanvasGradient
   try {
-    // @ts-expect-error createConicGradient may not be in TS lib version
     ringFill = ctx.createConicGradient ? ctx.createConicGradient(-Math.PI / 2, cx, cy) : ctx.createLinearGradient(0, 0, s, s)
   } catch {
     ringFill = ctx.createLinearGradient(0, 0, s, s)
@@ -709,6 +708,16 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
   const animatedPinIds = useRef<{ openHouse: string[]; live: string[] }>({ openHouse: [], live: [] })
   const pinFrames = useRef<Map<string, number>>(new Map()) // per-pin frame counter
   const prevVisibleIds = useRef<Set<string>>(new Set()) // track which pins were visible last tick
+  // Signature cache for the per-pin static images. Keyed by image id
+  // (e.g., `pin-img-${pin.id}`), value is a hash of inputs that
+  // affect the rendered pixels — when the new signature matches the
+  // cached one, we skip the addImage/removeImage churn entirely.
+  // Without this, every parent re-render that produces a new `pins`
+  // array reference re-bakes every pin texture, fragmenting the
+  // Mapbox sprite atlas and (at extremes) starving the style's own
+  // POI icons of atlas slots — surfacing as "black square" fallbacks
+  // on city labels.
+  const pinImgSigRef = useRef<Map<string, string>>(new Map())
   const animIntervalRef = useRef<number | null>(null)
 
   const loadPinImages = useCallback(async (map: mapboxgl.Map, pinList: Pin[]) => {
@@ -750,29 +759,38 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
         queueFrameGeneration(map, loadedImagesRef.current, liveId, 'live', ANIM_FRAMES, (f) => createLiveFrame(liveImg, liveType, f, liveColor, liveGrad))
       }
 
+      // Per-pin signature — captures every input that affects the
+      // baked image. Skipping addImage when the signature matches
+      // the cached one is the main mitigation against atlas
+      // fragmentation (see pinImgSigRef declaration above).
+      const photoSrc = (img as HTMLImageElement)?.src ?? ''
+      const sig = `${photoSrc}|${pType}|${hasOpenHouse ? '1' : '0'}`
+
       // Type-colored ring version (for individual pins).
-      // Always regenerate — pin content/photos may have changed since
-      // the last render, and the thumbnail should reflect the latest.
       // Open-house pins get the rainbow-ringed variant in place of the
       // type-colored ring, mirroring IG stories.
       const imgId = `pin-img-${pin.id}`
-      const imageData = hasOpenHouse
-        ? createOpenHousePin(img, pType)
-        : createPinImage(img, color, pType)
-      if (map.hasImage(imgId)) {
-        map.removeImage(imgId)
+      if (pinImgSigRef.current.get(imgId) !== sig || !map.hasImage(imgId)) {
+        const imageData = hasOpenHouse
+          ? createOpenHousePin(img, pType)
+          : createPinImage(img, color, pType)
+        if (map.hasImage(imgId)) map.removeImage(imgId)
+        map.addImage(imgId, imageData, { pixelRatio: 2 })
+        loadedImagesRef.current.add(imgId)
+        pinImgSigRef.current.set(imgId, sig)
       }
-      map.addImage(imgId, imageData, { pixelRatio: 2 })
-      loadedImagesRef.current.add(imgId)
 
-      // Orange ring version (for mixed-type clusters)
+      // Orange ring version (for mixed-type clusters). Same signature
+      // gate — the cluster ring depends on the pin's type/photo too.
       const orangeId = `pin-img-orange-${pin.id}`
-      const orangeData = createPinImage(img, TANGERINE, pType)
-      if (map.hasImage(orangeId)) {
-        map.removeImage(orangeId)
+      const orangeSig = `${photoSrc}|${pType}|orange`
+      if (pinImgSigRef.current.get(orangeId) !== orangeSig || !map.hasImage(orangeId)) {
+        const orangeData = createPinImage(img, TANGERINE, pType)
+        if (map.hasImage(orangeId)) map.removeImage(orangeId)
+        map.addImage(orangeId, orangeData, { pixelRatio: 2 })
+        loadedImagesRef.current.add(orangeId)
+        pinImgSigRef.current.set(orangeId, orangeSig)
       }
-      map.addImage(orangeId, orangeData, { pixelRatio: 2 })
-      loadedImagesRef.current.add(orangeId)
 
       // Per-pin label pill (price/status/neighborhood name in type-colored pill)
       const label = pin.type === 'sold' ? 'SOLD'
@@ -817,6 +835,20 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
       center: initialCenter, zoom: initialZoom,
       attributionControl: false, interactive, pitchWithRotate: false,
       dragRotate: false, touchPitch: false, minZoom: 3, maxZoom: 16.8, fadeDuration: 0,
+      // Bound the tile cache so long sessions don't accumulate
+      // hundreds of tiles in GPU memory. The default is unbounded;
+      // 50 is plenty for our usage and matches what Mapbox docs
+      // recommend for "limited-zoom" applications. This is the
+      // primary mitigation for the "black squares appearing on POI
+      // labels after extended use" symptom — an over-full texture
+      // atlas was crowding out the style's icon sprite.
+      maxTileCacheSize: 50,
+      // Offload CJK + ideographic glyph rendering to the system
+      // font stack so the GPU glyph atlas stays small. We don't
+      // serve CJK content but the default Mapbox style includes
+      // CJK fallback layers; without this, just having those layers
+      // in the style allocates a large glyph atlas slot.
+      localIdeographFontFamily: 'sans-serif',
     })
 
     // Snapshot viewport on every settle so the next mount (peek ↔
@@ -991,6 +1023,11 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
         lastFrameTime = timestamp
 
         const { openHouse, live } = animatedPinIds.current
+        // Bail BEFORE the queryRenderedFeatures call when there's
+        // nothing to animate. Previously the query ran every 160ms
+        // regardless — cheap individually, but it traverses tile
+        // data and over a long session adds up enough to keep the
+        // GPU warm and pressure the texture cache.
         if (openHouse.length === 0 && live.length === 0) return
 
         // Check which animated pins are actually visible in the viewport

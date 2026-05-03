@@ -6,25 +6,54 @@ interface DataPoint {
   value: number
 }
 
+interface MetricToggleOption<T extends string> {
+  id: T
+  label: string
+}
+
+interface MetricToggle<T extends string> {
+  value: T
+  onChange: (next: T) => void
+  options: MetricToggleOption<T>[]
+}
+
 interface InsightsChartProps {
   data: DataPoint[]
   height?: number
   title?: string
   subtitle?: string
+  /** Optional segmented control rendered top-right of the card. */
+  metricToggle?: MetricToggle<string>
 }
 
-export function InsightsChart({ data, height = 160, title = 'Weekly Views', subtitle = 'Last 7 days' }: InsightsChartProps) {
+export function InsightsChart({ data, height = 160, title = 'Weekly Views', subtitle = 'Last 7 days', metricToggle }: InsightsChartProps) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const maxValue = useMemo(() => Math.max(...data.map((d) => d.value), 1), [data])
   const total = useMemo(() => data.reduce((sum, d) => sum + d.value, 0), [data])
 
   return (
     <div className="bg-warm-white rounded-[18px] border border-border-light p-5">
-      <div className="flex items-center justify-between mb-4">
-        <div>
+      <div className="flex items-center justify-between mb-4 gap-3">
+        <div className="min-w-0">
           <h3 className="text-[14px] font-bold text-ink">{title}</h3>
           <p className="text-[11px] text-smoke mt-0.5">{total.toLocaleString()} total · {subtitle}</p>
         </div>
+        {metricToggle && (
+          <div className="flex items-center bg-cream rounded-full p-0.5 shrink-0">
+            {metricToggle.options.map((opt) => {
+              const active = opt.id === metricToggle.value
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => metricToggle.onChange(opt.id)}
+                  className={`text-[11px] font-semibold px-2.5 py-1 rounded-full cursor-pointer transition-colors ${active ? 'bg-warm-white text-ink shadow-sm' : 'text-smoke hover:text-ink'}`}
+                >
+                  {opt.label}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
       <div className="relative" style={{ height }}>
         <div className="absolute inset-0 flex items-end gap-2">

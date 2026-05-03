@@ -50,13 +50,13 @@ export default function Privacy() {
               <p>When an Agent creates an account we collect: name, email, profile photo, username, brokerage affiliation, license number and state, bio, and any social links you choose to connect (Instagram, TikTok, YouTube, LinkedIn, website, MLS profile).</p>
 
               <h3>Visitor information</h3>
-              <p>Visitors can browse Agent profiles, save pins, and follow Agents. If a Visitor submits a Showing Request, we collect the name, email, phone number, preferred date/time, and any note they provide so we can route the request to the Agent.</p>
+              <p>Visitors can browse Agent profiles, save listings, and subscribe to an Agent's email digest. If a Visitor submits a Showing Request, we collect the name, email, phone number, preferred date/time, and any note they provide so we can route the request to the Agent. If a Visitor submits an email address to subscribe to an Agent's digest, we store that email along with the originating Agent.</p>
 
               <h3>Content & listing data</h3>
               <p>We store the content you publish: reels, photos, video walkthroughs, captions, Spotlight descriptions, listing details (price, beds, baths, sqft, MLS-derived fields, days on market), open-house schedules, and the geographic coordinates associated with each pin.</p>
 
               <h3>Engagement data</h3>
-              <p>We record interactions with your profile and pins — views, taps, saves, follows, content plays — so Agents can see how their territory is performing in their Insights dashboard.</p>
+              <p>We record interactions with your profile and pins — visits, taps, saves, waves, content plays — so Agents can see how their territory is performing in their Insights dashboard.</p>
 
               <h3>Usage & device data</h3>
               <p>We automatically collect general usage information including pages visited, device type, browser, IP address, approximate location (from IP), and referring URLs.</p>
@@ -67,12 +67,12 @@ export default function Privacy() {
 
             <section>
               <h2>3. How We Use Your Information</h2>
-              <p>We use your information to: operate and improve the Service; render your public profile, pins, and content; deliver Showing Requests to the right Agent; personalize discovery surfaces (Following, Explore, Saved); send transactional and product notifications; provide analytics to Agents; detect fraud and enforce our Terms; and comply with legal obligations.</p>
+              <p>We use your information to: operate and improve the Service; render your public profile, pins, and content; deliver Showing Requests and digest signups to the right Agent; send transactional and product notifications; provide analytics to Agents; detect fraud and enforce our Terms; and comply with legal obligations.</p>
             </section>
 
             <section>
               <h2>4. Public vs. Private Information</h2>
-              <p>The following information is <strong>public</strong> on Reelst by design: an Agent's display name, photo, username, bio, brokerage and license info (when provided), connected social links, all published pins (For Sale, Sold, Spotlight) including their addresses, listing details and media, and aggregate engagement counts (followers, saves).</p>
+              <p>The following information is <strong>public</strong> on Reelst by design: an Agent's display name, photo, username, bio, brokerage and license info (when provided), connected social links, and all published pins (For Sale, Sold, Spotlight) including their addresses, listing details, and media. Aggregate engagement counts (visits, saves) are visible only to the Agent in their dashboard.</p>
               <p>The following remains <strong>private</strong>: Visitor email/phone submitted via Showing Requests (visible only to the receiving Agent and to us), draft content not yet published, internal analytics breakdowns, billing details, and any content you've archived.</p>
             </section>
 

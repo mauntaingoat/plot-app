@@ -181,24 +181,16 @@ service cloud.firestore {
     }
 
     // ── DIGEST SUBSCRIPTIONS (Save Maya — email-only) ──
-    // Buyers create subscriptions anonymously (no auth required) — the
-    // doc id is deterministic (`{agentId}_{emailHash}`) so duplicate
-    // saves dedupe naturally. The owning agent can read their own
-    // subscriber list. Updates restricted to status flips (active ↔
-    // unsubscribed) — full doc shape is owned by the server when we
-    // add the digest engine.
+    // Anonymous buyer creates go through the submitDigestSubscription
+    // callable (admin SDK) — direct client writes are blocked so we
+    // don't have to expose read/update on subscription docs. Owning
+    // agent can read their own subscriber list + delete entries.
     match /digestSubscriptions/{subId} {
       allow read: if isSignedIn()
         && resource.data.agentId == request.auth.uid;
-      allow create: if request.resource.data.status == 'active'
-        && request.resource.data.agentId is string
-        && request.resource.data.email is string;
-      allow update: if isSignedIn()
-        && resource.data.agentId == request.auth.uid
-        && request.resource.data.agentId == resource.data.agentId
-        && request.resource.data.email == resource.data.email;
       allow delete: if isSignedIn()
         && resource.data.agentId == request.auth.uid;
+      allow create, update: if false; // Cloud Function only
     }
 
     // ── WAVES (buyer questions on listings) ──

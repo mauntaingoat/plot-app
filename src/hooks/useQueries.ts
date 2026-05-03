@@ -21,7 +21,8 @@ export function useAgent(username: string | undefined) {
     enabled: !!username,
   })
 
-  // Real-time listener for the agent doc — keeps followerCount etc. live
+  // Real-time listener for the agent doc — keeps any live-updated
+  // profile fields (style, bio, photo) reflected without a refetch.
   useEffect(() => {
     if (!fetchedAgent?.uid || !db) return
     const unsub = onSnapshot(
@@ -34,12 +35,7 @@ export function useAgent(username: string | undefined) {
     return unsub
   }, [fetchedAgent?.uid])
 
-  const bumpFollowerCount = (delta: number) => {
-    const current = liveAgent || fetchedAgent
-    if (current) setLiveAgent({ ...current, followerCount: Math.max(0, current.followerCount + delta) })
-  }
-
-  return { data: liveAgent || fetchedAgent, isLoading, bumpFollowerCount }
+  return { data: liveAgent || fetchedAgent, isLoading }
 }
 
 export function useAgentPins(agent: UserDoc | null | undefined) {
