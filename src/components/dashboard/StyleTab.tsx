@@ -165,7 +165,7 @@ export function StyleTab({
       {/* ── 2. Color palette ── */}
       <Section
         title="Color palette"
-        subtitle="12 themes — light, dark, gradient, pattern"
+        subtitle="Light, dark, gradient, pattern"
         collapsible
         collapsedPreview={<PaletteSwatchPreview palette={getPalette(style.paletteId)} />}
       >
@@ -283,7 +283,7 @@ export function StyleTab({
         action={
           <button
             onClick={onOpenAddPlatform}
-            className="px-3 py-1.5 rounded-[10px] bg-tangerine text-white text-[12.5px] font-medium cursor-pointer hover:bg-tangerine/90 transition-colors flex items-center gap-1.5"
+            className="brand-btn-flat px-3 py-1.5 text-[12.5px] font-bold cursor-pointer flex items-center gap-1.5"
           >
             <Plus size={13} weight="bold" /> Add
           </button>
@@ -731,7 +731,7 @@ function CustomTickerEditor({
         <button
           onClick={add}
           disabled={!newLabel.trim()}
-          className="px-3 h-9 rounded-[10px] bg-tangerine text-white text-[12.5px] font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+          className="brand-btn-flat px-3 h-9 text-[12.5px] font-bold cursor-pointer flex items-center gap-1"
         >
           <Plus size={13} weight="bold" /> Add
         </button>

@@ -62,6 +62,30 @@ function useIsDesktop() {
    for a comfortable buffer before rendering it. Between mobile and
    this threshold we keep the desktop sidebar layout but drop the
    preview pane. */
+/**
+ * Standardized tab header — gradient icon chip on the left, bold
+ * title + smoke-tinted subtitle on the right. Mirrors the Style
+ * tab's existing header so all dashboard tabs share one shape.
+ * Settings is the only tab without one (it's a list of actions,
+ * not a content surface).
+ */
+function TabHeader({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div
+        className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+        style={{ background: 'linear-gradient(135deg, #FF8552 0%, #D94A1F 100%)', color: '#fff' }}
+      >
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-[18px] font-bold text-ink">{title}</p>
+        <p className="text-[13px] text-smoke">{subtitle}</p>
+      </div>
+    </div>
+  )
+}
+
 function useIsWide() {
   const [isWide, setIsWide] = useState(typeof window !== 'undefined' && window.innerWidth >= 1200)
   useEffect(() => {
@@ -524,50 +548,11 @@ export default function Dashboard() {
         {/* ═══ MY PLOT ═══ */}
         {activeTab === 'reelst' && (
           <div className={isDesktop ? 'space-y-5' : 'px-5 py-5 space-y-4'}>
-            {/* Desktop: profile card header */}
-            {isDesktop && (
-              <div className="flex items-center gap-4 bg-warm-white rounded-2xl p-5 border border-border-light">
-                <Avatar src={activeUser.photoURL} name={activeUser.displayName || 'Agent'} size={56} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-[18px] font-bold text-ink">{activeUser.displayName || 'Agent'}</p>
-                  <p className="text-[13px] text-smoke">@{activeUser.username || 'you'}{activeUser.brokerage ? ` · ${activeUser.brokerage}` : ''}</p>
-                </div>
-                <div className="flex items-center gap-5">
-                  <div className="text-center">
-                    <p className="text-[22px] font-extrabold text-ink font-mono">{pinsLoading ? '–' : stats.pins}</p>
-                    <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Pins</p>
-                  </div>
-                  <div className="w-px h-8 bg-border-light" />
-                  <div className="text-center">
-                    <p className="text-[22px] font-extrabold text-ink font-mono">{(activeUser.profileVisits || 0).toLocaleString()}</p>
-                    <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Visits</p>
-                  </div>
-                  <div className="w-px h-8 bg-border-light" />
-                  <div className="text-center">
-                    <p className="text-[22px] font-extrabold text-ink font-mono">{subscriberCount}</p>
-                    <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Saves</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Mobile: compact stat chips */}
-            {!isDesktop && (
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-cream rounded-[14px] p-3 text-center">
-                  <p className="text-[20px] font-extrabold text-ink font-mono">{pinsLoading ? '–' : stats.pins}</p>
-                  <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Pins</p>
-                </div>
-                <div className="bg-cream rounded-[14px] p-3 text-center">
-                  <p className="text-[20px] font-extrabold text-ink font-mono">{(activeUser.profileVisits || 0).toLocaleString()}</p>
-                  <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Visits</p>
-                </div>
-                <div className="bg-cream rounded-[14px] p-3 text-center">
-                  <p className="text-[20px] font-extrabold text-ink font-mono">{subscriberCount}</p>
-                  <p className="text-[10px] text-smoke font-semibold uppercase tracking-wider">Saves</p>
-                </div>
-              </div>
-            )}
+            <TabHeader
+              icon={<MapPin weight="bold" size={18} />}
+              title="My Pins"
+              subtitle="Listings, sold homes, and spotlights on your map"
+            />
 
             <div className="flex items-center justify-between">
               <h3 className="text-[16px] font-bold text-ink">Your Pins</h3>
@@ -653,6 +638,11 @@ export default function Dashboard() {
         {/* ═══ INSIGHTS ═══ */}
         {activeTab === 'insights' && (
           <div className={isDesktop ? 'space-y-5' : 'px-5 py-5 space-y-4'}>
+            <TabHeader
+              icon={<BarChart3 weight="bold" size={18} />}
+              title="Insights"
+              subtitle="How your Reelst is performing"
+            />
             {/* Basic stats — visible to all tiers */}
             <div className="grid grid-cols-2 gap-3">
               <StatCard label="Visits" value={activeUser.profileVisits || 0} icon={<Eye size={18} />} format="compact" tooltip="Lifetime count of profile visits to your Reelst" />
@@ -713,12 +703,11 @@ export default function Dashboard() {
         {/* ═══ INBOX ═══ */}
         {activeTab === 'inbox' && (
           <div className={isDesktop ? 'space-y-5' : 'px-5 py-5 space-y-4'}>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-[16px] font-bold text-ink">Notifications</h3>
-                <p className="text-[12px] text-smoke mt-0.5">Showing requests, saves, and waves.</p>
-              </div>
-            </div>
+            <TabHeader
+              icon={<Inbox weight="bold" size={18} />}
+              title="Inbox"
+              subtitle="Showing requests, saves, and waves"
+            />
             {/* Prompt to enable notifications if not granted */}
             {typeof Notification !== 'undefined' && Notification.permission !== 'granted' && (
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
@@ -741,6 +730,12 @@ export default function Dashboard() {
 
         {/* ═══ CONTENT LIBRARY ═══ */}
         {activeTab === 'content' && (
+        <div className={isDesktop ? 'space-y-5' : 'px-5 py-5 space-y-4'}>
+          <TabHeader
+            icon={<Film weight="bold" size={18} />}
+            title="Content"
+            subtitle="Reels, photos, and listing media"
+          />
           <ContentLibrary
             pins={displayPins}
             agentId={activeUser.uid}
@@ -794,6 +789,7 @@ export default function Dashboard() {
               })
             }}
           />
+        </div>
         )}
 
         {/* ═══ STYLE ═══ — agent profile aesthetic editor.
@@ -1463,7 +1459,7 @@ export default function Dashboard() {
                     w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left cursor-pointer
                     transition-all duration-200
                     ${isActive
-                      ? 'bg-tangerine text-white shadow-md'
+                      ? 'brand-surface'
                       : 'text-graphite hover:bg-warm-white'
                     }
                   `}

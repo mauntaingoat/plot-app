@@ -14,8 +14,15 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children?: ReactNode
 }
 
+// `primary` uses `.brand-btn-flat` (defined in index.css) — same
+// gradient + inset top highlight + soft drop shadow as marketing
+// CTAs. The class hard-codes border-radius: 999px so we use
+// `!rounded-full` here to win against the per-size `rounded-[Xpx]`
+// classes below. Bold weight + the inset highlight give the
+// "softly lit from above" pill look that's the dashboard's
+// canonical primary action button.
 const variants: Record<Variant, string> = {
-  primary: 'bg-gradient-to-br from-tangerine to-ember text-white shadow-glow-tangerine hover:brightness-110',
+  primary: 'brand-btn-flat font-bold !rounded-full',
   secondary: 'bg-cream text-ink border border-border-light hover:bg-pearl',
   ghost: 'bg-transparent text-smoke hover:text-ink hover:bg-cream',
   glass: 'glass-medium text-white hover:bg-glass-heavy',

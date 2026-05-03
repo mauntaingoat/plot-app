@@ -73,7 +73,7 @@ export function PaywallPrompt({ isOpen, onClose, reason, upgradeTo = 'pro' }: Pa
 
               <button
                 onClick={() => { onClose(); navigate('/pricing') }}
-                className="w-full mt-5 inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-tangerine to-ember text-white font-bold text-[15px] shadow-glow-tangerine cursor-pointer hover:shadow-xl transition-shadow"
+                className="brand-btn-flat w-full mt-5 inline-flex items-center justify-center gap-2 px-6 py-3.5 font-bold text-[15px] cursor-pointer"
               >
                 Upgrade to {target.name} <ArrowRight size={16} />
               </button>

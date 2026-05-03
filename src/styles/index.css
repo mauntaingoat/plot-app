@@ -304,19 +304,61 @@ input:focus, textarea:focus {
   transform: rotate(-2deg);
 }
 
-/* ── Brand button (flat) — same gradient, no rotate on hover.
-   For surfaces like the dashboard where the playful tilt is too
-   marketing-y. Subtle brightness lift instead. */
+/* ── Brand surface — the canonical "tangerine action" look.
+   Brand gradient + inset top highlight + soft tangerine drop
+   shadow. Used everywhere that should feel like the primary call-
+   to-action (Add Pin, Create, Upload, Look up, Save, active
+   sidebar nav item, etc.). Border-radius is intentionally NOT set
+   here so consumers can pair it with `rounded-full` (pill button)
+   or `rounded-xl` (sidebar tab) without overrides. Color + shadow
+   are the constants that tie every "tangerine button" together. */
+.brand-surface {
+  background: var(--brand-grad);
+  color: #fff;
+  box-shadow:
+    0 8px 22px -4px rgba(217, 74, 31, 0.48),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  transition: filter 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+.brand-surface:hover:not(:disabled) {
+  filter: brightness(1.06);
+  box-shadow:
+    0 10px 28px -6px rgba(217, 74, 31, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32);
+}
+.brand-surface:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.brand-surface:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Brand button (flat) — `.brand-surface` pre-shaped as a pill.
+   For most primary action buttons. The size class on each consumer
+   sets height/padding; this class sets the gradient, shadow, and
+   pill radius. Marketing CTAs use the same class. */
 .brand-btn-flat {
   background: var(--brand-grad);
   color: #fff;
-  transition: filter 0.2s ease, transform 0.15s ease;
+  border-radius: 999px;
+  box-shadow:
+    0 8px 22px -4px rgba(217, 74, 31, 0.48),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  transition: filter 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
 }
-.brand-btn-flat:hover {
+.brand-btn-flat:hover:not(:disabled) {
   filter: brightness(1.06);
+  box-shadow:
+    0 10px 28px -6px rgba(217, 74, 31, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32);
 }
-.brand-btn-flat:active {
+.brand-btn-flat:active:not(:disabled) {
   transform: scale(0.98);
+}
+.brand-btn-flat:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ── Map-grid pattern for the hero inner card ──

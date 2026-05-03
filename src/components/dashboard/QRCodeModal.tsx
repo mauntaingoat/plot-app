@@ -60,7 +60,7 @@ function QRContent({ pin, agent, url, qrDataUrl, onClose }: {
           {copied ? 'Copied!' : 'Copy link'}
         </button>
         <button onClick={handleDownload}
-          className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-tangerine to-ember text-white font-semibold text-[13px] cursor-pointer hover:shadow-glow-tangerine transition-shadow">
+          className="brand-btn-flat flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 font-bold text-[13px] cursor-pointer">
           <Download size={14} /> Download PNG
         </button>
       </div>
