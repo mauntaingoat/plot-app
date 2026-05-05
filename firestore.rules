@@ -212,11 +212,16 @@ service cloud.firestore {
     // callable Cloud Function (rate-limited, validated, admin-SDK
     // write) — direct client creates are denied. Owning agent can
     // read + update (mark read / change status).
+    //
+    // The rule reads `agentId` straight off the wave doc instead of
+    // doing a `get()` on the parent pin. The submitWave function
+    // denormalizes agentId at write time, so we don't need the
+    // round-trip — and `get()` inside collectionGroup-query rule
+    // evaluation has been the source of silent denials on the
+    // dashboard's "Waves" stat card.
     match /pins/{pinId}/waves/{waveId} {
-      allow read: if isSignedIn()
-        && get(/databases/$(database)/documents/pins/$(pinId)).data.agentId == request.auth.uid;
-      allow update: if isSignedIn()
-        && get(/databases/$(database)/documents/pins/$(pinId)).data.agentId == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.agentId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.agentId == request.auth.uid;
       allow create, delete: if false;
     }
 
