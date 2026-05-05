@@ -18,9 +18,10 @@ function useDismissOnScroll(setHoverIdx: (v: null) => void) {
 }
 
 // ── Per-Pin Performance Breakdown ──
-type PinMetric = 'taps' | 'saves' | 'waves'
+type PinMetric = 'visits' | 'taps' | 'saves' | 'waves'
 
 const PIN_METRICS: { id: PinMetric; label: string; icon: typeof Eye }[] = [
+  { id: 'visits', label: 'Visits', icon: Eye },
   { id: 'taps', label: 'Taps', icon: MousePointerClick },
   { id: 'saves', label: 'Saves', icon: Bookmark },
   { id: 'waves', label: 'Waves', icon: Hand },
@@ -31,8 +32,15 @@ interface PinBreakdownProps {
 }
 
 export function PinBreakdown({ pins }: PinBreakdownProps) {
-  const [metric, setMetric] = useState<PinMetric>('taps')
-  const getValue = (p: Pin): number => (metric === 'waves' ? (p.waves || 0) : (p[metric] || 0))
+  const [metric, setMetric] = useState<PinMetric>('visits')
+  const getValue = (p: Pin): number => {
+    switch (metric) {
+      case 'visits': return p.views || 0   // pin.views is the legacy field name; surfaced as "Visits"
+      case 'taps':   return p.taps || 0
+      case 'saves':  return p.saves || 0
+      case 'waves':  return p.waves || 0
+    }
+  }
   const sorted = useMemo(
     () => [...pins].sort((a, b) => getValue(b) - getValue(a)).slice(0, 10),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -95,14 +103,17 @@ export function PinBreakdown({ pins }: PinBreakdownProps) {
         })}
         {sorted.length === 0 && <p className="text-[12px] text-smoke text-center py-4">No pins yet.</p>}
       </div>
-      {/* Cursor-following tooltip — shows all 3 per-pin metrics. */}
+      {/* Cursor-following tooltip — surfaces every primitive at once
+          so picking a different filter doesn't lose the others. */}
       {hoverIdx !== null && sorted[hoverIdx] && (
         <div
           className="fixed pointer-events-none z-[100] px-3 py-2 bg-ink text-warm-white rounded-[10px] shadow-xl"
           style={{ left: mousePos.x + 12, top: mousePos.y + 12 }}
         >
           <p className="text-[11px] font-bold truncate max-w-[220px]">{sorted[hoverIdx].address}</p>
-          <div className="flex items-center gap-3 mt-1">
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <span className="text-[10px] opacity-70">{(sorted[hoverIdx].views || 0).toLocaleString()} visits</span>
+            <span className="text-[10px] opacity-70">·</span>
             <span className="text-[10px] opacity-70">{sorted[hoverIdx].taps.toLocaleString()} taps</span>
             <span className="text-[10px] opacity-70">·</span>
             <span className="text-[10px] opacity-70">{sorted[hoverIdx].saves.toLocaleString()} saves</span>
@@ -116,16 +127,20 @@ export function PinBreakdown({ pins }: PinBreakdownProps) {
 }
 
 // ── Content Conversion Tracking ──
-type ContentMetric = 'visits' | 'taps'
+type ContentMetric = 'visits' | 'taps' | 'saves' | 'waves'
 
 const CONTENT_METRICS: { id: ContentMetric; label: string }[] = [
   { id: 'visits', label: 'Visits' },
   { id: 'taps', label: 'Taps' },
+  { id: 'saves', label: 'Saves' },
+  { id: 'waves', label: 'Waves' },
 ]
 
 interface ContentConversionProps {
   pins: Pin[]
 }
+
+type ContentBucket = { count: number; visits: number; taps: number; saves: number; waves: number }
 
 export function ContentConversion({ pins }: ContentConversionProps) {
   const [metric, setMetric] = useState<ContentMetric>('visits')
@@ -134,46 +149,55 @@ export function ContentConversion({ pins }: ContentConversionProps) {
   useDismissOnScroll(() => setHoverIdx(null))
 
   const stats = useMemo(() => {
-    // Aggregate per-content metrics by type. `visits` are stored on
-    // each content item as `c.views` (legacy field name — surfaced
-    // here as "Visits" since each play is a visit to that content).
-    // `taps` are pin-level (a tap opens the pin's listing modal
-    // regardless of which content you tapped from), so a content
-    // type's tap count is its parent pin's tap count attributed to
-    // each content slot. For open-house pins we attribute pin-level
-    // views/taps directly.
-    // All four content categories are seeded with zeros so the
-    // Content Performance row list is stable — every type stays
-    // visible even when the agent has no items of that kind, so
-    // the layout doesn't shift around as content is added/removed.
-    const byType: Record<string, { count: number; visits: number; taps: number }> = {
-      reel: { count: 0, visits: 0, taps: 0 },
-      photo: { count: 0, visits: 0, taps: 0 },
-      open_house: { count: 0, visits: 0, taps: 0 },
+    // Aggregate per-content metrics by type.
+    //
+    // Per-content fields (read directly):
+    //   - visits  ← c.views   (set by trackView on viewport intersection)
+    //   - saves   ← c.saves   (set by trackEngagement when content is saved)
+    //
+    // Pin-level fields (attributed evenly across content slots):
+    //   - taps    ← pin.taps   (a pin tap opens the modal — we don't know
+    //                            which content slot drove it, so spread it)
+    //   - waves   ← pin.waves  (waves are scoped to listings, not content,
+    //                            so we apply the same averaging trick)
+    //
+    // Open-house pins are treated as a virtual content category and
+    // get pin-level totals attributed directly.
+    //
+    // All four categories are seeded with zeros so the row list stays
+    // visually stable as the agent adds/removes content.
+    const byType: Record<string, ContentBucket> = {
+      reel:       { count: 0, visits: 0, taps: 0, saves: 0, waves: 0 },
+      photo:      { count: 0, visits: 0, taps: 0, saves: 0, waves: 0 },
+      open_house: { count: 0, visits: 0, taps: 0, saves: 0, waves: 0 },
     }
 
     for (const pin of pins) {
       if (pin.type === 'for_sale' && 'openHouse' in pin && pin.openHouse) {
         byType.open_house.count += 1
         byType.open_house.visits += pin.views
-        byType.open_house.taps += pin.taps
+        byType.open_house.taps   += pin.taps
+        byType.open_house.saves  += pin.saves
+        byType.open_house.waves  += pin.waves || 0
       }
-      const tapsPerSlot = pin.content.length > 0 ? Math.round(pin.taps / pin.content.length) : 0
+      const slots = pin.content.length
+      const tapsPerSlot  = slots > 0 ? Math.round(pin.taps        / slots) : 0
+      const wavesPerSlot = slots > 0 ? Math.round((pin.waves || 0) / slots) : 0
       for (const c of pin.content) {
         // Skip legacy types (video_note, live) — Reelst no longer
         // surfaces livestream content, and video_note was an unused
         // experimental kind. Existing docs still load but don't
         // contribute to the Content Performance breakdown.
         if (c.type === 'video_note' || c.type === 'live') continue
-        const t = byType[c.type] || (byType[c.type] = { count: 0, visits: 0, taps: 0 })
+        const t = byType[c.type] || (byType[c.type] = { count: 0, visits: 0, taps: 0, saves: 0, waves: 0 })
         t.count += 1
         t.visits += c.views || 0
-        t.taps += tapsPerSlot
+        t.taps   += tapsPerSlot
+        t.saves  += c.saves || 0
+        t.waves  += wavesPerSlot
       }
     }
 
-    // Always return all four rows. Empty types render with "0 items"
-    // and "0 visits / 0 taps", keeping the section layout consistent.
     return Object.entries(byType).map(([type, s]) => ({ type, ...s }))
   }, [pins])
 
@@ -206,7 +230,7 @@ export function ContentConversion({ pins }: ContentConversionProps) {
         {stats.map((s, i) => {
           const meta = TYPE_META[s.type] || { label: s.type, icon: Film, color: '#6B7280' }
           const Icon = meta.icon
-          const value = metric === 'visits' ? s.visits : s.taps
+          const value = s[metric]
           return (
             <motion.div
               key={s.type}
@@ -239,12 +263,16 @@ export function ContentConversion({ pins }: ContentConversionProps) {
           style={{ left: mousePos.x + 12, top: mousePos.y + 12 }}
         >
           <p className="text-[11px] font-bold">{TYPE_META[stats[hoverIdx].type]?.label || stats[hoverIdx].type}</p>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
             <span className="text-[10px] opacity-70">{stats[hoverIdx].count} items</span>
             <span className="text-[10px] opacity-70">·</span>
             <span className="text-[10px] opacity-70">{stats[hoverIdx].visits.toLocaleString()} visits</span>
             <span className="text-[10px] opacity-70">·</span>
             <span className="text-[10px] opacity-70">{stats[hoverIdx].taps.toLocaleString()} taps</span>
+            <span className="text-[10px] opacity-70">·</span>
+            <span className="text-[10px] opacity-70">{stats[hoverIdx].saves.toLocaleString()} saves</span>
+            <span className="text-[10px] opacity-70">·</span>
+            <span className="text-[10px] opacity-70">{stats[hoverIdx].waves.toLocaleString()} waves</span>
           </div>
         </div>
       )}
