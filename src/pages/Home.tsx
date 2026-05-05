@@ -517,48 +517,49 @@ const FEATURES: Feature[] = [
     label: 'Map Pins',
     title: 'Your listings — and your neighborhoods — on a real map.',
     desc: 'Drop a pin for a property and MLS auto-fills beds, baths, sqft, price, days on market, and more. Or drop a neighborhood pin to sell the area itself — the streets, the parks, the block that makes the zip code feel like home.',
-    // Video file names are historical; the actual recording mapped to
-    // each chip is rotated here:
-    //   pins    → feature-content.mov     (the Listing recording)
-    //   content → feature-spotlights.mov  (the Content recording)
-    video: '/marketing/feature-content.mov',
+    video: '/marketing/mappins.mov',
   },
   {
     key: 'content',
     label: 'Content',
     title: 'Every reel, inside a pin.',
-    desc: 'Shoot walkthroughs. Drop carousels. Go live from the open house. Tap any pin and the listing comes alive with the content you’ve attached — reels, photos, the whole drawer.',
-    video: '/marketing/feature-spotlights.mov',
+    desc: "Shoot walkthroughs. Drop carousels. Go live from the open house. Tap any pin and the listing comes alive with the content you've attached — reels, photos, the whole drawer.",
+    video: '/marketing/content.mov',
   },
   {
     key: 'open-houses',
     label: 'Open Houses',
     title: 'Schedule. Share. Fill the room.',
     desc: 'Create an open house from a pin in two taps. Auto-post to your map and email your subscribers. RSVPs land in your inbox, not on a clipboard.',
-    video: '/marketing/feature-open-houses.mov',
+    video: '/marketing/openhouse.mov',
   },
   {
-    key: 'showings',
-    label: 'Showing Requests',
-    title: 'Leads, not likes.',
-    desc: 'Private showing asks drop straight into your inbox with buyer context. Approve, reschedule, or decline in one tap — the back-and-forth ends here.',
-    video: '/marketing/feature-showings.mov',
+    key: 'inbox',
+    label: 'Inbox',
+    title: 'Every signal in one feed.',
+    desc: 'Showing requests, new saves, and waves all land in one inbox — sorted by recency, grouped by day, marked unread until you act on them. The back-and-forth ends here.',
+    video: '/marketing/inbox.mov',
+  },
+  {
+    key: 'connect',
+    label: 'Connect',
+    title: 'Saves bring them back. Waves bring them in.',
+    desc: 'Buyers save you to get your weekly digest and wave at any listing to ask questions — two opt-in channels, both private, both straight to your inbox. No public comments to police.',
+    video: '/marketing/Connect.mov',
   },
   {
     key: 'analytics',
     label: 'Analytics',
     title: "Know what's actually working.",
     desc: 'Visits per reel and photo. Taps and saves per pin. Save growth, visitor cities, peak hours, and audience crossover — every signal in one place.',
-    video: '/marketing/feature-analytics.mov',
+    video: '/marketing/analytics.mov',
   },
   {
     key: 'customization',
     label: 'Customization',
     title: 'A profile that looks as distinct as you do.',
     desc: 'Pick the typeface, palette, and map shape that match your personal brand. Tune the accent, swap fonts, reorder sections — your Reelst link in bio adapts to you, not the other way around.',
-    // Video coming — omitting `video`/`img` shows the built-in
-    // "Graphic · Customization · Product snapshot coming" placeholder
-    // so the slot stays reserved.
+    video: '/marketing/customization.mov',
   },
 ]
 
