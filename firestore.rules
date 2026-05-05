@@ -74,9 +74,15 @@ service cloud.firestore {
     }
 
     // ── SAVES (bookmarks) ──
-    // Private to the user — only the saver can read/write their own saves
+    // The saver can read/write their own saves. The agent who owns
+    // the saved pin can also read (powers the Audience Crossover
+    // insight, which needs to see overlap between savers across the
+    // agent's listings).
     match /saves/{saveId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid
+        || get(/databases/$(database)/documents/pins/$(resource.data.pinId)).data.agentId == request.auth.uid
+      );
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow update: if false;
@@ -152,6 +158,14 @@ service cloud.firestore {
     // ── FOLLOWER SNAPSHOTS ──
     match /follower_snapshots/{snapId} {
       allow read: if isSignedIn();
+      allow create, update, delete: if false; // Cloud Functions only
+    }
+
+    // ── SUBSCRIBER SNAPSHOTS ──
+    // Daily counts written by dailySubscriberSnapshot Cloud Function.
+    // Powers the dashboard "Saves over time" line chart.
+    match /subscriber_snapshots/{snapId} {
+      allow read: if isSignedIn() && resource.data.agentId == request.auth.uid;
       allow create, update, delete: if false; // Cloud Functions only
     }
 
