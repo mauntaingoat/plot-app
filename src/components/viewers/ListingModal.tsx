@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, useMotionValue, animate, useDragControls } from 'framer-motion'
-import { X, Bed, Bathtub as Bath, ArrowsOut as Maximize, MapPin, Eye, ShareNetwork as Share2, Phone, CaretLeft as ChevronLeft, CaretRight as ChevronRight, CalendarCheck, Calendar, Clock, ChatCenteredText as MessageSquare, User as UserIcon, Check, Envelope as Mail, Flag, Heart, HandWaving as Hand, House as Home } from '@phosphor-icons/react'
+import { X, Bed, Bathtub as Bath, ArrowsOut as Maximize, MapPin, ShareNetwork as Share2, Phone, CaretLeft as ChevronLeft, CaretRight as ChevronRight, CalendarCheck, Calendar, Clock, ChatCenteredText as MessageSquare, User as UserIcon, Check, Envelope as Mail, Flag, Heart, HandWaving as Hand, House as Home } from '@phosphor-icons/react'
 import { SaveAgentModal } from '@/components/agent-profile/SaveAgentModal'
 import { WaveModal } from '@/components/agent-profile/WaveModal'
+import { ShareModal } from '@/components/agent-profile/ShareModal'
 import { ReportSheet } from '@/components/moderation/ReportSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
@@ -129,6 +130,7 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
   // lead-capture flow as the agent profile.
   const [saveModalOpen, setSaveModalOpen] = useState(false)
   const [waveModalOpen, setWaveModalOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
   const openSaveModal = useCallback(() => {
     if (isPreview) return
     if (!isSignedIn && onAuthRequired) {
@@ -255,6 +257,7 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
                 </button>
                 <button
                   aria-label="Share"
+                  onClick={!isPreview ? () => setShareOpen(true) : undefined}
                   className={`w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''} hover:bg-black/55 transition-colors`}
                 >
                   <Share2 size={15} />
@@ -302,6 +305,7 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
                 isOwnProfile={isOwnProfile}
                 onSaveAgent={openSaveModal}
                 onWave={openWaveModal}
+                onShare={() => setShareOpen(true)}
                 onShowListing={() => setActiveTab('listing')}
                 hasListingTab={showTabToggle}
               />
@@ -332,13 +336,30 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
         agentId={agent.uid}
         agentName={agent.displayName || agent.username || 'agent'}
       />
+      <ShareModal
+        isOpen={shareOpen}
+        onClose={() => setShareOpen(false)}
+        title={pin.address?.split(',')[0] || agent.displayName || 'Reelst'}
+        message={
+          'price' in pin && pin.price
+            ? `${formatPrice(pin.price)} · ${(pin as ForSalePin).beds} bd · ${(pin as ForSalePin).baths} ba`
+            : `${agent.displayName} on Reelst`
+        }
+        heroImageUrl={
+          ('photos' in pin && (pin as ForSalePin).photos?.[0]) ||
+          ('heroPhotoUrl' in pin && (pin as ForSalePin).heroPhotoUrl) ||
+          agent.photoURL ||
+          null
+        }
+        agentName={agent.displayName}
+      />
     </>
   )
 }
 
 // ── Content Tab: full-screen vertical feed ──
 
-function ContentTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, onAuthRequired, isOwnProfile, onSaveAgent, onWave, onShowListing, hasListingTab }: { pin: Pin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void; isOwnProfile?: boolean; onSaveAgent?: () => void; onWave?: () => void; onShowListing?: () => void; hasListingTab?: boolean }) {
+function ContentTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, onAuthRequired, isOwnProfile, onSaveAgent, onWave, onShare, onShowListing, hasListingTab }: { pin: Pin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void; isOwnProfile?: boolean; onSaveAgent?: () => void; onWave?: () => void; onShare?: () => void; onShowListing?: () => void; hasListingTab?: boolean }) {
   // Filter out content scheduled for the future — public should never see it
   const visibleContent = publicContent(pin)
 
@@ -358,7 +379,7 @@ function ContentTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
     return (
       <>
         {visibleContent.map((content) => (
-          <ContentCard key={content.id} content={content} pin={pin} agent={agent} isPreview={isPreview} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} isOwnProfile={isOwnProfile} onSaveAgent={onSaveAgent} onWave={onWave} onShowListing={onShowListing} hasListingTab={hasListingTab} />
+          <ContentCard key={content.id} content={content} pin={pin} agent={agent} isPreview={isPreview} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} isOwnProfile={isOwnProfile} onSaveAgent={onSaveAgent} onWave={onWave} onShare={onShare} onShowListing={onShowListing} hasListingTab={hasListingTab} />
         ))}
       </>
     )
@@ -367,13 +388,13 @@ function ContentTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
   return (
     <div className="flex-1 overflow-y-auto bg-midnight" style={{ scrollSnapType: 'y mandatory', overscrollBehavior: 'none', WebkitOverflowScrolling: 'touch' }}>
       {visibleContent.map((content) => (
-        <ContentCard key={content.id} content={content} pin={pin} agent={agent} isPreview={isPreview} isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} isOwnProfile={isOwnProfile} onSaveAgent={onSaveAgent} onWave={onWave} onShowListing={onShowListing} hasListingTab={hasListingTab} />
+        <ContentCard key={content.id} content={content} pin={pin} agent={agent} isPreview={isPreview} isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} isOwnProfile={isOwnProfile} onSaveAgent={onSaveAgent} onWave={onWave} onShare={onShare} onShowListing={onShowListing} hasListingTab={hasListingTab} />
       ))}
     </div>
   )
 }
 
-function ContentCard({ content, pin, agent, isPreview, embedded, isOwnProfile, onSaveAgent, onWave, onShowListing, hasListingTab }: { content: ContentItem; pin: Pin; agent: UserDoc; isPreview?: boolean; embedded?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void; isOwnProfile?: boolean; onSaveAgent?: () => void; onWave?: () => void; onShowListing?: () => void; hasListingTab?: boolean }) {
+function ContentCard({ content, pin, agent, isPreview, embedded, isOwnProfile, onSaveAgent, onWave, onShare, onShowListing, hasListingTab }: { content: ContentItem; pin: Pin; agent: UserDoc; isPreview?: boolean; embedded?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void; isOwnProfile?: boolean; onSaveAgent?: () => void; onWave?: () => void; onShare?: () => void; onShowListing?: () => void; hasListingTab?: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const [isNearViewport, setIsNearViewport] = useState(false)
@@ -488,7 +509,9 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isOwnProfile, o
            top-anchored percentage lands at the same visual spot in
            both. */}
       <div className="absolute right-3 top-[42%] z-10 flex flex-col items-center gap-5" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.5))' }}>
-        <Avatar src={agent.photoURL} name={agent.displayName} size={42} ring="story" />
+        {/* Avatar matches the immersive ContentFeed rail (26px + story ring)
+            so the right-rail rhythm reads identically across surfaces. */}
+        <Avatar src={agent.photoURL} name={agent.displayName} size={26} ring="story" />
 
         {!isOwnProfile && onSaveAgent && (
           <motion.button
@@ -508,12 +531,13 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isOwnProfile, o
             aria-label={`Wave at ${agent.displayName || 'agent'}`}
             className={`flex items-center justify-center ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}
           >
-            <Hand weight="fill" size={24} className="text-white" />
+            <Hand weight="bold" size={24} className="text-white" />
           </motion.button>
         )}
 
         <motion.button
           whileTap={!isPreview ? { scale: 0.78 } : undefined}
+          onClick={!isPreview ? () => onShare?.() : undefined}
           aria-label="Share"
           className={`flex items-center justify-center ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}
         >
@@ -546,10 +570,6 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isOwnProfile, o
           {/* Live is a content type, not shown inline — only open house (listing state) would be */}
         </div>
         {content.caption && <p className="text-[13px] text-white/90 leading-relaxed line-clamp-3">{content.caption}</p>}
-        <div className="flex items-center gap-1 mt-1.5">
-          <Eye size={11} className="text-white/40" />
-          <span className="text-[10px] text-white/40">{content.views.toLocaleString()} views</span>
-        </div>
       </div>
     </div>
   )
