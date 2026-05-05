@@ -269,22 +269,26 @@ export function GeoHeatmap({ pins, agentId }: GeoHeatmapProps) {
   }, [agentId])
 
   const cities = useMemo(() => {
+    // Total geo-tagged profile visits — used as the denominator for
+    // audience-share %. Visits without a `city` (local dev, IPs that
+    // didn't resolve) still feed the total so the share reflects the
+    // share of *known* audience location, not of just the top 6 rows.
     const cityMap = new Map<string, number>()
+    let totalGeoVisits = 0
     events.forEach((e) => {
-      // Only count profile-visit events — taps/saves/etc. happen
-      // anywhere on Reelst (not just on this agent's profile) and
-      // would distort the geographic picture of "who's looking at me".
       if (e.type !== 'profile_visit') return
-      if (e.city) cityMap.set(e.city, (cityMap.get(e.city) || 0) + 1)
+      if (!e.city) return
+      totalGeoVisits++
+      cityMap.set(e.city, (cityMap.get(e.city) || 0) + 1)
     })
     const sorted = Array.from(cityMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6)
     const topCount = sorted[0]?.[1] || 1
-    const total = sorted.reduce((s, [, c]) => s + c, 0) || 1
+    const denom = totalGeoVisits || 1
     return sorted.map(([city, visitors]) => ({
       city: `${city}`,
       visitors,
       pct: Math.round((visitors / topCount) * 100),
-      percentage: Math.round((visitors / total) * 100),
+      percentage: Math.round((visitors / denom) * 100),
     }))
   }, [events])
 
