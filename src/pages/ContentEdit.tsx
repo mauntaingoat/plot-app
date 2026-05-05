@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { useThemeStore } from '@/stores/themeStore'
 import { EditorStep } from '@/features/content-editor/EditorStep'
 import { useEditorStore } from '@/features/content-editor/state/editorStore'
-import { renderComposition } from '@/features/content-editor/lib/render'
+import { renderComposition, uploadCustomThumbnail } from '@/features/content-editor/lib/render'
 import { CarouselStep } from '@/features/content-create/CarouselStep'
 import { publishCarouselPhotos } from '@/features/content-create/lib/publish'
 import { probePhoto } from '@/features/content-create/lib/probe'
@@ -25,9 +25,14 @@ import type { ContentItem, Pin } from '@/lib/types'
 export default function ContentEdit() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { content, pin } = (location.state ?? {}) as {
+  const { content, pin, from } = (location.state ?? {}) as {
     content?: ContentItem
     pin?: Pin | null
+    from?: 'content'
+  }
+  const exitToDashboard = () => {
+    if (from === 'content') navigate('/dashboard', { state: { tab: 'content' } })
+    else navigate(-1)
   }
 
   const activateTheme = useThemeStore((s) => s.activate)
@@ -157,6 +162,12 @@ export default function ContentEdit() {
           },
         })
 
+        // If the user picked a thumbnail in the editor, upload that
+        // captured frame to Storage and prefer it over Mux's auto-
+        // generated one. Otherwise fall back to Mux, then to whatever
+        // the doc already had.
+        const customThumbUrl = await uploadCustomThumbnail(latestClips, pinId, contentId)
+
         // Update the content doc: clear mediaUrl (Mux webhook will set it),
         // store sourceUrl for future editing, set status to preparing.
         setSaveProgress('Saving…')
@@ -171,7 +182,7 @@ export default function ContentEdit() {
           mediaUrl: result.processedUrl || result.storageUrl || '',
           sourceUrl: result.storageUrl || '',
           sourceUrls: result.storageUrls,
-          thumbnailUrl: result.thumbnailUrl || content.thumbnailUrl || '',
+          thumbnailUrl: customThumbUrl || result.thumbnailUrl || content.thumbnailUrl || '',
           caption: content.caption || '',
           aspect: editorAspect,
           muxAssetId: result.muxAssetId,
@@ -244,7 +255,7 @@ export default function ContentEdit() {
         }
       }
 
-      navigate(-1)
+      exitToDashboard()
     } catch (err) {
       console.error('[ContentEdit] save failed', err)
       alert(`Save failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
@@ -278,7 +289,7 @@ export default function ContentEdit() {
         >
           <motion.button
             whileTap={{ scale: 0.88 }}
-            onClick={() => navigate(-1)}
+            onClick={exitToDashboard}
             className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
               isDark ? 'bg-white/[0.09] hover:bg-white/[0.14]' : 'bg-cream'
             }`}

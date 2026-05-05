@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, useMotionValue, animate, useDragControls } from 'framer-motion'
-import { X, Bed, Bathtub as Bath, ArrowsOut as Maximize, MapPin, Eye, BookmarkSimple as Bookmark, ShareNetwork as Share2, Phone, CaretLeft as ChevronLeft, CaretRight as ChevronRight, CalendarCheck, Calendar, Clock, ChatCenteredText as MessageSquare, User as UserIcon, Check, Envelope as Mail, Flag } from '@phosphor-icons/react'
+import { X, Bed, Bathtub as Bath, ArrowsOut as Maximize, MapPin, Eye, ShareNetwork as Share2, Phone, CaretLeft as ChevronLeft, CaretRight as ChevronRight, CalendarCheck, Calendar, Clock, ChatCenteredText as MessageSquare, User as UserIcon, Check, Envelope as Mail, Flag, Heart, HandWaving as Hand, House as Home } from '@phosphor-icons/react'
+import { SaveAgentModal } from '@/components/agent-profile/SaveAgentModal'
+import { WaveModal } from '@/components/agent-profile/WaveModal'
 import { ReportSheet } from '@/components/moderation/ReportSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { formatPrice } from '@/lib/firestore'
 import { displayAddressWithUnit } from '@/lib/format'
-import { useSaves } from '@/hooks/useSaves'
 import { OpenHouseBlock } from '@/components/listing/OpenHouseBlock'
 import { publicContent } from '@/lib/contentVisibility'
 import { type Pin, type ForSalePin, type SoldPin, type ContentItem, type UserDoc, isTallAspect } from '@/lib/types'
@@ -123,6 +124,27 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
   const mobileScrollRef = useRef<HTMLDivElement>(null)
+  // Save / Wave modals — opened from the listing modal header (Save) or
+  // the content card's right rail (Save, Wave). Same email-digest /
+  // lead-capture flow as the agent profile.
+  const [saveModalOpen, setSaveModalOpen] = useState(false)
+  const [waveModalOpen, setWaveModalOpen] = useState(false)
+  const openSaveModal = useCallback(() => {
+    if (isPreview) return
+    if (!isSignedIn && onAuthRequired) {
+      onAuthRequired()
+      return
+    }
+    setSaveModalOpen(true)
+  }, [isPreview, isSignedIn, onAuthRequired])
+  const openWaveModal = useCallback(() => {
+    if (isPreview) return
+    if (!isSignedIn && onAuthRequired) {
+      onAuthRequired()
+      return
+    }
+    setWaveModalOpen(true)
+  }, [isPreview, isSignedIn, onAuthRequired])
 
   // Reset scroll to top when switching tabs
   useEffect(() => {
@@ -205,7 +227,7 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
         <div
           ref={sheetRef}
           data-visible={visible ? 'true' : 'false'}
-          className="listing-modal-sheet relative w-full md:max-w-[620px] flex flex-col overflow-hidden bg-midnight rounded-t-[24px] md:rounded-[24px] will-change-transform pointer-events-auto"
+          className="listing-modal-sheet relative w-full md:max-w-[420px] flex flex-col overflow-hidden bg-midnight rounded-t-[24px] md:rounded-[24px] will-change-transform pointer-events-auto"
           style={{
             boxShadow: '0 -16px 50px -16px rgba(10,14,23,0.55), 0 30px 80px -16px rgba(10,14,23,0.55)',
           }}
@@ -215,9 +237,31 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
             <div className="w-10 h-1 rounded-full bg-white/30" />
           </div>
 
-          {/* Close button — always visible, listing tab save/share sit left of it */}
-          <div className="absolute top-[calc(env(safe-area-inset-top,12px)+8px)] right-4 z-[110] flex items-center gap-2">
-            <button onClick={dismiss} className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer">
+          {/* Header action row — Save (heart, opens email-digest modal),
+               Share, and X close. All three sized identically and packed
+               in one flex row so they read as a single cluster, mobile
+               and desktop alike. Save + Share only appear on the
+               Listing tab; the Content tab has its own right-rail.
+               Mobile gets extra top spacing to clear the drag handle. */}
+          <div className="absolute top-7 md:top-[calc(env(safe-area-inset-top,12px)+8px)] right-4 z-[110] flex items-center gap-2">
+            {activeTab === 'listing' && !isOwnProfile && (
+              <>
+                <button
+                  onClick={openSaveModal}
+                  aria-label={`Save ${agent.displayName || 'agent'}`}
+                  className={`w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''} hover:bg-black/55 transition-colors`}
+                >
+                  <Heart weight="fill" size={16} />
+                </button>
+                <button
+                  aria-label="Share"
+                  className={`w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''} hover:bg-black/55 transition-colors`}
+                >
+                  <Share2 size={15} />
+                </button>
+              </>
+            )}
+            <button onClick={dismiss} aria-label="Close" className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer hover:bg-black/55 transition-colors">
               <X size={18} />
             </button>
           </div>
@@ -226,7 +270,7 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
               pin has no content (listing-only view). Order: Listing
               first, Content second. Default opens Listing. */}
           {showTabToggle && (
-            <div className="absolute top-[calc(env(safe-area-inset-top,12px)+8px)] left-4 z-[110]">
+            <div className="absolute top-7 md:top-[calc(env(safe-area-inset-top,12px)+8px)] left-4 z-[110]">
               <div className="flex bg-black/30 backdrop-blur-md rounded-full p-1 border border-white/10">
                 <button onClick={() => setActiveTab('listing')}
                   className={`px-4 py-1.5 rounded-full text-[12px] font-semibold transition-all cursor-pointer ${activeTab === 'listing' ? 'bg-tangerine text-white' : 'text-white/70'}`}>
@@ -247,20 +291,54 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
             ...(activeTab === 'content' ? { scrollSnapType: 'y mandatory' } : {}),
           }}>
             {activeTab === 'content' ? (
-              <ContentTab pin={pin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} isOwnProfile={isOwnProfile} />
+              <ContentTab
+                pin={pin}
+                agent={agent}
+                isPreview={isPreview}
+                onDismiss={dismiss}
+                embedded
+                isSignedIn={isSignedIn}
+                onAuthRequired={onAuthRequired}
+                isOwnProfile={isOwnProfile}
+                onSaveAgent={openSaveModal}
+                onWave={openWaveModal}
+                onShowListing={() => setActiveTab('listing')}
+                hasListingTab={showTabToggle}
+              />
             ) : (
               <ListingTab pin={pin as ForSalePin | SoldPin} agent={agent} isPreview={isPreview} onDismiss={dismiss} embedded isFullScreen isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} isOwnProfile={isOwnProfile} />
             )}
           </div>
         </div>
       </div>
+
+      {/* Save (email-digest signup) and Wave (lead capture) modals —
+           opened from the header heart, the content card's right rail,
+           or the wave button on listing detail rows. Same flows used
+           on the agent profile. */}
+      <SaveAgentModal
+        isOpen={saveModalOpen}
+        onClose={() => setSaveModalOpen(false)}
+        agentId={agent.uid}
+        agentName={agent.displayName || agent.username || 'agent'}
+        agentPhotoURL={agent.photoURL}
+        source="listing"
+      />
+      <WaveModal
+        isOpen={waveModalOpen}
+        onClose={() => setWaveModalOpen(false)}
+        pinId={pin.id}
+        pinAddress={pin.address || ''}
+        agentId={agent.uid}
+        agentName={agent.displayName || agent.username || 'agent'}
+      />
     </>
   )
 }
 
 // ── Content Tab: full-screen vertical feed ──
 
-function ContentTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, onAuthRequired, isOwnProfile }: { pin: Pin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void; isOwnProfile?: boolean }) {
+function ContentTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, onAuthRequired, isOwnProfile, onSaveAgent, onWave, onShowListing, hasListingTab }: { pin: Pin; agent: UserDoc; isPreview?: boolean; onDismiss: () => void; embedded?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void; isOwnProfile?: boolean; onSaveAgent?: () => void; onWave?: () => void; onShowListing?: () => void; hasListingTab?: boolean }) {
   // Filter out content scheduled for the future — public should never see it
   const visibleContent = publicContent(pin)
 
@@ -280,7 +358,7 @@ function ContentTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
     return (
       <>
         {visibleContent.map((content) => (
-          <ContentCard key={content.id} content={content} pin={pin} agent={agent} isPreview={isPreview} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} isOwnProfile={isOwnProfile} />
+          <ContentCard key={content.id} content={content} pin={pin} agent={agent} isPreview={isPreview} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} isOwnProfile={isOwnProfile} onSaveAgent={onSaveAgent} onWave={onWave} onShowListing={onShowListing} hasListingTab={hasListingTab} />
         ))}
       </>
     )
@@ -289,14 +367,13 @@ function ContentTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
   return (
     <div className="flex-1 overflow-y-auto bg-midnight" style={{ scrollSnapType: 'y mandatory', overscrollBehavior: 'none', WebkitOverflowScrolling: 'touch' }}>
       {visibleContent.map((content) => (
-        <ContentCard key={content.id} content={content} pin={pin} agent={agent} isPreview={isPreview} isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} isOwnProfile={isOwnProfile} />
+        <ContentCard key={content.id} content={content} pin={pin} agent={agent} isPreview={isPreview} isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} isOwnProfile={isOwnProfile} onSaveAgent={onSaveAgent} onWave={onWave} onShowListing={onShowListing} hasListingTab={hasListingTab} />
       ))}
     </div>
   )
 }
 
-function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onAuthRequired, isOwnProfile }: { content: ContentItem; pin: Pin; agent: UserDoc; isPreview?: boolean; embedded?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void; isOwnProfile?: boolean }) {
-  const requireAuth = () => { if (!isSignedIn && onAuthRequired) onAuthRequired() }
+function ContentCard({ content, pin, agent, isPreview, embedded, isOwnProfile, onSaveAgent, onWave, onShowListing, hasListingTab }: { content: ContentItem; pin: Pin; agent: UserDoc; isPreview?: boolean; embedded?: boolean; isSignedIn?: boolean; onAuthRequired?: () => void; isOwnProfile?: boolean; onSaveAgent?: () => void; onWave?: () => void; onShowListing?: () => void; hasListingTab?: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const [isNearViewport, setIsNearViewport] = useState(false)
@@ -306,11 +383,6 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
     if (content.mediaUrls) content.mediaUrls.forEach((url) => { const img = new Image(); img.src = url })
   }, [content.mediaUrls])
 
-  const { isSaved, toggleSave } = useSaves()
-  const saved = isSaved(pin.id, content.id)
-  const handleSave = () => {
-    toggleSave(pin.id, content.id, content.type)
-  }
   const thumbnailUrl = content.thumbnailUrl || ('heroPhotoUrl' in pin ? pin.heroPhotoUrl : '') || ''
   const isVideo = content.type === 'reel' || content.type === 'live'
   const isCarousel = content.type === 'photo' && content.mediaUrls && content.mediaUrls.length > 1
@@ -403,13 +475,61 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isSignedIn, onA
         </div>
       </div>
 
-      {/* Right sidebar — Share only. Saving is agent-level via the
-          Save Maya pill on the profile, not pin-level. */}
-      <div className="absolute right-3 bottom-[20%] z-10 flex flex-col items-center gap-4" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))' }}>
-        <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
-          className={isPreview ? 'opacity-40' : 'cursor-pointer'}>
-          <Share2 size={20} className="text-white" />
+      {/* Right sidebar — TikTok-style rail mirroring the agent profile's
+           immersive viewer. Avatar at top of the stack, then Save
+           (heart, opens email-digest), Wave (lead capture; suppressed
+           for spotlight pins which aren't a property), Share, and
+           Home (jumps to the Listing tab of this modal).
+           Anchored so the avatar sits around the vertical midpoint of
+           the card and the stack runs through the bottom half — the
+           same proportions as the agent profile's content feed. Using
+           `top: 55%` instead of `bottom: X` because card heights vary
+           inside the bottom sheet vs. the desktop modal, and a
+           top-anchored percentage lands at the same visual spot in
+           both. */}
+      <div className="absolute right-3 top-[42%] z-10 flex flex-col items-center gap-5" style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.5))' }}>
+        <Avatar src={agent.photoURL} name={agent.displayName} size={42} ring="story" />
+
+        {!isOwnProfile && onSaveAgent && (
+          <motion.button
+            whileTap={!isPreview ? { scale: 0.78 } : undefined}
+            onClick={!isPreview ? onSaveAgent : undefined}
+            aria-label={`Save ${agent.displayName || 'agent'}`}
+            className={`flex items-center justify-center ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}
+          >
+            <Heart weight="fill" size={26} className="text-white" />
+          </motion.button>
+        )}
+
+        {!isOwnProfile && onWave && pin.type !== 'spotlight' && (
+          <motion.button
+            whileTap={!isPreview ? { scale: 0.78 } : undefined}
+            onClick={!isPreview ? onWave : undefined}
+            aria-label={`Wave at ${agent.displayName || 'agent'}`}
+            className={`flex items-center justify-center ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}
+          >
+            <Hand weight="fill" size={24} className="text-white" />
+          </motion.button>
+        )}
+
+        <motion.button
+          whileTap={!isPreview ? { scale: 0.78 } : undefined}
+          aria-label="Share"
+          className={`flex items-center justify-center ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}
+        >
+          <Share2 size={22} className="text-white" />
         </motion.button>
+
+        {hasListingTab && onShowListing && pin.type !== 'spotlight' && (
+          <motion.button
+            whileTap={{ scale: 0.78 }}
+            onClick={onShowListing}
+            aria-label="View listing"
+            className="flex items-center justify-center cursor-pointer"
+          >
+            <Home weight="bold" size={24} className="text-white" />
+          </motion.button>
+        )}
       </div>
 
       {/* Bottom caption — type label inline with location */}
@@ -443,8 +563,6 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isFullScreen, 
   const [showRequestForm, setShowRequestForm] = useState(false)
   const [showReport, setShowReport] = useState(false)
   const photos = pin.photos || []
-  const { isPinSaved, toggleSave } = useSaves()
-  const saved = isPinSaved(pin.id)
 
   return (
     <div className={`${embedded ? '' : 'flex-1 overflow-y-auto'} bg-obsidian`} style={embedded ? undefined : { WebkitOverflowScrolling: 'touch' }}>
@@ -468,17 +586,8 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isFullScreen, 
               </div>
             </>
           )}
-          <div className={`absolute flex items-center gap-2 z-[111] ${isFullScreen ? 'top-[calc(env(safe-area-inset-top,12px)+8px)] right-16' : 'top-3 right-3'}`}>
-            {!isOwnProfile && (
-              <button
-                onClick={!isPreview ? () => toggleSave(pin.id) : undefined}
-                className={`w-9 h-9 rounded-full ${saved ? 'bg-tangerine' : 'bg-black/30'} backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''} transition-colors`}
-              >
-                <Bookmark size={16} fill={saved ? 'white' : 'none'} />
-              </button>
-            )}
-            <button className={`w-9 h-9 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''}`}><Share2 size={14} /></button>
-          </div>
+          {/* Save + Share moved to the modal header (next to X) so all
+               three header actions live in one aligned cluster. */}
           {pin.type === 'sold' && <div className="absolute top-3 left-3"><Badge variant="sold">SOLD</Badge></div>}
         </div>
       )}

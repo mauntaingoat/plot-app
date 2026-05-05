@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, ChartBar as BarChart3, Users, Gear as Settings, Plus, Eye, CursorClick as MousePointerClick, ArrowSquareOut as ExternalLink, SignOut as LogOut, CaretRight as ChevronRight, CreditCard, User, Trash as Trash2, PencilSimple as Edit3, EyeSlash as EyeOff, LinkSimple as Link2, Shield, FilmStrip as Film, ShareNetwork as Share2, Copy, Check, X, QrCode, CalendarDots as CalendarDays, Tray as Inbox, Bell, Camera, Sun, Moon, ArrowsClockwise as RefreshCw, Warning as AlertTriangle, ArrowRight, Buildings as Building, Palette, Heart, HandWaving as Hand } from '@phosphor-icons/react'
+import { MapPin, ChartBar as BarChart3, Users, Gear as Settings, Plus, Eye, CursorClick as MousePointerClick, ArrowSquareOut as ExternalLink, SignOut as LogOut, CaretRight as ChevronRight, CreditCard, User, Trash as Trash2, PencilSimple as Edit3, EyeSlash as EyeOff, LinkSimple as Link2, Shield, FilmStrip as Film, ShareNetwork as Share2, Copy, Check, X, QrCode, CalendarDots as CalendarDays, Tray as Inbox, Bell, Camera, Sun, Moon, ArrowsClockwise as RefreshCw, Warning as AlertTriangle, ArrowRight, Buildings as Building, Palette, Heart, HandWaving as Hand, Lock } from '@phosphor-icons/react'
 import { TabBar } from '@/components/ui/TabBar'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
@@ -99,8 +99,21 @@ function useIsWide() {
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { userDoc, setUserDoc, firebaseUser, loading, initialized } = useAuthStore()
-  const [activeTab, setActiveTab] = useState<DashTab>('reelst')
+  const [activeTab, setActiveTab] = useState<DashTab>(() => {
+    const t = (location.state as { tab?: DashTab } | null)?.tab
+    return t || 'reelst'
+  })
+
+  // Honor `tab` passed via location.state — used by PinCreate /
+  // ContentEdit to bounce the agent back to the Content tab after
+  // they publish/save content that originated from there.
+  useEffect(() => {
+    const t = (location.state as { tab?: DashTab } | null)?.tab
+    if (t && t !== activeTab) setActiveTab(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state])
   const inboxUnread = useUnreadCount(userDoc?.uid)
   const [showSetup, setShowSetup] = useState(false)
   const [showPinActions, setShowPinActions] = useState<Pin | null>(null)
@@ -189,8 +202,23 @@ export default function Dashboard() {
   const realUser = userDoc
   const amAdmin = isAdmin(realUser?.uid)
 
-  const [pins, setPins] = useState<Pin[]>([])
-  const [pinsLoading, setPinsLoading] = useState(true)
+  // Optimistic seed — when redirected here from PinCreate, the freshly
+  // published pin is passed via navigation state so we can render it
+  // immediately. The Firestore listener catches up in ~1–3 s and
+  // overwrites the local stand-in with the canonical doc. Without
+  // this, `serverTimestamp()` resolution + cache-first onSnapshot
+  // means the new pin doesn't appear until the user reloads.
+  const seededPin = (location.state as { newPin?: Pin } | null)?.newPin ?? null
+  const [pins, setPins] = useState<Pin[]>(seededPin ? [seededPin] : [])
+  const [pinsLoading, setPinsLoading] = useState(!seededPin)
+
+  // Wipe the nav state once we've consumed it, so back/forward doesn't
+  // re-seed the same synthetic pin on top of the live snapshot.
+  useEffect(() => {
+    if (!seededPin) return
+    window.history.replaceState({}, '')
+  }, [seededPin])
+
   const activeUid = impersonating?.uid || userDoc?.uid
   useEffect(() => {
     if (!activeUid) {
@@ -199,26 +227,23 @@ export default function Dashboard() {
     }
     setPinsLoading(true)
     const unsub = subscribeToAllAgentPins(activeUid, (live) => {
-      // Merge with local state to preserve optimistic updates (e.g.
-      // toggle enabled) that haven't propagated to Firestore yet.
-      // After 2+ seconds the Firestore write lands and the snapshot
-      // catches up naturally.
+      // Merge with local state to preserve:
+      //   1. Recently-toggled `enabled` (until Firestore write lands).
+      //   2. Newly-created pins seeded from PinCreate that the
+      //      snapshot hasn't included yet.
       setPins((prev) => {
         if (prev.length === 0) return live
-        const liveMap = new Map(live.map((p) => [p.id, p]))
-        // Keep any local pins not in the snapshot (just added), merge rest
+        const liveIds = new Set(live.map((p) => p.id))
         const merged = live.map((lp) => {
           const local = prev.find((p) => p.id === lp.id)
-          // If the local pin was toggled within the last 3 seconds,
-          // keep the local version so the toggle doesn't revert.
           if (local && local.enabled !== lp.enabled) return local
           return lp
         })
-        return merged
+        const pendingLocals = prev.filter((p) => !liveIds.has(p.id))
+        return [...pendingLocals, ...merged]
       })
       setPinsLoading(false)
     })
-    // If subscription returned null (db not available), stop loading.
     if (!unsub) {
       setPinsLoading(false)
     }
@@ -353,8 +378,15 @@ export default function Dashboard() {
   // My Pins tab shows only the user-visible set: enabled + non-archived.
   // Insights uses the full `pins` array so analytics don't shrink when
   // a pin is toggled off or archived.
+  // My Pins / Content list — show every pin the agent owns except
+  // archived (soft-deleted). Disabled pins STAY in the list so the
+  // agent can toggle them back on; the toggle switch on the card
+  // makes the off-state visible. Disabled pins also keep their
+  // content visible in the Content library — the user wants a
+  // toggle-off to just hide from the public profile, not clear the
+  // whole content history.
   const displayPins = useMemo(
-    () => pins.filter((p) => p.enabled && (p as any).status !== 'archived'),
+    () => pins.filter((p) => (p as any).status !== 'archived'),
     [pins],
   )
 
@@ -365,12 +397,13 @@ export default function Dashboard() {
   // Cloud Function), so it doesn't need this dataset.
   const [weeklyEvents, setWeeklyEvents] = useState<any[]>([])
   const [chartMetric, setChartMetric] = useState<'profile_visit' | 'tap'>('profile_visit')
-  // 7 columns ending YESTERDAY (today excluded) — gives a clean
-  // "completed days" view since today's data is still incoming.
+  // 7 columns ending TODAY — last bar is the in-progress day so the
+  // agent sees how the day is shaping up live, not yesterday's
+  // already-cooled trend.
   const chartData = useMemo(() => {
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
     const result: { label: string; value: number }[] = []
-    for (let i = 7; i >= 1; i--) {
+    for (let i = 6; i >= 0; i--) {
       const d = new Date()
       d.setDate(d.getDate() - i)
       const dateStr = d.toISOString().slice(0, 10)
@@ -608,7 +641,7 @@ export default function Dashboard() {
                               { icon: Edit3, label: 'Edit Details', color: 'text-mist', onClick: () => { setEditPin(pin); setShowPinActions(null) } },
                               { icon: Film, label: 'Add Content', color: 'text-tangerine', onClick: () => { navigate(`/dashboard/pin/${pin.id}/edit?tab=content`); setShowPinActions(null) } },
                               { icon: QrCode, label: 'Get QR Code', color: 'text-tangerine', onClick: () => { setQrPin(pin); setShowPinActions(null) } },
-                              ...(pin.type === 'for_sale' ? [{ icon: CalendarDays, label: 'Open House', color: 'text-open-amber', onClick: () => {
+                              ...(pin.type === 'for_sale' ? [{ icon: CalendarDays, label: 'Open House', color: 'text-open-amber', pro: !hasFeature(activeUser, 'openHouses'), onClick: () => {
                                 if (!hasFeature(activeUser, 'openHouses')) { setPaywall({ open: true, reason: 'Open house scheduling is a Pro feature.', upgradeTo: 'pro' }); setShowPinActions(null); return }
                                 setOpenHousePin(pin as ForSalePin); setShowPinActions(null)
                               } }] : []),
@@ -622,6 +655,14 @@ export default function Dashboard() {
                               >
                                 <item.icon size={15} className={item.color} />
                                 <span className={`text-[13px] font-medium ${item.color === 'text-live-red' ? 'text-live-red' : 'text-white'}`}>{item.label}</span>
+                                {'pro' in item && item.pro && (
+                                  <span
+                                    className="ml-auto inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider text-white"
+                                    style={{ background: 'linear-gradient(135deg, #FF8552 0%, #D94A1F 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.28)' }}
+                                  >
+                                    <Lock weight="fill" size={8} /> Pro
+                                  </span>
+                                )}
                               </button>
                             ))}
                           </div>
@@ -740,7 +781,7 @@ export default function Dashboard() {
             pins={displayPins}
             agentId={activeUser.uid}
             isDesktop={isDesktop}
-            onNavigateUpload={() => navigate('/dashboard/pin/new?tab=content')}
+            onNavigateUpload={() => navigate('/dashboard/pin/new?tab=content&from=content')}
             onCaptionSaved={(pinId, contentId, caption) => {
               setPins((prev) => prev.map((p) => {
                 if (p.id !== pinId) return p
@@ -748,7 +789,7 @@ export default function Dashboard() {
               }))
             }}
             onEditContent={(content, pin) => {
-              navigate('/dashboard/content/edit', { state: { content, pin } })
+              navigate('/dashboard/content/edit', { state: { content, pin, from: 'content' } })
             }}
             onArchiveContent={(contentId, pinId) => {
               const pin = pins.find((p) => p.id === pinId)
@@ -815,6 +856,8 @@ export default function Dashboard() {
             }}
             onOpenAddPlatform={() => setShowAddPlatform(true)}
             onRemovePlatform={handleRemovePlatform}
+            isFree={getUserTier(activeUser) === 'free'}
+            onPaywall={(reason) => setPaywall({ open: true, reason, upgradeTo: 'pro' })}
           />
         )}
 
@@ -1234,12 +1277,15 @@ export default function Dashboard() {
                     try {
                       const { deleteAccount } = await import('@/lib/firestore')
                       await deleteAccount(realUser.uid)
+                      // Cloud Function deleted the Auth user too —
+                      // local sign-out clears the cached session.
                       const { auth: fbAuth } = await import('@/config/firebase')
                       await fbAuth?.signOut()
                       navigate('/')
                     } catch (err) {
                       console.error('Delete failed:', err)
-                      alert('Delete failed. Please try again.')
+                      const msg = err instanceof Error ? err.message : 'Unknown error'
+                      alert(`Delete failed:\n\n${msg}\n\n(Full error in console.)`)
                     } finally {
                       setDeleting(false)
                     }

@@ -459,7 +459,13 @@ function ClipTile({ clip, active, onTap, setTrim, canMoveLeft, canMoveRight, onM
       dragListener={reorderEnabled}
       onDragEnd={() => setReorderEnabled(false)}
       whileDrag={{ scale: 1.04, zIndex: 10 }}
-      layout={reorderEnabled ? "position" : undefined}
+      // `layout={false}` (NOT undefined) is critical: Reorder.Item enables
+      // layout animation by default, which would smoothly tween the tile's
+      // width during trim — making the drag feel laggy instead of snapping
+      // to the pointer. Explicitly off when reorder isn't active. We cast
+      // because framer-motion's TS types don't admit `false` on Reorder.Item
+      // even though the runtime accepts it (and used to ship that way).
+      layout={(reorderEnabled ? 'position' : false) as 'position' | undefined}
       className="relative"
       style={{ overflow: 'visible' }}
     >

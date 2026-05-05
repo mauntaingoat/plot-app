@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Check, Camera, CircleNotch as Loader2 } from '@phosphor-icons/react'
+import { ArrowLeft, ArrowRight, Check, Camera, CircleNotch as Loader2, MapPin, X } from '@phosphor-icons/react'
 import { GoogleLogo, PLATFORM_LIST, PLATFORM_LOGOS } from '@/components/icons/PlatformLogos'
 import { useUsername } from '@/hooks/useUsername'
 import { useAuthStore } from '@/stores/authStore'
@@ -11,6 +11,8 @@ import { createUserDoc } from '@/lib/firestore'
 import { uploadFile, avatarPath } from '@/lib/storage'
 import { Timestamp } from 'firebase/firestore'
 import type { UserDoc } from '@/lib/types'
+import { STYLE_TEMPLATES, DEFAULT_TEMPLATE_ID, getTemplate, DEFAULT_STYLE, type StyleTemplateId } from '@/lib/style'
+import { getPalette, getFont } from '@/lib/style'
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD',
@@ -18,8 +20,8 @@ const US_STATES = [
   'SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC',
 ]
 
-type Step = 'hero' | 'username' | 'name' | 'moment' | 'goals' | 'photo' | 'license' | 'bio' | 'auth' | 'done'
-const STEPS: Step[] = ['hero', 'username', 'name', 'moment', 'goals', 'photo', 'license', 'bio', 'auth', 'done']
+type Step = 'hero' | 'username' | 'name' | 'moment' | 'goals' | 'photo' | 'license' | 'bio' | 'template' | 'auth' | 'first_pin' | 'done'
+const STEPS: Step[] = ['hero', 'username', 'name', 'moment', 'goals', 'photo', 'license', 'bio', 'template', 'auth', 'first_pin', 'done']
 
 export default function Welcome() {
   const navigate = useNavigate()
@@ -49,11 +51,13 @@ export default function Welcome() {
   const [licenseState, setLicenseState] = useState('')
   const [licenseName, setLicenseName] = useState('')
   const [bio, setBio] = useState('')
+  const [templateId, setTemplateId] = useState<StyleTemplateId>(DEFAULT_TEMPLATE_ID)
   const [platforms, setPlatforms] = useState<{ id: string; username: string }[]>([])
   const [addingPlatform, setAddingPlatform] = useState<string | null>(null)
   const [platformUrl, setPlatformUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { if (prefillUsername) check(prefillUsername) }, []) // eslint-disable-line
@@ -65,7 +69,20 @@ export default function Welcome() {
       const result = await signInWithPopup(auth, new GoogleAuthProvider())
       await saveProfile(result.user.uid, result.user.email || '')
     } catch (err: any) {
-      setError(err.message || 'Sign in failed')
+      // User dismissing the popup or letting it fall behind isn't a
+      // failure — silently bail so they can try again. Same for
+      // browsers that block the popup outright; the explicit message
+      // is more useful than "popup-blocked".
+      const code = err?.code as string | undefined
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        setLoading(false)
+        return
+      }
+      if (code === 'auth/popup-blocked') {
+        setError('Popup was blocked by your browser. Allow popups for this site and try again.')
+      } else {
+        setError(err.message || 'Sign in failed')
+      }
       setLoading(false)
     }
   }
@@ -91,6 +108,19 @@ export default function Welcome() {
       if (photoFile) {
         photoURL = await uploadFile({ path: avatarPath(uid), file: photoFile })
       }
+      // Bake the chosen template into the AgentStyle field so the
+      // profile renders in the agent's picked aesthetic the moment
+      // their dashboard loads. Everything else (frames, sections,
+      // ticker, layout) inherits from DEFAULT_STYLE — frames default
+      // to "both" (border + shadow) on every surface, listings
+      // layout = scroller, all sections visible.
+      const tpl = getTemplate(templateId)
+      const style = {
+        ...DEFAULT_STYLE,
+        paletteId: tpl.paletteId,
+        fontId: tpl.fontId,
+        shapeId: tpl.shapeId,
+      }
       const userData: Partial<UserDoc> = {
         email: userEmail,
         role: 'agent',
@@ -104,6 +134,8 @@ export default function Welcome() {
         licenseName: licenseName || null,
         verificationStatus: 'unverified',
         platforms,
+        style,
+        onboardingGoals: goals,
         onboardingComplete: true,
         onboardingStep: 8,
         fairHousingAccepted: true,
@@ -115,7 +147,7 @@ export default function Welcome() {
       const { db } = await import('@/config/firebase')
       if (db) await setDoc(doc(db, 'usernames', username.toLowerCase()), { uid, createdAt: serverTimestamp() })
       setAuthDoc({ uid, ...userData, createdAt: Timestamp.now(), setupPercent: 50, tier: 'free', brandColor: null, brokerage: null } as UserDoc)
-      setStep('done')
+      setStep('first_pin')
     } catch (err: any) {
       setError(err.message || 'Failed to save')
     } finally { setLoading(false) }
@@ -147,11 +179,52 @@ export default function Welcome() {
       )}
 
       {canGoBack && step !== 'moment' && (
-        <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} onClick={prevStep}
-          className="fixed top-5 left-5 z-50 w-9 h-9 rounded-full bg-[#EAE7E0] flex items-center justify-center cursor-pointer hover:bg-[#DDD9D0] transition-colors">
-          <ArrowLeft size={16} className="text-[#2A2A2A]" />
-        </motion.button>
+        <>
+          <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} onClick={prevStep}
+            className="fixed top-5 left-5 z-50 w-9 h-9 rounded-full bg-[#EAE7E0] flex items-center justify-center cursor-pointer hover:bg-[#DDD9D0] transition-colors">
+            <ArrowLeft size={16} className="text-[#2A2A2A]" />
+          </motion.button>
+          <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} onClick={() => setShowCancelConfirm(true)}
+            aria-label="Exit onboarding"
+            className="fixed top-5 right-5 z-50 w-9 h-9 rounded-full bg-[#EAE7E0] flex items-center justify-center cursor-pointer hover:bg-[#DDD9D0] transition-colors">
+            <X size={16} className="text-[#2A2A2A]" />
+          </motion.button>
+        </>
       )}
+
+      <AnimatePresence>
+        {showCancelConfirm && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowCancelConfirm(false)}
+              className="fixed inset-0 z-[100] bg-black/40" />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[110] w-[calc(100vw-48px)] max-w-[360px] bg-white rounded-[20px] shadow-2xl p-6 text-center"
+            >
+              <h3 className="text-[18px] text-[#1A1A1A]" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>
+                Leave onboarding?
+              </h3>
+              <p className="text-[13.5px] text-[#8A8A8A] mt-2 leading-relaxed">
+                Your progress so far won't be saved.
+              </p>
+              <div className="flex gap-2 mt-5">
+                <button onClick={() => setShowCancelConfirm(false)}
+                  className="flex-1 py-3 rounded-full border-2 border-[#EAE7E0] text-[13.5px] font-semibold text-[#2A2A2A] cursor-pointer hover:bg-[#F5F3EE] transition-colors">
+                  Keep going
+                </button>
+                <button onClick={() => { setShowCancelConfirm(false); setStep('hero') }}
+                  className="flex-1 py-3 rounded-full bg-[#1A1A1A] text-white text-[13.5px] font-bold cursor-pointer hover:bg-[#2A2A2A] transition-colors">
+                  Leave
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       <div className="flex-1 flex items-center justify-center px-6 py-16">
         <div className="w-full max-w-[440px]">
@@ -175,7 +248,7 @@ export default function Welcome() {
                 </div>
                 <button
                   onClick={() => setStep('username')}
-                  className="brand-btn w-full h-12 px-6 rounded-full text-[15px] inline-flex items-center justify-center gap-2 cursor-pointer"
+                  className="brand-btn brand-btn--no-tilt w-full h-12 px-6 rounded-full text-[15px] inline-flex items-center justify-center gap-2 cursor-pointer"
                   style={{
                     fontWeight: 600,
                     boxShadow:
@@ -186,7 +259,7 @@ export default function Welcome() {
                   <ArrowRight weight="bold" size={16} />
                 </button>
                 <p className="text-[13px] text-[#AAAAAA]">
-                  Already have an account? <Link to="/sign-in" className="text-tangerine font-semibold hover:underline">Sign in</Link>
+                  Already have an account? <Link to="/sign-in" className="text-tangerine font-semibold hover:underline underline-offset-4">Sign in</Link>
                 </p>
               </motion.div>
             )}
@@ -416,6 +489,71 @@ export default function Welcome() {
               </motion.div>
             )}
 
+            {step === 'template' && (
+              <motion.div key="template" custom={dir} variants={pageVariants} initial="enter" animate="center" exit="exit" transition={pageTrans}
+                className="space-y-5">
+                <div>
+                  <h2 className="text-[26px] text-[#1A1A1A]" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>Pick your look</h2>
+                  <p className="text-[14px] text-[#8A8A8A] mt-1">A starter palette, font, and map shape. Mix-and-match anything later in Style.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {STYLE_TEMPLATES.map((t) => {
+                    const palette = getPalette(t.paletteId)
+                    const font = getFont(t.fontId)
+                    const isActive = templateId === t.id
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setTemplateId(t.id)}
+                        className={`relative text-left rounded-[18px] p-3 cursor-pointer transition-all ${isActive ? 'ring-2 ring-tangerine' : 'ring-1 ring-[#EAE7E0] hover:ring-[#D4D0C8]'}`}
+                        style={{ background: palette.cardBg }}
+                      >
+                        {/* Mini preview: shape disc + template name in palette colors */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <div
+                            className="w-9 h-9 shrink-0"
+                            style={{
+                              background: palette.accent,
+                              borderRadius:
+                                t.shapeId === 'circle' ? '50%' :
+                                t.shapeId === 'rectangle' ? '6px' :
+                                t.shapeId === 'squircle' ? '32%' :
+                                '12px',
+                              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 10px -3px rgba(0,0,0,0.18)',
+                            }}
+                          />
+                          <div className="min-w-0">
+                            <div
+                              className="text-[14px] font-semibold truncate"
+                              style={{ color: palette.textPrimary, fontFamily: font.display }}
+                            >
+                              {t.name}
+                            </div>
+                            <div className="text-[10.5px] truncate" style={{ color: palette.textSecondary }}>
+                              {t.vibe}
+                            </div>
+                          </div>
+                        </div>
+                        {isActive && (
+                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-tangerine flex items-center justify-center">
+                            <Check size={11} weight="bold" className="text-white" />
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-[11px] text-[#BBBBBB] text-center">
+                  You can swap palette, font, map shape, frames, and more later in <span className="font-semibold text-[#8A8A8A]">Style</span>.
+                </p>
+                <button onClick={nextStep}
+                  className="w-full py-3.5 rounded-full bg-tangerine text-white text-[15px] font-bold cursor-pointer hover:brightness-105 transition-all">
+                  Continue
+                </button>
+              </motion.div>
+            )}
+
             {step === 'auth' && (
               <motion.div key="auth" custom={dir} variants={pageVariants} initial="enter" animate="center" exit="exit" transition={pageTrans}
                 className="space-y-6">
@@ -447,6 +585,35 @@ export default function Welcome() {
                 <p className="text-[11px] text-[#BBBBBB] text-center">
                   By signing up, you agree to our <Link to="/terms" className="underline">Terms</Link> and <Link to="/privacy" className="underline">Privacy Policy</Link>.
                 </p>
+              </motion.div>
+            )}
+
+            {step === 'first_pin' && (
+              <motion.div key="first_pin" custom={dir} variants={pageVariants} initial="enter" animate="center" exit="exit" transition={pageTrans}
+                className="text-center space-y-6">
+                <div className="w-20 h-20 rounded-full bg-tangerine/12 flex items-center justify-center mx-auto">
+                  <MapPin size={36} weight="fill" className="text-tangerine" />
+                </div>
+                <div>
+                  <h2 className="text-[26px] text-[#1A1A1A]" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>Drop your first pin</h2>
+                  <p className="text-[14px] text-[#8A8A8A] mt-2 max-w-[320px] mx-auto">
+                    A for-sale, sold, or neighborhood spotlight. Add the listing now and the content that lives inside it.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => navigate('/dashboard/pin/new?from=onboarding')}
+                    className="brand-btn brand-btn--no-tilt w-full py-3.5 rounded-full text-white text-[15px] font-bold cursor-pointer"
+                  >
+                    Add a pin
+                  </button>
+                  <button
+                    onClick={() => setStep('done')}
+                    className="w-full py-3 rounded-full text-[13px] font-semibold text-[#8A8A8A] cursor-pointer hover:text-[#1A1A1A] transition-colors"
+                  >
+                    Skip for now
+                  </button>
+                </div>
               </motion.div>
             )}
 

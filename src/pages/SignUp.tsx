@@ -191,7 +191,7 @@ export default function SignUp() {
                 </motion.button>
               </div>
 
-              <p className="text-[13px] text-smoke">Already have an account? <Link to="/sign-in" className="text-tangerine font-semibold">Sign in</Link></p>
+              <p className="text-[13px] text-smoke">Already have an account? <Link to="/sign-in" className="text-tangerine font-semibold hover:underline underline-offset-4">Sign in</Link></p>
             </motion.div>
           )}
 
@@ -224,7 +224,7 @@ export default function SignUp() {
                 type="button"
                 onClick={() => setStep('license')}
                 disabled={!available || checking || username.length < 3}
-                className="brand-btn w-full h-12 px-6 rounded-full text-[15px] inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="brand-btn brand-btn--no-tilt w-full h-12 px-6 rounded-full text-[15px] inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   fontFamily: 'var(--font-humanist)',
                   fontWeight: 600,
@@ -320,7 +320,7 @@ export default function SignUp() {
               <button
                 type="button"
                 disabled={!licenseName.trim() || !licenseNumber.trim() || !licenseState || !fairHousing || !dataSecurity || duplicateLicense?.exists || loading}
-                className="brand-btn w-full h-12 px-6 rounded-full text-[15px] inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="brand-btn brand-btn--no-tilt w-full h-12 px-6 rounded-full text-[15px] inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   fontFamily: 'var(--font-humanist)',
                   fontWeight: 600,
@@ -423,7 +423,7 @@ export default function SignUp() {
                   type="button"
                   onClick={handleCreate}
                   disabled={loading}
-                  className="brand-btn w-full h-12 px-6 rounded-full text-[15px] inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="brand-btn brand-btn--no-tilt w-full h-12 px-6 rounded-full text-[15px] inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
                     fontFamily: 'var(--font-humanist)',
                     fontWeight: 600,
@@ -442,7 +442,7 @@ export default function SignUp() {
                 </button>
               </div>
 
-              <p className="text-[13px] text-smoke">Already have an account? <Link to="/sign-in" className="text-tangerine font-semibold">Sign in</Link></p>
+              <p className="text-[13px] text-smoke">Already have an account? <Link to="/sign-in" className="text-tangerine font-semibold hover:underline underline-offset-4">Sign in</Link></p>
             </motion.div>
           )}
         </AnimatePresence>

@@ -54,58 +54,42 @@ const PLANS = [
   },
 ]
 
-type CompValue = boolean | 'partial' | string
-
-const COMP_ROWS: Array<{
-  feature: string
-  reelst: CompValue
-  zillow: CompValue
-  instagram: CompValue
-  linkbio: CompValue
-}> = [
-  { feature: 'Live map of your listings',          reelst: true, zillow: 'partial', instagram: false,     linkbio: false   },
-  { feature: 'Reels & video walkthroughs on listings', reelst: true, zillow: 'partial', instagram: true,  linkbio: false   },
-  { feature: 'Your own brand and URL',             reelst: true, zillow: false,     instagram: 'partial', linkbio: true    },
-  { feature: 'You own every lead',                 reelst: true, zillow: false,     instagram: true,      linkbio: true    },
-  { feature: 'MLS data auto-fill on listings',     reelst: true, zillow: true,      instagram: false,     linkbio: false   },
-  { feature: 'Direct showing requests',            reelst: true, zillow: 'partial', instagram: false,     linkbio: false   },
-  { feature: 'One link for your whole presence',   reelst: true, zillow: false,     instagram: 'partial', linkbio: true    },
-  { feature: 'Per-listing analytics',              reelst: true, zillow: 'partial', instagram: false,     linkbio: 'partial' },
-  { feature: 'Built for real estate agents',       reelst: true, zillow: 'partial', instagram: false,     linkbio: false   },
-]
-
 const FAQS = [
   {
     q: 'Do I need a real estate license to use Reelst?',
-    a: 'Yes. Every agent profile is verified against state licensure data — we confirm the license number, name, and state before your Reelst goes live. If you\'re a consumer or aspiring agent, you can still browse other Reelsts, just not publish one.',
+    a: 'Yes. Every agent profile is verified before going live — we check your license number, legal name, and state against your state\'s licensure data. Profiles stay hidden from the public until verification clears.',
   },
   {
-    q: 'Do I keep my leads, or does Reelst?',
-    a: 'You keep them. Showing requests, email subscribers, waves, and contact submissions land in your inbox — your contacts, your CRM, your relationship. Reelst never resells leads or sends them to a competing agent.',
-  },
-  {
-    q: 'What happens if I switch brokerages?',
-    a: 'Your Reelst goes with you. Your reel.st link, your subscribers, your pins, and your analytics are tied to you, not your brokerage. Update your brokerage on your profile and keep moving — no lost audience, no rebuilding.',
-  },
-  {
-    q: 'Does Reelst replace my MLS or my CRM?',
-    a: 'Neither. Reelst is your front door — the place you send buyers and the public to see your work. Your MLS is your sourcing layer, your CRM is your back office. We pull MLS data into your pins automatically and you can export leads to any CRM.',
-  },
-  {
-    q: 'Will my license number and required disclaimers display?',
-    a: 'Yes. License #, brokerage, and state are auto-displayed on your public profile. Fair-housing disclosure and equal-opportunity language are baked into the layout so your Reelst stays compliant in every state.',
+    q: 'What\'s the difference between Free and Pro?',
+    a: 'Free covers the basics: up to 3 active pins, full content per pin (reels, photo carousels, photos), and core stats — visits, taps, saves, and waves. Pro at $19/mo unlocks unlimited pins, the full insights dashboard (peak hours, visitor cities, audience crossover, content conversion), open-house scheduling, email digests to your subscribers, and the expanded customization library — extra palettes, fonts, and map shapes.',
   },
   {
     q: 'Can I import my existing listings?',
-    a: 'Just enter the address. Reelst auto-fills property details — beds, baths, sqft, type, year built, listing price, days on market, MLS #. You drop the videos and walkthroughs on top.',
+    a: 'Just type the address. Reelst auto-fills beds, baths, sqft, home type, year built, list price, days on market, and MLS # from public records. Drop your reels and walkthroughs on top.',
+  },
+  {
+    q: 'What can visitors do on my profile?',
+    a: 'Visitors don\'t need an account to interact. They can save your profile (drops their email so we send a digest when you post new listings or content), wave on a listing (sends you their name, email, phone, and an optional question), or request a showing. Everything lands in your inbox.',
+  },
+  {
+    q: 'What can I post on a pin?',
+    a: 'Each pin is a container for your reels (videos up to 3 minutes), photo carousels, and standalone photos. Video is processed through Mux for adaptive streaming so playback stays smooth on any connection. Listing photos auto-pull from MLS when available.',
+  },
+  {
+    q: 'Do I keep my leads, or does Reelst?',
+    a: 'You keep them. Showing requests, email subscribers, and waves all land in your inbox under your account — your contacts, your relationship. Reelst never resells leads or routes them to a competing agent.',
+  },
+  {
+    q: 'What happens when a listing sells?',
+    a: 'Mark it sold from the dashboard. The pin\'s type flips from For Sale to Sold, the price card switches to your sold price and sold date, and the listing stays on your map as part of your portfolio — every reel and walkthrough you attached stays put.',
   },
   {
     q: 'Can I cancel or downgrade anytime?',
-    a: 'Yes. Cancel from your dashboard at any time — you keep your current plan through the end of the billing period, then drop to Free. Your pins, content, and subscribers stay with you.',
+    a: 'Yes. Cancel from your dashboard — you keep Pro through the end of the billing period, then drop to Free. Your pins, content, and subscribers stay with you.',
   },
   {
     q: 'Is there a team or brokerage plan?',
-    a: 'Coming soon. If you\'re running a team or a brokerage, reach out at hello@reelst.co and we\'ll set you up with early access plus volume pricing.',
+    a: 'Coming soon. If you\'re running a team or a brokerage, reach out at hello@reelst.co for early access and volume pricing.',
   },
 ]
 
@@ -297,116 +281,6 @@ export default function Pricing() {
           </div>
         </section>
 
-        {/* ── COMPARISON — Reelst vs the alternatives agents already use ── */}
-        <section className="max-w-[1200px] mx-auto px-6 md:px-10 py-20 md:py-28">
-          <div className="max-w-[760px] mb-12 md:mb-16 text-center mx-auto">
-            <h2
-              className="text-ink"
-              style={{
-                fontFamily: 'var(--font-humanist)',
-                fontSize: 'clamp(2rem, 4.2vw, 3.5rem)',
-                fontWeight: 500,
-                letterSpacing: '-0.035em',
-                lineHeight: 0.98,
-              }}
-            >
-              Built for agents,{' '}
-              <span className="brand-grad-text" style={{ fontWeight: 600 }}>
-                not platforms.
-              </span>
-            </h2>
-            <p
-              className="text-graphite mt-5 max-w-[520px] mx-auto"
-              style={{
-                fontFamily: 'var(--font-humanist)',
-                fontSize: '15px',
-                fontWeight: 400,
-                lineHeight: 1.55,
-              }}
-            >
-              The tools you patch together today — a portal profile, a social feed,
-              a generic link-in-bio — each solve a slice. Reelst is the home base.
-            </p>
-          </div>
-
-          <div
-            className="rounded-[22px] bg-white overflow-hidden"
-            style={{
-              border: '1px solid rgba(255,133,82,0.22)',
-              boxShadow:
-                '0 1px 0 rgba(255,255,255,0.85) inset, 0 30px 80px -30px rgba(217,74,31,0.20), 0 10px 32px -16px rgba(10,14,23,0.08)',
-            }}
-          >
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] border-collapse">
-                <thead>
-                  <tr style={{ background: 'rgba(255,247,240,0.6)' }}>
-                    <th
-                      className="text-left py-5 pl-6 pr-4 text-[11px] text-smoke uppercase tracking-[0.18em]"
-                      style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}
-                    >
-                      Feature
-                    </th>
-                    <th
-                      className="py-5 px-3 text-center text-[13px] uppercase tracking-[0.16em]"
-                      style={{
-                        fontFamily: 'var(--font-humanist)',
-                        fontWeight: 700,
-                        color: '#D94A1F',
-                        background: 'rgba(255,133,82,0.08)',
-                      }}
-                    >
-                      Reelst
-                    </th>
-                    <th
-                      className="py-5 px-3 text-center text-[13px] text-smoke uppercase tracking-[0.16em]"
-                      style={{ fontFamily: 'var(--font-humanist)', fontWeight: 600 }}
-                    >
-                      Listing portal
-                    </th>
-                    <th
-                      className="py-5 px-3 text-center text-[13px] text-smoke uppercase tracking-[0.16em]"
-                      style={{ fontFamily: 'var(--font-humanist)', fontWeight: 600 }}
-                    >
-                      Social feed
-                    </th>
-                    <th
-                      className="py-5 px-3 text-center text-[13px] text-smoke uppercase tracking-[0.16em]"
-                      style={{ fontFamily: 'var(--font-humanist)', fontWeight: 600 }}
-                    >
-                      Link-in-bio
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {COMP_ROWS.map((row, i) => (
-                    <tr
-                      key={row.feature}
-                      style={i % 2 === 1 ? { background: 'rgba(255,247,240,0.35)' } : undefined}
-                    >
-                      <td
-                        className="py-4 pl-6 pr-4 text-[14.5px] text-ink"
-                        style={{ fontFamily: 'var(--font-humanist)', fontWeight: 500 }}
-                      >
-                        {row.feature}
-                      </td>
-                      <td
-                        className="text-center py-4 px-3"
-                        style={{ background: 'rgba(255,133,82,0.06)' }}
-                      >
-                        <CompMark value={row.reelst} highlight />
-                      </td>
-                      <td className="text-center py-4 px-3"><CompMark value={row.zillow} /></td>
-                      <td className="text-center py-4 px-3"><CompMark value={row.instagram} /></td>
-                      <td className="text-center py-4 px-3"><CompMark value={row.linkbio} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
         {/* ── FAQ — magazine-style numbered list ─────────────────── */}
         <section className="max-w-[860px] mx-auto px-6 md:px-10 pt-12 md:pt-16 pb-24 md:pb-32">
           <div className="text-center mb-12 md:mb-16">
@@ -523,50 +397,3 @@ export default function Pricing() {
   )
 }
 
-function CompMark({ value, highlight = false }: { value: CompValue; highlight?: boolean }) {
-  if (value === true) {
-    return (
-      <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full ${highlight ? 'bg-tangerine' : 'bg-ink/5'}`}>
-        <Check weight="bold" size={14} className={highlight ? 'text-white' : 'text-ink'} />
-      </span>
-    )
-  }
-  if (value === 'partial') {
-    return (
-      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-black/[0.04]" aria-label="partial">
-        <span className="w-2.5 h-0.5 bg-smoke rounded-full" />
-      </span>
-    )
-  }
-  if (value === false) {
-    return <span className="inline-block w-3 h-px bg-ink/15" aria-label="not included" />
-  }
-  if (typeof value === 'string' && value.toLowerCase() === 'soon') {
-    return (
-      <span
-        className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.14em]"
-        style={{
-          fontFamily: 'var(--font-mono)',
-          fontWeight: 600,
-          color: '#D94A1F',
-          background: 'rgba(217,74,31,0.1)',
-        }}
-      >
-        Soon
-      </span>
-    )
-  }
-  return (
-    <span
-      className={`inline-block text-[14px] ${highlight ? '' : 'text-ink'}`}
-      style={{
-        fontFamily: 'var(--font-humanist)',
-        fontWeight: 600,
-        letterSpacing: '-0.01em',
-        color: highlight ? '#D94A1F' : undefined,
-      }}
-    >
-      {value}
-    </span>
-  )
-}

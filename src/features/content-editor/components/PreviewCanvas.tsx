@@ -41,13 +41,29 @@ export function PreviewCanvas() {
     return () => clearTimeout(id)
   }, [thumbSavedAt])
 
-  /** Capture the current video frame via createImageBitmap, which grabs
-   *  the decoded frame directly from the video decoder — works paused,
-   *  no poster interference. Falls back to drawImage if unavailable. */
+  /** Capture the current video frame as the clip's display thumbnail.
+   *
+   *  Accuracy fix: a synchronous read after a seek can return the
+   *  *previous* frame because the browser hasn't presented the new one
+   *  yet. We block on `seeked` (if a seek is in flight) and then wait
+   *  one `requestVideoFrameCallback` tick so the freshly-decoded frame
+   *  is the one we read. createImageBitmap pulls the bitmap straight
+   *  out of the video decoder; drawImage is the fallback. */
   const captureThumbnail = useCallback(async () => {
     if (!selected || selected.type !== 'video') return
     const v = videoRef.current
     if (!v || v.videoWidth === 0) return
+
+    if (v.seeking) {
+      await new Promise<void>((resolve) => {
+        const done = () => { v.removeEventListener('seeked', done); resolve() }
+        v.addEventListener('seeked', done, { once: true })
+      })
+    }
+    const rvfc = (v as unknown as { requestVideoFrameCallback?: (cb: () => void) => number }).requestVideoFrameCallback
+    if (typeof rvfc === 'function') {
+      await new Promise<void>((resolve) => rvfc.call(v, () => resolve()))
+    }
 
     const clipId = selected.id
     const TARGET_W = 480

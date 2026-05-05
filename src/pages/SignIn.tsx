@@ -126,7 +126,7 @@ export default function SignIn() {
             <button
               type="submit"
               disabled={loading}
-              className="brand-btn w-full h-12 px-6 rounded-full text-[15px] inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="brand-btn brand-btn--no-tilt w-full h-12 px-6 rounded-full text-[15px] inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
                 fontFamily: 'var(--font-humanist)',
                 fontWeight: 600,
@@ -145,7 +145,7 @@ export default function SignIn() {
             </button>
           </form>
 
-          <p className="text-[13px] text-smoke">Don't have an account? <Link to="/sign-up" className="text-tangerine font-semibold">Get started</Link></p>
+          <p className="text-[13px] text-smoke">Don't have an account? <Link to="/sign-up" className="text-tangerine font-semibold hover:underline underline-offset-4">Get started</Link></p>
         </motion.div>
       </div>
 

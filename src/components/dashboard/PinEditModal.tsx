@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion'
 import { useScrollLock } from '@/hooks/useScrollLock'
-import { X, Trash as Trash2, DotsSixVertical as GripVertical, Play, Image, Radio, MapPin, CaretUp as ChevronUp, CaretDown as ChevronDown, Camera, CurrencyDollar as DollarSign } from '@phosphor-icons/react'
+import { X, Trash as Trash2, DotsSixVertical as GripVertical, Play, Image, MapPin, CaretUp as ChevronUp, CaretDown as ChevronDown, CaretLeft as ChevronLeft, CaretRight as ChevronRight, Camera, CurrencyDollar as DollarSign } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -24,8 +24,6 @@ interface PinEditModalProps {
 
 const CONTENT_ICONS: Record<string, typeof Play> = {
   reel: Play,
-  story: Image,
-  live: Radio,
   photo: Image,
 }
 
@@ -94,9 +92,35 @@ function PinEditContent({ pin, onAddContent, onArchiveContent, onReorderContent,
       const heroPhotoUrl = urls[0] || (pin as any).heroPhotoUrl || ''
       await updatePin(pin.id, { photos: urls, heroPhotoUrl } as any)
       onPinUpdated?.({ ...pin, photos: urls, heroPhotoUrl } as any)
+      // Reset the input so the same files can be re-selected next time
+      e.target.value = ''
     } catch (err) {
       console.error('Upload photos failed:', err)
     } finally { setUploadingPhotos(false) }
+  }
+
+  const persistPhotos = async (urls: string[]) => {
+    const heroPhotoUrl = urls[0] || ''
+    try {
+      await updatePin(pin.id, { photos: urls, heroPhotoUrl } as any)
+      onPinUpdated?.({ ...pin, photos: urls, heroPhotoUrl } as any)
+    } catch (err) {
+      console.error('Update photos failed:', err)
+    }
+  }
+
+  const handleRemovePhoto = (idx: number) => {
+    const urls: string[] = [...((pin as any).photos || [])]
+    urls.splice(idx, 1)
+    persistPhotos(urls)
+  }
+
+  const handleMovePhoto = (idx: number, dir: -1 | 1) => {
+    const urls: string[] = [...((pin as any).photos || [])]
+    const target = idx + dir
+    if (target < 0 || target >= urls.length) return
+    ;[urls[idx], urls[target]] = [urls[target], urls[idx]]
+    persistPhotos(urls)
   }
 
   const moveItem = (idx: number, dir: -1 | 1) => {
@@ -241,13 +265,73 @@ function PinEditContent({ pin, onAddContent, onArchiveContent, onReorderContent,
               <div>
                 <label className="text-[11px] font-semibold text-ghost uppercase tracking-wider block mb-1">Description</label>
                 <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} rows={3}
-                  className="w-full bg-slate rounded-xl px-3 py-2.5 text-[13px] text-mist outline-none resize-none" />
+                  style={{ borderRadius: '10px' }}
+                  className="w-full bg-slate px-3 py-2.5 text-[13px] text-mist outline-none resize-none focus:ring-1 focus:ring-tangerine/30" />
               </div>
+
+              {/* Listing photo strip — thumbnails of every uploaded
+                   photo with X to remove and ←/→ to reorder. The first
+                   photo is the cover (drives heroPhotoUrl). Mirrors the
+                   pattern in PinCreate.tsx so the create + edit flows
+                   feel identical. */}
+              {((pin as any).photos?.length ?? 0) > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-semibold text-ghost uppercase tracking-wider">
+                      {(pin as any).photos.length} photo{(pin as any).photos.length > 1 ? 's' : ''} · first is the cover
+                    </span>
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                    {((pin as any).photos as string[]).map((url, i) => (
+                      <div
+                        key={`${url}-${i}`}
+                        className="relative shrink-0 w-24 h-24 rounded-[12px] overflow-hidden bg-charcoal border border-border-dark"
+                      >
+                        <img src={url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                        {i === 0 && (
+                          <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded-[6px] bg-tangerine text-white text-[9px] font-bold uppercase tracking-wider">
+                            Cover
+                          </span>
+                        )}
+                        <button
+                          onClick={() => handleRemovePhoto(i)}
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-ink/85 text-white flex items-center justify-center hover:bg-ink cursor-pointer transition-colors"
+                          aria-label="Remove photo"
+                        >
+                          <X size={11} weight="bold" />
+                        </button>
+                        <div className="absolute bottom-1 left-1 right-1 flex justify-between gap-1">
+                          <button
+                            disabled={i === 0}
+                            onClick={() => handleMovePhoto(i, -1)}
+                            className="w-5 h-5 rounded-full bg-ink/85 text-white flex items-center justify-center hover:bg-ink cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            aria-label="Move left"
+                          >
+                            <ChevronLeft size={11} weight="bold" />
+                          </button>
+                          <button
+                            disabled={i === ((pin as any).photos.length - 1)}
+                            onClick={() => handleMovePhoto(i, 1)}
+                            className="w-5 h-5 rounded-full bg-ink/85 text-white flex items-center justify-center hover:bg-ink cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            aria-label="Move right"
+                          >
+                            <ChevronRight size={11} weight="bold" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <button onClick={() => photoRef.current?.click()} disabled={uploadingPhotos}
                 className="w-full py-3 border border-dashed border-ghost/20 rounded-xl text-[12px] text-ghost flex items-center justify-center gap-2 cursor-pointer hover:border-ghost/40 transition-colors">
                 <Camera size={14} />
-                {uploadingPhotos ? 'Uploading...' : `${(pin as any).photos?.length || 0} listing photos · Add more`}
+                {uploadingPhotos
+                  ? 'Uploading...'
+                  : ((pin as any).photos?.length ?? 0) > 0
+                    ? 'Add more photos'
+                    : 'Upload listing photos'}
               </button>
 
               <Button variant="primary" size="md" fullWidth loading={savingListing} onClick={handleSaveListing}>

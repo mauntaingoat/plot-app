@@ -26,17 +26,16 @@ if (!admin.apps.length) admin.initializeApp()
 
 // Mirror of /src/lib/tiers.ts. Kept inline here to avoid pulling the
 // React app's TS into the functions build.
-type Tier = 'free' | 'pro' | 'studio'
+type Tier = 'free' | 'pro'
 
 const ACTIVE_PIN_CAP: Record<Tier, number> = {
   free: 3,
   pro: 9999,
-  studio: 9999,
 }
 
 const ADMIN_UIDS = new Set<string>([
   // Mirror of /src/lib/admin.ts admin uids — admins effectively get the
-  // 'studio' cap. Keep in sync if the admin list changes.
+  // Pro cap. Keep in sync if the admin list changes.
 ])
 
 interface UserDocLite {
@@ -46,7 +45,7 @@ interface UserDocLite {
 }
 
 function resolveTier(uid: string, userDoc: UserDocLite | undefined): Tier {
-  if (ADMIN_UIDS.has(uid)) return 'studio'
+  if (ADMIN_UIDS.has(uid)) return 'pro'
   const gift = userDoc?.giftTier
   const expiry = userDoc?.giftExpiry
   if (gift && expiry) {

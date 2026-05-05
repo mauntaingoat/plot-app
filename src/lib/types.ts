@@ -61,6 +61,11 @@ export interface UserDoc {
    *  section visibility, ticker stats, CTA labels). Optional — when
    *  unset the public profile renders with `DEFAULT_STYLE`. */
   style?: AgentStyle
+  /** Onboarding goals — what the agent said they want to use Reelst
+   *  for during signup. Free-form string keys (e.g. 'leads',
+   *  'brand', 'listings'). Used for product analytics + cohorting.
+   *  Not surfaced in the public profile. */
+  onboardingGoals?: string[]
 }
 
 // ── Pin types — 2 listing types + spotlight ──

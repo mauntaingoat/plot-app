@@ -1,6 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Lock } from '@phosphor-icons/react'
 import { useSwipeToDismiss } from '@/hooks/useSwipeToDismiss'
 import { useSheetLifecycle } from '@/hooks/useSheetLifecycle'
 import { LoadingScreen } from '@/components/ui/LoadingScreen'
@@ -12,6 +13,7 @@ import { AgentDetailSheet } from '@/components/sheets/AgentDetailSheet'
 import { AuthSheet } from '@/components/sheets/AuthSheet'
 import { AgentProfileHeader } from '@/components/agent-profile/AgentProfileHeader'
 import { SaveAgentModal } from '@/components/agent-profile/SaveAgentModal'
+import { ShareModal } from '@/components/agent-profile/ShareModal'
 import { WaveModal } from '@/components/agent-profile/WaveModal'
 import { ListingsTab } from '@/components/agent-profile/ListingsTab'
 import { ExpandedMapView } from '@/components/agent-profile/ExpandedMapView'
@@ -141,7 +143,7 @@ export default function AgentProfile() {
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null)
   const [selectedPinTab, setSelectedPinTab] = useState<'content' | 'listing' | undefined>(undefined)
   const [modalKey, setModalKey] = useState(0) // increment to force remount
-  const [indicatorPins, setIndicatorPins] = useState<{ pins: Pin[]; type: 'live' | 'openhouse' } | null>(null)
+  const [indicatorPins, setIndicatorPins] = useState<{ pins: Pin[]; type: 'openhouse' } | null>(null)
   const [showAgentDetail, setShowAgentDetail] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
   const [showAccount, setShowAccount] = useState(false)
@@ -240,30 +242,29 @@ export default function AgentProfile() {
     }
   }, [filteredPins])
 
-  const handlePinClick = useCallback((pin: Pin) => {
-    setSelectedPin(pin)
-    // Only count taps from OTHER users — the agent's own clicks on
-    // their own pins (or preview) shouldn't inflate metrics.
-    if (!isOwnProfile) {
-      import('@/lib/firestore').then(({ incrementPinTap }) => incrementPinTap(pin.id)).catch(() => {})
-    }
-  }, [allPins, isOwnProfile])
+  // Pin-level tap tracking. Fires once per pin click anywhere on the
+  // agent profile (map pin, listings card, etc.). Self-views are
+  // excluded both client-side (isOwnProfile) and server-side
+  // (trackEngagement skips when request.auth.uid === pin.agentId), so
+  // testing on your own profile won't show up in Insights — open in a
+  // signed-out tab to verify counts move.
+  const trackPinTap = useCallback((pinId: string) => {
+    if (isOwnProfile) return
+    import('@/lib/firestore').then(({ incrementPinTap }) => incrementPinTap(pinId)).catch(() => {})
+  }, [isOwnProfile])
 
-  const handleIndicatorTap = useCallback((pins: Pin[], type: 'live' | 'openhouse') => {
-    const tab = type === 'openhouse' ? 'listing' as const : 'content' as const
+  const handleIndicatorTap = useCallback((pins: Pin[]) => {
     if (pins.length === 1) {
-      setSelectedPinTab(tab)
+      setSelectedPinTab('listing')
       setSelectedPin(pins[0])
       setModalKey((k) => k + 1)
     } else if (pins.length > 1) {
-      setIndicatorPins({ pins, type })
+      setIndicatorPins({ pins, type: 'openhouse' })
     }
   }, [])
 
-  const handleShare = async () => {
-    try { await navigator.share({ title: `${agent?.displayName} on Reelst`, url: window.location.href }) }
-    catch { navigator.clipboard.writeText(window.location.href) }
-  }
+  const [shareOpen, setShareOpen] = useState(false)
+  const handleShare = () => setShareOpen(true)
 
   // ── New 3-tab agent profile state ──
   // Replaces the legacy view-mode shell as the default rendering
@@ -484,7 +485,7 @@ export default function AgentProfile() {
     return (
       <div className="map-page flex flex-col items-center justify-center text-center px-6 bg-midnight" style={{ fontFamily: 'var(--font-humanist)' }}>
         <div className="w-16 h-16 rounded-full bg-tangerine/15 flex items-center justify-center mb-4">
-          <span className="text-[28px]">🔒</span>
+          <Lock weight="fill" size={28} className="text-tangerine" />
         </div>
         <h1 className="text-[22px] text-white mb-2" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>Profile pending verification</h1>
         <p className="text-[14px] text-ghost mb-6 max-w-[300px]">
@@ -652,6 +653,7 @@ export default function AgentProfile() {
             showMap={showMap}
             listingsLayout={style.listingsLayout}
             onSelectPin={(pin) => {
+              trackPinTap(pin.id)
               const firstContent = pin.content?.[0]
               if (firstContent) {
                 // Open the immersive viewer scoped to ALL pins (not
@@ -717,7 +719,7 @@ export default function AgentProfile() {
               defaultCenter={defaultCenter}
               saved={savedSession}
               onSaveClick={() => setSaveModalOpen(true)}
-              onSelectPin={setTabSelectedPin}
+              onSelectPin={(pin) => { trackPinTap(pin.id); setTabSelectedPin(pin) }}
             />
           )}
 
@@ -731,6 +733,15 @@ export default function AgentProfile() {
           agentPhotoURL={agent.photoURL}
           source="profile"
           onSubscribed={() => setSavedSession(true)}
+        />
+
+        <ShareModal
+          isOpen={shareOpen}
+          onClose={() => setShareOpen(false)}
+          title={`${agent.displayName || firstName} on Reelst`}
+          message={agent.bio?.split('\n')[0] || `Check out ${agent.displayName || firstName}'s listings on Reelst`}
+          heroImageUrl={agent.photoURL || null}
+          agentName={agent.displayName || firstName}
         />
 
         {/* Agent-level Wave — fired from the top-left header icon.

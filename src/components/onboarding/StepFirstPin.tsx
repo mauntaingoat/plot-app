@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, MagnifyingGlass as Search, Check, House as Home, CurrencyDollar as DollarSign, Tree as TreePine } from '@phosphor-icons/react'
+import { MapPin, MagnifyingGlass as Search, Check, House as Home, Key, Tree as TreePine } from '@phosphor-icons/react'
 import { Timestamp } from 'firebase/firestore'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -12,7 +12,7 @@ import type { PinType, ForSalePin, SoldPin, SpotlightPin } from '@/lib/types'
 
 const PIN_OPTIONS: { type: PinType; label: string; desc: string; icon: typeof Home; color: string }[] = [
   { type: 'for_sale', label: 'For Sale', desc: 'Active listing', icon: Home, color: '#3B82F6' },
-  { type: 'sold', label: 'Sold', desc: 'Closed sale', icon: DollarSign, color: '#34C759' },
+  { type: 'sold', label: 'Sold', desc: 'Closed sale', icon: Key, color: '#34C759' },
   { type: 'spotlight', label: 'Spotlight', desc: 'Highlight a location', icon: TreePine, color: '#FF6B3D' },
 ]
 
@@ -66,7 +66,7 @@ export function StepFirstPin() {
           price: 0, beds: 0, baths: 0, sqft: 0, pricePerSqft: 0,
           homeType: 'single_family', heroPhotoUrl: '', photos: [],
           description: '', listingStatus: 'active', daysOnMarket: 0,
-          isLive: false, openHouse: null,
+          openHouse: null,
         } as Omit<ForSalePin, 'id'>)
       } else if (selectedType === 'sold') {
         await createPin({

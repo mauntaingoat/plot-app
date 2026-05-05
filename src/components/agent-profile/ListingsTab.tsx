@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bed, Bathtub as Bath, ArrowsOut as Maximize, House as Home, SealCheck as BadgeCheck, Compass, Play } from '@phosphor-icons/react'
+import { Bed, Bathtub as Bath, ArrowsOut as Maximize, House as Home, Key, Compass, Play } from '@phosphor-icons/react'
 import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
+import { OpenHouseBadge } from '@/components/ui/OpenHouseBadge'
 import { displayAddressWithUnit } from '@/lib/format'
 import { formatPrice } from '@/lib/firestore'
 import type { Pin, ForSalePin, SoldPin, OpenHouse, UserDoc } from '@/lib/types'
@@ -182,9 +183,15 @@ function ScrollerLayout({
   // 3+ cards — horizontal scroller. Each card is exactly 1/3 of the
   // row (with gap accounted for) so 3 fit perfectly when total === 3,
   // and the 4th peeks in when total >= 4 to signal scroll affordance.
+  //
+  // `overflow-x: auto` forces `overflow-y: auto` per spec, which would
+  // clip the card's outline (+3px) and offset shadow (+6px / +6px).
+  // We add vertical padding (and matching negative margin so the row
+  // still aligns with the section) so the frame chrome can fully
+  // render without being chopped at the top/bottom of each card.
   return (
     <div
-      className="overflow-x-auto -mx-5 md:-mx-7 px-5 md:px-7 snap-x snap-mandatory"
+      className="overflow-x-auto -mx-5 md:-mx-7 px-5 md:px-7 -my-2 py-2 snap-x snap-mandatory"
       style={{
         scrollbarWidth: 'none',
         WebkitOverflowScrolling: 'touch',
@@ -347,7 +354,7 @@ function ListingCardCompact({
         />
       ) : (
         // No photos AND no content — show the type-icon fallback
-        // (For Sale → Home, Sold → BadgeCheck, Spotlight → Compass)
+        // (For Sale → Home, Sold → Key, Spotlight → Compass)
         // on the same gradient instead of an empty colored card.
         <TypeIconFallback isSold={isSold} isSpotlight={isSpotlight} />
       )}
@@ -377,17 +384,24 @@ function ListingCardCompact({
         </span>
       </div>
 
-      {/* Top-right: content-type icon — IG-style. Shown only when the
-          listing has carousel or reel content (single photos = no icon
-          to avoid clutter). */}
-      {(hasMultiplePhotos || hasReel) && (
-        <div
-          className="absolute top-2 right-2 text-white"
-          style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.65))' }}
-        >
-          {hasReel
-            ? <Play weight="fill" size={16} />
-            : <CarouselGlyph size={16} />}
+      {/* Top-right: open-house badge + content-type icon. Both appear
+          in a flex row so they sit side-by-side without overlapping.
+          OpenHouseBadge uses the same rainbow gradient as the open-
+          house map pin, so the iconography stays consistent across
+          card / map / sheet surfaces. */}
+      {(hasOpenHouse || hasMultiplePhotos || hasReel) && (
+        <div className="absolute top-2 right-2 flex items-center gap-1.5">
+          {hasOpenHouse && <OpenHouseBadge size={22} />}
+          {(hasMultiplePhotos || hasReel) && (
+            <div
+              className="text-white"
+              style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.65))' }}
+            >
+              {hasReel
+                ? <Play weight="fill" size={16} />
+                : <CarouselGlyph size={16} />}
+            </div>
+          )}
         </div>
       )}
 
@@ -597,7 +611,7 @@ function formatSessionLabel(d: Date): string {
  * stay on-brand instead of rendering the browser's broken-image glyph.
  */
 function TypeIconFallback({ isSold, isSpotlight }: { isSold: boolean; isSpotlight: boolean }) {
-  const Icon = isSold ? BadgeCheck : isSpotlight ? Compass : Home
+  const Icon = isSold ? Key : isSpotlight ? Compass : Home
   return (
     <div
       className="absolute inset-0 flex items-center justify-center"

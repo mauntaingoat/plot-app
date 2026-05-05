@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, House as HomeIcon, SealCheck as BadgeCheck, Compass } from '@phosphor-icons/react'
+import { ArrowRight, House as HomeIcon, Key, Compass } from '@phosphor-icons/react'
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { SEOHead } from '@/components/marketing/SEOHead'
 import { ScrollFadeText, Glyph } from '@/components/marketing/ScrollFadeText'
@@ -25,7 +25,7 @@ const ACT_TEXT_STYLE: React.CSSProperties = {
 function PinChip({ kind }: { kind: 'for-sale' | 'sold' | 'spotlight' }) {
   const cfg = {
     'for-sale': { color: '#3B82F6', Icon: HomeIcon },
-    sold: { color: '#34C759', Icon: BadgeCheck },
+    sold: { color: '#34C759', Icon: Key },
     spotlight: { color: '#FF6B3D', Icon: Compass },
   }[kind]
   const { Icon } = cfg

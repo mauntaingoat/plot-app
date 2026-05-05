@@ -13,6 +13,7 @@ import {
   DotsSixVertical as GripVertical,
   Buildings as Building,
   CaretRight as ChevronRight,
+  Lock,
 } from '@phosphor-icons/react'
 import type { UserDoc, Platform } from '@/lib/types'
 import {
@@ -57,7 +58,17 @@ interface StyleTabProps {
   onOpenEditBrokerage: () => void
   onOpenAddPlatform: () => void
   onRemovePlatform: (platformId: string) => void
+  /** Tier gate — when true the user is on Free; locked items show a
+   *  Pro badge and trigger `onPaywall` instead of selecting. */
+  isFree: boolean
+  onPaywall: (reason: string) => void
 }
+
+// How many of each picker the Free tier can access. Anything past
+// these caps shows a Pro lock badge + opens the paywall on click.
+const FREE_PALETTE_COUNT = 6
+const FREE_FONT_COUNT = 6
+const FREE_SHAPE_COUNT = 3
 
 export function StyleTab({
   user,
@@ -67,6 +78,8 @@ export function StyleTab({
   onOpenEditBrokerage,
   onOpenAddPlatform,
   onRemovePlatform,
+  isFree,
+  onPaywall,
 }: StyleTabProps) {
   const style = useMemo(() => resolveStyle(user.style), [user.style])
 
@@ -170,14 +183,18 @@ export function StyleTab({
         collapsedPreview={<PaletteSwatchPreview palette={getPalette(style.paletteId)} />}
       >
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-          {PALETTES.map((p) => (
-            <PaletteCard
-              key={p.id}
-              palette={p}
-              active={style.paletteId === p.id}
-              onClick={() => updateStyle({ paletteId: p.id })}
-            />
-          ))}
+          {PALETTES.map((p, i) => {
+            const locked = isFree && i >= FREE_PALETTE_COUNT
+            return (
+              <PaletteCard
+                key={p.id}
+                palette={p}
+                active={style.paletteId === p.id}
+                locked={locked}
+                onClick={() => locked ? onPaywall('Extra color palettes are a Pro feature.') : updateStyle({ paletteId: p.id })}
+              />
+            )
+          })}
         </div>
       </Section>
 
@@ -189,14 +206,18 @@ export function StyleTab({
         collapsedPreview={<FontNamePreview font={getFont(style.fontId)} />}
       >
         <div className="grid grid-cols-2 gap-2.5">
-          {FONTS.map((f) => (
-            <FontCard
-              key={f.id}
-              font={f}
-              active={style.fontId === f.id}
-              onClick={() => updateStyle({ fontId: f.id })}
-            />
-          ))}
+          {FONTS.map((f, i) => {
+            const locked = isFree && i >= FREE_FONT_COUNT
+            return (
+              <FontCard
+                key={f.id}
+                font={f}
+                active={style.fontId === f.id}
+                locked={locked}
+                onClick={() => locked ? onPaywall('Extra font pairings are a Pro feature.') : updateStyle({ fontId: f.id })}
+              />
+            )
+          })}
         </div>
       </Section>
 
@@ -208,15 +229,19 @@ export function StyleTab({
         collapsedPreview={<ShapeGlyphPreview shape={getShape(style.shapeId)} accent={getPalette(style.paletteId).accent} />}
       >
         <div className="grid grid-cols-3 gap-2.5">
-          {SHAPES.map((s) => (
-            <ShapeCard
-              key={s.id}
-              shape={s}
-              active={style.shapeId === s.id}
-              accent={getPalette(style.paletteId).accent}
-              onClick={() => updateStyle({ shapeId: s.id })}
-            />
-          ))}
+          {SHAPES.map((s, i) => {
+            const locked = isFree && i >= FREE_SHAPE_COUNT
+            return (
+              <ShapeCard
+                key={s.id}
+                shape={s}
+                active={style.shapeId === s.id}
+                accent={getPalette(style.paletteId).accent}
+                locked={locked}
+                onClick={() => locked ? onPaywall('Extra map shapes are a Pro feature.') : updateStyle({ shapeId: s.id })}
+              />
+            )
+          })}
         </div>
       </Section>
 
@@ -226,6 +251,36 @@ export function StyleTab({
           <FrameRow label="Profile photo" icon={<Camera size={15} />} value={style.frames.avatar} onChange={(v) => updateFrames({ avatar: v })} />
           <FrameRow label="Map viewport" icon={<House size={15} />} value={style.frames.map} onChange={(v) => updateFrames({ map: v })} />
           <FrameRow label="Listings" icon={<Eye size={15} />} value={style.frames.listings} onChange={(v) => updateFrames({ listings: v })} />
+        </div>
+      </Section>
+
+      {/* ── Ticker stats — auto stats are free; the Custom editor
+            below is Pro-only and shows a paywall on Free. ── */}
+      <Section title="Ticker stats" subtitle="The cycling line under your name">
+        <div className="space-y-2">
+          <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider pt-1 pb-1">From your listings</p>
+          <ToggleRow label="Homes for sale"    value={style.tickerAuto.for_sale}    onChange={(v) => updateTickerAuto('for_sale', v)} />
+          <ToggleRow label="Homes sold"        value={style.tickerAuto.sold}        onChange={(v) => updateTickerAuto('sold', v)} />
+          <ToggleRow label="Open houses"       value={style.tickerAuto.open_houses} onChange={(v) => updateTickerAuto('open_houses', v)} />
+          <ToggleRow label="Spotlights live"   value={style.tickerAuto.spotlights}  onChange={(v) => updateTickerAuto('spotlights', v)} />
+
+          <div className="flex items-center gap-1.5 pt-3 pb-1">
+            <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider">Custom</p>
+            {isFree && <ProBadge />}
+          </div>
+          {isFree ? (
+            <button
+              onClick={() => onPaywall('Custom ticker items are a Pro feature.')}
+              className="w-full text-left bg-cream rounded-[12px] p-3 cursor-pointer hover:bg-pearl transition-colors"
+            >
+              <p className="text-[12.5px] text-graphite">Add hand-typed brags like "$42M total volume sold" — upgrade to unlock.</p>
+            </button>
+          ) : (
+            <CustomTickerEditor
+              items={style.tickerCustom}
+              onChange={(items) => updateStyle({ tickerCustom: items })}
+            />
+          )}
         </div>
       </Section>
 
@@ -256,23 +311,6 @@ export function StyleTab({
           <ToggleRow label="Ticker stats"  value={style.sections.ticker} onChange={(v) => updateSections({ ticker: v })} />
           <ToggleRow label="Social row"    value={style.sections.social} onChange={(v) => updateSections({ social: v })} />
           <ToggleRow label="Map viewport"  value={style.sections.map}    onChange={(v) => updateSections({ map: v })} />
-        </div>
-      </Section>
-
-      {/* ── 7. Ticker stats ── */}
-      <Section title="Ticker stats" subtitle="The cycling line under your name">
-        <div className="space-y-2">
-          <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider pt-1 pb-1">From your listings</p>
-          <ToggleRow label="Homes for sale"    value={style.tickerAuto.for_sale}    onChange={(v) => updateTickerAuto('for_sale', v)} />
-          <ToggleRow label="Homes sold"        value={style.tickerAuto.sold}        onChange={(v) => updateTickerAuto('sold', v)} />
-          <ToggleRow label="Open houses"       value={style.tickerAuto.open_houses} onChange={(v) => updateTickerAuto('open_houses', v)} />
-          <ToggleRow label="Spotlights live"   value={style.tickerAuto.spotlights}  onChange={(v) => updateTickerAuto('spotlights', v)} />
-
-          <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider pt-3 pb-1">Custom</p>
-          <CustomTickerEditor
-            items={style.tickerCustom}
-            onChange={(items) => updateStyle({ tickerCustom: items })}
-          />
         </div>
       </Section>
 
@@ -386,13 +424,40 @@ function Section({
 /* ───────────────────────────────────────────────────────────────
    PaletteCard — swatch picker chip
    ─────────────────────────────────────────────────────────────── */
+/* ───────────────────────────────────────────────────────────────
+   ProBadge — small "PRO" pill with a lock glyph. Two variants:
+     - inline (default): renders next to a label
+     - corner: absolutely-positioned in the top-right of a card
+   Used wherever a Free user can see a Pro-only knob — clicking the
+   surrounding card opens the paywall instead of selecting it.
+   ─────────────────────────────────────────────────────────────── */
+export function ProBadge({ corner = false }: { corner?: boolean }) {
+  return (
+    <span
+      className={
+        corner
+          ? 'absolute top-1.5 right-1.5 z-10 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider text-white pointer-events-none'
+          : 'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider text-white'
+      }
+      style={{
+        background: 'linear-gradient(135deg, #FF8552 0%, #D94A1F 100%)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.28)',
+      }}
+    >
+      <Lock weight="fill" size={8} /> Pro
+    </span>
+  )
+}
+
 function PaletteCard({
   palette,
   active,
+  locked,
   onClick,
 }: {
   palette: ReturnType<typeof getPalette>
   active: boolean
+  locked?: boolean
   onClick: () => void
 }) {
   return (
@@ -416,6 +481,7 @@ function PaletteCard({
             <div className="h-1.5 rounded-sm flex-1" style={{ background: palette.textPrimary, opacity: 0.55 }} />
           </div>
         </div>
+        {locked && <ProBadge corner />}
       </div>
       <div className="px-2.5 py-2 bg-warm-white">
         <p className="text-[12.5px] font-semibold text-ink truncate">{palette.name}</p>
@@ -431,10 +497,12 @@ function PaletteCard({
 function FontCard({
   font,
   active,
+  locked,
   onClick,
 }: {
   font: ReturnType<typeof getFont>
   active: boolean
+  locked?: boolean
   onClick: () => void
 }) {
   return (
@@ -450,7 +518,7 @@ function FontCard({
       <p className="text-[22px] leading-tight text-ink truncate" style={{ fontFamily: font.display, fontWeight: 600, letterSpacing: '-0.02em' }}>
         Aa
       </p>
-      <p className="text-[12.5px] font-semibold text-ink mt-2">{font.name}</p>
+      <p className="text-[12.5px] font-semibold text-ink mt-2 flex items-center gap-1.5">{font.name}{locked && <ProBadge />}</p>
       <p className="text-[10.5px] text-smoke truncate">{font.vibe}</p>
     </motion.button>
   )
@@ -512,11 +580,13 @@ function ShapeCard({
   shape,
   active,
   accent,
+  locked,
   onClick,
 }: {
   shape: (typeof SHAPES)[number]
   active: boolean
   accent: string
+  locked?: boolean
   onClick: () => void
 }) {
   // Render the path inside an inline SVG so it shows the actual
@@ -536,6 +606,7 @@ function ShapeCard({
         outlineOffset: active ? '2px' : '0',
       }}
     >
+      {locked && <ProBadge corner />}
       <svg width="100%" viewBox="0 0 72 72" className="mb-1.5">
         <path d={dAttr} fill={accent} />
       </svg>

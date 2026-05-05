@@ -115,16 +115,13 @@ function pinsToGeoJSON(pins: Pin[]) {
       const label = pin.type === 'sold' ? 'SOLD'
         : pin.type === 'spotlight' ? ('name' in pin ? pin.name : '')
         : priceK || ''
-      // Check for live or open house indicators
-      const isLive = pin.type === 'for_sale' && 'isLive' in pin && pin.isLive
       const hasOpenHouse = pin.type === 'for_sale' && 'openHouse' in pin && !!pin.openHouse?.sessions?.length
       return {
         type: 'Feature' as const, id: pin.id,
         geometry: { type: 'Point' as const, coordinates: [lng, lat] },
         properties: {
           id: pin.id, type: pin.type,
-          label: isLive ? 'LIVE' : label,
-          isLive: isLive ? 'true' : 'false',
+          label,
           hasOpenHouse: hasOpenHouse ? 'true' : 'false',
         },
       }
@@ -132,11 +129,13 @@ function pinsToGeoJSON(pins: Pin[]) {
   }
 }
 
-// SVG icon paths for pin type fallbacks (from lucide: Home, BadgeCheck, Compass)
-// Stroke colors match the pin creation flow: blue for_sale, green sold, tangerine spotlight.
+// SVG icon paths for pin type fallbacks (from lucide: Home, Key, Compass).
+// Stroke colors match the pin creation flow: blue for_sale, green sold,
+// tangerine spotlight. Sold uses a key — handed-over-the-keys metaphor —
+// instead of a seal/check, which would clash with the verified badge.
 const PIN_TYPE_ICONS: Record<string, string> = {
   for_sale: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>`,
-  sold: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m9 12 2 2 4-4"/></svg>`,
+  sold: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>`,
   spotlight: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF6B3D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>`,
 }
 
@@ -516,71 +515,6 @@ function createOpenHouseFrame(img: HTMLImageElement | null, pinType: string, fra
   return ctx.getImageData(0, 0, s, s)
 }
 
-// Livestream: pulsing ring that expands and fades, color matches pin type
-function createLiveFrame(img: HTMLImageElement | null, pinType: string, frame: number, ringColor: string, gradientColor: string): ImageData {
-  const size = PIN_SIZE + RING_PAD + ANIM_EXTRA_SIZE
-  const canvas = document.createElement('canvas')
-  const s = size * 2
-  canvas.width = s; canvas.height = s
-  const ctx = canvas.getContext('2d')!
-  const cx = s / 2, cy = s / 2
-  const outerR = (PIN_SIZE + RING_PAD) * 2 / 2
-  const ringW = (RING_PAD / 2) * 2, innerR = outerR - ringW
-
-  // Parse ringColor hex to RGB for pulse rgba
-  const rc = parseInt(ringColor.slice(1), 16)
-  const rr = (rc >> 16) & 255, rg = (rc >> 8) & 255, rb = rc & 255
-
-  // Pulse on a shorter cycle (20 frames) so it pulses twice per full animation loop
-  const pulseFrames = 20
-  const progress = (frame % pulseFrames) / pulseFrames
-  const pulseR = outerR + (ANIM_EXTRA_SIZE * 2) * progress
-  const pulseOpacity = 0.6 * (1 - progress)
-  if (pulseOpacity > 0.01) {
-    ctx.beginPath(); ctx.arc(cx, cy, pulseR, 0, Math.PI * 2)
-    ctx.strokeStyle = `rgba(${rr}, ${rg}, ${rb}, ${pulseOpacity})`
-    ctx.lineWidth = 3
-    ctx.stroke()
-  }
-
-  // Second pulse ring, offset
-  const progress2 = ((frame + pulseFrames / 2) % pulseFrames) / pulseFrames
-  const pulseR2 = outerR + (ANIM_EXTRA_SIZE * 2) * progress2
-  const pulseOpacity2 = 0.4 * (1 - progress2)
-  if (pulseOpacity2 > 0.01) {
-    ctx.beginPath(); ctx.arc(cx, cy, pulseR2, 0, Math.PI * 2)
-    ctx.strokeStyle = `rgba(${rr}, ${rg}, ${rb}, ${pulseOpacity2})`
-    ctx.lineWidth = 2
-    ctx.stroke()
-  }
-
-  // Main pin ring with gradient
-  const grad = ctx.createLinearGradient(cx - outerR, cy - outerR, cx + outerR, cy + outerR)
-  grad.addColorStop(0, ringColor)
-  grad.addColorStop(1, gradientColor)
-  ctx.beginPath(); ctx.arc(cx, cy, outerR, 0, Math.PI * 2); ctx.fillStyle = grad; ctx.fill()
-  ctx.beginPath(); ctx.arc(cx, cy, innerR, 0, Math.PI * 2); ctx.fillStyle = '#0A0E17'; ctx.fill()
-
-  if (img && img.complete && img.naturalWidth > 0) {
-    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, innerR - 2, 0, Math.PI * 2); ctx.clip()
-    const imgSize = (innerR - 2) * 2
-    drawImageCover(ctx, img, cx - innerR + 2, cy - innerR + 2, imgSize)
-    ctx.restore()
-  } else {
-    const icon = getPinTypeIcon(pinType)
-    if (icon && icon.complete && icon.naturalWidth > 0) {
-      const iconSize = innerR * 1.1
-      ctx.drawImage(icon, cx - iconSize / 2, cy - iconSize / 2, iconSize, iconSize)
-    } else {
-      const letter = (PIN_CONFIG[pinType as keyof typeof PIN_CONFIG]?.label || 'P')[0]
-      ctx.fillStyle = '#ffffff'; ctx.font = `bold ${innerR * 0.7}px Outfit, sans-serif`
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(letter, cx, cy)
-    }
-  }
-
-  return ctx.getImageData(0, 0, s, s)
-}
-
 // Create a pill-shaped badge image with custom bg color
 function createPillImage(text: string, bgColor: string, textColor: string = '#ffffff'): ImageData {
   const canvas = document.createElement('canvas')
@@ -736,7 +670,6 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
     const [agentImg, ...pinImages] = await Promise.all([agentImgPromise, ...pinImagePromises])
 
     const newOpenHouse: string[] = []
-    const newLive: string[] = []
 
     for (let idx = 0; idx < pinList.length; idx++) {
       const pin = pinList[idx]
@@ -747,17 +680,10 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
       // is a better visual cue than the agent's face on every pin.
       const img = pinImages[idx]
 
-      const isLive = pin.type === 'for_sale' && 'isLive' in pin && pin.isLive
       const hasOpenHouse = pin.type === 'for_sale' && 'openHouse' in pin && !!pin.openHouse?.sessions?.length
 
       // Open-house pins now get a static rainbow gradient ring (IG
       // stories style) — no morphing-into-house animation, no pulse.
-      // Live pins still animate.
-      if (isLive) {
-        newLive.push(pin.id)
-        const liveImg = img, liveColor = color, liveGrad = RING_GRADIENT_COLORS[pin.type] || color, liveType = pType, liveId = pin.id
-        queueFrameGeneration(map, loadedImagesRef.current, liveId, 'live', ANIM_FRAMES, (f) => createLiveFrame(liveImg, liveType, f, liveColor, liveGrad))
-      }
 
       // Per-pin signature — captures every input that affects the
       // baked image. Skipping addImage when the signature matches
@@ -805,7 +731,7 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
       }
     }
 
-    animatedPinIds.current = { openHouse: newOpenHouse, live: newLive }
+    animatedPinIds.current = { openHouse: newOpenHouse, live: [] }
 
     // Pre-render cluster badge pills
     for (let i = 1; i <= 20; i++) {

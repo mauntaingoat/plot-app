@@ -38,6 +38,43 @@ export interface RenderResult {
   storageUrls: string[]
 }
 
+/** Upload a user-chosen thumbnail to Firebase Storage as a JPEG.
+ *
+ *  PreviewCanvas writes the captured frame as a
+ *  `data:image/jpeg;base64,…` string. Data URLs are too big to persist
+ *  to Firestore (~100 KB each) so this helper turns the data URL into
+ *  a real Storage object and returns its public URL.
+ *
+ *  Source can be either a Clip[] (looks across clips for the first
+ *  one with `customThumbnailUrl`) or a single string (already a data
+ *  URL). Returns null if there's no data URL to upload OR upload
+ *  fails — the caller falls back to Mux's auto-thumbnail. */
+export async function uploadCustomThumbnail(
+  source: Clip[] | string | undefined,
+  pinId: string,
+  contentId: string,
+): Promise<string | null> {
+  let dataUrl: string | undefined
+  if (typeof source === 'string') {
+    dataUrl = source
+  } else if (Array.isArray(source)) {
+    dataUrl = source.find((c) => c.customThumbnailUrl?.startsWith('data:'))?.customThumbnailUrl
+  }
+  if (!dataUrl?.startsWith('data:')) return null
+  try {
+    const blob = await (await fetch(dataUrl)).blob()
+    const file = new File([blob], `thumb-${contentId}.jpg`, { type: 'image/jpeg' })
+    const url = await uploadFile({
+      path: pinMediaPath(pinId, `thumb-${contentId}-${Date.now()}.jpg`),
+      file,
+    })
+    return url
+  } catch (err) {
+    console.warn('[render] uploadCustomThumbnail failed, falling back to Mux thumbnail:', err)
+    return null
+  }
+}
+
 export async function renderComposition(args: RenderArgs): Promise<RenderResult> {
   const { clips, pinId, contentId, caption, onProgress } = args
   const storageUrls: string[] = []

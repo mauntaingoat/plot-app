@@ -1,9 +1,11 @@
 import { motion } from 'framer-motion'
-import { Eye, CursorClick as MousePointerClick, BookmarkSimple as Bookmark, MapPin, DotsThree as MoreHorizontal, House as Home, SealCheck as BadgeCheck, Compass } from '@phosphor-icons/react'
+import { Eye, CursorClick as MousePointerClick, BookmarkSimple as Bookmark, MapPin, DotsThree as MoreHorizontal, House as Home, Key, Compass } from '@phosphor-icons/react'
 import { PIN_CONFIG, type Pin } from '@/lib/types'
 import { formatPrice } from '@/lib/firestore'
 import { displayAddressWithUnit } from '@/lib/format'
 import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
+import { OpenHouseBadge } from '@/components/ui/OpenHouseBadge'
+import { hasUpcomingOpenHouse } from '@/lib/openHouse'
 
 interface PinCardProps {
   pin: Pin
@@ -33,17 +35,23 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
     : 'soldPrice' in pin ? formatPrice(pin.soldPrice)
     : null
 
-  const specs = 'beds' in pin ? `${pin.beds} bd · ${pin.baths} ba · ${pin.sqft.toLocaleString()} sqft` : null
+  const specs = 'beds' in pin ? `${pin.beds ?? 0} bd · ${pin.baths ?? 0} ba · ${(pin.sqft ?? 0).toLocaleString()} sqft` : null
   const contentCount = pin.content?.length || 0
 
   const isManage = variant === 'manage'
+  // Disabled pins stay in the agent's My Pins list so they can be
+  // toggled back on. Visually dim them so it's obvious at a glance
+  // which ones aren't currently published to the public profile.
+  const isDisabled = isManage && pin.enabled === false
+  const showOpenHouse = pin.type === 'for_sale' && hasUpcomingOpenHouse(pin as any)
 
   return (
     <motion.div
       onClick={onClick}
       className={`
-        rounded-[18px] overflow-hidden cursor-pointer
+        rounded-[18px] overflow-hidden cursor-pointer transition-opacity
         ${dark ? 'bg-slate border border-border-dark' : 'bg-warm-white border border-border-light shadow-sm'}
+        ${isDisabled ? 'opacity-55' : ''}
       `}
     >
       {/* Image area */}
@@ -68,24 +76,30 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
             </span>
           </div>
 
-          {/* Pending property-data change badge */}
-          {hasPendingChange && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onPendingChangeClick?.() }}
-              aria-label="Property data updated"
-              className="absolute top-3 right-3 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
-              style={{
-                background: 'var(--brand-grad)',
-                boxShadow: '0 0 0 2px rgba(255,255,255,0.95), 0 4px 12px -2px rgba(217,74,31,0.6)',
-              }}
-            >
-              <span
-                aria-hidden
-                className="absolute inset-0 rounded-full animate-ping"
-                style={{ background: 'rgba(255,107,61,0.45)' }}
-              />
-              <span className="relative w-2 h-2 rounded-full bg-white" />
-            </button>
+          {/* Top-right indicators: open house, pending change. Rendered
+              as a flex row so both can coexist without overlap. */}
+          {(showOpenHouse || hasPendingChange) && (
+            <div className="absolute top-3 right-3 flex items-center gap-1.5">
+              {showOpenHouse && <OpenHouseBadge size={26} />}
+              {hasPendingChange && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onPendingChangeClick?.() }}
+                  aria-label="Property data updated"
+                  className="relative w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
+                  style={{
+                    background: 'var(--brand-grad)',
+                    boxShadow: '0 0 0 2px rgba(255,255,255,0.95), 0 4px 12px -2px rgba(217,74,31,0.6)',
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    className="absolute inset-0 rounded-full animate-ping"
+                    style={{ background: 'rgba(255,107,61,0.45)' }}
+                  />
+                  <span className="relative w-2 h-2 rounded-full bg-white" />
+                </button>
+              )}
+            </div>
           )}
 
           {/* Price pill */}
@@ -115,14 +129,6 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
             </div>
           )}
 
-          {/* Live viewer count */}
-          {pin.type === 'for_sale' && 'isLive' in pin && pin.isLive && (
-            <div className="absolute top-3 right-3 flex items-center gap-1.5">
-              <span className="glass-dark rounded-full px-2.5 py-1 text-[11px] font-bold text-white flex items-center gap-1">
-                <Eye size={12} /> LIVE
-              </span>
-            </div>
-          )}
         </div>
       )}
 
@@ -135,7 +141,7 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
         }
         const icons: Record<string, typeof Home> = {
           for_sale: Home,
-          sold: BadgeCheck,
+          sold: Key,
           spotlight: Compass,
         }
         const Icon = icons[pin.type] || Compass
@@ -147,23 +153,28 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
                 {config.label}
               </span>
             </div>
-            {hasPendingChange && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onPendingChangeClick?.() }}
-                aria-label="Property data updated"
-                className="absolute top-3 right-3 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
-                style={{
-                  background: 'var(--brand-grad)',
-                  boxShadow: '0 0 0 2px rgba(255,255,255,0.95), 0 4px 12px -2px rgba(217,74,31,0.6)',
-                }}
-              >
-                <span
-                  aria-hidden
-                  className="absolute inset-0 rounded-full animate-ping"
-                  style={{ background: 'rgba(255,107,61,0.45)' }}
-                />
-                <span className="relative w-2 h-2 rounded-full bg-white" />
-              </button>
+            {(showOpenHouse || hasPendingChange) && (
+              <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                {showOpenHouse && <OpenHouseBadge size={26} />}
+                {hasPendingChange && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onPendingChangeClick?.() }}
+                    aria-label="Property data updated"
+                    className="relative w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
+                    style={{
+                      background: 'var(--brand-grad)',
+                      boxShadow: '0 0 0 2px rgba(255,255,255,0.95), 0 4px 12px -2px rgba(217,74,31,0.6)',
+                    }}
+                  >
+                    <span
+                      aria-hidden
+                      className="absolute inset-0 rounded-full animate-ping"
+                      style={{ background: 'rgba(255,107,61,0.45)' }}
+                    />
+                    <span className="relative w-2 h-2 rounded-full bg-white" />
+                  </button>
+                )}
+              </div>
             )}
             {priceDisplay && (
               <div className="absolute bottom-3 left-3">
@@ -220,15 +231,15 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
             and save counts are private performance data. */}
         <div className="flex items-center gap-3 pt-1">
           <span className={`flex items-center gap-1 text-[11px] font-medium ${dark ? 'text-ghost' : 'text-smoke'}`}>
-            <Eye size={12} /> {pin.views.toLocaleString()}
+            <Eye size={12} /> {(pin.views ?? 0).toLocaleString()}
           </span>
           {isManage && (
             <>
               <span className={`flex items-center gap-1 text-[11px] font-medium ${dark ? 'text-ghost' : 'text-smoke'}`}>
-                <MousePointerClick size={12} /> {pin.taps.toLocaleString()}
+                <MousePointerClick size={12} /> {(pin.taps ?? 0).toLocaleString()}
               </span>
               <span className={`flex items-center gap-1 text-[11px] font-medium ${dark ? 'text-ghost' : 'text-smoke'}`}>
-                <Bookmark size={12} /> {pin.saves.toLocaleString()}
+                <Bookmark size={12} /> {(pin.saves ?? 0).toLocaleString()}
               </span>
             </>
           )}

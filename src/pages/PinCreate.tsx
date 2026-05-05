@@ -1,14 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, ArrowRight, MapPin, MagnifyingGlass as Search, Check, UploadSimple as Upload, VideoCamera as Video, Camera, X, CurrencyDollar as DollarSign, House as Home, SealCheck as BadgeCheck, Compass, Plus, FilmStrip as Film, Microphone as Mic, Clock, Lock, Trash as Trash2, CaretRight as ChevronRight } from '@phosphor-icons/react'
+import { ArrowLeft, ArrowRight, MapPin, MagnifyingGlass as Search, Check, UploadSimple as Upload, VideoCamera as Video, Camera, X, CurrencyDollar as DollarSign, House as Home, Key, Compass, Plus, FilmStrip as Film, Microphone as Mic, Clock, Lock, Trash as Trash2, CaretRight as ChevronRight, CaretLeft } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useGeocoding } from '@/hooks/useGeocoding'
 import { useAuthStore } from '@/stores/authStore'
 import { createPin, createContent } from '@/lib/firestore'
 import { uploadFile, pinMediaPath } from '@/lib/storage'
-import { PIN_CONFIG, type PinType, type ContentItem } from '@/lib/types'
+import { PIN_CONFIG, type PinType, type ContentItem, type Pin } from '@/lib/types'
 import { Timestamp } from 'firebase/firestore'
 import { getTierLimits, canUploadVideo, hasFeature, type Tier } from '@/lib/tiers'
 import { PaywallPrompt } from '@/components/dashboard/PaywallPrompt'
@@ -17,7 +17,7 @@ import { generateVideoThumbnail } from '@/lib/videoThumbnail'
 import { useThemeStore } from '@/stores/themeStore'
 import { EditorStep } from '@/features/content-editor/EditorStep'
 import { useEditorStore } from '@/features/content-editor/state/editorStore'
-import { renderComposition, type RenderPhase } from '@/features/content-editor/lib/render'
+import { renderComposition, uploadCustomThumbnail, type RenderPhase } from '@/features/content-editor/lib/render'
 import { CarouselStep } from '@/features/content-create/CarouselStep'
 import { publishCarouselPhotos } from '@/features/content-create/lib/publish'
 import type { ContentDraft, EditorDraftKind } from '@/features/content-create/types'
@@ -25,7 +25,7 @@ import { displayAddressWithUnit } from '@/lib/format'
 
 const PIN_OPTIONS: { type: PinType; label: string; desc: string; icon: typeof Home; color: string }[] = [
   { type: 'for_sale', label: 'For Sale Listing', desc: 'Active listing with MLS data, photos, and content', icon: Home, color: '#3B82F6' },
-  { type: 'sold', label: 'Sold Listing', desc: 'Closed sale — showcase your track record', icon: BadgeCheck, color: '#34C759' },
+  { type: 'sold', label: 'Sold Listing', desc: 'Closed sale — showcase your track record', icon: Key, color: '#34C759' },
   { type: 'spotlight', label: 'Spotlight', desc: 'Highlight a neighborhood, building, or local favorite', icon: Compass, color: '#FF6B3D' },
 ]
 
@@ -288,7 +288,9 @@ export default function PinCreate() {
       if (err instanceof FileTooLargeError) { alert(err.message); return }
       throw err
     }
-    setPhotos(files)
+    // Append rather than replace so the user can add more photos
+    // without losing the ones they already uploaded.
+    setPhotos((prev) => [...prev, ...files])
   }
 
   const addContent = async () => {
@@ -375,7 +377,7 @@ export default function PinCreate() {
           pricePerSqft: Number(sqft) ? Math.round((Number(price) || 0) / Number(sqft)) : 0,
           homeType, yearBuilt: yearBuilt ? Number(yearBuilt) : null,
           description, listingStatus: 'active', daysOnMarket, ...(mlsNumber ? { mlsNumber } : {}),
-          heroPhotoUrl: '', photos: [], openHouse: null, isLive: false,
+          heroPhotoUrl: '', photos: [], openHouse: null,
         })
       } else if (pinType === 'sold') {
         Object.assign(pinData, {
@@ -395,20 +397,22 @@ export default function PinCreate() {
       // Create pin doc
       const pinId = await createPin(pinData)
 
+      // Local stand-ins for the synthetic pin we'll hand to Dashboard.
+      let photoUrls: string[] = []
+      const contentArray: ContentItem[] = []
+
       // Upload listing photos
       if (photos.length > 0 && (pinType === 'for_sale' || pinType === 'sold')) {
-        const urls: string[] = []
         for (const photo of photos) {
           const url = await uploadFile({ path: pinMediaPath(pinId, photo.name), file: photo, onProgress: setUploadProgress })
-          urls.push(url)
+          photoUrls.push(url)
         }
         const { updatePin } = await import('@/lib/firestore')
-        await updatePin(pinId, { photos: urls, heroPhotoUrl: urls[0] || '' })
+        await updatePin(pinId, { photos: photoUrls, heroPhotoUrl: photoUrls[0] || '' })
       }
 
       // Upload content media + build content array
       if (items.length > 0) {
-        const contentArray: ContentItem[] = []
         for (const item of items) {
           let mediaUrl = ''
           let thumbnailUrl = ''
@@ -458,6 +462,7 @@ export default function PinCreate() {
       // Activate the pin (createPin defaults to enabled=false). If the
       // user is at their tier's active-pin cap, the callable rejects
       // and we leave the pin as a draft + show the paywall.
+      let activated = true
       try {
         const { setPinEnabled } = await import('@/lib/firestore')
         await setPinEnabled(pinId, true)
@@ -467,13 +472,31 @@ export default function PinCreate() {
         const reason = err?.message || "You're at your active-pin cap. The pin is saved as a draft — archive an active pin or upgrade to publish it."
         const upgradeTo = err?.details?.upgradeTo as 'pro' | undefined
         setPaywall({ open: true, reason, upgradeTo })
-        // Pin lives as a draft; bounce to dashboard so they see it.
-        navigate('/dashboard')
-        return
+        activated = false
       }
 
       clearTimeout(timeout)
-      navigate('/dashboard')
+      // Pass the freshly-built pin to the dashboard so it renders
+      // immediately — the Firestore snapshot listener catches up in
+      // 1-3 s and overwrites this stand-in with the canonical doc.
+      const newPin = {
+        id: pinId,
+        ...pinData,
+        enabled: activated,
+        status: 'pending',
+        photos: photoUrls,
+        heroPhotoUrl: photoUrls[0] || '',
+        content: contentArray,
+        createdAt: Timestamp.now(),
+        // Engagement counters — PinCard reads these directly (e.g.
+        // `pin.views.toLocaleString()`) so they MUST be present even
+        // for a brand-new pin that has zero of everything.
+        views: 0,
+        taps: 0,
+        saves: 0,
+        waves: 0,
+      } as unknown as Pin
+      navigate('/dashboard', dashState({ newPin }))
     } catch (err) {
       clearTimeout(timeout)
       console.error('Failed to create pin:', err)
@@ -499,9 +522,26 @@ export default function PinCreate() {
     !!pinType || !!address.trim() || !!price || !!description ||
     editorClips.length > 0 || editorOverlays.length > 0
 
+  // When the user lands here from the Welcome onboarding flow,
+  // history-back would land them on /sign-up. Route to /dashboard
+  // instead. The Welcome page passes ?from=onboarding on the link.
+  const [searchParams] = useSearchParams()
+  const fromOnboarding = searchParams.get('from') === 'onboarding'
+  // When launched from the Content tab's Upload button, return there
+  // (instead of My Pins) after publish/skip so the agent stays in
+  // their current workflow.
+  const fromContent = searchParams.get('from') === 'content'
+  const dashState = (extra: Record<string, unknown> = {}) =>
+    ({ state: { ...extra, ...(fromContent ? { tab: 'content' as const } : {}) } })
+  const exitTarget = (): void => {
+    if (fromOnboarding) navigate('/dashboard')
+    else if (fromContent) navigate('/dashboard', dashState())
+    else navigate(-1)
+  }
+
   const handleHeaderBack = () => {
     if (!hasUnsavedWork) {
-      navigate(-1)
+      exitTarget()
       return
     }
     setShowDiscardConfirm(true)
@@ -509,7 +549,7 @@ export default function PinCreate() {
   const confirmDiscard = () => {
     setShowDiscardConfirm(false)
     editorReset()
-    navigate(-1)
+    exitTarget()
   }
   const [renderProgress, setRenderProgress] = useState(0)
   const [renderPhase, setRenderPhase] = useState<'idle' | RenderPhase>('idle')
@@ -643,7 +683,7 @@ export default function PinCreate() {
         }
       }
 
-      navigate('/dashboard')
+      navigate('/dashboard', dashState())
     } catch (err) {
       setSaving(false)
       setStep('publish')
@@ -713,7 +753,7 @@ export default function PinCreate() {
         pricePerSqft: Number(sqft) ? Math.round((Number(price) || 0) / Number(sqft)) : 0,
         homeType, yearBuilt: yearBuilt ? Number(yearBuilt) : null,
         description, listingStatus: 'active', daysOnMarket, ...(mlsNumber ? { mlsNumber } : {}),
-        heroPhotoUrl: '', photos: [], openHouse: null, isLive: false,
+        heroPhotoUrl: '', photos: [], openHouse: null,
       })
     } else if (pinType === 'sold') {
       Object.assign(pinData, {
@@ -747,18 +787,20 @@ export default function PinCreate() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const pinId = await runStep('createPin', () => createPin(pinData))
 
+      // Local stand-ins for the synthetic pin we'll hand to Dashboard.
+      let photoUrls: string[] = []
+
       if (photos.length > 0 && (pinType === 'for_sale' || pinType === 'sold')) {
-        const urls: string[] = []
         for (const photo of photos) {
           const url = await runStep(`uploadListingPhoto(${photo.name})`, () =>
             uploadFile({ path: pinMediaPath(pinId, photo.name), file: photo }),
           )
-          urls.push(url)
+          photoUrls.push(url)
         }
         await runStep('updatePinWithPhotos', async () => {
           const { updatePin } = await import('@/lib/firestore')
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await updatePin(pinId, { photos: urls, heroPhotoUrl: urls[0] || '' })
+          await updatePin(pinId, { photos: photoUrls, heroPhotoUrl: photoUrls[0] || '' })
         })
       }
 
@@ -817,6 +859,15 @@ export default function PinCreate() {
               },
             }),
           )
+
+          // If the user picked a thumbnail in the editor, draft.thumbnailUrl
+          // is a data: URL (set when the draft was built). Upload it to
+          // Storage and prefer it over Mux's auto-generated thumbnail.
+          const customThumbUrl = await uploadCustomThumbnail(draft.thumbnailUrl, pinId, contentId)
+          // If draft.thumbnailUrl is a data URL we already handled it
+          // above; otherwise fall back to it (probe-generated http URL).
+          const draftThumbFallback = draft.thumbnailUrl?.startsWith('data:') ? '' : (draft.thumbnailUrl || '')
+
           // Add the reel to contentArray immediately with the Mux URLs.
           // The mp4/hls URLs work once Mux finishes processing (~30-60s).
           // The webhook will patch with final URLs later, but the content
@@ -828,7 +879,7 @@ export default function PinCreate() {
             sourceUrl: result.storageUrl || '',
             sourceUrls: result.storageUrls,
             mp4Url: result.mp4Url,
-            thumbnailUrl: result.thumbnailUrl || draft.thumbnailUrl || '',
+            thumbnailUrl: customThumbUrl || result.thumbnailUrl || draftThumbFallback,
             caption: draft.caption ?? '',
             muxAssetId: result.muxAssetId,
             muxPlaybackId: result.muxPlaybackId,
@@ -861,6 +912,7 @@ export default function PinCreate() {
 
       // Activate the pin via the Cloud Function (server-side cap check).
       // Pin lives as a draft if user is at their tier's active-pin cap.
+      let activated = true
       try {
         const { setPinEnabled } = await import('@/lib/firestore')
         await setPinEnabled(pinId, true)
@@ -869,11 +921,29 @@ export default function PinCreate() {
         const reason = err?.message || "You're at your active-pin cap. The pin is saved as a draft — archive an active pin or upgrade to publish it."
         const upgradeTo = err?.details?.upgradeTo as 'pro' | undefined
         setPaywall({ open: true, reason, upgradeTo })
-        navigate('/dashboard')
-        return
+        activated = false
       }
 
-      navigate('/dashboard')
+      // Pass the freshly-built pin to the dashboard so it renders
+      // immediately. Editor-mode reels land via Mux webhook so the
+      // contentArray here may not include their final URLs — that's
+      // fine, the listener overwrites the stand-in once Firestore
+      // catches up.
+      const newPin = {
+        id: pinId,
+        ...pinData,
+        enabled: activated,
+        status: 'pending',
+        photos: photoUrls,
+        heroPhotoUrl: photoUrls[0] || '',
+        content: contentArray,
+        createdAt: Timestamp.now(),
+        views: 0,
+        taps: 0,
+        saves: 0,
+        waves: 0,
+      } as unknown as Pin
+      navigate('/dashboard', dashState({ newPin }))
     } catch (err) {
       setSaving(false)
       setStep('publish')
@@ -1180,13 +1250,89 @@ export default function PinCreate() {
                       </div>
                     )}
 
-                    {/* Photos */}
+                    {/* Photos — uploaded thumbnails are previewable and
+                         reorderable. The first photo (Cover) is what
+                         shows on the agent's map pin and the listing
+                         hero image. Tap ← / → to reorder, X to remove. */}
                     <div>
                       <input ref={photosRef} type="file" accept="image/*" multiple onChange={handlePhotos} className="hidden" />
-                      <button onClick={() => photosRef.current?.click()}
-                        className="w-full py-5 border-2 border-dashed border-pearl rounded-[16px] flex flex-col items-center gap-1.5 text-smoke hover:bg-cream cursor-pointer transition-colors">
+
+                      {photos.length > 0 && (
+                        <div className="mb-2.5">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[11px] font-medium text-smoke uppercase tracking-wider">
+                              {photos.length} photo{photos.length > 1 ? 's' : ''} · first is the cover
+                            </span>
+                            <button
+                              onClick={() => setPhotos([])}
+                              className="text-[11px] font-semibold text-smoke hover:text-live-red transition-colors cursor-pointer"
+                            >
+                              Clear all
+                            </button>
+                          </div>
+                          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                            {photos.map((photo, i) => (
+                              <div
+                                key={`${photo.name}-${photo.size}-${i}`}
+                                className="relative shrink-0 w-24 h-24 rounded-[12px] overflow-hidden bg-cream border border-border-light"
+                              >
+                                <img
+                                  src={URL.createObjectURL(photo)}
+                                  alt=""
+                                  className="absolute inset-0 w-full h-full object-cover"
+                                />
+                                {i === 0 && (
+                                  <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded-[6px] bg-tangerine text-white text-[9px] font-bold uppercase tracking-wider">
+                                    Cover
+                                  </span>
+                                )}
+                                <button
+                                  onClick={() => setPhotos(photos.filter((_, idx) => idx !== i))}
+                                  className="absolute top-1 right-1 w-5 h-5 rounded-full bg-ink/75 text-white flex items-center justify-center hover:bg-ink cursor-pointer transition-colors"
+                                  aria-label="Remove photo"
+                                >
+                                  <X size={11} weight="bold" />
+                                </button>
+                                <div className="absolute bottom-1 left-1 right-1 flex justify-between gap-1">
+                                  <button
+                                    disabled={i === 0}
+                                    onClick={() => {
+                                      const next = [...photos]
+                                      ;[next[i - 1], next[i]] = [next[i], next[i - 1]]
+                                      setPhotos(next)
+                                    }}
+                                    className="w-5 h-5 rounded-full bg-ink/75 text-white flex items-center justify-center hover:bg-ink cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    aria-label="Move left"
+                                  >
+                                    <CaretLeft size={11} weight="bold" />
+                                  </button>
+                                  <button
+                                    disabled={i === photos.length - 1}
+                                    onClick={() => {
+                                      const next = [...photos]
+                                      ;[next[i], next[i + 1]] = [next[i + 1], next[i]]
+                                      setPhotos(next)
+                                    }}
+                                    className="w-5 h-5 rounded-full bg-ink/75 text-white flex items-center justify-center hover:bg-ink cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                    aria-label="Move right"
+                                  >
+                                    <ChevronRight size={11} weight="bold" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <button
+                        onClick={() => photosRef.current?.click()}
+                        className="w-full py-4 border-2 border-dashed border-pearl rounded-[16px] flex flex-col items-center gap-1.5 text-smoke hover:bg-cream cursor-pointer transition-colors"
+                      >
                         <Camera size={22} />
-                        <span className="text-[13px] font-medium">{photos.length > 0 ? `${photos.length} photos selected` : 'Upload listing photos'}</span>
+                        <span className="text-[13px] font-medium">
+                          {photos.length > 0 ? 'Add more photos' : 'Upload listing photos'}
+                        </span>
                       </button>
                     </div>
                   </>
@@ -1292,7 +1438,7 @@ export default function PinCreate() {
                     Back to drafts
                   </Button>
                 ) : isAddContentMode ? (
-                  <Button variant="secondary" size="xl" onClick={() => navigate(-1)} fullWidth>
+                  <Button variant="secondary" size="xl" onClick={exitTarget} fullWidth>
                     Cancel
                   </Button>
                 ) : (
@@ -1832,7 +1978,7 @@ export default function PinCreate() {
                 {!isAddContentMode && (
                   <Button variant="secondary" size="xl" onClick={() => setStep('details')} className="flex-1">Back</Button>
                 )}
-                <Button variant="primary" size="xl" onClick={isAddContentMode ? () => navigate(-1) : () => handlePublish()} loading={saving} className={isAddContentMode ? 'flex-1' : 'flex-[2]'}>
+                <Button variant="primary" size="xl" onClick={isAddContentMode ? exitTarget : () => handlePublish()} loading={saving} className={isAddContentMode ? 'flex-1' : 'flex-[2]'}>
                   {isAddContentMode ? 'Done' : contentItems.length > 0 ? 'Publish Pin' : 'Publish without content'}
                 </Button>
               </div>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Eye, CursorClick as MousePointerClick, BookmarkSimple as Bookmark, Users, Clock, MapTrifold as MapIcon, SealCheck as BadgeCheck, Heart, House as HomeIcon, Compass } from '@phosphor-icons/react'
+import { ArrowRight, Eye, CursorClick as MousePointerClick, BookmarkSimple as Bookmark, Users, Clock, MapTrifold as MapIcon, SealCheck as BadgeCheck, Heart, House as HomeIcon, Compass, HandWaving, Key } from '@phosphor-icons/react'
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { FooterContent } from '@/components/marketing/Footer'
 import { SEOHead } from '@/components/marketing/SEOHead'
@@ -29,6 +29,8 @@ export default function Home() {
       <Hero />
       <FeatureShowcase />
       <CloserLook />
+      <PinAnalyticsSection />
+      <OneLinkCard />
       <PortfolioShowcase />
       <Ready />
     </MarketingLayout>
@@ -549,6 +551,15 @@ const FEATURES: Feature[] = [
     desc: 'Visits per reel and photo. Taps and saves per pin. Save growth, visitor cities, peak hours, and audience crossover — every signal in one place.',
     video: '/marketing/feature-analytics.mov',
   },
+  {
+    key: 'customization',
+    label: 'Customization',
+    title: 'A profile that looks as distinct as you do.',
+    desc: 'Pick the typeface, palette, and map shape that match your personal brand. Tune the accent, swap fonts, reorder sections — your Reelst link in bio adapts to you, not the other way around.',
+    // Video coming — omitting `video`/`img` shows the built-in
+    // "Graphic · Customization · Product snapshot coming" placeholder
+    // so the slot stays reserved.
+  },
 ]
 
 function FeatureShowcase() {
@@ -733,6 +744,84 @@ function FeatureShowcase() {
    ately bleeds out below the card's bottom edge for a dynamic feel.
    ════════════════════════════════════════════════════════════════ */
 
+function OneLinkCard() {
+  return (
+    <section className="relative bg-marketing">
+      <div className="relative max-w-[1240px] mx-auto px-6 md:px-10 pt-8 md:pt-10 pb-12 md:pb-16">
+        <div className="relative">
+          <div
+            className="map-grid relative rounded-[24px] md:rounded-[32px] px-7 md:px-14 pt-6 md:pt-8 pb-[260px] sm:pb-[300px] lg:pb-10"
+            style={{
+              border: '1px solid rgba(255,133,82,0.22)',
+              boxShadow:
+                '0 1px 0 rgba(255,255,255,0.85) inset, 0 30px 80px -30px rgba(217,74,31,0.20), 0 10px 32px -16px rgba(10,14,23,0.08)',
+            }}
+          >
+            <div className="relative lg:max-w-[560px] lg:ml-auto" style={{ zIndex: 5 }}>
+              <p
+                className="text-graphite mb-3"
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '11px',
+                  fontWeight: 500,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                One link
+              </p>
+              <h2
+                className="text-ink mb-5"
+                style={{
+                  fontFamily: 'var(--font-humanist)',
+                  fontSize: 'clamp(2rem, 4.4vw, 3.75rem)',
+                  fontWeight: 500,
+                  letterSpacing: '-0.035em',
+                  lineHeight: 0.98,
+                }}
+              >
+                Everything that makes you,{' '}
+                <span className="brand-grad-text" style={{ fontWeight: 600 }}>
+                  you
+                </span>
+                .
+              </h2>
+              <p
+                className="text-graphite"
+                style={{
+                  fontFamily: 'var(--font-humanist)',
+                  fontSize: 'clamp(1rem, 1.18vw, 1.12rem)',
+                  fontWeight: 400,
+                  lineHeight: 1.55,
+                }}
+              >
+                Your sold, for-sale, and spotlight pins. Your reels and
+                walkthroughs. Your socials, your broker, your verified badge
+                — every piece of your agent presence on a single shareable
+                link.
+              </p>
+            </div>
+
+            <img
+              src="/marketing/customize-line-cropped.png"
+              alt=""
+              aria-hidden
+              draggable={false}
+              className="absolute h-auto pointer-events-none select-none
+                         bottom-0 left-1/2 -translate-x-1/2
+                         lg:left-[16px] lg:translate-x-0"
+              style={{
+                zIndex: 4,
+                width: 'clamp(200px, 30vw, 340px)',
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function CloserLook() {
   return (
     <section
@@ -799,13 +888,6 @@ function CloserLook() {
               </p>
             </div>
 
-            {/* ── Pin it figure (cropped — partial legs visible, house
-                 intact). Cut line at 55% of image height sits flush
-                 against the card's bottom interior border. Pin + house
-                 + trail + lower legs bleed BELOW the card.
-                 < lg: centered beneath text. ≥ lg: anchored bottom-right.
-                 Image aspect h/w = 0.935; cut at 55% →
-                   upper-half = imgW × 0.514, lower-half = imgW × 0.421. */}
             <img
               src="/marketing/howitworks-pin-cropped.png"
               alt=""
@@ -822,91 +904,22 @@ function CloserLook() {
             />
           </div>
         </div>
-
-        <PinAnalytics />
-
-        {/* ── Section 3: customization & branding (mirror of 3× card) ──
-             Continuous-line illustration of a woman realtor painting custom
-             flourishes onto a "FOR SALE" yard sign — same one-line tangerine
-             aesthetic as the Pin It illustration above. */}
-        <div className="relative mt-44 md:mt-48 lg:mt-40">
-          <div
-            className="map-grid relative rounded-[24px] md:rounded-[32px] px-7 md:px-14 pt-6 md:pt-8 pb-[260px] sm:pb-[300px] lg:pb-10"
-            style={{
-              border: '1px solid rgba(255,133,82,0.22)',
-              boxShadow:
-                '0 1px 0 rgba(255,255,255,0.85) inset, 0 30px 80px -30px rgba(217,74,31,0.20), 0 10px 32px -16px rgba(10,14,23,0.08)',
-            }}
-          >
-            {/* ── Text column — right-aligned on lg+ (mirror of 3× card) */}
-            <div className="relative lg:max-w-[560px] lg:ml-auto" style={{ zIndex: 5 }}>
-              <p
-                className="text-graphite mb-3"
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '11px',
-                  fontWeight: 500,
-                  letterSpacing: '0.18em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                One link
-              </p>
-              <h2
-                className="text-ink mb-5"
-                style={{
-                  fontFamily: 'var(--font-humanist)',
-                  fontSize: 'clamp(2rem, 4.4vw, 3.75rem)',
-                  fontWeight: 500,
-                  letterSpacing: '-0.035em',
-                  lineHeight: 0.98,
-                }}
-              >
-                Everything that makes you,{' '}
-                <span className="brand-grad-text" style={{ fontWeight: 600 }}>
-                  you
-                </span>
-                .
-              </h2>
-              <p
-                className="text-graphite"
-                style={{
-                  fontFamily: 'var(--font-humanist)',
-                  fontSize: 'clamp(1rem, 1.18vw, 1.12rem)',
-                  fontWeight: 400,
-                  lineHeight: 1.55,
-                }}
-              >
-                Your sold, for-sale, and spotlight pins. Your reels and
-                walkthroughs. Your socials, your broker, your verified badge
-                — every piece of your agent presence on a single shareable
-                link.
-              </p>
-            </div>
-
-            {/* ── Pin-aloft line illustration (upper-body figure cropped at
-                 the waist). Always absolute, bottom-anchored so the waist
-                 sits flush with the card's interior bottom and the pin tip
-                 is free to bleed ABOVE the card's top edge. Card has heavy
-                 mobile pb so text doesn't run into the figure's torso.
-                 Image aspect ratio 815:1007. */}
-            <img
-              src="/marketing/customize-line-cropped.png"
-              alt=""
-              aria-hidden
-              draggable={false}
-              className="absolute h-auto pointer-events-none select-none
-                         bottom-0 left-1/2 -translate-x-1/2
-                         lg:left-[16px] lg:translate-x-0"
-              style={{
-                zIndex: 4,
-                width: 'clamp(200px, 30vw, 340px)',
-              }}
-            />
-          </div>
-        </div>
       </div>
     </section>
+  )
+}
+
+/* PinAnalyticsSection — wraps the bento `<PinAnalytics />` in its own
+   marketing-bg, max-width container so it can be slotted into the page
+   flow independently of CloserLook. PinAnalytics renders its own inner
+   `<section>` with top margin, so this wrapper adds no top padding. */
+function PinAnalyticsSection() {
+  return (
+    <div className="relative bg-marketing">
+      <div className="relative max-w-[1240px] mx-auto px-6 md:px-10 pb-20 md:pb-24">
+        <PinAnalytics />
+      </div>
+    </div>
   )
 }
 
@@ -978,7 +991,7 @@ function PinAnalytics() {
   return (
     <section
       ref={sectionRef}
-      className="relative mt-44 md:mt-48 lg:mt-40"
+      className="relative"
     >
       <div className="grid lg:grid-cols-2 gap-14 lg:gap-20 items-center">
         {/* RIGHT (header) — placed first in DOM so on mobile it stacks
@@ -994,7 +1007,7 @@ function PinAnalytics() {
               textTransform: 'uppercase',
             }}
           >
-            What your map says
+            What your profile says
           </p>
           <h2
             className="text-ink mb-5"
@@ -1017,8 +1030,8 @@ function PinAnalytics() {
               lineHeight: 1.55,
             }}
           >
-            Visits, taps, save rate, save growth, when your visitors are
-            active, and which neighborhoods buyers save yours alongside —
+            Visits, taps, save rate, subscriber growth, when your visitors
+            are active, and which neighborhoods buyers save yours alongside —
             every signal in one place.
           </p>
           <button
@@ -1073,10 +1086,10 @@ function PinAnalytics() {
               aspect="1 / 1"
               bg="#D94A1F"
               fg="white"
-              icon={<Bookmark size={16} />}
+              icon={<Heart weight="fill" size={16} />}
               label="Save rate"
               value="27.4%"
-              caption="of viewers save"
+              caption="of visitors save"
               graphic={<Donut color="rgba(255,255,255,0.92)" track="rgba(255,255,255,0.18)" />}
             />
 
@@ -1106,7 +1119,7 @@ function PinAnalytics() {
               icon={<Clock size={16} />}
               label="Active hours"
               value="7–10 PM"
-              caption="when your viewers tap"
+              caption="when your visitors tap"
               graphic={<HourBars color="rgba(255,255,255,0.78)" highlight="#FFD4B0" />}
             />
 
@@ -1353,13 +1366,59 @@ function CrosslistChips() {
    bob timer so the scene feels alive.
    ════════════════════════════════════════════════════════════════ */
 
+// Single-variant phone mockup mirroring the live AgentProfile layout:
+// centered avatar, name + verified, bio, map preview, content grid.
+// Top bar carries the same wave-left / save-right FAB pair the real
+// profile uses.
+function PhoneMock() {
+  return (
+    <div className="ph-variant">
+      <div className="ph-status">9:41</div>
+
+      <div className="ph-topbar">
+        <button className="ph-iconbtn" aria-label="Wave">
+          <HandWaving weight="fill" size={11} />
+        </button>
+        <button className="ph-iconbtn" aria-label="Save">
+          <Heart weight="fill" size={11} />
+        </button>
+      </div>
+
+      <div className="ph-hero">
+        <div className="ph-avatar" />
+        <div className="ph-name">
+          Maya Chen
+          <BadgeCheck weight="fill" size={11} />
+        </div>
+        <div className="ph-city">Brickell · Miami</div>
+        <div className="ph-bio">Helping families call Brickell home.</div>
+      </div>
+
+      <div className="ph-map">
+        <span className="ph-map-grid" />
+        <span className="ph-mp" style={{ left: '22%', top: '40%', background: '#FF6B3D' }} />
+        <span className="ph-mp" style={{ left: '54%', top: '28%', background: '#1A8A6B' }} />
+        <span className="ph-mp" style={{ left: '76%', top: '60%', background: '#E0A547' }} />
+      </div>
+
+      <div className="ph-grid">
+        <div className="ph-tile" style={{ background: 'linear-gradient(135deg,#FFD4B0,#FF8552)' }} />
+        <div className="ph-tile" style={{ background: 'linear-gradient(135deg,#FFE6D1,#D94A1F)' }} />
+        <div className="ph-tile" style={{ background: 'linear-gradient(135deg,#FF8552,#A8341A)' }} />
+        <div className="ph-tile" style={{ background: 'linear-gradient(135deg,#FFD4B0,#FF6B3D)' }} />
+      </div>
+    </div>
+  )
+}
+
 function PortfolioShowcase() {
   const navigate = useNavigate()
   const groupRef = useRef<HTMLDivElement>(null)
 
-  // Scroll-driven 3D tilt — applied to the whole 3D group (phone + orbs)
-  // so the entire composition rotates as one rigid body. Group enters
-  // with rotateY(-22deg) and resolves face-on as it scrolls into view.
+  // Scroll-driven 3D tilt — applied to the whole 3D group (phone +
+  // orbs) so the entire composition rotates as one rigid body. Group
+  // enters with rotateY(-25°) and resolves face-on as it scrolls into
+  // view, then continues to +25° as it leaves the top.
   useEffect(() => {
     let raf = 0
     const update = () => {
@@ -1367,13 +1426,8 @@ function PortfolioShowcase() {
       if (!group) return
       const rect = group.getBoundingClientRect()
       const vh = window.innerHeight
-      // Progress 0 when group's top first enters the bottom of the viewport,
-      // 1 when its bottom leaves the top — so rotation starts the instant the
-      // composition peeks into frame and continues straight through.
       let p = (vh - rect.top) / (vh + rect.height)
       p = Math.max(0, Math.min(1, p))
-      // -25° (entering, slight left perspective) → 0° (centered, face-on)
-      // → +25° (exiting, mirrored right-side perspective).
       const rotY = -25 + 50 * p
       group.style.transform = `rotateY(${rotY}deg)`
       raf = 0
@@ -1457,75 +1511,38 @@ function PortfolioShowcase() {
               className="portfolio-3d"
               style={{ transform: 'rotateY(-22deg)' }}
             >
-            {/* Phone mock — Reelst profile */}
-            <div className="portfolio-phone">
-              <div className="portfolio-phone-inner">
-                <div className="phone-status">9:41</div>
+              {/* Phone mock — single AgentProfile-shaped layout */}
+              <div className="portfolio-phone">
+                <PhoneMock />
+              </div>
 
-                <div className="phone-hdr">
-                  <div className="phone-avatar" />
-                  <div className="phone-meta">
-                    <div className="phone-name">
-                      Maya Chen
-                      <BadgeCheck weight="bold" size={12} />
-                    </div>
-                    <div className="phone-city">Brickell · Miami</div>
-                  </div>
-                </div>
-
-                <div className="phone-tabs">
-                  <span className="phone-tab phone-tab--active">Listings</span>
-                  <span className="phone-tab">Reels</span>
-                  <span className="phone-tab">About</span>
-                </div>
-
-                <div className="phone-map">
-                  <span className="phone-map-grid" />
-                  <span className="phone-mp" style={{ left: '22%', top: '40%', background: '#FF6B3D' }} />
-                  <span className="phone-mp" style={{ left: '54%', top: '28%', background: '#1A8A6B' }} />
-                  <span className="phone-mp" style={{ left: '76%', top: '60%', background: '#E0A547' }} />
-                </div>
-
-                <div className="phone-grid">
-                  <div className="phone-tile" style={{ background: 'linear-gradient(135deg,#FFD4B0,#FF8552)' }} />
-                  <div className="phone-tile" style={{ background: 'linear-gradient(135deg,#FFE6D1,#D94A1F)' }} />
-                  <div className="phone-tile" style={{ background: 'linear-gradient(135deg,#FF8552,#A8341A)' }} />
-                  <div className="phone-tile" style={{ background: 'linear-gradient(135deg,#FFD4B0,#FF6B3D)' }} />
-                </div>
-
-                <div className="phone-cta">
-                  <Heart weight="fill" size={11} /> Save Maya
+              {/* Real-estate orbs — same chip language as PinCreate */}
+              <div className="orb" style={{ left: '4%', bottom: '14%' }}>
+                <div className="orb-card orb-pin">
+                  <span className="orb-pin-icon" style={{ background: '#3B82F6' }}>
+                    <HomeIcon weight="bold" size={12} />
+                  </span>
+                  <span>For sale</span>
                 </div>
               </div>
-            </div>
 
-            {/* Real-estate orbs only — same chip language as the pin creation flow */}
-            <div className="orb" style={{ left: '4%', bottom: '14%' }}>
-              <div className="orb-card orb-pin">
-                <span className="orb-pin-icon" style={{ background: '#3B82F6' }}>
-                  <HomeIcon weight="bold" size={12} />
-                </span>
-                <span>For sale</span>
+              <div className="orb" style={{ right: '4%', bottom: '6%' }}>
+                <div className="orb-card orb-pin">
+                  <span className="orb-pin-icon" style={{ background: '#34C759' }}>
+                    <Key weight="bold" size={12} />
+                  </span>
+                  <span>Sold</span>
+                </div>
               </div>
-            </div>
 
-            <div className="orb" style={{ right: '4%', bottom: '6%' }}>
-              <div className="orb-card orb-pin">
-                <span className="orb-pin-icon" style={{ background: '#34C759' }}>
-                  <BadgeCheck weight="bold" size={12} />
-                </span>
-                <span>Sold</span>
+              <div className="orb" style={{ left: '20%', bottom: '-2%' }}>
+                <div className="orb-card orb-pin">
+                  <span className="orb-pin-icon" style={{ background: '#FF6B3D' }}>
+                    <Compass weight="bold" size={12} />
+                  </span>
+                  <span>Spotlight</span>
+                </div>
               </div>
-            </div>
-
-            <div className="orb" style={{ left: '20%', bottom: '-2%' }}>
-              <div className="orb-card orb-pin">
-                <span className="orb-pin-icon" style={{ background: '#FF6B3D' }}>
-                  <Compass weight="bold" size={12} />
-                </span>
-                <span>Spotlight</span>
-              </div>
-            </div>
             </div>
           </div>
         </div>

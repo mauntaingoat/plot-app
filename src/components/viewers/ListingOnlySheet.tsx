@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bed, Bathtub as Bath, ArrowsOut as Maximize, MapPin, BookmarkSimple as Bookmark, ShareNetwork as Share2, Phone, CaretLeft as ChevronLeft, CaretRight as ChevronRight, CalendarCheck, Calendar, Clock, Envelope as Mail, ChatCenteredText as MessageSquare, User as UserIcon, Check } from '@phosphor-icons/react'
+import { Bed, Bathtub as Bath, ArrowsOut as Maximize, MapPin, Heart, ShareNetwork as Share2, Phone, CaretLeft as ChevronLeft, CaretRight as ChevronRight, CalendarCheck, Calendar, Clock, Envelope as Mail, ChatCenteredText as MessageSquare, User as UserIcon, Check } from '@phosphor-icons/react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -7,6 +7,7 @@ import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { formatPrice } from '@/lib/firestore'
 import { displayAddressWithUnit } from '@/lib/format'
 import { OpenHouseBlock } from '@/components/listing/OpenHouseBlock'
+import { ShareModal } from '@/components/agent-profile/ShareModal'
 import type { Pin, ForSalePin, SoldPin, UserDoc } from '@/lib/types'
 
 interface ListingOnlySheetProps {
@@ -17,12 +18,17 @@ interface ListingOnlySheetProps {
   embedded?: boolean
   isSignedIn?: boolean
   onAuthRequired?: () => void
+  /** New "save agent" engagement primitive — replaces the legacy
+   *  per-pin bookmark. Triggers SaveAgentModal in the parent. */
+  agentSaved?: boolean
+  onSaveAgent?: () => void
 }
 
-export function ListingOnlySheet({ pin, agent, onClose, isPreview, embedded, isSignedIn, onAuthRequired }: ListingOnlySheetProps) {
+export function ListingOnlySheet({ pin, agent, onClose, isPreview, embedded, isSignedIn, onAuthRequired, agentSaved, onSaveAgent }: ListingOnlySheetProps) {
   const requireAuth = () => { if (!isSignedIn && onAuthRequired) onAuthRequired() }
   const [photoIndex, setPhotoIndex] = useState(0)
   const [showRequestForm, setShowRequestForm] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
 
   if (pin.type === 'spotlight') return null
 
@@ -42,8 +48,20 @@ export function ListingOnlySheet({ pin, agent, onClose, isPreview, embedded, isS
             </>
           )}
           <div className="absolute top-3 right-3 flex gap-2">
-            <button onClick={!isPreview ? requireAuth : undefined} className={`w-9 h-9 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''}`}><Bookmark size={16} /></button>
-            <button className={`w-9 h-9 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''}`}><Share2 size={14} /></button>
+            <button
+              onClick={!isPreview ? (onSaveAgent ?? requireAuth) : undefined}
+              aria-label={agentSaved ? 'Saved' : `Save ${agent.displayName || 'agent'}`}
+              className={`w-9 h-9 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center cursor-pointer ${isPreview ? 'opacity-40' : ''}`}
+            >
+              <Heart weight="fill" size={16} className={agentSaved ? 'text-tangerine' : 'text-white'} />
+            </button>
+            <button
+              onClick={!isPreview ? () => setShareOpen(true) : undefined}
+              aria-label="Share listing"
+              className={`w-9 h-9 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''}`}
+            >
+              <Share2 size={14} />
+            </button>
           </div>
           {pin.type === 'sold' && <div className="absolute top-3 left-3"><Badge variant="sold">SOLD</Badge></div>}
         </div>
@@ -99,6 +117,14 @@ export function ListingOnlySheet({ pin, agent, onClose, isPreview, embedded, isS
 
         <div className="h-8" />
       </div>
+      <ShareModal
+        isOpen={shareOpen}
+        onClose={() => setShareOpen(false)}
+        title={displayAddressWithUnit(pin.address, pin.unit).split(',')[0]}
+        message={`${formatPrice(('price' in lp ? lp.price : (lp as SoldPin).soldPrice) || 0)} · ${lp.beds} bd · ${lp.baths} ba · ${lp.sqft.toLocaleString()} sqft`}
+        heroImageUrl={photos[0] || agent.photoURL || null}
+        agentName={agent.displayName}
+      />
     </>
   )
 

@@ -155,7 +155,7 @@ export function ContentLibrary({ pins, agentId, onAssignContent, onArchiveConten
           { id: 'no_listing' as const, label: 'No Listing' },
         ]).map((f) => (
           <button key={f.id} onClick={() => setFilter(f.id)}
-            className={`px-3 py-1 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${
+            className={`shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-bold cursor-pointer transition-colors ${
               filter === f.id ? 'bg-ink text-warm-white' : 'bg-cream text-smoke hover:bg-pearl'
             }`}>
             {f.label}

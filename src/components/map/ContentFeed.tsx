@@ -4,6 +4,7 @@ import { Eye, MapPin, House as Home, X, BookmarkSimple as Bookmark, ShareNetwork
 import { Avatar } from '@/components/ui/Avatar'
 import { ListingOnlySheet } from '@/components/viewers/ListingOnlySheet'
 import { WaveModal } from '@/components/agent-profile/WaveModal'
+import { ShareModal } from '@/components/agent-profile/ShareModal'
 import { type Pin, type UserDoc, type ContentItem, isTallAspect } from '@/lib/types'
 import { getAllContent } from '@/lib/contentUtils'
 import { useSaves } from '@/hooks/useSaves'
@@ -51,6 +52,10 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
   // a time AND the parent immersive viewer can be told to pause its
   // own swipe-to-dismiss while this stacked sheet is on top.
   const [wavePin, setWavePin] = useState<Pin | null>(null)
+  // Share modal — same lifecycle as wavePin. The share button on each
+  // FeedCard hands its pin/content tuple here so the modal can render
+  // the right title + hero image for the selected card.
+  const [sharePayload, setSharePayload] = useState<{ pin: Pin; content: ContentItem } | null>(null)
   useEffect(() => {
     onChildSheetOpenChange?.(!!listingSheet || !!wavePin)
   }, [listingSheet, wavePin, onChildSheetOpenChange])
@@ -150,6 +155,7 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
             isOwnProfile={isOwnProfile}
             onListingTap={() => pin.type !== 'spotlight' && setListingSheet(pin)}
             onWaveTap={() => pin.type !== 'spotlight' && setWavePin(pin)}
+            onShareTap={() => setSharePayload({ pin, content })}
             onClose={onClose}
             signedUrl={content.muxPlaybackId ? signedUrls[content.muxPlaybackId]?.hls : undefined} />
         ))}
@@ -185,13 +191,13 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
             </div>
             <div className="flex-1 overflow-y-auto overscroll-contain">
               {listingSheet && (
-                <ListingOnlySheet pin={listingSheet} agent={agent} onClose={() => setListingSheet(null)} isPreview={isPreview} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
+                <ListingOnlySheet pin={listingSheet} agent={agent} onClose={() => setListingSheet(null)} isPreview={isPreview} embedded isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} agentSaved={agentSaved} onSaveAgent={onSaveAgent} />
               )}
             </div>
           </div>
         </>
       ) : listingSheet ? (
-        <ListingOnlySheet pin={listingSheet} agent={agent} onClose={() => setListingSheet(null)} isPreview={isPreview} isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} />
+        <ListingOnlySheet pin={listingSheet} agent={agent} onClose={() => setListingSheet(null)} isPreview={isPreview} isSignedIn={isSignedIn} onAuthRequired={onAuthRequired} agentSaved={agentSaved} onSaveAgent={onSaveAgent} />
       ) : null}
 
       {/* Single Wave modal — only one pin's wave is open at a time.
@@ -206,13 +212,24 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
         agentId={wavePin?.agentId ?? agent.uid}
         agentName={agent.displayName}
       />
+
+      {sharePayload && (
+        <ShareModal
+          isOpen={!!sharePayload}
+          onClose={() => setSharePayload(null)}
+          title={sharePayload.pin.address.split(',')[0]}
+          message={sharePayload.content.caption || `${agent.displayName} on Reelst`}
+          heroImageUrl={sharePayload.content.thumbnailUrl || sharePayload.content.mediaUrl || agent.photoURL || null}
+          agentName={agent.displayName}
+        />
+      )}
     </>
   )
 }
 
-function FeedCard({ content, pin, agent, isPreview, hideRailExtras, immersive, agentSaved, onSaveAgent, onListingTap, onWaveTap, onClose, isSignedIn, onAuthRequired, isOwnProfile, signedUrl }: {
+function FeedCard({ content, pin, agent, isPreview, hideRailExtras, immersive, agentSaved, onSaveAgent, onListingTap, onWaveTap, onShareTap, onClose, isSignedIn, onAuthRequired, isOwnProfile, signedUrl }: {
   content: ContentItem; pin: Pin; agent: UserDoc; isPreview?: boolean
-  hideRailExtras?: boolean; immersive?: boolean; agentSaved?: boolean; onSaveAgent?: () => void; onListingTap: () => void; onWaveTap?: () => void; onClose?: () => void
+  hideRailExtras?: boolean; immersive?: boolean; agentSaved?: boolean; onSaveAgent?: () => void; onListingTap: () => void; onWaveTap?: () => void; onShareTap?: () => void; onClose?: () => void
   isSignedIn?: boolean; onAuthRequired?: () => void; isOwnProfile?: boolean; signedUrl?: string
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -429,6 +446,8 @@ function FeedCard({ content, pin, agent, isPreview, hideRailExtras, immersive, a
         )}
 
         <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
+          onClick={!isPreview ? () => onShareTap?.() : undefined}
+          aria-label="Share"
           className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}>
           <Share2 size={22} className="text-white" />
         </motion.button>

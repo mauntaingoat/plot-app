@@ -1118,42 +1118,21 @@ export async function markNotificationsRead(ids: string[]) {
 // DELETE ACCOUNT
 // ══════════════════════════════════════════
 
-export async function deleteAccount(uid: string) {
+export async function deleteAccount(_uid: string) {
+  // Firestore rules block self-delete on users/{uid}, usernames/{x},
+  // and notifications/{x} (server-only, per firestore.rules). The
+  // callable below runs Admin SDK and handles every collection plus
+  // the Firebase Auth record. We pass uid through Auth context, not
+  // payload — the function reads request.auth.uid.
   if (!db) return
-
-  const batch = writeBatch(db)
-
-  // Delete user doc
-  batch.delete(doc(db, 'users', uid))
-
-  // Delete username claim
-  const userSnap = await getDoc(doc(db, 'users', uid))
-  const username = userSnap.data()?.username
-  if (username) batch.delete(doc(db, 'usernames', username.toLowerCase()))
-
-  await batch.commit()
-
-  // Delete related collections in smaller batches
-  const collections = [
-    { name: 'pins', field: 'agentId' },
-    { name: 'content', field: 'agentId' },
-    { name: 'notifications', field: 'agentId' },
-    { name: 'showing_requests', field: 'agentId' },
-  ]
-  for (const col of collections) {
-    const q = query(collection(db, col.name), where(col.field, '==', uid))
-    const snap = await getDocs(q)
-    const b = writeBatch(db)
-    snap.docs.forEach((d) => b.delete(d.ref))
-    if (snap.docs.length > 0) await b.commit()
-  }
-
-  // Delete saves
-  const savesQ = query(collection(db, 'saves'), where('userId', '==', uid))
-  const savesSnap = await getDocs(savesQ)
-  const sb = writeBatch(db)
-  savesSnap.docs.forEach((d) => sb.delete(d.ref))
-  if (savesSnap.docs.length > 0) await sb.commit()
+  const { getApp } = await import('firebase/app')
+  const { getFunctions, httpsCallable } = await import('firebase/functions')
+  const app = (() => { try { return getApp() } catch { return null } })()
+  const fn = httpsCallable<unknown, { ok: boolean; counts: Record<string, number> }>(
+    getFunctions(app ?? undefined),
+    'deleteSelfAccount',
+  )
+  await fn({})
 }
 
 // ══════════════════════════════════════════

@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { TrendUp as TrendingUp, Eye, CursorClick as MousePointerClick, BookmarkSimple as Bookmark, HandWaving as Hand, MapPin, Clock, FilmStrip as Film, Image, Radio, CalendarDots as CalendarClock } from '@phosphor-icons/react'
+import { TrendUp as TrendingUp, Eye, CursorClick as MousePointerClick, BookmarkSimple as Bookmark, HandWaving as Hand, MapPin, Clock, FilmStrip as Film, Image, CalendarDots as CalendarClock } from '@phosphor-icons/react'
 import { getAgentEvents, getSubscriberSnapshots, type AnalyticsEvent, type SubscriberSnapshot } from '@/lib/firestore'
 import type { Pin } from '@/lib/types'
 
@@ -148,7 +148,6 @@ export function ContentConversion({ pins }: ContentConversionProps) {
     // the layout doesn't shift around as content is added/removed.
     const byType: Record<string, { count: number; visits: number; taps: number }> = {
       reel: { count: 0, visits: 0, taps: 0 },
-      live: { count: 0, visits: 0, taps: 0 },
       photo: { count: 0, visits: 0, taps: 0 },
       open_house: { count: 0, visits: 0, taps: 0 },
     }
@@ -161,7 +160,11 @@ export function ContentConversion({ pins }: ContentConversionProps) {
       }
       const tapsPerSlot = pin.content.length > 0 ? Math.round(pin.taps / pin.content.length) : 0
       for (const c of pin.content) {
-        if (c.type === 'video_note') continue // legacy type — skip
+        // Skip legacy types (video_note, live) — Reelst no longer
+        // surfaces livestream content, and video_note was an unused
+        // experimental kind. Existing docs still load but don't
+        // contribute to the Content Performance breakdown.
+        if (c.type === 'video_note' || c.type === 'live') continue
         const t = byType[c.type] || (byType[c.type] = { count: 0, visits: 0, taps: 0 })
         t.count += 1
         t.visits += c.views || 0
@@ -176,7 +179,6 @@ export function ContentConversion({ pins }: ContentConversionProps) {
 
   const TYPE_META: Record<string, { label: string; icon: typeof Film; color: string }> = {
     reel: { label: 'Reels', icon: Film, color: '#FF6B3D' },
-    live: { label: 'Live Streams', icon: Radio, color: '#FF3B30' },
     photo: { label: 'Photos', icon: Image, color: '#34C759' },
     open_house: { label: 'Open Houses', icon: CalendarClock, color: '#FFAA00' },
   }

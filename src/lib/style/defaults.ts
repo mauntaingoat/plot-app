@@ -15,9 +15,12 @@ export const DEFAULT_STYLE: AgentStyle = {
   fontId: DEFAULT_FONT_ID,
   shapeId: DEFAULT_SHAPE_ID,
   frames: {
-    avatar: 'shadow',
-    map: 'none',
-    listings: 'none',
+    // New profiles default to "both" (border + shadow) on every
+    // surface — this is what looks polished out of the box; agents
+    // can tone it down per surface in the Style tab.
+    avatar: 'border_shadow',
+    map: 'border_shadow',
+    listings: 'border_shadow',
   },
   sections: {
     bio: true,

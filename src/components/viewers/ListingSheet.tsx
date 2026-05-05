@@ -6,6 +6,7 @@ import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { OpenHouseBadge } from '@/components/ui/OpenHouseBadge'
 import { formatPrice } from '@/lib/firestore'
 import { displayAddressWithUnit } from '@/lib/format'
 import type { ForSalePin, SoldPin, Pin, OpenHouse, UserDoc } from '@/lib/types'
@@ -99,9 +100,9 @@ export function ListingSheet({ pin, agent, isOpen, onClose }: ListingSheetProps)
           </div>
 
           {/* Badge */}
-          <div className="absolute top-3 left-3">
+          <div className="absolute top-3 left-3 flex items-center gap-2">
             {isSold && <Badge variant="sold">Sold</Badge>}
-            {'openHouse' in pin && pin.openHouse && <Badge variant="open" pulse>Open House</Badge>}
+            {'openHouse' in pin && pin.openHouse && <OpenHouseBadge variant="pill" />}
           </div>
         </div>
 
