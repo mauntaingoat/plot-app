@@ -18,10 +18,9 @@ function useDismissOnScroll(setHoverIdx: (v: null) => void) {
 }
 
 // ── Per-Pin Performance Breakdown ──
-type PinMetric = 'visits' | 'taps' | 'saves' | 'waves'
+type PinMetric = 'taps' | 'saves' | 'waves'
 
 const PIN_METRICS: { id: PinMetric; label: string; icon: typeof Eye }[] = [
-  { id: 'visits', label: 'Visits', icon: Eye },
   { id: 'taps', label: 'Taps', icon: MousePointerClick },
   { id: 'saves', label: 'Saves', icon: Bookmark },
   { id: 'waves', label: 'Waves', icon: Hand },
@@ -32,10 +31,9 @@ interface PinBreakdownProps {
 }
 
 export function PinBreakdown({ pins }: PinBreakdownProps) {
-  const [metric, setMetric] = useState<PinMetric>('visits')
+  const [metric, setMetric] = useState<PinMetric>('taps')
   const getValue = (p: Pin): number => {
     switch (metric) {
-      case 'visits': return p.views || 0   // pin.views is the legacy field name; surfaced as "Visits"
       case 'taps':   return p.taps || 0
       case 'saves':  return p.saves || 0
       case 'waves':  return p.waves || 0
@@ -127,10 +125,9 @@ export function PinBreakdown({ pins }: PinBreakdownProps) {
 }
 
 // ── Content Conversion Tracking ──
-type ContentMetric = 'visits' | 'taps' | 'saves' | 'waves'
+type ContentMetric = 'taps' | 'saves' | 'waves'
 
 const CONTENT_METRICS: { id: ContentMetric; label: string }[] = [
-  { id: 'visits', label: 'Visits' },
   { id: 'taps', label: 'Taps' },
   { id: 'saves', label: 'Saves' },
   { id: 'waves', label: 'Waves' },
@@ -143,7 +140,7 @@ interface ContentConversionProps {
 type ContentBucket = { count: number; visits: number; taps: number; saves: number; waves: number }
 
 export function ContentConversion({ pins }: ContentConversionProps) {
-  const [metric, setMetric] = useState<ContentMetric>('visits')
+  const [metric, setMetric] = useState<ContentMetric>('taps')
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   useDismissOnScroll(() => setHoverIdx(null))
