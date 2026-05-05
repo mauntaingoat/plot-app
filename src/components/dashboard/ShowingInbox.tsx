@@ -210,12 +210,13 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
                 <button onClick={() => handleExpandGroup(groupKey, items)}
                   className="w-full flex items-center gap-3 p-4 text-left cursor-pointer hover:bg-cream/50 transition-colors">
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${unread ? 'bg-tangerine/15' : 'bg-pearl'}`}>
-                    {/* Read-state outline heart needs `text-graphite`
-                        in dark mode — `text-smoke` (#8A91A3) over
-                        bg-pearl (#1A1F2C) renders as a faint outline
-                        that effectively disappears. Graphite stays
-                        crisp in both themes. */}
-                    <Heart size={15} className={unread ? 'text-tangerine' : 'text-graphite'} fill={unread ? 'currentColor' : 'none'} />
+                    {/* Heart is always filled — the default outline
+                        weight rendered as a near-invisible hairline
+                        on bg-pearl in dark mode. Color carries the
+                        read/unread state instead (tangerine vs
+                        graphite). Same treatment the wave row uses
+                        with weight="bold". */}
+                    <Heart weight="fill" size={15} className={unread ? 'text-tangerine' : 'text-graphite'} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-[14px] font-semibold ${unread ? 'text-ink' : 'text-graphite'}`}>
