@@ -213,13 +213,15 @@ service cloud.firestore {
     // write) — direct client creates are denied. Owning agent can
     // read + update (mark read / change status).
     //
-    // The rule reads `agentId` straight off the wave doc instead of
-    // doing a `get()` on the parent pin. The submitWave function
-    // denormalizes agentId at write time, so we don't need the
-    // round-trip — and `get()` inside collectionGroup-query rule
-    // evaluation has been the source of silent denials on the
-    // dashboard's "Waves" stat card.
-    match /pins/{pinId}/waves/{waveId} {
+    // Rule reads `agentId` straight off the wave doc — submitWave
+    // denormalizes it at write time, so no parent get() needed.
+    //
+    // The recursive `{path=**}` wildcard is REQUIRED for the rule to
+    // apply to collectionGroup queries (the dashboard's "Waves" stat
+    // card runs `collectionGroup('waves')`). Without it, Firestore
+    // silently denies the collectionGroup read even though the
+    // matched-path rule looks correct.
+    match /{path=**}/waves/{waveId} {
       allow read: if isSignedIn() && resource.data.agentId == request.auth.uid;
       allow update: if isSignedIn() && resource.data.agentId == request.auth.uid;
       allow create, delete: if false;
