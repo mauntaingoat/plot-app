@@ -142,9 +142,14 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
           >
             {t.label}
             {t.count > 0 && (
-              <span className={`ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold ${
-                tab === t.id ? 'bg-white/20 text-white' : 'bg-tangerine text-white'
-              }`}>
+              // Always solid tangerine + white text. The previous
+              // `bg-white/20 text-white` for the active pill became
+              // unreadable in dark-dashboard mode because the active
+              // pill bg auto-inverts to light, leaving a near-white
+              // badge with white text. Brand-color badge is legible
+              // against both active (light) and inactive (cream)
+              // pills in either theme.
+              <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold bg-tangerine text-white">
                 {t.count}
               </span>
             )}
@@ -205,7 +210,12 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
                 <button onClick={() => handleExpandGroup(groupKey, items)}
                   className="w-full flex items-center gap-3 p-4 text-left cursor-pointer hover:bg-cream/50 transition-colors">
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${unread ? 'bg-tangerine/15' : 'bg-pearl'}`}>
-                    <Heart size={15} className={unread ? 'text-tangerine' : 'text-smoke'} fill={unread ? 'currentColor' : 'none'} />
+                    {/* Read-state outline heart needs `text-graphite`
+                        in dark mode — `text-smoke` (#8A91A3) over
+                        bg-pearl (#1A1F2C) renders as a faint outline
+                        that effectively disappears. Graphite stays
+                        crisp in both themes. */}
+                    <Heart size={15} className={unread ? 'text-tangerine' : 'text-graphite'} fill={unread ? 'currentColor' : 'none'} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-[14px] font-semibold ${unread ? 'text-ink' : 'text-graphite'}`}>
@@ -247,7 +257,7 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
                     className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${unread ? '' : 'bg-pearl'}`}
                     style={unread ? { background: 'linear-gradient(135deg, #FFD089 0%, #FF8552 100%)' } : undefined}
                   >
-                    <Hand weight="bold" size={16} className={unread ? 'text-white' : 'text-smoke'} />
+                    <Hand weight="bold" size={16} className={unread ? 'text-white' : 'text-graphite'} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-[14px] font-semibold ${unread ? 'text-ink' : 'text-graphite'}`}>
