@@ -509,10 +509,13 @@ export default function Dashboard() {
   useEffect(() => {
     if (!activeUser?.uid) return
     if (activeTab !== 'insights') return
-    if (!hasFeature(activeUser, 'advancedAnalytics')) return
     // 30-day window — chart only renders the last 7 (today-7 → today-1).
     // The top "Visits" stat card reads the lifetime `profileVisits`
     // counter from the user doc, so it doesn't depend on this window.
+    // Note: this fetch is NOT gated on `advancedAnalytics` because the
+    // basic Profile Visits / Taps bar chart above renders for every
+    // tier. The Pro-only deep insights (PinBreakdown, GeoHeatmap, etc.)
+    // each fetch their own data downstream.
     import('@/lib/firestore').then(({ getAgentEvents }) =>
       getAgentEvents(activeUser.uid, 30).then(setWeeklyEvents).catch(() => {})
     )
