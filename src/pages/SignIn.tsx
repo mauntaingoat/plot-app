@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { SEOHead } from '@/components/marketing/SEOHead'
 import { GoogleLogo, AppleLogo } from '@/components/icons/PlatformLogos'
+import { ForgotPasswordModal } from '@/components/auth/ForgotPasswordModal'
 import { useAuthStore } from '@/stores/authStore'
 import { auth, firebaseConfigured } from '@/config/firebase'
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
@@ -19,6 +20,7 @@ export default function SignIn() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [forgotOpen, setForgotOpen] = useState(false)
 
   const handleLogin = () => {
     const cleanEmail = email.trim().toLowerCase()
@@ -122,6 +124,17 @@ export default function SignIn() {
                 autoComplete="current-password"
               />
             )}
+            {firebaseConfigured && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setForgotOpen(true)}
+                  className="text-[12.5px] font-semibold text-tangerine hover:underline underline-offset-4 cursor-pointer"
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
             {error && <p className="text-[12px] text-live-red">{error}</p>}
             <button
               type="submit"
@@ -148,6 +161,12 @@ export default function SignIn() {
           <p className="text-[13px] text-smoke">Don't have an account? <Link to="/sign-up" className="text-tangerine font-semibold hover:underline underline-offset-4">Get started</Link></p>
         </motion.div>
       </div>
+
+      <ForgotPasswordModal
+        isOpen={forgotOpen}
+        onClose={() => setForgotOpen(false)}
+        initialEmail={email}
+      />
 
       {/* Right: visual (desktop only) */}
       <div className="hidden lg:flex flex-1 bg-gradient-to-br from-midnight to-obsidian items-center justify-center relative overflow-hidden">

@@ -38,6 +38,7 @@ const PinCreate = lazy(() => import('@/pages/PinCreate'))
 const ContentEdit = lazy(() => import('@/pages/ContentEdit'))
 const SharedMap = lazy(() => import('@/pages/SharedMap'))
 const Verify = lazy(() => import('@/pages/Verify'))
+const AuthAction = lazy(() => import('@/pages/AuthAction'))
 const NotFound = lazy(() => import('@/pages/NotFound'))
 
 function ScrollToTop() {
@@ -149,6 +150,7 @@ function AppRoutes() {
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/sign-in" element={<SignIn />} />
         <Route path="/verify" element={<Verify />} />
+        <Route path="/auth/action" element={<AuthAction />} />
         <Route path="/dashboard" element={<RequireVerified><Dashboard /></RequireVerified>} />
         <Route path="/dashboard/pin/new" element={<RequireVerified><PinCreate /></RequireVerified>} />
         <Route path="/dashboard/pin/:id/edit" element={<RequireVerified><PinCreate /></RequireVerified>} />
