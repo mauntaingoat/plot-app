@@ -714,9 +714,9 @@ export default function Dashboard() {
             />
             {/* Basic stats — visible to all tiers */}
             <div className="grid grid-cols-2 gap-3">
-              <StatCard label="Visits" value={activeUser.profileVisits || 0} icon={<Eye size={18} />} format="compact" tooltip="Lifetime count of profile visits to your Reelst" />
-              <StatCard label="Taps" value={stats.taps} icon={<MousePointerClick size={18} />} color="#3B82F6" format="compact" tooltip="Times someone tapped a pin or content card to open it" />
-              <StatCard label="Saves" value={subscriberCount} icon={<Heart size={18} />} color="#FF6B6B" format="compact" tooltip="Buyers who saved you for the weekly digest" />
+              <StatCard label="Visits" value={activeUser.profileVisits || 0} icon={<Eye size={18} />} format="compact" tooltip="Count of profile visits to your Reelst" />
+              <StatCard label="Taps" value={stats.taps} icon={<MousePointerClick size={18} />} color="#3B82F6" format="compact" tooltip="Times someone tapped a map pin or content card to open it" />
+              <StatCard label="Saves" value={subscriberCount} icon={<Heart size={18} />} color="#FF6B6B" format="compact" tooltip="Buyers who subscribed to receive email updates from you on Reelst" />
               <StatCard label="Waves" value={waveCount} icon={<Hand size={18} />} color="#FF8552" format="compact" tooltip="Buyers who waved with a question on a listing" />
             </div>
             <InsightsChart
