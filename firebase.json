@@ -15,20 +15,6 @@
     ],
     "rewrites": [
       { "source": "/sitemap.xml", "function": "sitemap" },
-      { "source": "/about", "destination": "/index.html" },
-      { "source": "/pricing", "destination": "/index.html" },
-      { "source": "/blog", "destination": "/index.html" },
-      { "source": "/blog/**", "destination": "/index.html" },
-      { "source": "/terms", "destination": "/index.html" },
-      { "source": "/privacy", "destination": "/index.html" },
-      { "source": "/sign-in", "destination": "/index.html" },
-      { "source": "/sign-up", "destination": "/index.html" },
-      { "source": "/welcome", "destination": "/index.html" },
-      { "source": "/verify", "destination": "/index.html" },
-      { "source": "/dashboard", "destination": "/index.html" },
-      { "source": "/dashboard/**", "destination": "/index.html" },
-      { "source": "/saved/**", "destination": "/index.html" },
-      { "source": "/:username", "function": "og" },
       { "source": "**", "destination": "/index.html" }
     ],
     "headers": [
