@@ -18,7 +18,7 @@
  *   }
  */
 
-import { onRequest } from 'firebase-functions/v2/https'
+import * as functions from 'firebase-functions'
 import * as admin from 'firebase-admin'
 
 if (!admin.apps.length) admin.initializeApp()
@@ -104,10 +104,7 @@ function buildAgentHTML(agent: any, url: string): string {
 </html>`
 }
 
-// `invoker: 'public'` is required for v2/gen2 functions to be reachable
-// without an IAM binding — without it, Cloud Run defaults to private
-// and Firebase Hosting's rewrite returns "Forbidden" for /:username.
-export const og = onRequest({ invoker: 'public', region: 'us-central1' }, async (req, res) => {
+export const og = functions.https.onRequest(async (req, res) => {
   const userAgent = req.get('user-agent')
   const username = (req.params[0] || '').replace(/^\//, '').split('?')[0]
 

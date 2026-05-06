@@ -14,7 +14,7 @@
  *   }
  */
 
-import { onRequest } from 'firebase-functions/v2/https'
+import * as functions from 'firebase-functions'
 import * as admin from 'firebase-admin'
 
 if (!admin.apps.length) admin.initializeApp()
@@ -47,10 +47,7 @@ ${urls}
 </urlset>`
 }
 
-// `invoker: 'public'` exposes this v2 function without needing a
-// Cloud Run IAM binding — without it Hosting's /sitemap.xml rewrite
-// returns "Forbidden".
-export const sitemap = onRequest({ invoker: 'public', region: 'us-central1' }, async (_req, res) => {
+export const sitemap = functions.https.onRequest(async (_req, res) => {
   try {
     const db = admin.firestore()
 
