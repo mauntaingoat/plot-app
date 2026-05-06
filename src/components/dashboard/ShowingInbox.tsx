@@ -101,6 +101,7 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
   const unreadShowings = requests.filter((r) => r.status === 'new').length
   const unreadSaves = saves.filter((n) => !n.read).length
   const unreadWaves = waves.filter((n) => !n.read).length
+  const unreadGifts = gifts.filter((n) => !n.read).length
 
   const updateStatus = async (id: string, status: ShowingRequestStatus) => {
     setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)))
@@ -117,7 +118,7 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
   }
 
   const tabs: { id: TabId; label: string; count: number }[] = [
-    { id: 'all', label: 'All', count: unreadShowings + unreadSaves + unreadWaves },
+    { id: 'all', label: 'All', count: unreadShowings + unreadSaves + unreadWaves + unreadGifts },
     { id: 'showings', label: 'Showings', count: unreadShowings },
     { id: 'saves', label: 'Saves', count: unreadSaves },
     { id: 'waves', label: 'Waves', count: unreadWaves },
@@ -180,25 +181,37 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
         <div className="space-y-3">
           {/* Gift unlocks — only on All tab. Standalone cards (no
               per-day grouping since gifts are infrequent and feel
-              individual). */}
-          {tab === 'all' && gifts.map((g) => (
-            <motion.div key={g.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-              className={`rounded-[16px] border p-4 flex items-center gap-3 ${g.read ? 'bg-warm-white border-border-light' : 'bg-tangerine/5 border-tangerine/15'}`}>
-              <div
-                className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-white"
-                style={{ background: 'linear-gradient(135deg, #FF8552 0%, #D94A1F 100%)' }}
-              >
-                <Gift size={15} weight="fill" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`text-[14px] font-semibold ${g.read ? 'text-graphite' : 'text-ink'}`}>
-                  {g.title}
-                </p>
-                <p className="text-[11.5px] text-smoke mt-0.5">{g.body}</p>
-              </div>
-              {!g.read && <div className="w-2 h-2 rounded-full bg-tangerine shrink-0" />}
-            </motion.div>
-          ))}
+              individual). Tapping an unread card marks it read; once
+              read, the card is inert (no detail panel to expand). */}
+          {tab === 'all' && gifts.map((g) => {
+            const handleTap = () => {
+              if (g.read) return
+              markNotificationsRead([g.id]).catch(() => {})
+              setNotifications((prev) => prev.map((n) => (n.id === g.id ? { ...n, read: true } : n)))
+            }
+            return (
+              <motion.div key={g.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                onClick={handleTap}
+                role={g.read ? undefined : 'button'}
+                tabIndex={g.read ? undefined : 0}
+                onKeyDown={(e) => { if (!g.read && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handleTap() } }}
+                className={`rounded-[16px] border p-4 flex items-center gap-3 ${g.read ? 'bg-warm-white border-border-light' : 'bg-tangerine/5 border-tangerine/15 cursor-pointer hover:bg-tangerine/10 transition-colors'}`}>
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-white"
+                  style={{ background: 'linear-gradient(135deg, #FF8552 0%, #D94A1F 100%)' }}
+                >
+                  <Gift size={15} weight="fill" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-[14px] font-semibold ${g.read ? 'text-graphite' : 'text-ink'}`}>
+                    {g.title}
+                  </p>
+                  <p className="text-[11.5px] text-smoke mt-0.5">{g.body}</p>
+                </div>
+                {!g.read && <div className="w-2 h-2 rounded-full bg-tangerine shrink-0" />}
+              </motion.div>
+            )
+          })}
 
           {showSaves && savesByDay.map(([day, items]) => {
             const unread = items.some((n) => !n.read)

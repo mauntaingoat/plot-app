@@ -491,10 +491,14 @@ export function SaveGrowth({ currentSaves, agentId, refreshKey }: SaveGrowthProp
   const data = useMemo(() => {
     // Always seed with the current live count so the rightmost point
     // reflects "today" even before the daily cron runs. If snapshots
-    // exist, they fill in the prior 30 days; otherwise we extend a
-    // flat baseline so the chart never collapses to the spike shape.
+    // exist, they fill in the prior 30 days; otherwise the agent is
+    // brand new — show a flat-zero baseline rising to the current
+    // count today, instead of pretending they already had
+    // `currentSaves` 30 days ago.
     if (snapshots.length === 0) {
-      return Array(7).fill(currentSaves)
+      const arr = new Array(7).fill(0)
+      arr[arr.length - 1] = currentSaves
+      return arr
     }
     const points = snapshots.map((s) => s.count)
     const last = points[points.length - 1]
@@ -554,7 +558,8 @@ export function SaveGrowth({ currentSaves, agentId, refreshKey }: SaveGrowthProp
         <div>
           <h3 className="text-[14px] font-bold text-ink">Saves over time</h3>
           <p className="text-[11px] text-smoke mt-0.5">
-            <span className="font-bold text-sold-green">+{growth}</span> ({growthPct}%) past 30 days
+            <span className="font-bold text-sold-green">+{growth}</span>
+            {growthPct !== '—' && <> ({growthPct}%)</>} past 30 days
           </p>
         </div>
         <TrendingUp size={14} className="text-sold-green" />

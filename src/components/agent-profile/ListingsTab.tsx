@@ -5,6 +5,7 @@ import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
 import { OpenHouseBadge } from '@/components/ui/OpenHouseBadge'
 import { displayAddressWithUnit } from '@/lib/format'
 import { formatPrice } from '@/lib/firestore'
+import { nextSession } from '@/lib/openHouse'
 import type { Pin, ForSalePin, SoldPin, OpenHouse, UserDoc } from '@/lib/types'
 import type { FrameStyle } from '@/lib/style'
 
@@ -298,7 +299,7 @@ function ListingCardCompact({
 
   const openHouse: OpenHouse | null | undefined =
     pin.type === 'for_sale' && 'openHouse' in pin ? (pin as ForSalePin).openHouse : null
-  const hasOpenHouse = !!useNextOpenHouseSession(openHouse)
+  const hasOpenHouse = nextSession(openHouse) !== null
 
   // Top-right content-type icon — only shown when the listing has
   // rich content beyond a single hero photo. Single photos = no icon.
@@ -564,44 +565,6 @@ export function CyclingCountBadge({
       </span>
     </button>
   )
-}
-
-/* ─────────────── Open house helpers ─────────────── */
-
-function useNextOpenHouseSession(openHouse: OpenHouse | null | undefined): string | null {
-  if (!openHouse?.sessions?.length) return null
-  const now = new Date()
-  const nowTs = now.getTime()
-  // Find the next session that starts in the future or is currently happening.
-  const upcoming = openHouse.sessions
-    .map((s) => {
-      const start = parseSessionStart(s.date, s.startTime)
-      const end = parseSessionStart(s.date, s.endTime)
-      return { start, end, raw: s }
-    })
-    .filter((s) => s.end > nowTs)
-    .sort((a, b) => a.start - b.start)
-  const next = upcoming[0]
-  if (!next) return null
-  return formatSessionLabel(new Date(next.start))
-}
-
-function parseSessionStart(date: string, time: string): number {
-  // YYYY-MM-DD + HH:MM
-  const [y, m, d] = date.split('-').map(Number)
-  const [hh, mm] = time.split(':').map(Number)
-  return new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0).getTime()
-}
-
-function formatSessionLabel(d: Date): string {
-  const today = new Date()
-  const isToday = d.toDateString() === today.toDateString()
-  const tomorrow = new Date()
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  const isTomorrow = d.toDateString() === tomorrow.toDateString()
-  if (isToday) return 'OPEN TODAY'
-  if (isTomorrow) return 'OPEN TMR'
-  return `OPEN ${d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}`
 }
 
 /**
