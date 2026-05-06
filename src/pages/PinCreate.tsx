@@ -790,164 +790,60 @@ export default function PinCreate() {
     }
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const pinId = await runStep('createPin', () => createPin(pinData))
 
-      // Local stand-ins for the synthetic pin we'll hand to Dashboard.
-      let photoUrls: string[] = []
-
-      if (photos.length > 0 && (pinType === 'for_sale' || pinType === 'sold')) {
-        for (const photo of photos) {
-          const url = await runStep(`uploadListingPhoto(${photo.name})`, () =>
-            uploadFile({ path: pinMediaPath(pinId, photo.name), file: photo }),
-          )
-          photoUrls.push(url)
+      // No content branch — nothing slow to do, just activate inline.
+      if (skipNow || contentDrafts.length === 0) {
+        let activated = true
+        try {
+          const { setPinEnabled } = await import('@/lib/firestore')
+          await setPinEnabled(pinId, true)
+        } catch (err) {
+          const e = err as { message?: string; details?: { upgradeTo?: 'pro' } }
+          const reason = e?.message || "You're at your active-pin cap. The pin is saved as a draft — archive an active pin or upgrade to publish it."
+          setPaywall({ open: true, reason, upgradeTo: e?.details?.upgradeTo })
+          activated = false
         }
-        await runStep('updatePinWithPhotos', async () => {
-          const { updatePin } = await import('@/lib/firestore')
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await updatePin(pinId, { photos: photoUrls, heroPhotoUrl: photoUrls[0] || '' })
-        })
+        const newPin = {
+          id: pinId, ...pinData,
+          enabled: activated, status: 'pending',
+          photos: [], heroPhotoUrl: '', content: [],
+          createdAt: Timestamp.now(),
+          views: 0, taps: 0, saves: 0, waves: 0,
+        } as unknown as Pin
+        navigate('/dashboard', dashState({ newPin }))
+        return
       }
 
-      // Walk each draft and turn it into one or more ContentItems.
-      const contentArray: ContentItem[] = []
-      for (let i = 0; i < contentDrafts.length; i++) {
-        const draft = contentDrafts[i]
-        const contentId = placeholderIds[i]
-        const onDraftProgress = (phase: RenderPhase, pct: number) => {
-          setRenderPhase(phase as RenderPhase)
-          setRenderProgress(Math.round(((i + pct) / contentDrafts.length) * 100))
-        }
+      // Has content drafts — hand the slow work (photo upload + reel
+      // render + activate) to the global upload queue and bounce to the
+      // dashboard immediately. The pin shows up in My Pins via the
+      // synthetic stand-in below; Firestore subscription overwrites
+      // each field as the queue finishes its sub-steps.
+      const { useUploadStore } = await import('@/stores/uploadStore')
+      const pinLabel = pinType === 'spotlight'
+        ? (neighborhoodName || address.split(',')[0] || 'New pin')
+        : (address || 'New pin')
+      useUploadStore.getState().enqueue({
+        pinId,
+        pinLabel,
+        input: {
+          pinId,
+          pinType,
+          photos,
+          contentDrafts,
+          placeholderIds,
+        },
+      })
 
-        if (draft.kind === 'carousel') {
-          const items = await runStep(`publishCarousel(${i + 1}/${contentDrafts.length})`, () =>
-            // 'crop' (PublishPhase) maps to 'queue' (RenderPhase) — both
-            // represent post-upload server-side work in the progress UI.
-            publishCarouselPhotos(draft, pinId, (phase, pct) => onDraftProgress(phase === 'crop' ? 'queue' : 'upload', pct)),
-          )
-          // Per-draft caption: applied to the FIRST item of the carousel
-          // (the one that represents the post in the feed).
-          items.forEach((it, idx) => {
-            if (idx === 0) it.caption = draft.caption ?? ''
-            contentArray.push(it)
-          })
-        } else {
-          // Reel path — uses the existing renderComposition pipeline (Mux).
-          // In simple mode the draft has no overlays / adjustments / speed,
-          // so renderComposition takes the Mux fast path (concat + trim).
-          const draftClips = draft.clipFiles.map((file, idx) => ({
-            id: `${draft.id}-${idx}`,
-            file,
-            sourceUrl: '',
-            thumbnailUrl: '',
-            frames: [],
-            nativeAspect: 9 / 16,
-            type: file.type.startsWith('video') ? ('video' as const) : ('photo' as const),
-            duration: 0,
-            trimIn: draft.clipMeta[idx]?.trimIn ?? 0,
-            trimOut: draft.clipMeta[idx]?.trimOut ?? 0,
-            speed: (draft.clipMeta[idx]?.speed ?? 1) as 0.5 | 1 | 1.5 | 2,
-            adjustments: draft.clipMeta[idx]?.adjustments ?? { brightness: 0, contrast: 0, saturation: 0 },
-          }))
-
-          const result = await runStep(`renderDraft(${i + 1}/${contentDrafts.length})`, () =>
-            renderComposition({
-              clips: draftClips as any,
-              aspect: draft.aspect,
-              overlays: draft.overlays,
-              pinId,
-              contentId,
-              caption: draft.caption ?? '',
-              onProgress: (phase, pct) => {
-                setRenderPhase(phase)
-                setRenderProgress(Math.round(((i + pct) / contentDrafts.length) * 100))
-              },
-            }),
-          )
-
-          // If the user picked a thumbnail in the editor, draft.thumbnailUrl
-          // is a data: URL (set when the draft was built). Upload it to
-          // Storage and prefer it over Mux's auto-generated thumbnail.
-          const customThumbUrl = await uploadCustomThumbnail(draft.thumbnailUrl, pinId, contentId)
-          // If draft.thumbnailUrl is a data URL we already handled it
-          // above; otherwise fall back to it (probe-generated http URL).
-          const draftThumbFallback = draft.thumbnailUrl?.startsWith('data:') ? '' : (draft.thumbnailUrl || '')
-
-          // Add the reel to contentArray immediately with the Mux URLs.
-          // The mp4/hls URLs work once Mux finishes processing (~30-60s).
-          // The webhook will patch with final URLs later, but the content
-          // item is attached to the pin right away so it's not empty.
-          contentArray.push({
-            id: contentId,
-            type: 'reel',
-            mediaUrl: result.processedUrl || result.storageUrl || '',
-            sourceUrl: result.storageUrl || '',
-            sourceUrls: result.storageUrls,
-            mp4Url: result.mp4Url,
-            thumbnailUrl: customThumbUrl || result.thumbnailUrl || draftThumbFallback,
-            caption: draft.caption ?? '',
-            muxAssetId: result.muxAssetId,
-            muxPlaybackId: result.muxPlaybackId,
-            status: 'ready',
-            aspect: draft.aspect,
-            createdAt: Timestamp.now(),
-            views: 0,
-            saves: 0,
-            publishAt: null,
-          })
-        }
-      }
-
-      // Persist the content array for the non-editor drafts. Editor drafts
-      // land via the Mux webhook and don't participate in this write.
-      if (contentArray.length > 0) {
-        const now = Date.now()
-        const future = contentArray
-          .map((c) => c.publishAt?.toMillis?.() ?? null)
-          .filter((ms): ms is number => ms != null && ms > now)
-        const nextPublishAt = future.length > 0
-          ? Timestamp.fromMillis(Math.min(...future))
-          : null
-        await runStep('updatePinWithContent', async () => {
-          const { updatePin } = await import('@/lib/firestore')
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await updatePin(pinId, { content: contentArray, nextPublishAt })
-        })
-      }
-
-      // Activate the pin via the Cloud Function (server-side cap check).
-      // Pin lives as a draft if user is at their tier's active-pin cap.
-      let activated = true
-      try {
-        const { setPinEnabled } = await import('@/lib/firestore')
-        await setPinEnabled(pinId, true)
-      } catch (err: any) {
-        setSaving(false)
-        const reason = err?.message || "You're at your active-pin cap. The pin is saved as a draft — archive an active pin or upgrade to publish it."
-        const upgradeTo = err?.details?.upgradeTo as 'pro' | undefined
-        setPaywall({ open: true, reason, upgradeTo })
-        activated = false
-      }
-
-      // Pass the freshly-built pin to the dashboard so it renders
-      // immediately. Editor-mode reels land via Mux webhook so the
-      // contentArray here may not include their final URLs — that's
-      // fine, the listener overwrites the stand-in once Firestore
-      // catches up.
       const newPin = {
-        id: pinId,
-        ...pinData,
-        enabled: activated,
-        status: 'pending',
-        photos: photoUrls,
-        heroPhotoUrl: photoUrls[0] || '',
-        content: contentArray,
+        id: pinId, ...pinData,
+        // The queue flips this true via setPinEnabled when the work
+        // finishes. Render as a draft until then.
+        enabled: false, status: 'pending',
+        photos: [], heroPhotoUrl: '', content: [],
         createdAt: Timestamp.now(),
-        views: 0,
-        taps: 0,
-        saves: 0,
-        waves: 0,
+        views: 0, taps: 0, saves: 0, waves: 0,
       } as unknown as Pin
       navigate('/dashboard', dashState({ newPin }))
     } catch (err) {

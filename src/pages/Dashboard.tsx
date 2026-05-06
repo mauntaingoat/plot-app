@@ -21,6 +21,7 @@ import { ShowingInbox } from '@/components/dashboard/ShowingInbox'
 import { NotificationSettings } from '@/components/dashboard/NotificationSettings'
 import { ContentLibrary } from '@/components/dashboard/ContentLibrary'
 import { StyleTab } from '@/components/dashboard/StyleTab'
+import { UploadBar } from '@/components/dashboard/UploadBar'
 import { useUnreadCount } from '@/components/dashboard/ShowingInbox'
 import { PendingChangesModal, PendingChangeCard } from '@/components/dashboard/PendingChangesModal'
 import { subscribeToAgentPendingChanges, subscribeToAgentSubscriberCount } from '@/lib/firestore'
@@ -616,6 +617,13 @@ export default function Dashboard() {
             </button>
           </div>
         )}
+
+        {/* Background upload progress — visible on every tab so the
+            user can navigate away from a publish without waiting on
+            the slow render/upload pipeline. */}
+        <div className={isDesktop ? 'px-6 pt-4' : 'px-5 pt-4'}>
+          <UploadBar />
+        </div>
 
         {/* ═══ MY PLOT ═══ */}
         {activeTab === 'reelst' && (
