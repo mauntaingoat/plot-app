@@ -281,9 +281,13 @@ export function ContentConversion({ pins }: ContentConversionProps) {
 interface GeoHeatmapProps {
   pins: Pin[]
   agentId?: string
+  /** Bump to force a re-fetch of the 30-day events window. The
+   *  Dashboard increments this on tab focus so cards stay current
+   *  without a live subscription. */
+  refreshKey?: number
 }
 
-export function GeoHeatmap({ pins, agentId }: GeoHeatmapProps) {
+export function GeoHeatmap({ pins, agentId, refreshKey }: GeoHeatmapProps) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   const [events, setEvents] = useState<AnalyticsEvent[]>([])
@@ -291,7 +295,7 @@ export function GeoHeatmap({ pins, agentId }: GeoHeatmapProps) {
 
   useEffect(() => {
     if (agentId) getAgentEvents(agentId, 30).then(setEvents).catch(() => {})
-  }, [agentId])
+  }, [agentId, refreshKey])
 
   const cities = useMemo(() => {
     // Total geo-tagged profile visits — used as the denominator for
@@ -369,9 +373,11 @@ export function GeoHeatmap({ pins, agentId }: GeoHeatmapProps) {
 // in their own time zone — not normalized to the agent's TZ.
 interface TimeOfDayProps {
   agentId?: string
+  /** Bump to force a re-fetch — see GeoHeatmap for context. */
+  refreshKey?: number
 }
 
-export function TimeOfDay({ agentId }: TimeOfDayProps) {
+export function TimeOfDay({ agentId, refreshKey }: TimeOfDayProps) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   const [events, setEvents] = useState<AnalyticsEvent[]>([])
@@ -379,7 +385,7 @@ export function TimeOfDay({ agentId }: TimeOfDayProps) {
 
   useEffect(() => {
     if (agentId) getAgentEvents(agentId, 30).then(setEvents).catch(() => {})
-  }, [agentId])
+  }, [agentId, refreshKey])
 
   const hours = useMemo(() => {
     const counts = Array(24).fill(0)
@@ -468,9 +474,11 @@ export function TimeOfDay({ agentId }: TimeOfDayProps) {
 interface SaveGrowthProps {
   currentSaves: number
   agentId?: string
+  /** Bump to force a re-fetch — see GeoHeatmap for context. */
+  refreshKey?: number
 }
 
-export function SaveGrowth({ currentSaves, agentId }: SaveGrowthProps) {
+export function SaveGrowth({ currentSaves, agentId, refreshKey }: SaveGrowthProps) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   const [snapshots, setSnapshots] = useState<SubscriberSnapshot[]>([])
@@ -478,7 +486,7 @@ export function SaveGrowth({ currentSaves, agentId }: SaveGrowthProps) {
 
   useEffect(() => {
     if (agentId) getSubscriberSnapshots(agentId, 30).then(setSnapshots).catch(() => {})
-  }, [agentId])
+  }, [agentId, refreshKey])
 
   const data = useMemo(() => {
     // Always seed with the current live count so the rightmost point

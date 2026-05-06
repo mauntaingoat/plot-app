@@ -466,6 +466,34 @@ export default function Dashboard() {
   // (b) their tier unlocks advanced analytics. Free users see a blurred
   // paywall — pulling 7 days of real events for them would burn reads
   // and put real numbers in their DOM behind the blur.
+  // ── Insights freshness — re-fetch on tab focus ──
+  // The Insights tab pulls a 30-day window of events on mount, but
+  // the data isn't streamed live (would burn reads). To stay current,
+  // we bump `insightsRefreshKey` whenever the Dashboard tab regains
+  // focus (visibilitychange or window focus), throttled so a quick
+  // alt-tab dance doesn't trigger N fetches. The four downstream
+  // event-fetching surfaces (Dashboard's own `weeklyEvents` plus
+  // TimeOfDay / GeoHeatmap / SaveGrowth components) all depend on
+  // this key so a single focus event re-syncs all of them.
+  const [insightsRefreshKey, setInsightsRefreshKey] = useState(0)
+  const lastInsightsFetchRef = useRef(0)
+  useEffect(() => {
+    const REFRESH_THROTTLE_MS = 5000
+    const onFocus = () => {
+      if (activeTab !== 'insights') return
+      const now = Date.now()
+      if (now - lastInsightsFetchRef.current < REFRESH_THROTTLE_MS) return
+      lastInsightsFetchRef.current = now
+      setInsightsRefreshKey((k) => k + 1)
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
+    }
+  }, [activeTab])
+
   useEffect(() => {
     if (!activeUser?.uid) return
     if (activeTab !== 'insights') return
@@ -476,7 +504,7 @@ export default function Dashboard() {
     import('@/lib/firestore').then(({ getAgentEvents }) =>
       getAgentEvents(activeUser.uid, 30).then(setWeeklyEvents).catch(() => {})
     )
-  }, [activeUser, activeTab])
+  }, [activeUser, activeTab, insightsRefreshKey])
 
   // ── Property-data pending changes (Rentcast sync diffs) ──
   // Live subscription so the modal disappears immediately when a
@@ -709,9 +737,9 @@ export default function Dashboard() {
               <>
                 <PinBreakdown pins={pins} />
                 <ContentConversion pins={pins} />
-                <SaveGrowth currentSaves={subscriberCount} agentId={activeUser.uid} />
-                <TimeOfDay agentId={activeUser.uid} />
-                <GeoHeatmap pins={pins} agentId={activeUser.uid} />
+                <SaveGrowth currentSaves={subscriberCount} agentId={activeUser.uid} refreshKey={insightsRefreshKey} />
+                <TimeOfDay agentId={activeUser.uid} refreshKey={insightsRefreshKey} />
+                <GeoHeatmap pins={pins} agentId={activeUser.uid} refreshKey={insightsRefreshKey} />
                 {/* Audience Crossover — included with Pro analytics now
                     that Studio is gone. Anonymized competitive-set
                     insight powered by digestSubscriptions overlap. */}
