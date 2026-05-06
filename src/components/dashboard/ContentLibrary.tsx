@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { UploadSimple as Upload, Play, Image, FilmStrip as Film, MapPin, Plus, Eye, BookmarkSimple as Bookmark, DotsThree as MoreHorizontal, PencilSimple as Edit3, Trash as Trash2, Images, CaretDown as ChevronDown, CaretLeft as ChevronLeft, CaretRight as ChevronRight, Pause } from '@phosphor-icons/react'
+import { UploadSimple as Upload, Play, Image, FilmStrip as Film, MapPin, Plus, DotsThree as MoreHorizontal, PencilSimple as Edit3, Trash as Trash2, Images, CaretDown as ChevronDown, CaretLeft as ChevronLeft, CaretRight as ChevronRight, Pause, CursorClick as MousePointerClick, Sparkle } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
@@ -22,9 +22,13 @@ interface ContentLibraryProps {
   onCaptionSaved?: (pinId: string, contentId: string, caption: string) => void
   /** Navigate to the content editor for a specific content item. */
   onEditContent?: (content: ContentItem, pin: Pin | null) => void
+  /** When false, content engagement stats render blurred with a Sparkle
+   *  pip and clicking them fires onUpgradeClick. Defaults to false. */
+  isPro?: boolean
+  onUpgradeClick?: () => void
 }
 
-export function ContentLibrary({ pins, agentId, onAssignContent, onArchiveContent, isDesktop, onNavigateUpload, onCaptionSaved, onEditContent }: ContentLibraryProps) {
+export function ContentLibrary({ pins, agentId, onAssignContent, onArchiveContent, isDesktop, onNavigateUpload, onCaptionSaved, onEditContent, isPro, onUpgradeClick }: ContentLibraryProps) {
   const [filter, setFilter] = useState<'all' | 'reel' | 'photo' | 'no_listing'>('all')
   const [archiveTarget, setArchiveTarget] = useState<{ contentId: string; pinId: string | null } | null>(null)
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
@@ -187,6 +191,8 @@ export function ContentLibrary({ pins, agentId, onAssignContent, onArchiveConten
               pin={pin}
               pins={pins}
               isDesktop={isDesktop}
+              isPro={!!isPro}
+              onUpgradeClick={onUpgradeClick}
               isPlaying={playingVideo === content.id}
               onPlay={() => setPlayingVideo(playingVideo === content.id ? null : content.id)}
               menuOpen={activeMenu === content.id}
@@ -350,8 +356,9 @@ export function ContentLibrary({ pins, agentId, onAssignContent, onArchiveConten
 
 // ── Content Card ──
 
-function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpen, onMenuToggle, onMenuClose, onAssign, onArchive, onEditCaption, onEditContent }: {
+function ContentCard({ content, pin, pins, isDesktop, isPro, onUpgradeClick, isPlaying, onPlay, menuOpen, onMenuToggle, onMenuClose, onAssign, onArchive, onEditCaption, onEditContent }: {
   content: ContentItem; pin: Pin | null; pins: Pin[]; isDesktop: boolean
+  isPro: boolean; onUpgradeClick?: () => void
   isPlaying: boolean; onPlay: () => void
   menuOpen: boolean; onMenuToggle: () => void; onMenuClose: () => void
   onAssign: (toPinId: string) => void; onArchive: () => void; onEditCaption: () => void; onEditContent?: () => void
@@ -473,6 +480,27 @@ function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpe
               {content.caption && (
                 <p className="text-[12px] text-smoke line-clamp-2 mt-1">{content.caption}</p>
               )}
+              {/* Engagement stat — Pro shows the live count; free sees a
+                  blurred teaser that opens the upsell. */}
+              <div className="mt-1.5">
+                {isPro ? (
+                  <span className="flex items-center gap-1 text-[11px] font-medium text-smoke">
+                    <MousePointerClick size={12} /> {(content.views ?? 0).toLocaleString()}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onUpgradeClick?.() }}
+                    className="flex items-center gap-1 text-[11px] font-medium text-smoke cursor-pointer"
+                  >
+                    <MousePointerClick size={12} />
+                    <span className="blur-[3px] select-none" aria-hidden>
+                      {((content.views ?? 0) || 42).toLocaleString()}
+                    </span>
+                    <Sparkle size={10} weight="fill" className="text-tangerine" />
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="relative shrink-0">
@@ -504,11 +532,6 @@ function ContentCard({ content, pin, pins, isDesktop, isPlaying, onPlay, menuOpe
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="flex items-center gap-3 pt-1">
-            <span className="flex items-center gap-1 text-[11px] font-medium text-smoke"><Eye size={12} /> {content.views.toLocaleString()}</span>
-            <span className="flex items-center gap-1 text-[11px] font-medium text-smoke"><Bookmark size={12} /> {content.saves.toLocaleString()}</span>
-          </div>
         </div>
       </div>
 

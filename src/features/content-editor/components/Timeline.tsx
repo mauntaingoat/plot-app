@@ -15,7 +15,9 @@ const REORDER_LONG_PRESS_MS = 380
 // Trim bracket: small grip centered on the clip's vertical edge
 const BRACKET_W = 10
 const BRACKET_H = 28
-const BRACKET_HIT_PAD = 12 // invisible padding around the bracket for easier grabbing
+const BRACKET_HIT_PAD = 6 // invisible padding around the bracket — tight enough that
+                          // the playhead can be dropped near the start/end of the
+                          // visible clip without accidentally grabbing the trim handle.
 
 function tileWidth(clip: Clip): number {
   const effective = (clip.trimOut - clip.trimIn) / clip.speed

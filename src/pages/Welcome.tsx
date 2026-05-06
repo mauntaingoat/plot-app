@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Check, Camera, CircleNotch as Loader2, MapPin, X } from '@phosphor-icons/react'
 import { GoogleLogo, PLATFORM_LIST, PLATFORM_LOGOS } from '@/components/icons/PlatformLogos'
 import { useUsername } from '@/hooks/useUsername'
+import { useLicense } from '@/hooks/useLicense'
 import { useAuthStore } from '@/stores/authStore'
 import { auth } from '@/config/firebase'
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendEmailVerification } from 'firebase/auth'
@@ -28,6 +29,7 @@ export default function Welcome() {
   const [searchParams] = useSearchParams()
   const { setUserDoc: setAuthDoc } = useAuthStore()
   const { available, checking, check } = useUsername()
+  const { available: licenseAvailable, checking: licenseChecking, takenBy: licenseTakenBy, check: checkLicense, claim: claimLicense } = useLicense()
   const prefillUsername = searchParams.get('username')?.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24) || ''
 
   const [step, setStepRaw] = useState<Step>('hero')
@@ -146,6 +148,19 @@ export default function Welcome() {
       const { setDoc, doc, serverTimestamp } = await import('firebase/firestore')
       const { db } = await import('@/config/firebase')
       if (db) await setDoc(doc(db, 'usernames', username.toLowerCase()), { uid, createdAt: serverTimestamp() })
+      // Claim the license — Firestore rule rejects create on an
+      // existing doc id, so this is the atomic enforcement that keeps
+      // two agents from registering the same state-license combo.
+      if (licenseNumber && licenseState) {
+        try { await claimLicense(licenseNumber, licenseState, uid, username.toLowerCase()) }
+        catch (e: any) {
+          if (e?.code === 'permission-denied' || /already exists/i.test(e?.message || '')) {
+            setError('That license number is already registered to another agent.')
+            return
+          }
+          throw e
+        }
+      }
       setAuthDoc({ uid, ...userData, createdAt: Timestamp.now(), setupPercent: 50, tier: 'free', brandColor: null, brokerage: null } as UserDoc)
       setStep('first_pin')
     } catch (err: any) {
@@ -402,7 +417,7 @@ export default function Welcome() {
                 </div>
                 <div>
                   <label className="text-[12px] font-semibold text-[#8A8A8A] uppercase tracking-wider block mb-1.5">State</label>
-                  <select value={licenseState} onChange={(e) => setLicenseState(e.target.value)}
+                  <select value={licenseState} onChange={(e) => { const v = e.target.value; setLicenseState(v); if (licenseNumber && v) checkLicense(licenseNumber, v) }}
                     className="w-full px-4 py-3.5 rounded-2xl bg-white border-2 border-[#EAE7E0] text-[14px] text-[#2A2A2A] outline-none focus:border-tangerine/40 appearance-none cursor-pointer">
                     <option value="">Select state</option>
                     {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -410,15 +425,26 @@ export default function Welcome() {
                 </div>
                 <div>
                   <label className="text-[12px] font-semibold text-[#8A8A8A] uppercase tracking-wider block mb-1.5">License number</label>
-                  <input type="text" placeholder="e.g. SL1234567" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)}
+                  <input type="text" placeholder="e.g. SL1234567" value={licenseNumber} onChange={(e) => { const v = e.target.value; setLicenseNumber(v); if (v && licenseState) checkLicense(v, licenseState) }}
                     className="w-full px-4 py-3.5 rounded-2xl bg-white border-2 border-[#EAE7E0] text-[14px] text-[#2A2A2A] placeholder:text-[#D4D0C8] outline-none focus:border-tangerine/40" />
+                  <div className="h-5 flex items-center px-1 mt-1.5">
+                    {licenseChecking && <span className="text-[12px] text-[#AAAAAA]">Checking...</span>}
+                    {!licenseChecking && licenseAvailable === true && licenseNumber.length >= 3 && licenseState && (
+                      <span className="text-[12px] text-sold-green flex items-center gap-1"><Check size={13} /> Looks good</span>
+                    )}
+                    {!licenseChecking && licenseAvailable === false && (
+                      <span className="text-[12px] text-live-red">
+                        An account with this license already exists.
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="text-[12px] font-semibold text-[#8A8A8A] uppercase tracking-wider block mb-1.5">Legal name on license</label>
                   <input type="text" placeholder="Full legal name" value={licenseName} onChange={(e) => setLicenseName(e.target.value)}
                     className="w-full px-4 py-3.5 rounded-2xl bg-white border-2 border-[#EAE7E0] text-[14px] text-[#2A2A2A] placeholder:text-[#D4D0C8] outline-none focus:border-tangerine/40" />
                 </div>
-                <button onClick={nextStep} disabled={!licenseState || !licenseNumber || !licenseName}
+                <button onClick={nextStep} disabled={!licenseState || !licenseNumber || !licenseName || licenseAvailable === false || licenseChecking}
                   className="w-full py-3.5 rounded-full bg-tangerine text-white text-[15px] font-bold cursor-pointer hover:brightness-105 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
                   Continue
                 </button>

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Eye, CursorClick as MousePointerClick, BookmarkSimple as Bookmark, MapPin, DotsThree as MoreHorizontal, House as Home, Key, Compass } from '@phosphor-icons/react'
+import { Eye, CursorClick as MousePointerClick, MapPin, DotsThree as MoreHorizontal, House as Home, Key, Compass, Sparkle } from '@phosphor-icons/react'
 import { PIN_CONFIG, type Pin } from '@/lib/types'
 import { formatPrice } from '@/lib/firestore'
 import { displayAddressWithUnit } from '@/lib/format'
@@ -21,9 +21,14 @@ interface PinCardProps {
   /** Tap handler for the pending-change badge. Stops propagation so
    *  it doesn't double-fire onClick. */
   onPendingChangeClick?: () => void
+  /** Manage-variant only: when true, the agent is on Pro and the taps
+   *  count renders normally. When false, the count is blurred behind a
+   *  Sparkle pip and clicking the stat fires onUpgradeClick. */
+  isPro?: boolean
+  onUpgradeClick?: () => void
 }
 
-export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark = true, hasPendingChange, onPendingChangeClick }: PinCardProps) {
+export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark = true, hasPendingChange, onPendingChangeClick, isPro, onUpgradeClick }: PinCardProps) {
   const config = PIN_CONFIG[pin.type]
 
   // Priority: listing photo (heroPhotoUrl) > content thumbnail > content mediaUrl > none
@@ -226,22 +231,33 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
           )}
         </div>
 
-        {/* Stats row — views are public; taps/saves are owner-only (manage variant).
-            The feed variant renders on the public agent profile, where tap
-            and save counts are private performance data. */}
+        {/* Stats row — feed variant shows public views; manage variant
+            shows taps (Pro-gated) so the agent can gauge pin reach
+            without exposing those numbers on the public profile. */}
         <div className="flex items-center gap-3 pt-1">
-          <span className={`flex items-center gap-1 text-[11px] font-medium ${dark ? 'text-ghost' : 'text-smoke'}`}>
-            <Eye size={12} /> {(pin.views ?? 0).toLocaleString()}
-          </span>
+          {!isManage && (
+            <span className={`flex items-center gap-1 text-[11px] font-medium ${dark ? 'text-ghost' : 'text-smoke'}`}>
+              <Eye size={12} /> {(pin.views ?? 0).toLocaleString()}
+            </span>
+          )}
           {isManage && (
-            <>
+            isPro ? (
               <span className={`flex items-center gap-1 text-[11px] font-medium ${dark ? 'text-ghost' : 'text-smoke'}`}>
                 <MousePointerClick size={12} /> {(pin.taps ?? 0).toLocaleString()}
               </span>
-              <span className={`flex items-center gap-1 text-[11px] font-medium ${dark ? 'text-ghost' : 'text-smoke'}`}>
-                <Bookmark size={12} /> {(pin.saves ?? 0).toLocaleString()}
-              </span>
-            </>
+            ) : (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onUpgradeClick?.() }}
+                className={`flex items-center gap-1 text-[11px] font-medium cursor-pointer ${dark ? 'text-ghost' : 'text-smoke'}`}
+              >
+                <MousePointerClick size={12} />
+                <span className="blur-[3px] select-none" aria-hidden>
+                  {((pin.taps ?? 0) || 42).toLocaleString()}
+                </span>
+                <Sparkle size={10} weight="fill" className="text-tangerine" />
+              </button>
+            )
           )}
 
           {variant === 'manage' && onToggle && (

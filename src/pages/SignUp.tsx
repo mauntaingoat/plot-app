@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { auth, firebaseConfigured } from '@/config/firebase'
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import { createUserDoc, checkLicenseDuplicate } from '@/lib/firestore'
+import { useLicense } from '@/hooks/useLicense'
 import { sendEmailVerification } from 'firebase/auth'
 import type { UserDoc } from '@/lib/types'
 
@@ -28,6 +29,7 @@ export default function SignUp() {
   const [searchParams] = useSearchParams()
   const { setUserDoc } = useAuthStore()
   const { available, checking, check } = useUsername()
+  const { claim: claimLicense } = useLicense()
 
   // Pre-fill username from URL param (from claim form on Home/Footer)
   const prefillUsername = searchParams.get('username')?.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24) || ''
@@ -120,6 +122,16 @@ export default function SignUp() {
           const { doc, setDoc, serverTimestamp } = await import('firebase/firestore')
           const { db } = await import('@/config/firebase')
           if (db) await setDoc(doc(db, 'usernames', username.toLowerCase()), { uid: cred.user.uid, createdAt: serverTimestamp() }).catch(() => {})
+        }
+        if (role === 'agent' && licenseNumber && licenseState) {
+          try { await claimLicense(licenseNumber, licenseState, cred.user.uid, username.toLowerCase()) }
+          catch (e: any) {
+            if (e?.code === 'permission-denied' || /already exists/i.test(e?.message || '')) {
+              setError('That license number is already registered to another agent.')
+              setLoading(false)
+              return
+            }
+          }
         }
         navigate(role === 'agent' ? '/dashboard' : '/')
       } catch (e: any) {
@@ -271,7 +283,7 @@ export default function SignUp() {
                     <div>
                       <p className="text-[13px] font-semibold text-ink">This license is already registered</p>
                       <p className="text-[12px] text-smoke mt-0.5">
-                        An account with this license exists{duplicateLicense.username ? ` (@${duplicateLicense.username})` : ''}. If this is you, <Link to="/sign-in" className="text-tangerine font-semibold">sign in instead</Link>.
+                        An account with this license already exists. If this is you, <Link to="/sign-in" className="text-tangerine font-semibold">sign in instead</Link>.
                       </p>
                       <button
                         type="button"

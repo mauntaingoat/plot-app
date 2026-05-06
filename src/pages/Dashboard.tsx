@@ -220,11 +220,22 @@ export default function Dashboard() {
   }, [seededPin])
 
   const activeUid = impersonating?.uid || userDoc?.uid
+  // Track the previous activeUid so we can drop the prior agent's pins
+  // when admin-impersonation flips. Without this, the merge below
+  // preserves them as `pendingLocals` (since they're "missing" from
+  // the new user's snapshot) and admin's own pins leak into the
+  // impersonated dashboard.
+  const prevActiveUidRef = useRef<string | undefined>(undefined)
   useEffect(() => {
     if (!activeUid) {
       setPins([]); setPinsLoading(false)
+      prevActiveUidRef.current = undefined
       return
     }
+    if (prevActiveUidRef.current && prevActiveUidRef.current !== activeUid) {
+      setPins([])
+    }
+    prevActiveUidRef.current = activeUid
     setPinsLoading(true)
     const unsub = subscribeToAllAgentPins(activeUid, (live) => {
       // Merge with local state to preserve:
@@ -652,6 +663,8 @@ export default function Dashboard() {
                       onClick={() => setEditPin(pin)}
                       hasPendingChange={pendingChanges.some((c) => c.pinId === pin.id)}
                       onPendingChangeClick={() => openSinglePending(pin.id)}
+                      isPro={hasFeature(activeUser, 'advancedAnalytics')}
+                      onUpgradeClick={() => setPaywall({ open: true, reason: 'Pin engagement stats are a Pro feature.', upgradeTo: 'pro' })}
                     />
 
                     {/* Desktop popover menu — anchored to the card */}
@@ -806,9 +819,12 @@ export default function Dashboard() {
             subtitle="Reels, photos, and listing media"
           />
           <ContentLibrary
+            key={activeUser.uid}
             pins={displayPins}
             agentId={activeUser.uid}
             isDesktop={isDesktop}
+            isPro={hasFeature(activeUser, 'advancedAnalytics')}
+            onUpgradeClick={() => setPaywall({ open: true, reason: 'Content engagement stats are a Pro feature.', upgradeTo: 'pro' })}
             onNavigateUpload={() => navigate('/dashboard/pin/new?tab=content&from=content')}
             onCaptionSaved={(pinId, contentId, caption) => {
               setPins((prev) => prev.map((p) => {

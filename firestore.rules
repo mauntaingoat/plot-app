@@ -39,6 +39,17 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ── LICENSES ({state}_{number} → uid lookup table) ──
+    // Read is open so the onboarding "is this license taken?" check
+    // can run pre-signup. Create is the atomic enforcement: Firestore
+    // rejects create on an existing doc id, so two agents can't both
+    // claim the same state-license-number combo.
+    match /licenses/{licenseId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     // ── PINS (listings + neighborhoods) ──
     // Public read — anyone can see active listings
     // Only the owning agent can write

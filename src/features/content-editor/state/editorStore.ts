@@ -52,6 +52,10 @@ interface EditorState {
   /** Allow overriding a clip's thumbnail (e.g. from a captured frame). */
   setClipThumbnail: (clipId: string, url: string) => void
 
+  /** Timestamp (ms) of the last successful thumbnail capture. PreviewCanvas
+   *  reads this to flash a "Thumbnail saved" pill. Reset by `reset()`. */
+  thumbSavedAt: number
+
   /** Playhead position in the SELECTED clip (source seconds). Published by PreviewCanvas. */
   currentTime: number
 
@@ -249,13 +253,27 @@ export const useEditorStore = create<EditorState>((set, get) => ({
    * `customThumbnailUrl` (NOT `thumbnailUrl`) so the timeline filmstrip
    * and video poster stay pinned to the source video; only the draft
    * scroller / content library / map pin read the custom value.
+   *
+   * Only ONE custom thumbnail can win per content item — the most
+   * recently captured frame. Capturing on a different clip clears the
+   * prior clip's customThumbnailUrl so `uploadCustomThumbnail`'s `find`
+   * pass picks up the latest one. `thumbSavedAt` is bumped so the
+   * preview can flash a confirmation pill.
    */
   setClipThumbnail: (clipId, url) => {
     pushHistory(set)
     set((state) => ({
-      clips: state.clips.map((c) => (c.id === clipId ? { ...c, customThumbnailUrl: url } : c)),
+      clips: state.clips.map((c) =>
+        c.id === clipId
+          ? { ...c, customThumbnailUrl: url }
+          : c.customThumbnailUrl
+          ? { ...c, customThumbnailUrl: undefined }
+          : c,
+      ),
+      thumbSavedAt: Date.now(),
     }))
   },
+  thumbSavedAt: 0,
   timelineWrapperEl: null,
   timelineStripEl: null,
   setTimelineEls: (wrapper, strip) => set({ timelineWrapperEl: wrapper, timelineStripEl: strip }),
@@ -509,6 +527,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       playing: false,
       past: [],
       future: [],
+      thumbSavedAt: 0,
     })
   },
 

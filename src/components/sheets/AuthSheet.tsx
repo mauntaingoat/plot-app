@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/Input'
 import { GoogleLogo, AppleLogo } from '@/components/icons/PlatformLogos'
 import { Envelope as Mail, Lock, ArrowRight, ArrowLeft, MapPin, Eye, At as AtSign, Check, X, CircleNotch as Loader2, Shield, Warning as AlertTriangle } from '@phosphor-icons/react'
 import { useUsername } from '@/hooks/useUsername'
+import { useLicense } from '@/hooks/useLicense'
 import type { UserDoc } from '@/lib/types'
 
 interface AuthSheetProps {
@@ -33,6 +34,7 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
   const navigate = useNavigate()
   const { setUserDoc } = useAuthStore()
   const { available, checking, check } = useUsername()
+  const { claim: claimLicense } = useLicense()
 
   const [step, setStep] = useState<Step>(initialMode === 'login' ? 'login' : 'choose-role')
   const [role, setRole] = useState<'agent' | 'consumer' | null>(null)
@@ -128,6 +130,16 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
         })
         // Send email verification
         try { await sendEmailVerification(cred.user) } catch {}
+        if (role === 'agent' && licenseNumber && licenseState) {
+          try { await claimLicense(licenseNumber, licenseState, cred.user.uid, username || null) }
+          catch (err: any) {
+            if (err?.code === 'permission-denied' || /already exists/i.test(err?.message || '')) {
+              setError('That license number is already registered to another agent.')
+              setLoading(false)
+              return
+            }
+          }
+        }
         onClose()
         if (role === 'agent') navigate('/dashboard')
       } catch (e: any) {
@@ -334,7 +346,7 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
                     <div>
                       <p className="text-[13px] font-semibold text-ink">This license is already registered</p>
                       <p className="text-[12px] text-smoke mt-0.5">
-                        An account with this license exists{duplicateLicense.username ? ` (@${duplicateLicense.username})` : ''}. If this is you, please sign in instead. If you believe this is an error, contact hello@reelst.co.
+                        An account with this license already exists. If this is you, please sign in instead. If you believe this is an error, contact hello@reelst.co.
                       </p>
                     </div>
                   </div>

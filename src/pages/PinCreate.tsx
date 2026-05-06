@@ -632,6 +632,12 @@ export default function PinCreate() {
             },
           })
 
+          // If the user picked a thumbnail in the editor, draft.thumbnailUrl
+          // is a `data:image/jpeg;base64,…` string. Upload it to Storage so
+          // we don't persist a 100KB+ data URL into Firestore.
+          const customThumbUrl = await uploadCustomThumbnail(draft.thumbnailUrl, storagePinId, contentId)
+          const draftThumbFallback = draft.thumbnailUrl?.startsWith('data:') ? '' : (draft.thumbnailUrl || '')
+
           newContentItems.push({
             id: contentId,
             type: 'reel',
@@ -639,7 +645,7 @@ export default function PinCreate() {
             sourceUrl: result.storageUrl || '',
             sourceUrls: result.storageUrls,
             mp4Url: result.mp4Url,
-            thumbnailUrl: result.thumbnailUrl || draft.thumbnailUrl || '',
+            thumbnailUrl: customThumbUrl || result.thumbnailUrl || draftThumbFallback,
             caption: draft.caption ?? '',
             muxAssetId: result.muxAssetId,
             muxPlaybackId: result.muxPlaybackId,

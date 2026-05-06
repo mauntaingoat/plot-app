@@ -1,11 +1,12 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useRef } from 'react'
-import { CaretLeft as ChevronLeft, TextAa as Type, Sliders as SlidersHorizontal, Crop, Microphone as Mic, Sparkle as Sparkles, Columns as SplitSquareVertical, ArrowsClockwise as RefreshCw, Gauge, Trash as Trash2 } from '@phosphor-icons/react'
+import { CaretLeft as ChevronLeft, TextAa as Type, Sliders as SlidersHorizontal, Crop, Microphone as Mic, Sparkle as Sparkles, Columns as SplitSquareVertical, ArrowsClockwise as RefreshCw, Gauge, Trash as Trash2, Image as ImageIcon } from '@phosphor-icons/react'
 import { useEditorStore } from '../state/editorStore'
 import type { EditorView, FontKey, TextOverlay } from '../state/types'
 import { loadAllFonts } from '../lib/fonts'
+import { captureCurrentFrameAsThumbnail } from '../lib/captureThumbnail'
 
-type ToolId = EditorView | 'action-split' | 'action-delete' | 'action-replace'
+type ToolId = EditorView | 'action-split' | 'action-delete' | 'action-replace' | 'action-thumbnail'
 
 interface ToolDef {
   id: ToolId
@@ -27,15 +28,17 @@ const MAIN_TOOLS: ToolDef[] = [
 const SIMPLE_MAIN_TOOLS: ToolDef[] = []
 
 const CLIP_SUB_TOOLS: ToolDef[] = [
-  { id: 'action-split',   label: 'Split',   icon: SplitSquareVertical },
-  { id: 'action-replace', label: 'Replace', icon: RefreshCw },
-  { id: 'speed',          label: 'Speed',   icon: Gauge },
-  { id: 'action-delete',  label: 'Delete',  icon: Trash2, danger: true },
+  { id: 'action-split',     label: 'Split',     icon: SplitSquareVertical },
+  { id: 'action-thumbnail', label: 'Thumbnail', icon: ImageIcon },
+  { id: 'action-replace',   label: 'Replace',   icon: RefreshCw },
+  { id: 'speed',            label: 'Speed',     icon: Gauge },
+  { id: 'action-delete',    label: 'Delete',    icon: Trash2, danger: true },
 ]
 
 const SIMPLE_CLIP_SUB_TOOLS: ToolDef[] = [
-  { id: 'action-replace', label: 'Replace', icon: RefreshCw },
-  { id: 'action-delete',  label: 'Delete',  icon: Trash2, danger: true },
+  { id: 'action-thumbnail', label: 'Thumbnail', icon: ImageIcon },
+  { id: 'action-replace',   label: 'Replace',   icon: RefreshCw },
+  { id: 'action-delete',    label: 'Delete',    icon: Trash2, danger: true },
 ]
 
 /**
@@ -69,6 +72,9 @@ export function BottomToolbar({ simpleMode = false }: { simpleMode?: boolean } =
         return
       case 'action-replace':
         replaceFileRef.current?.click()
+        return
+      case 'action-thumbnail':
+        void captureCurrentFrameAsThumbnail()
         return
       default: {
         if (view === tool.id) {

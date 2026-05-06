@@ -27,73 +27,21 @@ export function PreviewCanvas() {
 
   const selected = useMemo(() => clips.find((c) => c.id === selectedId) ?? clips[0], [clips, selectedId])
 
-  const setClipThumbnail = useEditorStore((s) => s.setClipThumbnail)
   const frameRef = useRef<HTMLDivElement | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [editingOverlayId, setEditingOverlayId] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
-  const [thumbSavedAt, setThumbSavedAt] = useState(0)
-  // Auto-clear the "Thumbnail saved" pill after 1.6s.
+  // The Thumbnail capture lives in the toolbar now — this canvas just
+  // shows the confirmation pill when the store flips `thumbSavedAt`.
+  const thumbSavedAt = useEditorStore((s) => s.thumbSavedAt)
+  const [pillVisible, setPillVisible] = useState(false)
   useEffect(() => {
     if (thumbSavedAt === 0) return
-    const id = setTimeout(() => setThumbSavedAt(0), 1600)
+    setPillVisible(true)
+    const id = setTimeout(() => setPillVisible(false), 1600)
     return () => clearTimeout(id)
   }, [thumbSavedAt])
-
-  /** Capture the current video frame as the clip's display thumbnail.
-   *
-   *  Accuracy fix: a synchronous read after a seek can return the
-   *  *previous* frame because the browser hasn't presented the new one
-   *  yet. We block on `seeked` (if a seek is in flight) and then wait
-   *  one `requestVideoFrameCallback` tick so the freshly-decoded frame
-   *  is the one we read. createImageBitmap pulls the bitmap straight
-   *  out of the video decoder; drawImage is the fallback. */
-  const captureThumbnail = useCallback(async () => {
-    if (!selected || selected.type !== 'video') return
-    const v = videoRef.current
-    if (!v || v.videoWidth === 0) return
-
-    if (v.seeking) {
-      await new Promise<void>((resolve) => {
-        const done = () => { v.removeEventListener('seeked', done); resolve() }
-        v.addEventListener('seeked', done, { once: true })
-      })
-    }
-    const rvfc = (v as unknown as { requestVideoFrameCallback?: (cb: () => void) => number }).requestVideoFrameCallback
-    if (typeof rvfc === 'function') {
-      await new Promise<void>((resolve) => rvfc.call(v, () => resolve()))
-    }
-
-    const clipId = selected.id
-    const TARGET_W = 480
-    const w = v.videoWidth
-    const h = v.videoHeight
-    const canvasH = Math.round((TARGET_W * h) / w)
-    const canvas = document.createElement('canvas')
-    canvas.width = TARGET_W
-    canvas.height = canvasH
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    ctx.imageSmoothingEnabled = true
-    ctx.imageSmoothingQuality = 'high'
-
-    try {
-      const bitmap = await createImageBitmap(v)
-      ctx.drawImage(bitmap, 0, 0, TARGET_W, canvasH)
-      bitmap.close()
-    } catch {
-      try { ctx.drawImage(v, 0, 0, TARGET_W, canvasH) } catch { return }
-    }
-
-    try {
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.88)
-      if (dataUrl && dataUrl.length > 500) {
-        setClipThumbnail(clipId, dataUrl)
-        setThumbSavedAt(Date.now())
-      }
-    } catch { /* tainted canvas — silent fail */ }
-  }, [selected, setClipThumbnail])
 
   const stripActive = view === 'adjust' || view === 'crop' || view === 'speed'
                    || view === 'audio' || view === 'filter' || view === 'text'
@@ -462,28 +410,10 @@ export function PreviewCanvas() {
           </div>
         )}
 
-        {/* Set-thumbnail overlay — top-left. Only for video clips.
-            Captures the currently-displayed frame as the clip's
-            thumbnail (what shows on the map pin when this is the
-            first content item). */}
-        {!isEmpty && selected?.type === 'video' && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              void captureThumbnail()
-            }}
-            className="absolute top-3 left-3 z-30 h-9 px-3 rounded-full flex items-center gap-1.5 bg-black/55 text-white/95 text-[11px] font-semibold backdrop-blur-sm hover:bg-black/70 cursor-pointer transition-all active:scale-95"
-            aria-label="Set thumbnail"
-          >
-            <ImageIcon weight="bold" size={13} />
-            Thumbnail
-          </button>
-        )}
-
-        {/* Saved confirmation pill — shows briefly after capture */}
+        {/* Saved confirmation pill — flashes briefly after a Thumbnail
+            capture from the toolbar. */}
         <AnimatePresence>
-          {thumbSavedAt > 0 && (
+          {pillVisible && (
             <motion.div
               key={thumbSavedAt}
               initial={{ opacity: 0, y: -6 }}
