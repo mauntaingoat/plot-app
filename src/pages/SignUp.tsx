@@ -13,7 +13,7 @@ import { auth, firebaseConfigured } from '@/config/firebase'
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import { createUserDoc, checkLicenseDuplicate } from '@/lib/firestore'
 import { useLicense } from '@/hooks/useLicense'
-import { sendEmailVerification } from 'firebase/auth'
+import { sendVerificationEmail, verificationDeadline } from '@/lib/emailVerification'
 import type { UserDoc } from '@/lib/types'
 
 type Step = 'role' | 'username' | 'license' | 'account'
@@ -76,6 +76,8 @@ export default function SignUp() {
     if (firebaseConfigured && !password.trim()) { setError('Enter a password'); return }
     setLoading(true); setError('')
 
+    // 6-hour grace period for email verification — see UserDoc.expiresAt.
+    const expiresAt = verificationDeadline()
     // Create user doc helper
     const makeUser = (uid: string): UserDoc => ({
       uid, email: cleanEmail, role: role || 'consumer',
@@ -90,6 +92,7 @@ export default function SignUp() {
       fairHousingAccepted: fairHousing,
       dataSecurityAccepted: dataSecurity,
       emailVerified: false,
+      expiresAt: Timestamp.fromDate(expiresAt),
       platforms: [],
       tier: 'free', brandColor: null,
       onboardingComplete: role === 'consumer', onboardingStep: role === 'consumer' ? 8 : 2,
@@ -117,14 +120,18 @@ export default function SignUp() {
         await createUserDoc(cred.user.uid, newUser as any).catch((e) => console.warn('User doc write failed:', e))
         setUserDoc(newUser)
         // Send email verification
-        try { await sendEmailVerification(cred.user) } catch {}
+        try { await sendVerificationEmail(cred.user) } catch {}
         if (role === 'agent' && username) {
-          const { doc, setDoc, serverTimestamp } = await import('firebase/firestore')
+          const { doc, setDoc, serverTimestamp, Timestamp: FsTimestamp } = await import('firebase/firestore')
           const { db } = await import('@/config/firebase')
-          if (db) await setDoc(doc(db, 'usernames', username.toLowerCase()), { uid: cred.user.uid, createdAt: serverTimestamp() }).catch(() => {})
+          if (db) await setDoc(doc(db, 'usernames', username.toLowerCase()), {
+            uid: cred.user.uid,
+            createdAt: serverTimestamp(),
+            expiresAt: FsTimestamp.fromDate(expiresAt),
+          }).catch(() => {})
         }
         if (role === 'agent' && licenseNumber && licenseState) {
-          try { await claimLicense(licenseNumber, licenseState, cred.user.uid, username.toLowerCase()) }
+          try { await claimLicense(licenseNumber, licenseState, cred.user.uid, username.toLowerCase(), expiresAt) }
           catch (e: any) {
             if (e?.code === 'permission-denied' || /already exists/i.test(e?.message || '')) {
               setError('That license number is already registered to another agent.')

@@ -40,6 +40,12 @@ export interface UserDoc {
   fairHousingAccepted: boolean
   dataSecurityAccepted: boolean
   emailVerified: boolean
+  /** Set at signup to createdAt + 6h. The cleanupUnverifiedAccounts
+   *  cron deletes any user (and their `usernames`/`licenses` claims)
+   *  whose emailVerified is still false past this timestamp, freeing
+   *  those reservations for someone else to claim. Cleared the moment
+   *  the user verifies. */
+  expiresAt?: Timestamp | null
   tier: UserTier // 'free' | 'pro'
   brandColor: string | null // Studio tier custom branding
   platforms: Platform[]

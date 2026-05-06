@@ -7,7 +7,8 @@ import { useUsername } from '@/hooks/useUsername'
 import { useLicense } from '@/hooks/useLicense'
 import { useAuthStore } from '@/stores/authStore'
 import { auth } from '@/config/firebase'
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendEmailVerification } from 'firebase/auth'
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+import { sendVerificationEmail, verificationDeadline } from '@/lib/emailVerification'
 import { createUserDoc } from '@/lib/firestore'
 import { uploadFile, avatarPath } from '@/lib/storage'
 import { Timestamp } from 'firebase/firestore'
@@ -94,7 +95,7 @@ export default function Welcome() {
     setLoading(true); setError('')
     try {
       const result = await createUserWithEmailAndPassword(auth, email, password)
-      sendEmailVerification(result.user).catch(() => {})
+      sendVerificationEmail(result.user).catch(() => {})
       await saveProfile(result.user.uid, email)
     } catch (err: any) {
       if (err.code === 'auth/email-already-in-use') setError('Email already in use. Try signing in.')
@@ -123,6 +124,10 @@ export default function Welcome() {
         fontId: tpl.fontId,
         shapeId: tpl.shapeId,
       }
+      // 6-hour grace period: if email isn't verified by then, the
+      // cleanupUnverifiedAccounts cron deletes the auth user and frees
+      // up the username + email + license for someone else.
+      const expiresAt = verificationDeadline()
       const userData: Partial<UserDoc> = {
         email: userEmail,
         role: 'agent',
@@ -143,16 +148,21 @@ export default function Welcome() {
         fairHousingAccepted: true,
         dataSecurityAccepted: true,
         emailVerified: false,
+        expiresAt: Timestamp.fromDate(expiresAt),
       }
       await createUserDoc(uid, userData)
-      const { setDoc, doc, serverTimestamp } = await import('firebase/firestore')
+      const { setDoc, doc, serverTimestamp, Timestamp: FsTimestamp } = await import('firebase/firestore')
       const { db } = await import('@/config/firebase')
-      if (db) await setDoc(doc(db, 'usernames', username.toLowerCase()), { uid, createdAt: serverTimestamp() })
+      if (db) await setDoc(doc(db, 'usernames', username.toLowerCase()), {
+        uid,
+        createdAt: serverTimestamp(),
+        expiresAt: FsTimestamp.fromDate(expiresAt),
+      })
       // Claim the license — Firestore rule rejects create on an
       // existing doc id, so this is the atomic enforcement that keeps
       // two agents from registering the same state-license combo.
       if (licenseNumber && licenseState) {
-        try { await claimLicense(licenseNumber, licenseState, uid, username.toLowerCase()) }
+        try { await claimLicense(licenseNumber, licenseState, uid, username.toLowerCase(), expiresAt) }
         catch (e: any) {
           if (e?.code === 'permission-denied' || /already exists/i.test(e?.message || '')) {
             setError('That license number is already registered to another agent.')

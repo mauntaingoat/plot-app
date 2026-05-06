@@ -127,7 +127,12 @@ export default function AgentProfile() {
 
 
   const loading = agentLoading
-  const notFound = !agentLoading && !agent
+  // Treat unverified-during-grace-period agents as not-found so the
+  // public profile URL is reserved but invisible until they verify
+  // their email. Legacy users (created before this feature, no
+  // expiresAt) pass through.
+  const inGracePeriod = !!agent && agent.emailVerified === false && !!agent.expiresAt
+  const notFound = !agentLoading && (!agent || inGracePeriod)
 
   const { saves } = useSaves()
   const [viewMode, setViewMode] = useState<'map' | 'feed'>('map')

@@ -5,7 +5,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthP
 import { Timestamp } from 'firebase/firestore'
 import { auth, firebaseConfigured } from '@/config/firebase'
 import { createUserDoc, checkLicenseDuplicate } from '@/lib/firestore'
-import { sendEmailVerification } from 'firebase/auth'
+import { sendVerificationEmail, verificationDeadline } from '@/lib/emailVerification'
 import { useAuthStore } from '@/stores/authStore'
 import { ResponsiveSheet } from '@/components/ui/ResponsiveSheet'
 import { Button } from '@/components/ui/Button'
@@ -116,6 +116,8 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
     ;(async () => {
       try {
         const cred = await createUserWithEmailAndPassword(auth!, email, password)
+        // 6-hour grace period for email verification — see UserDoc.expiresAt.
+        const expiresAt = verificationDeadline()
         await createUserDoc(cred.user.uid, {
           email,
           role: role || 'consumer',
@@ -127,11 +129,12 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
           verificationStatus: role === 'agent' ? 'pending' : 'unverified',
           fairHousingAccepted: fairHousing,
           dataSecurityAccepted: dataSecurity,
-        })
+          expiresAt: Timestamp.fromDate(expiresAt),
+        } as Partial<UserDoc>)
         // Send email verification
-        try { await sendEmailVerification(cred.user) } catch {}
+        try { await sendVerificationEmail(cred.user) } catch {}
         if (role === 'agent' && licenseNumber && licenseState) {
-          try { await claimLicense(licenseNumber, licenseState, cred.user.uid, username || null) }
+          try { await claimLicense(licenseNumber, licenseState, cred.user.uid, username || null, expiresAt) }
           catch (err: any) {
             if (err?.code === 'permission-denied' || /already exists/i.test(err?.message || '')) {
               setError('That license number is already registered to another agent.')

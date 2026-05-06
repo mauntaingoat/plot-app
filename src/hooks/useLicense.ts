@@ -85,7 +85,13 @@ export function useLicense() {
     }, 300)
   }, [])
 
-  const claim = useCallback(async (licenseNumber: string, licenseState: string, uid: string, username?: string | null) => {
+  const claim = useCallback(async (
+    licenseNumber: string,
+    licenseState: string,
+    uid: string,
+    username?: string | null,
+    expiresAt?: Date | null,
+  ) => {
     if (!db) return
     const id = licenseDocId(licenseNumber, licenseState)
     if (!id) return
@@ -93,6 +99,10 @@ export function useLicense() {
       uid,
       username: username || null,
       createdAt: serverTimestamp(),
+      // Grace-period reservation. The cleanup cron deletes this doc
+      // (freeing the license for someone else) if the owning user
+      // hasn't verified their email by `expiresAt`.
+      expiresAt: expiresAt ?? null,
     })
   }, [])
 

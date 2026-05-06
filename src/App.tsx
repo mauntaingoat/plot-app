@@ -1,8 +1,9 @@
-import { lazy, Suspense, useEffect } from 'react'
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { lazy, Suspense, useEffect, type ReactNode } from 'react'
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import Lenis from 'lenis'
 import { useAuthListener } from '@/hooks/useAuth'
+import { useAuthStore } from '@/stores/authStore'
 import { SimpleLoadingScreen } from '@/components/ui/LoadingScreen'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { AuthSheet } from '@/components/sheets/AuthSheet'
@@ -36,6 +37,7 @@ const Dashboard = lazy(() => import('@/pages/Dashboard'))
 const PinCreate = lazy(() => import('@/pages/PinCreate'))
 const ContentEdit = lazy(() => import('@/pages/ContentEdit'))
 const SharedMap = lazy(() => import('@/pages/SharedMap'))
+const Verify = lazy(() => import('@/pages/Verify'))
 const NotFound = lazy(() => import('@/pages/NotFound'))
 
 function ScrollToTop() {
@@ -115,6 +117,19 @@ if (typeof window !== 'undefined') {
   })
 }
 
+/** Gate any agent-only route on email verification. Signed-in users
+ *  who haven't verified yet are bounced to /verify. Signed-out users
+ *  pass through (the inner page handles their own auth requirement). */
+function RequireVerified({ children }: { children: ReactNode }) {
+  const initialized = useAuthStore((s) => s.initialized)
+  const firebaseUser = useAuthStore((s) => s.firebaseUser)
+  if (!initialized) return <SimpleLoadingScreen />
+  if (firebaseUser && !firebaseUser.emailVerified) {
+    return <Navigate to="/verify" replace />
+  }
+  return <>{children}</>
+}
+
 function AppRoutes() {
   useAuthListener()
 
@@ -133,10 +148,11 @@ function AppRoutes() {
         <Route path="/sign-up" element={<Welcome />} />
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/sign-in" element={<SignIn />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/dashboard/pin/new" element={<PinCreate />} />
-        <Route path="/dashboard/pin/:id/edit" element={<PinCreate />} />
-        <Route path="/dashboard/content/edit" element={<ContentEdit />} />
+        <Route path="/verify" element={<Verify />} />
+        <Route path="/dashboard" element={<RequireVerified><Dashboard /></RequireVerified>} />
+        <Route path="/dashboard/pin/new" element={<RequireVerified><PinCreate /></RequireVerified>} />
+        <Route path="/dashboard/pin/:id/edit" element={<RequireVerified><PinCreate /></RequireVerified>} />
+        <Route path="/dashboard/content/edit" element={<RequireVerified><ContentEdit /></RequireVerified>} />
         <Route path="/saved/:shareId" element={<SharedMap />} />
         <Route path="/:username" element={<AgentProfile />} />
         <Route path="*" element={<NotFound />} />
