@@ -19,12 +19,22 @@ async function logEvent(data: {
   country?: string
 }) {
   const db = admin.firestore()
-  await db.collection('events').add({
-    ...data,
+  // Firestore Admin SDK rejects writes with undefined-valued fields by
+  // default. The biggest blast radius: anonymous visitors arriving via
+  // an incognito tab — `actorUid` comes through as undefined and the
+  // entire event-row write throws, while the parallel `profileVisits`
+  // increment (no undefined fields) succeeds anyway. Result: counter
+  // ticks up but TimeOfDay / GeoHeatmap / 7-day chart all stay empty.
+  // Strip undefineds defensively so any caller stays safe.
+  const payload: Record<string, unknown> = {
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     hour: data.localHour ?? new Date().getHours(),
     date: new Date().toISOString().slice(0, 10),
-  })
+  }
+  for (const [k, v] of Object.entries(data)) {
+    if (v !== undefined) payload[k] = v
+  }
+  await db.collection('events').add(payload)
 }
 
 // Simple IP → city lookup via ip-api.com (free, no key needed, 45 req/min)
