@@ -136,6 +136,13 @@ async function preprocessClip(clip: ClipInput, idx: number, tmpDir: string, aspe
       args.push('-ss', String(clip.startTime))
     }
     args.push('-i', inputPath)
+    // iOS-recorded MOV/MP4s carry an extra QuickTime "data" stream
+    // (timecode, GPS, etc.) with codec=none, which ffmpeg can't decode
+    // and refuses to map automatically. Mobile uploads were failing
+    // with `Decoder (codec none) not found for input stream #0:1`.
+    // Explicit map drops everything except the first video + (if it
+    // exists) the first audio stream.
+    args.push('-map', '0:v:0', '-map', '0:a:0?')
     if (clip.endTime && clip.startTime) {
       args.push('-t', String(clip.endTime - clip.startTime))
     } else if (clip.endTime) {

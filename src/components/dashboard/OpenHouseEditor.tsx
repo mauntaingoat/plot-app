@@ -205,8 +205,11 @@ interface SessionRowProps {
 }
 
 function SessionRow({ index, session, canDelete, onChange, onRemove }: SessionRowProps) {
+  // px-4 → px-5 on mobile so the inputs (especially the iOS native
+  // date/time pickers, whose chevron sits flush against the right
+  // edge) don't visually butt up against the slate card edge.
   return (
-    <div className="bg-slate rounded-[14px] p-4 space-y-3">
+    <div className="bg-slate rounded-[14px] px-5 py-4 sm:p-4 space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-[11px] font-bold uppercase tracking-wider text-tangerine">
           Session {index + 1}

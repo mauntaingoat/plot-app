@@ -636,18 +636,21 @@ function FrameRow({
   value: FrameStyle
   onChange: (v: FrameStyle) => void
 }) {
+  // Mobile (<sm) stacks the label above the segmented selector so the
+  // 4 options each get full row width — otherwise the label column was
+  // squeezing them into ~40px buttons that visually abutted.
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex items-center gap-2 w-[120px] shrink-0">
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-2 sm:w-[120px] sm:shrink-0">
         <div className="w-7 h-7 rounded-[8px] bg-pearl flex items-center justify-center text-graphite">{icon}</div>
         <span className="text-[13px] font-medium text-ink">{label}</span>
       </div>
-      <div className="flex-1 grid grid-cols-4 gap-1 p-0.5 rounded-[10px] bg-cream">
+      <div className="flex-1 min-w-0 grid grid-cols-4 gap-1.5 p-1 rounded-[10px] bg-cream">
         {FRAME_OPTIONS.map((o) => (
           <button
             key={o.id}
             onClick={() => onChange(o.id)}
-            className="py-1.5 rounded-[8px] text-[11.5px] font-medium cursor-pointer transition-colors"
+            className="py-1.5 px-1 rounded-[8px] text-[11.5px] font-medium cursor-pointer transition-colors text-center truncate"
             style={{
               background: value === o.id ? '#fff' : 'transparent',
               color: value === o.id ? '#0A0E17' : '#6B6F7A',

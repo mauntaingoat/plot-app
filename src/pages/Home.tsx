@@ -829,7 +829,7 @@ function CloserLook() {
       id="closer-look"
       className="relative bg-marketing scroll-mt-24"
     >
-      <div className="relative max-w-[1240px] mx-auto px-6 md:px-10 pt-8 md:pt-10 pb-20 md:pb-24">
+      <div className="relative max-w-[1240px] mx-auto px-6 md:px-10 pt-8 md:pt-10 pb-40 md:pb-44 lg:pb-24">
         <div className="relative">
           {/* Card uses NO overflow-hidden so the figure's lower half
               (pin + house + trail) can bleed past the card's bottom and
@@ -1178,10 +1178,14 @@ function StatCard({
   caption: string
   graphic?: ReactNode
 }) {
+  // Mobile (<sm) cards are very tight (~98px wide in the 3-col bento).
+  // Shrink padding/text/icons only on mobile so the label, value,
+  // caption, and bottom graphic all fit inside the `overflow-hidden`
+  // clip without anything getting cut.
   return (
     <div
       ref={cardRef}
-      className={`relative rounded-[18px] p-3.5 md:p-4 overflow-hidden flex flex-col ${span || ''}`}
+      className={`relative rounded-[18px] p-2 sm:p-3.5 md:p-4 overflow-hidden flex flex-col ${span || ''}`}
       style={{
         background: bg,
         color: fg,
@@ -1192,43 +1196,41 @@ function StatCard({
         ...initialStyle,
       }}
     >
-      <div className="flex items-center gap-2 mb-1.5 opacity-90">
-        <span style={{ opacity: 0.85 }}>{icon}</span>
+      <div className="flex items-center gap-1 sm:gap-1.5 mb-1 sm:mb-1.5 opacity-90 min-w-0 [&>span:first-child>svg]:w-3 [&>span:first-child>svg]:h-3 sm:[&>span:first-child>svg]:w-4 sm:[&>span:first-child>svg]:h-4">
+        <span className="shrink-0" style={{ opacity: 0.85 }}>{icon}</span>
         <span
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontWeight: 600,
-            fontSize: '10px',
-            letterSpacing: '0.16em',
-            textTransform: 'uppercase',
-          }}
+          className="truncate min-w-0 text-[8.5px] sm:text-[10px] tracking-[0.06em] sm:tracking-[0.16em] uppercase"
+          style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
         >
           {label}
         </span>
       </div>
       <div
+        className="text-[1.05rem] sm:text-[1.35rem] md:text-[1.5rem] lg:text-[1.8rem]"
         style={{
           fontFamily: 'var(--font-humanist)',
           fontWeight: 600,
-          fontSize: valueSize || 'clamp(1.35rem, 2.2vw, 1.8rem)',
+          fontSize: valueSize ? undefined : undefined,
           letterSpacing: '-0.025em',
           lineHeight: 1.0,
         }}
       >
-        {value}
+        {valueSize
+          ? <span style={{ fontSize: valueSize }}>{value}</span>
+          : value}
       </div>
       <div
-        className="opacity-80 mt-1"
+        className="opacity-80 mt-0.5 sm:mt-1 text-[9.5px] sm:text-[11.5px] line-clamp-2"
         style={{
           fontFamily: 'var(--font-humanist)',
-          fontSize: '11.5px',
           fontWeight: 400,
+          lineHeight: 1.25,
         }}
       >
         {caption}
       </div>
       {graphic && (
-        <div className="mt-auto pt-1.5 -mx-1 flex items-end overflow-hidden min-h-0 flex-shrink">
+        <div className="mt-auto pt-1 sm:pt-1.5 -mx-0.5 sm:-mx-1 flex items-end overflow-hidden min-h-0 flex-shrink scale-[0.78] origin-bottom-left sm:scale-100">
           {graphic}
         </div>
       )}

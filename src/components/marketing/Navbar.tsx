@@ -88,6 +88,7 @@ const COMMUNITY_CHANNELS: Channel[] = [
  */
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [mobileCommunityOpen, setMobileCommunityOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [hidden, setHidden] = useState(false)
   const lastScrollY = useRef(0)
@@ -95,6 +96,23 @@ export function Navbar() {
   const navigate = useNavigate()
   const { open: openAuth } = useAuthModalStore()
   const { userDoc } = useAuthStore()
+
+  // Scroll-lock the body whenever the mobile menu is open. Without
+  // this, scrolling inside the dropdown bleeds through to the page
+  // underneath. We snapshot the original `overflow` so we never clobber
+  // a value some other modal has set.
+  useEffect(() => {
+    if (!mobileOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [mobileOpen])
+
+  // Collapse the Community accordion whenever the menu closes so it
+  // re-opens to the same default state next time.
+  useEffect(() => {
+    if (!mobileOpen) setMobileCommunityOpen(false)
+  }, [mobileOpen])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -293,14 +311,31 @@ export function Navbar() {
           >
             Blog
           </Link>
-          <div className="pt-2">
-            <p
-              className="px-4 pb-1 text-[11px] uppercase tracking-[0.12em] text-smoke/80"
-              style={{ fontWeight: 600 }}
-            >
-              Community
-            </p>
-            <div className="space-y-0.5">
+          {/* Community — collapsible row that mirrors About/Pricing/Blog
+              styling. Tapping the row toggles the channel list. */}
+          <button
+            type="button"
+            onClick={() => setMobileCommunityOpen((v) => !v)}
+            aria-expanded={mobileCommunityOpen}
+            className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-[15px] text-graphite cursor-pointer"
+            style={{ fontWeight: 500 }}
+          >
+            <span>Community</span>
+            <ChevronDown
+              weight="bold"
+              size={15}
+              className="text-smoke transition-transform duration-200"
+              style={{ transform: mobileCommunityOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+            />
+          </button>
+          <div
+            className="overflow-hidden transition-[max-height,opacity] duration-300 ease-out"
+            style={{
+              maxHeight: mobileCommunityOpen ? `${COMMUNITY_CHANNELS.length * 60 + 8}px` : '0px',
+              opacity: mobileCommunityOpen ? 1 : 0,
+            }}
+          >
+            <div className="pl-2 pb-1 space-y-0.5">
               {COMMUNITY_CHANNELS.map((c) => (
                 <a
                   key={c.title}
@@ -308,10 +343,10 @@ export function Navbar() {
                   target={c.external ? '_blank' : undefined}
                   rel={c.external ? 'noopener noreferrer' : undefined}
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-black/[0.03] transition-colors"
+                  className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-black/[0.03] transition-colors"
                 >
                   <span
-                    className="w-9 h-9 rounded-[10px] bg-white flex items-center justify-center shrink-0 border border-black/[0.05]"
+                    className="w-8 h-8 rounded-[9px] bg-white flex items-center justify-center shrink-0 border border-black/[0.05]"
                     style={{
                       boxShadow:
                         '0 1px 0 rgba(255,255,255,0.85) inset, 0 4px 14px -10px rgba(217,74,31,0.22)',
@@ -322,13 +357,13 @@ export function Navbar() {
                   <span className="flex-1 min-w-0">
                     <span
                       className="block text-ink"
-                      style={{ fontSize: '14px', fontWeight: 600, letterSpacing: '-0.005em' }}
+                      style={{ fontSize: '13.5px', fontWeight: 600, letterSpacing: '-0.005em' }}
                     >
                       {c.title}
                     </span>
                     <span
                       className="block text-smoke truncate"
-                      style={{ fontSize: '12px', fontWeight: 400 }}
+                      style={{ fontSize: '11.5px', fontWeight: 400 }}
                     >
                       {c.tagline}
                     </span>
