@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MagnifyingGlass as Search, Eye, Gift, Clock, Users, Shield, CheckCircle, XCircle } from '@phosphor-icons/react'
+import { MagnifyingGlass as Search, Eye, Gift, Clock, Heart, MapPin, Shield, CheckCircle, XCircle } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { getUserByUsername } from '@/lib/firestore'
 import { resetFirestore, app } from '@/config/firebase'
@@ -194,8 +194,8 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
               <div className="grid grid-cols-2 gap-2 text-[12px]">
                 <Stat icon={<Clock size={12} />} label="Joined" value={fmtDate(lookedUp.createdAt)} />
                 <Stat icon={<Clock size={12} />} label="Last active" value={fmtDate((lookedUp as any).lastActiveAt)} />
-                <Stat icon={<Users size={12} />} label="Saves" value={String((lookedUp as any).subscriberCount ?? 0)} />
-                <Stat icon={<Users size={12} />} label="Pins" value={String((lookedUp as any).pinCount ?? 0)} />
+                <Stat icon={<Heart size={12} />} label="Saves" value={String((lookedUp as any).subscriberCount ?? 0)} />
+                <Stat icon={<MapPin size={12} />} label="Pins" value={String((lookedUp as any).pinCount ?? 0)} />
               </div>
 
               {lookedUp.licenseNumber && (
