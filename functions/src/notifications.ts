@@ -12,7 +12,7 @@
  * Tokens that fail to deliver (unregistered, invalid) are pruned.
  */
 
-import { onDocumentCreated } from 'firebase-functions/v2/firestore'
+import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore'
 import { logger } from 'firebase-functions/v2'
 import * as admin from 'firebase-admin'
 
@@ -95,7 +95,7 @@ async function notifyUser(uid: string, prefKey: 'showingRequest' | 'pinSaved' | 
 
 async function writeNotification(data: {
   agentId: string
-  type: 'save' | 'showing_request' | 'subscriber' | 'wave'
+  type: 'save' | 'showing_request' | 'subscriber' | 'unsubscriber' | 'wave'
   title: string
   body: string
   actorName?: string
@@ -215,6 +215,45 @@ export const onNewDigestSubscription = onDocumentCreated(
       actorName: data.email as string,
       refId: event.params.subId,
     })
+  },
+)
+
+// ── Trigger: digest subscription status flipped to 'unsubscribed' ──
+// Fires the agent's inbox notification + FCM push when a subscriber
+// uses the /u/:token unsub page (Phase 3). Only the active→unsubscribed
+// transition counts; reactivations and other patches are no-ops here.
+// The agent's subscriber count auto-decrements via the existing
+// dailySubscriberSnapshot logic — we don't touch counts here.
+export const onDigestSubscriptionUpdated = onDocumentUpdated(
+  { document: 'digestSubscriptions/{subId}', region: 'us-central1' },
+  async (event) => {
+    const before = event.data?.before?.data()
+    const after = event.data?.after?.data()
+    if (!before || !after) return
+    if (before.status === 'active' && after.status === 'unsubscribed') {
+      const email = (after.email as string) || ''
+      const agentId = after.agentId as string
+      if (!agentId) return
+
+      // Reuse the 'newSubscriber' pref bucket — subscribe and
+      // unsubscribe are bookend signals; an agent who wants one
+      // wants the other. Saves us a separate notification pref toggle.
+      await notifyUser(agentId, 'newSubscriber', {
+        title: 'Subscriber unsubscribed',
+        body: email,
+        url: '/dashboard?tab=inbox',
+        tag: `unsub_${event.params.subId}`,
+      })
+
+      await writeNotification({
+        agentId,
+        type: 'unsubscriber',
+        title: 'Subscriber unsubscribed',
+        body: email,
+        actorName: email,
+        refId: event.params.subId,
+      })
+    }
   },
 )
 

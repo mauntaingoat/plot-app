@@ -60,9 +60,11 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
   // ── Notification type partitioning ──
   // Legacy 'follow' types from the old buyer-account flow are no
   // longer surfaced. The new model: 'subscriber' (Save Maya email
-  // captures, surfaced as "Saves") and 'wave' (buyer questions on
-  // listings).
+  // captures, surfaced as "Saves"), 'unsubscriber' (digest unsub
+  // events fired by /u/:token, also surfaced under Saves), and
+  // 'wave' (buyer questions on listings).
   const saves = useMemo(() => notifications.filter((n) => n.type === 'subscriber'), [notifications])
+  const unsaves = useMemo(() => notifications.filter((n) => n.type === 'unsubscriber'), [notifications])
   const waves = useMemo(() => notifications.filter((n) => n.type === 'wave'), [notifications])
   // Gift notifications fired by the admin gift action — surface only
   // in the All tab (no per-tab filter) so the agent sees the unlock
@@ -88,6 +90,16 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
     return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]))
   }, [saves])
 
+  const unsavesByDay = useMemo(() => {
+    const map = new Map<string, NotificationDoc[]>()
+    for (const n of unsaves) {
+      const key = dateKey(n.createdAt)
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(n)
+    }
+    return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]))
+  }, [unsaves])
+
   const wavesByDay = useMemo(() => {
     const map = new Map<string, NotificationDoc[]>()
     for (const n of waves) {
@@ -100,6 +112,7 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
 
   const unreadShowings = requests.filter((r) => r.status === 'new').length
   const unreadSaves = saves.filter((n) => !n.read).length
+  const unreadUnsaves = unsaves.filter((n) => !n.read).length
   const unreadWaves = waves.filter((n) => !n.read).length
   const unreadGifts = gifts.filter((n) => !n.read).length
 
@@ -118,9 +131,9 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
   }
 
   const tabs: { id: TabId; label: string; count: number }[] = [
-    { id: 'all', label: 'All', count: unreadShowings + unreadSaves + unreadWaves + unreadGifts },
+    { id: 'all', label: 'All', count: unreadShowings + unreadSaves + unreadUnsaves + unreadWaves + unreadGifts },
     { id: 'showings', label: 'Showings', count: unreadShowings },
-    { id: 'saves', label: 'Saves', count: unreadSaves },
+    { id: 'saves', label: 'Saves', count: unreadSaves + unreadUnsaves },
     { id: 'waves', label: 'Waves', count: unreadWaves },
   ]
 
@@ -258,6 +271,48 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
             )
           })}
 
+          {showSaves && unsavesByDay.map(([day, items]) => {
+            const unread = items.some((n) => !n.read)
+            const groupKey = `unsaves-${day}`
+            const expanded = expandedGroup === groupKey
+            return (
+              <motion.div key={groupKey} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                className={`rounded-[16px] border overflow-hidden ${unread ? 'bg-tangerine/5 border-tangerine/15' : 'bg-warm-white border-border-light'}`}>
+                <button onClick={() => handleExpandGroup(groupKey, items)}
+                  className="w-full flex items-center gap-3 p-4 text-left cursor-pointer hover:bg-cream/50 transition-colors">
+                  {/* Same Heart icon as saves so unsubscribe events
+                      slot in cleanly under the same visual family —
+                      copy carries the difference. */}
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${unread ? 'bg-tangerine/15' : 'bg-pearl'}`}>
+                    <Heart weight="fill" size={15} className={unread ? 'text-tangerine' : 'text-graphite'} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-[14px] font-semibold ${unread ? 'text-ink' : 'text-graphite'}`}>
+                      {items.length} new unsave{items.length !== 1 ? 's' : ''}
+                    </p>
+                    <p className="text-[11px] text-smoke">{formatGroupDate(day)}</p>
+                  </div>
+                  {unread && <div className="w-2 h-2 rounded-full bg-tangerine shrink-0" />}
+                  <ChevronRight size={14} className={`text-ash transition-transform ${expanded ? 'rotate-90' : ''}`} />
+                </button>
+                <AnimatePresence>
+                  {expanded && (
+                    <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
+                      <div className="px-4 pb-3 space-y-1.5">
+                        {items.map((n) => (
+                          <div key={n.id} className="flex items-center gap-2.5 py-1.5 text-[12px] text-graphite">
+                            <Mail size={11} className="text-ash shrink-0" />
+                            <span className="truncate">{n.body || n.actorName || 'Unsubscribed'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            )
+          })}
+
           {showWaves && wavesByDay.map(([day, items]) => {
             const unread = items.some((n) => !n.read)
             const groupKey = `waves-${day}`
@@ -349,7 +404,7 @@ export function useUnreadCount(agentId: string | undefined) {
     if (!agentId) return
     const unsubN = subscribeToNotifications(agentId, (docs) => {
       setNotifUnread(
-        docs.filter((d) => !d.read && (d.type === 'subscriber' || d.type === 'wave' || d.type === 'gift')).length,
+        docs.filter((d) => !d.read && (d.type === 'subscriber' || d.type === 'unsubscriber' || d.type === 'wave' || d.type === 'gift')).length,
       )
     })
     const unsubS = subscribeToShowingRequests(agentId, (reqs) => {

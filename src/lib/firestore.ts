@@ -1032,7 +1032,7 @@ export async function archiveContent(contentId: string) {
 export interface NotificationDoc {
   id: string
   agentId: string
-  type: 'save' | 'showing_request' | 'subscriber' | 'wave' | 'gift'
+  type: 'save' | 'showing_request' | 'subscriber' | 'unsubscriber' | 'wave' | 'gift'
   title: string
   body: string
   read: boolean

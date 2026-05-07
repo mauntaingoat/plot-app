@@ -11,7 +11,7 @@
 export { og } from './og'
 export { sitemap } from './sitemap'
 export { publishScheduledContent } from './publishScheduled'
-export { onNewShowingRequest, onPinSaved, onNewDigestSubscription, onNewWave } from './notifications'
+export { onNewShowingRequest, onPinSaved, onNewDigestSubscription, onDigestSubscriptionUpdated, onNewWave } from './notifications'
 export { onPinContentChange } from './contentScreening'
 export { verifyLicense } from './licenseVerify'
 export { createMuxAsset, muxWebhook, getSignedPlaybackUrls } from './mux'
