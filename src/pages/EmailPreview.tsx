@@ -1,39 +1,162 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { renderAuthEmail, type AuthEmailKind } from '@/lib/emailTemplate'
+import {
+  renderDigestEmail,
+  type DigestAgent,
+  type DigestBlogPost,
+} from '@/lib/digestEmailTemplate'
 
 /**
- * Local renderer for the auth email templates. Lets us iterate on the
- * HTML without firing real Firebase actions.
+ * Local renderer for the Reelst transactional emails. Two surfaces:
+ *   - Auth (verify / reset) — what `sendAuthEmail` ships
+ *   - Digest (weekly subscriber digest) — what `sendWeeklyDigest` will ship
  *
- * The page is read-only — it never sends mail and doesn't talk to
- * functions. It mirrors the exact same template the deployed Cloud
- * Function uses (see header comment in src/lib/emailTemplate.ts).
+ * Mock data is hard-coded. Toggle scenarios via the "Scenario" pill row.
  *
  * Route: /dev/email-preview
  */
 
+type Surface = 'auth' | 'digest'
+type DigestScenario = 'all-updates' | 'some-updates' | 'no-updates-with-blog' | 'no-updates-no-blog' | 'one-agent-one-update'
+
 const SAMPLE_ACTION_URL = 'https://plot-fe990.web.app/auth/action?mode=verifyEmail&oobCode=SAMPLE_OOB_CODE_REPLACE_ME&apiKey=SAMPLE_KEY&continueUrl=https%3A%2F%2Fplot-fe990.web.app%2Fdashboard&lang=en'
+const SAMPLE_UNSUB_URL = 'https://plot-fe990.web.app/u/sample-unsub-token-replace-me'
+
+/* ─────────────── Mock digest data ─────────────── */
+
+const MOCK_AGENTS: DigestAgent[] = [
+  {
+    username: 'mayalopez',
+    displayName: 'Maya Lopez',
+    photoURL: null,
+    updates: [
+      {
+        kind: 'new_listing',
+        primary: '142 Mango Grove Dr',
+        secondary: '$1.45M · 4 bd · 3 ba · Coral Gables',
+        thumbnail: null,
+        href: 'https://plot-fe990.web.app/mayalopez',
+      },
+      {
+        kind: 'new_open_house',
+        primary: '88 Oak Hill Ln',
+        secondary: 'Sat May 11 · 1–4pm',
+        thumbnail: null,
+        href: 'https://plot-fe990.web.app/mayalopez',
+      },
+    ],
+  },
+  {
+    username: 'davidchen',
+    displayName: 'David Chen',
+    photoURL: null,
+    updates: [
+      {
+        kind: 'new_sold',
+        primary: '2204 Sunset Ridge',
+        secondary: 'Sold $980K',
+        thumbnail: null,
+        href: 'https://plot-fe990.web.app/davidchen',
+      },
+    ],
+  },
+  {
+    username: 'sarahkim',
+    displayName: 'Sarah Kim',
+    photoURL: null,
+    updates: [
+      {
+        kind: 'new_content',
+        primary: '301 Bayview Ter',
+        secondary: 'New reel',
+        thumbnail: null,
+        href: 'https://plot-fe990.web.app/sarahkim',
+      },
+      {
+        kind: 'new_content',
+        primary: '142 Mango Grove Dr',
+        secondary: '4 new photos',
+        thumbnail: null,
+        href: 'https://plot-fe990.web.app/sarahkim',
+      },
+      {
+        kind: 'new_spotlight',
+        primary: 'Wynwood',
+        secondary: 'New spotlight pin',
+        thumbnail: null,
+        href: 'https://plot-fe990.web.app/sarahkim',
+      },
+    ],
+  },
+  {
+    username: 'jamiepark',
+    displayName: 'Jamie Park',
+    photoURL: null,
+    updates: [],
+  },
+]
+
+const MOCK_BLOG_POST: DigestBlogPost = {
+  slug: 'state-of-reel-estate-q2-2026',
+  title: 'State of Reel Estate · Q2 2026',
+  excerpt: 'Why agents who own their map outperform agents who rent attention. The data, the playbook, and three case studies from Miami, Austin, and Brooklyn.',
+  coverImage: null,
+  category: 'state-of-reel-estate',
+  readTime: 9,
+}
+
+function buildDigestInput(scenario: DigestScenario): { agents: DigestAgent[]; blogPost: DigestBlogPost | null } {
+  switch (scenario) {
+    case 'all-updates':
+      return { agents: MOCK_AGENTS.filter((a) => a.updates.length > 0), blogPost: null }
+    case 'some-updates':
+      return { agents: MOCK_AGENTS, blogPost: null }
+    case 'no-updates-with-blog':
+      return { agents: MOCK_AGENTS.map((a) => ({ ...a, updates: [] })), blogPost: MOCK_BLOG_POST }
+    case 'no-updates-no-blog':
+      return { agents: MOCK_AGENTS.map((a) => ({ ...a, updates: [] })), blogPost: null }
+    case 'one-agent-one-update':
+      return {
+        agents: [MOCK_AGENTS[0]].map((a) => ({ ...a, updates: a.updates.slice(0, 1) })),
+        blogPost: null,
+      }
+  }
+}
+
+/* ─────────────── Component ─────────────── */
 
 export default function EmailPreview() {
-  const [kind, setKind] = useState<AuthEmailKind>('verify')
+  const [surface, setSurface] = useState<Surface>('auth')
+  const [authKind, setAuthKind] = useState<AuthEmailKind>('verify')
+  const [digestScenario, setDigestScenario] = useState<DigestScenario>('some-updates')
   const [name, setName] = useState('Mau')
   const [from, setFrom] = useState('mau@avigage.com')
   const [showText, setShowText] = useState(false)
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop')
 
-  const rendered = useMemo(
-    () => renderAuthEmail({
-      kind,
-      actionUrl: SAMPLE_ACTION_URL.replace('verifyEmail', kind === 'verify' ? 'verifyEmail' : 'resetPassword'),
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://plot-fe990.web.app'
+
+  const rendered = useMemo(() => {
+    if (surface === 'auth') {
+      return renderAuthEmail({
+        kind: authKind,
+        actionUrl: SAMPLE_ACTION_URL.replace('verifyEmail', authKind === 'verify' ? 'verifyEmail' : 'resetPassword'),
+        recipientName: name.trim() || null,
+        fromAddress: from.trim() || 'mau@avigage.com',
+        baseUrl,
+      })
+    }
+    const { agents, blogPost } = buildDigestInput(digestScenario)
+    return renderDigestEmail({
+      agents,
+      blogPost,
       recipientName: name.trim() || null,
       fromAddress: from.trim() || 'mau@avigage.com',
-      // Use the page's own origin so logo + character images resolve
-      // on localhost (dev server) and on plot-fe990.web.app (deployed).
-      baseUrl: typeof window !== 'undefined' ? window.location.origin : 'https://plot-fe990.web.app',
-    }),
-    [kind, name, from],
-  )
+      baseUrl,
+      unsubUrl: SAMPLE_UNSUB_URL,
+    })
+  }, [surface, authKind, digestScenario, name, from, baseUrl])
 
   return (
     <div className="min-h-screen bg-cream" style={{ fontFamily: 'var(--font-humanist)' }}>
@@ -45,20 +168,59 @@ export default function EmailPreview() {
           <span className="text-[11px] font-semibold uppercase tracking-wider text-tangerine bg-tangerine/10 px-2 py-0.5 rounded-full ml-1">Email preview</span>
         </Link>
 
+        {/* Surface toggle */}
         <div className="flex items-center gap-1 bg-cream rounded-full p-1">
-          {(['verify', 'reset'] as const).map((k) => (
+          {(['auth', 'digest'] as const).map((s) => (
             <button
-              key={k}
-              onClick={() => setKind(k)}
+              key={s}
+              onClick={() => setSurface(s)}
               className={`px-3.5 py-1.5 rounded-full text-[12px] font-bold cursor-pointer transition-colors ${
-                kind === k ? 'bg-ink text-warm-white' : 'text-graphite hover:bg-pearl'
+                surface === s ? 'bg-ink text-warm-white' : 'text-graphite hover:bg-pearl'
               }`}
             >
-              {k === 'verify' ? 'Verify email' : 'Password reset'}
+              {s === 'auth' ? 'Auth' : 'Digest'}
             </button>
           ))}
         </div>
 
+        {/* Sub-toggle: depends on surface */}
+        {surface === 'auth' ? (
+          <div className="flex items-center gap-1 bg-cream rounded-full p-1">
+            {(['verify', 'reset'] as const).map((k) => (
+              <button
+                key={k}
+                onClick={() => setAuthKind(k)}
+                className={`px-3.5 py-1.5 rounded-full text-[12px] font-bold cursor-pointer transition-colors ${
+                  authKind === k ? 'bg-ink text-warm-white' : 'text-graphite hover:bg-pearl'
+                }`}
+              >
+                {k === 'verify' ? 'Verify email' : 'Password reset'}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center gap-1 bg-cream rounded-full p-1 flex-wrap">
+            {([
+              ['all-updates', 'All updates'],
+              ['some-updates', 'Some updates'],
+              ['one-agent-one-update', '1 agent · 1 update'],
+              ['no-updates-with-blog', 'No updates + blog'],
+              ['no-updates-no-blog', 'No updates'],
+            ] as const).map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setDigestScenario(id)}
+                className={`px-3 py-1.5 rounded-full text-[11.5px] font-bold cursor-pointer transition-colors ${
+                  digestScenario === id ? 'bg-ink text-warm-white' : 'text-graphite hover:bg-pearl'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Device toggle */}
         <div className="flex items-center gap-1 bg-cream rounded-full p-1">
           {(['desktop', 'mobile'] as const).map((d) => (
             <button
@@ -122,7 +284,7 @@ export default function EmailPreview() {
             title="email preview"
             srcDoc={rendered.html}
             className="w-full bg-white"
-            style={{ height: 1000, border: 'none' }}
+            style={{ height: 1400, border: 'none' }}
           />
         </div>
       </main>
