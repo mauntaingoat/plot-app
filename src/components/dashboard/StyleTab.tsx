@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   Palette,
@@ -191,11 +191,33 @@ export function StyleTab({
                 palette={p}
                 active={style.paletteId === p.id}
                 locked={locked}
-                onClick={() => locked ? onPaywall('Extra color palettes are a Pro feature.') : updateStyle({ paletteId: p.id })}
+                onClick={() => locked ? onPaywall('Extra color palettes are a Pro feature.') : updateStyle({ paletteId: p.id, customAccentColor: null, customBackgroundColor: null })}
               />
             )
           })}
         </div>
+
+        <CustomColorPicker
+          label="Custom accent color"
+          description="Override the palette accent — used for buttons, badges, and pin glyphs."
+          fallbackHex={getPalette(style.paletteId).accent}
+          value={style.customAccentColor || null}
+          onChange={(hex) => updateStyle({ customAccentColor: hex })}
+          isFree={isFree}
+          onPaywall={() => onPaywall('Custom accent colors are a Pro feature.')}
+          paywallCopy="Pick any hex for buttons, pin glyphs, and badges — upgrade to unlock."
+        />
+
+        <CustomColorPicker
+          label="Custom profile background"
+          description="The surface your profile elements sit on — avatar, name, socials, map peek."
+          fallbackHex={getPalette(style.paletteId).cardBg}
+          value={style.customBackgroundColor || null}
+          onChange={(hex) => updateStyle({ customBackgroundColor: hex })}
+          isFree={isFree}
+          onPaywall={() => onPaywall('Custom profile backgrounds are a Pro feature.')}
+          paywallCopy="Pick any hex for the surface your profile elements sit on — upgrade to unlock."
+        />
       </Section>
 
       {/* ── 3. Font ── */}
@@ -219,6 +241,17 @@ export function StyleTab({
             )
           })}
         </div>
+
+        <CustomColorPicker
+          label="Custom heading color"
+          description="Override the palette text color for your name + headlines. Body + caption hierarchy stays palette-derived."
+          fallbackHex={getPalette(style.paletteId).textPrimary}
+          value={style.customFontColor || null}
+          onChange={(hex) => updateStyle({ customFontColor: hex })}
+          isFree={isFree}
+          onPaywall={() => onPaywall('Custom heading colors are a Pro feature.')}
+          paywallCopy="Pick any hex for your display name + headlines — upgrade to unlock."
+        />
       </Section>
 
       {/* ── 4. Map shape ── */}
@@ -446,6 +479,131 @@ export function ProBadge({ corner = false }: { corner?: boolean }) {
     >
       <Lock weight="fill" size={8} /> Pro
     </span>
+  )
+}
+
+/* ───────────────────────────────────────────────────────────────
+   CustomColorPicker — Pro-gated hex/color override row.
+   Used twice: once in the palette section (accent override) and
+   once in the font section (heading-color override). Renders a
+   color swatch that triggers a native `<input type="color">`, a
+   live hex text input, and a "Reset to palette" affordance that
+   appears only when an override is set.
+   ─────────────────────────────────────────────────────────────── */
+const HEX_RE = /^#([0-9A-Fa-f]{6})$/
+
+function CustomColorPicker({
+  label,
+  description,
+  fallbackHex,
+  value,
+  onChange,
+  isFree,
+  onPaywall,
+  paywallCopy,
+}: {
+  label: string
+  description: string
+  /** Color shown when no override is set (i.e. the palette's value). */
+  fallbackHex: string
+  value: string | null
+  onChange: (hex: string | null) => void
+  isFree: boolean
+  onPaywall: () => void
+  paywallCopy: string
+}) {
+  const active = !!value && HEX_RE.test(value)
+  // Some palettes use a gradient or SVG-pattern URL for the fallback
+  // (e.g., the "Pink → cyan dream" gradient palette). Those can't
+  // seed a `<input type="color">` and aren't useful in the hex text
+  // input either, so we treat them as "no clean fallback" — text
+  // field stays empty, swatch keeps showing the gradient as a hint.
+  const fallbackIsHex = HEX_RE.test(fallbackHex)
+  const swatchBackground = active ? (value as string) : fallbackHex
+  // Native picker needs a real hex; fall back to white when the
+  // palette's fallback isn't one. Never user-visible because the
+  // swatch's CSS background covers it.
+  const colorInputValue = active ? (value as string) : fallbackIsHex ? fallbackHex : '#FFFFFF'
+  const initialText = active ? (value as string) : fallbackIsHex ? fallbackHex : ''
+  const [text, setText] = useState(initialText)
+
+  // Sync the text input when the source-of-truth changes from
+  // outside (palette swap, Reset click, color-picker drag). The
+  // dependency means we don't clobber the user's mid-typing — they
+  // only commit on blur/Enter.
+  useEffect(() => {
+    setText(initialText)
+  }, [initialText])
+
+  const commit = (raw: string) => {
+    const trimmed = raw.trim()
+    if (!trimmed) { onChange(null); return }
+    const withHash = trimmed.startsWith('#') ? trimmed : `#${trimmed}`
+    if (HEX_RE.test(withHash)) onChange(withHash.toUpperCase())
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t border-border-light">
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider">{label}</p>
+        {isFree && <ProBadge />}
+      </div>
+
+      {isFree ? (
+        <button
+          onClick={onPaywall}
+          className="w-full text-left bg-cream rounded-[12px] p-3 cursor-pointer hover:bg-pearl transition-colors"
+        >
+          <p className="text-[12.5px] text-graphite">{paywallCopy}</p>
+        </button>
+      ) : (
+        <>
+          <p className="text-[12px] text-smoke mb-2.5">{description}</p>
+          <div className="flex items-center gap-2">
+            <label
+              className="relative w-10 h-10 rounded-[12px] cursor-pointer shrink-0 overflow-hidden"
+              style={{
+                background: swatchBackground,
+                boxShadow: 'inset 0 0 0 1px rgba(10,14,23,0.10)',
+              }}
+              aria-label={`Pick ${label.toLowerCase()}`}
+            >
+              <input
+                type="color"
+                value={colorInputValue}
+                onChange={(e) => {
+                  setText(e.target.value.toUpperCase())
+                  onChange(e.target.value.toUpperCase())
+                }}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+              />
+            </label>
+            <input
+              type="text"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onBlur={(e) => commit(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit((e.target as HTMLInputElement).value) } }}
+              placeholder={fallbackIsHex ? fallbackHex : '#RRGGBB'}
+              spellCheck={false}
+              className="flex-1 h-10 px-3 rounded-[10px] bg-cream border border-border-light text-[13px] text-ink font-mono outline-none focus:border-tangerine/50"
+            />
+            {active && (
+              <button
+                onClick={() => onChange(null)}
+                className="h-10 px-3 rounded-[10px] bg-cream text-[12px] font-semibold text-graphite cursor-pointer hover:bg-pearl flex items-center gap-1.5 shrink-0"
+                title="Reset to palette default"
+              >
+                <RefreshCw size={12} /> Reset
+              </button>
+            )}
+          </div>
+          {!active && (
+            <p className="text-[11px] text-ash mt-1.5">Currently using the palette default.</p>
+          )}
+        </>
+      )}
+    </div>
   )
 }
 

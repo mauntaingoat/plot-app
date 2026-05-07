@@ -41,6 +41,9 @@ export const DEFAULT_STYLE: AgentStyle = {
     save: 'Save',
   },
   listingsLayout: 'scroller',
+  customAccentColor: null,
+  customFontColor: null,
+  customBackgroundColor: null,
 }
 
 /** Merge a partial style (from Firestore) onto the defaults so we
@@ -59,5 +62,8 @@ export function resolveStyle(partial: Partial<AgentStyle> | null | undefined): A
     tickerOrder: partial.tickerOrder || DEFAULT_STYLE.tickerOrder,
     ctaLabels: { ...DEFAULT_STYLE.ctaLabels, ...(partial.ctaLabels || {}) },
     listingsLayout: partial.listingsLayout || DEFAULT_STYLE.listingsLayout,
+    customAccentColor: partial.customAccentColor ?? DEFAULT_STYLE.customAccentColor,
+    customFontColor: partial.customFontColor ?? DEFAULT_STYLE.customFontColor,
+    customBackgroundColor: partial.customBackgroundColor ?? DEFAULT_STYLE.customBackgroundColor,
   }
 }

@@ -17,7 +17,7 @@ import { ShareModal } from '@/components/agent-profile/ShareModal'
 import { WaveModal } from '@/components/agent-profile/WaveModal'
 import { ListingsTab } from '@/components/agent-profile/ListingsTab'
 import { ExpandedMapView } from '@/components/agent-profile/ExpandedMapView'
-import { resolveStyle, getPalette, getFont, ensureFontLoaded, paletteShadowColor } from '@/lib/style'
+import { resolveStyle, getPalette, getFont, ensureFontLoaded, paletteShadowColor, readableInkOnHex, darkenHex } from '@/lib/style'
 import { hasWebGL } from '@/lib/webgl'
 import { SEOHead } from '@/components/marketing/SEOHead'
 import { StructuredData } from '@/components/marketing/StructuredData'
@@ -91,8 +91,35 @@ export default function AgentProfile() {
   // frames / sections / ticker / cta). Falls back to DEFAULT_STYLE
   // when the user doc has no `style` field set yet.
   const style = useMemo(() => resolveStyle(agent?.style), [agent?.style])
-  const palette = useMemo(() => getPalette(style.paletteId), [style.paletteId])
   const font = useMemo(() => getFont(style.fontId), [style.fontId])
+
+  // Resolve the palette + Pro custom-color overrides into a single
+  // effective palette. Anything downstream that reads `palette.accent`
+  // / `palette.textPrimary` / `palette.accentInk` (header, pins,
+  // listings, etc.) automatically picks up the override — no extra
+  // props to thread. The `accentInk` companion is auto-derived from
+  // luminance when a custom accent is set so contrast text stays
+  // legible regardless of what hex the agent picked.
+  const palette = useMemo(() => {
+    const base = getPalette(style.paletteId)
+    if (!style.customAccentColor && !style.customFontColor && !style.customBackgroundColor) return base
+    // BG override targets the card surface AND derives a coordinated
+    // canvas/surround shade ~8% darker — matches the rhythm every
+    // built-in palette uses (cardBg always lifts off a slightly
+    // darker pageCanvas/surroundBg). `patterned` flips off so any
+    // pattern-specific contrast tweaks don't leak through.
+    const customCanvas = style.customBackgroundColor ? darkenHex(style.customBackgroundColor, 0.08) : null
+    return {
+      ...base,
+      accent: style.customAccentColor || base.accent,
+      accentInk: style.customAccentColor ? readableInkOnHex(style.customAccentColor) : base.accentInk,
+      textPrimary: style.customFontColor || base.textPrimary,
+      cardBg: style.customBackgroundColor || base.cardBg,
+      pageCanvas: customCanvas || base.pageCanvas,
+      surroundBg: customCanvas || base.surroundBg,
+      patterned: style.customBackgroundColor ? false : base.patterned,
+    }
+  }, [style.paletteId, style.customAccentColor, style.customFontColor, style.customBackgroundColor])
 
   // WebGL pre-check. If unavailable (Safari with hardware accel off,
   // ancient browsers, in-app webviews), we skip every map surface so

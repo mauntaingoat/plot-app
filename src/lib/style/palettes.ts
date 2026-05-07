@@ -369,3 +369,80 @@ export function getPalette(id: string | undefined | null): Palette {
 export function paletteShadowColor(p: Palette): string {
   return p.shadowColor || DEFAULT_DARK_SHADOW
 }
+
+/** Darken a `#RRGGBB` hex by an absolute lightness percentage
+ *  (e.g. `0.08` ≈ 8%). Used to derive a coordinated canvas/surround
+ *  shade from a custom card background — every built-in palette
+ *  has `pageCanvas` ≈ 8% darker than `cardBg`, so this matches that
+ *  visual rhythm for custom hex picks. Returns the original input
+ *  unchanged if it's not a parseable 6-digit hex. */
+export function darkenHex(hex: string, amount: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
+  if (!m) return hex
+  const n = parseInt(m[1], 16)
+  let r = (n >> 16) & 255
+  let g = (n >> 8) & 255
+  let b = n & 255
+  // RGB → HSL
+  const rN = r / 255, gN = g / 255, bN = b / 255
+  const max = Math.max(rN, gN, bN)
+  const min = Math.min(rN, gN, bN)
+  let h = 0, s = 0
+  const l = (max + min) / 2
+  if (max !== min) {
+    const d = max - min
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+    switch (max) {
+      case rN: h = (gN - bN) / d + (gN < bN ? 6 : 0); break
+      case gN: h = (bN - rN) / d + 2; break
+      case bN: h = (rN - gN) / d + 4; break
+    }
+    h /= 6
+  }
+  const newL = Math.max(0, Math.min(1, l - amount))
+  // HSL → RGB
+  const hue2rgb = (p: number, q: number, t: number) => {
+    if (t < 0) t += 1
+    if (t > 1) t -= 1
+    if (t < 1 / 6) return p + (q - p) * 6 * t
+    if (t < 1 / 2) return q
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6
+    return p
+  }
+  let nr: number, ng: number, nb: number
+  if (s === 0) {
+    nr = ng = nb = newL
+  } else {
+    const q = newL < 0.5 ? newL * (1 + s) : newL + s - newL * s
+    const p = 2 * newL - q
+    nr = hue2rgb(p, q, h + 1 / 3)
+    ng = hue2rgb(p, q, h)
+    nb = hue2rgb(p, q, h - 1 / 3)
+  }
+  r = Math.round(nr * 255)
+  g = Math.round(ng * 255)
+  b = Math.round(nb * 255)
+  const toHex = (v: number) => v.toString(16).padStart(2, '0')
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase()
+}
+
+/** Pick black or white ink for a given hex background based on
+ *  perceived luminance. Used when the agent sets a custom accent
+ *  color — we can't trust them to also pick a contrasting ink, so
+ *  we derive one. WCAG-style relative luminance with the standard
+ *  0.5 threshold; works well for the typical accent palette. */
+export function readableInkOnHex(hex: string): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
+  if (!m) return '#FFFFFF'
+  const n = parseInt(m[1], 16)
+  const r = (n >> 16) & 255
+  const g = (n >> 8) & 255
+  const b = n & 255
+  // sRGB → linear, then WCAG relative luminance
+  const channel = (c: number) => {
+    const s = c / 255
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+  }
+  const L = 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+  return L > 0.5 ? '#0A0E17' : '#FFFFFF'
+}

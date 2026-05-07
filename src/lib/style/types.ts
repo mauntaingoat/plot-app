@@ -66,4 +66,21 @@ export interface AgentStyle {
   /** How the listings/content cards lay out on the public profile.
    *  See `ListingsLayout` for the two modes. */
   listingsLayout: ListingsLayout
+
+  /** Optional Pro override for the palette accent color. When set,
+   *  takes precedence over `palette.accent` on the public profile.
+   *  Must be a 7-char hex (`#RRGGBB`). The `--accent-ink` companion
+   *  is auto-derived from luminance, not stored. */
+  customAccentColor?: string | null
+
+  /** Optional Pro override for the display/heading text color.
+   *  When set, takes precedence over `palette.textPrimary`.
+   *  Hierarchy (secondary/muted) stays palette-derived. */
+  customFontColor?: string | null
+
+  /** Optional Pro override for the page background. When set,
+   *  replaces `palette.pageCanvas` AND `palette.surroundBg` with
+   *  this solid hex on mobile + desktop. Card surface stays
+   *  palette-derived so cards still visually lift off the canvas. */
+  customBackgroundColor?: string | null
 }

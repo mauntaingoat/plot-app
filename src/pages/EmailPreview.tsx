@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { renderAuthEmail, type AuthEmailKind } from '@/lib/emailTemplate'
 import {
@@ -134,6 +134,8 @@ export default function EmailPreview() {
   const [from, setFrom] = useState('mau@avigage.com')
   const [showText, setShowText] = useState(false)
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop')
+  const [iframeHeight, setIframeHeight] = useState(800)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
 
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://plot-fe990.web.app'
 
@@ -157,6 +159,30 @@ export default function EmailPreview() {
       unsubUrl: SAMPLE_UNSUB_URL,
     })
   }, [surface, authKind, digestScenario, name, from, baseUrl])
+
+  // Auto-size iframe to its content so each surface fits without trailing whitespace.
+  // The iframe re-renders via srcDoc whenever `rendered.html` changes; we re-measure on load
+  // and again on the next frame to catch web-font reflow inside the email document.
+  useEffect(() => {
+    const iframe = iframeRef.current
+    if (!iframe) return
+    let raf = 0
+    const measure = () => {
+      const doc = iframe.contentDocument
+      if (!doc?.body) return
+      const h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight)
+      if (h > 0) setIframeHeight(h)
+    }
+    const onLoad = () => {
+      measure()
+      raf = requestAnimationFrame(measure)
+    }
+    iframe.addEventListener('load', onLoad)
+    return () => {
+      iframe.removeEventListener('load', onLoad)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [rendered.html, device])
 
   return (
     <div className="min-h-screen bg-cream" style={{ fontFamily: 'var(--font-humanist)' }}>
@@ -281,10 +307,11 @@ export default function EmailPreview() {
             <p className="text-[13px] text-ink font-medium">{rendered.subject}</p>
           </div>
           <iframe
+            ref={iframeRef}
             title="email preview"
             srcDoc={rendered.html}
             className="w-full bg-white"
-            style={{ height: 1400, border: 'none' }}
+            style={{ height: iframeHeight, border: 'none' }}
           />
         </div>
       </main>
