@@ -5,9 +5,9 @@
  * 600px max width, table-based layout for Outlook compatibility.
  * Inline CSS only — Gmail strips <style> blocks in some clients.
  *
- * IMPORTANT: This file is mirrored at src/lib/emailTemplate.ts.
- * The frontend copy powers the /dev/email-preview page; this copy
- * is what actually ships in sent emails. Keep them in sync —
+ * IMPORTANT: This file is mirrored at functions/src/email/template.ts.
+ * The frontend copy powers the /dev/email-preview page; the functions
+ * copy is what actually ships in sent emails. Keep them in sync —
  * change one, change the other.
  */
 

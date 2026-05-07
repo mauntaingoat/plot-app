@@ -99,11 +99,21 @@ export const sendAuthEmail = onCall(
     const fromAddress = GMAIL_USER.value()
     const appPassword = GMAIL_APP_PASSWORD.value()
 
+    // Origin for hosted images (logo + character) and footer links
+    // (Privacy, Terms). Derived from continueUrl so a localhost preview
+    // build still resolves images, while production sends the deployed
+    // domain. When you swap to reel.st, callers automatically use it.
+    const baseUrl = (() => {
+      try { const u = new URL(continueUrl); return `${u.protocol}//${u.host}` }
+      catch { return 'https://plot-fe990.web.app' }
+    })()
+
     const { subject, html, text } = renderAuthEmail({
       kind,
       actionUrl,
       recipientName: displayName,
       fromAddress,
+      baseUrl,
     })
 
     const transporter = nodemailer.createTransport({
