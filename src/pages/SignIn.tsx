@@ -129,7 +129,8 @@ export default function SignIn() {
                 <button
                   type="button"
                   onClick={() => setForgotOpen(true)}
-                  className="text-[12.5px] font-semibold text-tangerine hover:underline underline-offset-4 cursor-pointer"
+                  className="font-semibold text-tangerine hover:underline underline-offset-4 cursor-pointer"
+                  style={{ fontSize: 13, fontFamily: 'inherit' }}
                 >
                   Forgot password?
                 </button>

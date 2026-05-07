@@ -13,6 +13,12 @@
     <meta name="theme-color" content="#0A0E17" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- Above-the-fold hero pin (rendered 3x on Home.tsx). Preloading
+         starts the fetch in parallel with JS instead of waiting for
+         React to mount; cuts the late pop-in on cold loads. -->
+    <link rel="preload" as="image" href="/marketing/hero-pin.png" fetchpriority="high" />
+    <link rel="preload" as="image" href="/reelst-logo.png" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />

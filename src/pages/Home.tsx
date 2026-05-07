@@ -466,6 +466,9 @@ function Hero() {
             alt=""
             aria-hidden
             draggable={false}
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
             className="hero-pin hero-pin--left pointer-events-none select-none absolute"
           />
           <img
@@ -473,6 +476,9 @@ function Hero() {
             alt=""
             aria-hidden
             draggable={false}
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
             className="hero-pin hero-pin--right-a pointer-events-none select-none absolute"
           />
           <img
@@ -480,6 +486,9 @@ function Hero() {
             alt=""
             aria-hidden
             draggable={false}
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
             className="hero-pin hero-pin--right-b pointer-events-none select-none absolute"
           />
         </div>
@@ -668,6 +677,8 @@ function FeatureShowcase() {
                   <img
                     src={active.img}
                     alt=""
+                    loading="lazy"
+                    decoding="async"
                     className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
                     draggable={false}
                   />
@@ -808,6 +819,8 @@ function OneLinkCard() {
               alt=""
               aria-hidden
               draggable={false}
+              loading="lazy"
+              decoding="async"
               className="absolute h-auto pointer-events-none select-none
                          bottom-0 left-1/2 -translate-x-1/2
                          lg:left-[16px] lg:translate-x-0"
@@ -894,6 +907,8 @@ function CloserLook() {
               alt=""
               aria-hidden
               draggable={false}
+              loading="lazy"
+              decoding="async"
               className="absolute h-auto pointer-events-none select-none
                          left-1/2 -translate-x-1/2
                          lg:left-auto lg:translate-x-0 lg:-right-[16px]"
