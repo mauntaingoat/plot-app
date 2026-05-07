@@ -40,6 +40,7 @@ const SharedMap = lazy(() => import('@/pages/SharedMap'))
 const Verify = lazy(() => import('@/pages/Verify'))
 const AuthAction = lazy(() => import('@/pages/AuthAction'))
 const EmailPreview = lazy(() => import('@/pages/EmailPreview'))
+const UnsubManage = lazy(() => import('@/pages/UnsubManage'))
 const NotFound = lazy(() => import('@/pages/NotFound'))
 
 function ScrollToTop() {
@@ -153,6 +154,7 @@ function AppRoutes() {
         <Route path="/verify" element={<Verify />} />
         <Route path="/auth/action" element={<AuthAction />} />
         <Route path="/dev/email-preview" element={<EmailPreview />} />
+        <Route path="/u/:token" element={<UnsubManage />} />
         <Route path="/dashboard" element={<RequireVerified><Dashboard /></RequireVerified>} />
         <Route path="/dashboard/pin/new" element={<RequireVerified><PinCreate /></RequireVerified>} />
         <Route path="/dashboard/pin/:id/edit" element={<RequireVerified><PinCreate /></RequireVerified>} />
