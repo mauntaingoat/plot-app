@@ -8,6 +8,15 @@ import { DEFAULT_PALETTE_ID } from './palettes'
 import { DEFAULT_FONT_ID } from './fonts'
 import { DEFAULT_SHAPE_ID } from './shapes'
 
+/** How many of each style picker the Free tier can access. The
+ *  registries (PALETTES, FONTS, SHAPES) order Free entries first
+ *  so anything past these indices is Pro. Single source of truth —
+ *  StyleTab UI gates and the Pro-downgrade audit both read from
+ *  here so nothing drifts. */
+export const FREE_PALETTE_COUNT = 6
+export const FREE_FONT_COUNT = 6
+export const FREE_SHAPE_COUNT = 3
+
 export const DEFAULT_TICKER_ORDER = ['for_sale', 'sold', 'open_houses', 'spotlights']
 
 export const DEFAULT_STYLE: AgentStyle = {

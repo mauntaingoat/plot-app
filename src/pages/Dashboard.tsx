@@ -28,6 +28,8 @@ import { subscribeToAgentPendingChanges, subscribeToAgentSubscriberCount } from 
 import type { PendingPinChange } from '@/lib/types'
 import { preloadImages } from '@/lib/imageCache'
 import { canActivatePin, hasFeature, getUserTier, type Tier } from '@/lib/tiers'
+import { auditProUsage } from '@/lib/proAudit'
+import { ProDowngradeBanner } from '@/components/dashboard/ProDowngradeBanner'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useScrollLock } from '@/hooks/useScrollLock'
@@ -479,6 +481,14 @@ export default function Dashboard() {
 
   const activeUser = impersonating || currentUser
   const profileUrl = `reel.st/${activeUser?.username || 'you'}`
+
+  // Pro-downgrade audit. When a paid agent (gifted Pro) reverts to
+  // Free, lingering Pro picks (Pro palette/font/shape, custom colors,
+  // custom ticker items, open houses, >3 active pins) keep the public
+  // profile locked and show a banner here listing each item with a
+  // tap-to-fix link to the relevant tab. Pro users always get an
+  // empty audit and the banner doesn't render.
+  const proAudit = useMemo(() => auditProUsage(activeUser, pins), [activeUser, pins])
 
   // Only fetch when (a) the user is actually viewing Insights, and
   // (b) their tier unlocks advanced analytics. Free users see a blurred
@@ -1646,6 +1656,7 @@ export default function Dashboard() {
 
           {/* Scrollable content area */}
           <div ref={desktopScrollRef} className="flex-1 overflow-y-auto">
+            <ProDowngradeBanner audit={proAudit} onJumpToTab={(t) => setActiveTab(t as DashTab)} />
             <div className="max-w-[760px] mx-auto px-8 py-6">
               {renderTabContent()}
             </div>
@@ -1756,6 +1767,8 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      <ProDowngradeBanner audit={proAudit} onJumpToTab={(t) => setActiveTab(t as DashTab)} />
 
       {renderTabContent()}
 

@@ -18,6 +18,7 @@ import { WaveModal } from '@/components/agent-profile/WaveModal'
 import { ListingsTab } from '@/components/agent-profile/ListingsTab'
 import { ExpandedMapView } from '@/components/agent-profile/ExpandedMapView'
 import { resolveStyle, getPalette, getFont, ensureFontLoaded, paletteShadowColor, readableInkOnHex, darkenHex } from '@/lib/style'
+import { auditProUsage } from '@/lib/proAudit'
 import { hasWebGL } from '@/lib/webgl'
 import { SEOHead } from '@/components/marketing/SEOHead'
 import { StructuredData } from '@/components/marketing/StructuredData'
@@ -522,6 +523,28 @@ export default function AgentProfile() {
         <h1 className="text-[22px] text-white mb-2" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>Profile pending verification</h1>
         <p className="text-[14px] text-ghost mb-6 max-w-[300px]">
           @{username}'s Reelst is being reviewed and will be live soon.
+        </p>
+        <motion.button whileTap={{ scale: 0.96 }} onClick={() => navigate('/')} className="text-tangerine font-semibold text-[14px]">Go home</motion.button>
+      </div>
+    )
+  }
+
+  // Pro-downgrade lockout. When a Free-tier agent has Pro features
+  // still in use (Pro palette/font/shape, custom colors, custom
+  // ticker, open houses, >3 active pins), hide the public profile
+  // until they clear the audit. Same disabled treatment as the
+  // pre-verification state. Owner previews bypass — the agent
+  // needs to see their own profile to drive the fixes.
+  const proAudit = auditProUsage(agent, allPins)
+  if (proAudit.blocked && !isOwnProfile) {
+    return (
+      <div className="map-page flex flex-col items-center justify-center text-center px-6 bg-midnight" style={{ fontFamily: 'var(--font-humanist)' }}>
+        <div className="w-16 h-16 rounded-full bg-tangerine/15 flex items-center justify-center mb-4">
+          <Lock weight="fill" size={28} className="text-tangerine" />
+        </div>
+        <h1 className="text-[22px] text-white mb-2" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>Profile temporarily paused</h1>
+        <p className="text-[14px] text-ghost mb-6 max-w-[320px]">
+          @{username}'s Reelst is offline while their plan is updated. Check back soon.
         </p>
         <motion.button whileTap={{ scale: 0.96 }} onClick={() => navigate('/')} className="text-tangerine font-semibold text-[14px]">Go home</motion.button>
       </div>

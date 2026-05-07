@@ -22,6 +22,9 @@ import {
   SHAPES,
   DEFAULT_STYLE,
   resolveStyle,
+  FREE_PALETTE_COUNT,
+  FREE_FONT_COUNT,
+  FREE_SHAPE_COUNT,
   type AgentStyle,
   type FrameStyle,
   type TickerAutoKey,
@@ -63,12 +66,6 @@ interface StyleTabProps {
   isFree: boolean
   onPaywall: (reason: string) => void
 }
-
-// How many of each picker the Free tier can access. Anything past
-// these caps shows a Pro lock badge + opens the paywall on click.
-const FREE_PALETTE_COUNT = 6
-const FREE_FONT_COUNT = 6
-const FREE_SHAPE_COUNT = 3
 
 export function StyleTab({
   user,
