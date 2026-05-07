@@ -369,7 +369,13 @@ export default function Dashboard() {
     setPins((prev) => prev.map((p) => (p.id === pinId && p.type === 'for_sale' ? { ...p, openHouse } : p)))
     try {
       const { updatePin } = await import('@/lib/firestore')
-      await updatePin(pinId, { openHouse })
+      const { serverTimestamp } = await import('firebase/firestore')
+      // Bump openHouseUpdatedAt only when adding/updating an open
+      // house. On clear (openHouse === null) there's nothing to
+      // surface in a digest, so we leave the timestamp alone.
+      const update: Record<string, unknown> = { openHouse }
+      if (openHouse) update.openHouseUpdatedAt = serverTimestamp()
+      await updatePin(pinId, update)
     } catch (err) {
       console.error('[handleSaveOpenHouse] updatePin failed:', err)
       setPins((prev) => prev.map((p) => (p.id === pinId && p.type === 'for_sale' ? { ...p, openHouse: prevOpenHouse } : p)))
@@ -879,9 +885,16 @@ export default function Dashboard() {
                 if (p.id === toPinId) return { ...p, content: [...p.content, movedItem] } as Pin
                 return p
               }))
-              import('@/lib/firestore').then(({ updatePin }) => {
+              // Move = remove from source, add to destination. Bump
+              // contentLastAddedAt on the destination only (it's the
+              // pin gaining content, which is what the digest cares
+              // about). Source pin is just a removal — no bump.
+              Promise.all([
+                import('@/lib/firestore'),
+                import('firebase/firestore'),
+              ]).then(([{ updatePin }, { serverTimestamp }]) => {
                 updatePin(fromPinId, { content: fromPin.content.filter((c) => c.id !== contentId) }).catch(() => {})
-                updatePin(toPinId, { content: [...toPin.content, movedItem] }).catch(() => {})
+                updatePin(toPinId, { content: [...toPin.content, movedItem], contentLastAddedAt: serverTimestamp() } as any).catch(() => {})
               })
             }}
           />

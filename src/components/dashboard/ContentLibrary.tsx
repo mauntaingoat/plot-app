@@ -234,12 +234,17 @@ export function ContentLibrary({ pins, agentId, onAssignContent, onArchiveConten
                   // Move from one pin to another
                   onAssignContent(content.id, pin.id, toPinId)
                 } else {
-                  // Re-link unlinked content to a pin
+                  // Re-link unlinked content to a pin — counts as a
+                  // content add for digest detection, so bump
+                  // contentLastAddedAt alongside the array write.
                   const targetPin = pins.find((p) => p.id === toPinId)
                   if (targetPin) {
                     const updatedPinContent = [...(targetPin.content || []), content]
-                    import('@/lib/firestore').then(({ updatePin }) => {
-                      updatePin(toPinId, { content: updatedPinContent }).catch(() => {})
+                    Promise.all([
+                      import('@/lib/firestore'),
+                      import('firebase/firestore'),
+                    ]).then(([{ updatePin }, { serverTimestamp }]) => {
+                      updatePin(toPinId, { content: updatedPinContent, contentLastAddedAt: serverTimestamp() } as any).catch(() => {})
                     })
                     // Update content doc pinId
                     updateContent(content.id, { pinId: toPinId }).catch(() => {})

@@ -163,7 +163,15 @@ export async function publishPinAssets(
       .filter((ms): ms is number => ms != null && ms > now)
     const nextPublishAt = future.length > 0 ? Timestamp.fromMillis(Math.min(...future)) : null
     const { updatePin } = await import('@/lib/firestore')
-    await updatePin(pinId, { content: contentArray, nextPublishAt } as Partial<{ content: ContentItem[]; nextPublishAt: Timestamp | null }>)
+    const { serverTimestamp } = await import('firebase/firestore')
+    // Bump contentLastAddedAt — this function is the publish-new-
+    // content path, so anything written here counts as an add for
+    // digest-detection purposes.
+    await updatePin(pinId, {
+      content: contentArray,
+      nextPublishAt,
+      contentLastAddedAt: serverTimestamp(),
+    } as Partial<{ content: ContentItem[]; nextPublishAt: Timestamp | null; contentLastAddedAt: Timestamp }>)
   }
 
   // ── 4. Activate ──

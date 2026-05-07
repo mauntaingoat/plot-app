@@ -257,6 +257,18 @@ export interface PinBase {
    *  for the publishScheduledContent cron so it can skip pins with no
    *  due content via a simple <= query. */
   nextPublishAt?: Timestamp | null
+  /** Bumped to serverTimestamp() whenever new content items are
+   *  appended to the pin. Read by the sendWeeklyDigest cron to find
+   *  existing pins that gained content since each subscriber's last
+   *  digest. NOT bumped on caption edits, reorders, or archives. */
+  contentLastAddedAt?: Timestamp | null
+  /** Bumped to serverTimestamp() whenever the pin's openHouse field
+   *  is set or updated to a non-null value. Cleared (no bump) when
+   *  the agent removes their open house schedule. Read by the
+   *  sendWeeklyDigest cron to find existing pins with new open
+   *  houses since each subscriber's last digest. ForSalePin only
+   *  in practice — sold/spotlight don't carry openHouse. */
+  openHouseUpdatedAt?: Timestamp | null
 }
 
 // For Sale listing
