@@ -1347,6 +1347,88 @@ input:focus, textarea:focus {
   text-decoration: underline;
 }
 
+/* ── Glossary prose ──
+   Long-form definitions; bigger, more breathable than legal prose
+   so terms read like reference material instead of fine print. */
+.glossary-prose h2 {
+  font-family: var(--font-humanist);
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  color: var(--color-ink);
+  margin-top: 2rem;
+  margin-bottom: 0.6rem;
+  line-height: 1.25;
+}
+
+.glossary-prose h3 {
+  font-family: var(--font-humanist);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  color: var(--color-ink);
+  margin-top: 1.6rem;
+  margin-bottom: 0.4rem;
+}
+
+.glossary-prose p {
+  font-family: var(--font-humanist);
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.7;
+  color: var(--color-graphite);
+  margin-bottom: 1.1rem;
+}
+
+.glossary-prose ul,
+.glossary-prose ol {
+  list-style: disc;
+  padding-left: 22px;
+  margin: 0.7rem 0 1.1rem;
+}
+
+.glossary-prose ol {
+  list-style: decimal;
+}
+
+.glossary-prose li {
+  font-family: var(--font-humanist);
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.65;
+  color: var(--color-graphite);
+  margin-bottom: 0.4rem;
+}
+
+.glossary-prose strong {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.glossary-prose em {
+  font-style: italic;
+  color: var(--color-graphite);
+}
+
+.glossary-prose a {
+  color: var(--color-tangerine);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.glossary-prose a:hover {
+  text-decoration: underline;
+}
+
+.glossary-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  background: rgba(255, 133, 82, 0.08);
+  color: #C73D17;
+  padding: 0.1em 0.4em;
+  border-radius: 6px;
+}
+
 /* ── Content editor: custom range slider (theme-aware) ── */
 .adjust-slider {
   -webkit-appearance: none;

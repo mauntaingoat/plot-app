@@ -27,6 +27,8 @@ const About = lazy(() => import('@/pages/About'))
 const Pricing = lazy(() => import('@/pages/Pricing'))
 const Blog = lazy(() => import('@/pages/Blog'))
 const BlogPost = lazy(() => import('@/pages/BlogPost'))
+const Glossary = lazy(() => import('@/pages/Glossary'))
+const GlossaryTerm = lazy(() => import('@/pages/GlossaryTerm'))
 const Terms = lazy(() => import('@/pages/Terms'))
 const Privacy = lazy(() => import('@/pages/Privacy'))
 const SignUp = lazy(() => import('@/pages/SignUp'))
@@ -65,13 +67,15 @@ function ScrollToTop() {
 // Heavy-dampened smooth scroll on the marketing pages only.
 // `wheelMultiplier: 0.55` caps input speed so aggressive wheel flicks
 // don't fling the page. `lerp: 0.06` makes the page lazily follow.
-const MARKETING_ROUTES = ['/', '/about', '/blog', '/pricing', '/terms', '/privacy']
+const MARKETING_ROUTES = ['/', '/about', '/blog', '/pricing', '/glossary', '/terms', '/privacy']
 
 function SmoothScroll() {
   const { pathname } = useLocation()
   useEffect(() => {
     const isMarketing =
-      MARKETING_ROUTES.includes(pathname) || pathname.startsWith('/blog/')
+      MARKETING_ROUTES.includes(pathname) ||
+      pathname.startsWith('/blog/') ||
+      pathname.startsWith('/glossary/')
     if (!isMarketing) return
     const lenis = new Lenis({
       lerp: 0.06,
@@ -146,6 +150,8 @@ function AppRoutes() {
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/blog/:slug" element={<BlogPost />} />
+        <Route path="/glossary" element={<Glossary />} />
+        <Route path="/glossary/:slug" element={<GlossaryTerm />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/sign-up" element={<Welcome />} />

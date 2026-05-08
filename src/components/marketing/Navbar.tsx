@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { List as Menu, X, ArrowRight, ArrowUpRight, CaretDown as ChevronDown, Envelope as Mail } from '@phosphor-icons/react'
+import { List as Menu, X, ArrowRight, ArrowUpRight, CaretDown as ChevronDown, Envelope as Mail, Article, BookBookmark } from '@phosphor-icons/react'
 import { useAuthModalStore } from '@/stores/authModalStore'
 import { useAuthStore } from '@/stores/authStore'
 import {
@@ -81,6 +81,42 @@ const COMMUNITY_CHANNELS: Channel[] = [
   },
 ]
 
+type ResourceItem = {
+  to: string
+  title: string
+  tagline: string
+  icon: React.ReactNode
+}
+
+const RESOURCE_ITEMS: ResourceItem[] = [
+  {
+    to: '/blog',
+    title: 'Blog',
+    tagline: 'Field notes, agent stories, product updates',
+    icon: (
+      <div
+        className="w-[22px] h-[22px] rounded-[6px] flex items-center justify-center"
+        style={{ background: 'var(--brand-grad)' }}
+      >
+        <Article weight="fill" size={13} color="white" />
+      </div>
+    ),
+  },
+  {
+    to: '/glossary',
+    title: 'Glossary',
+    tagline: 'Real estate + content terms, defined',
+    icon: (
+      <div
+        className="w-[22px] h-[22px] rounded-[6px] flex items-center justify-center"
+        style={{ background: 'var(--brand-grad)' }}
+      >
+        <BookBookmark weight="fill" size={13} color="white" />
+      </div>
+    ),
+  },
+]
+
 /*
  * Clay-style full-width nav. Not a floating pill — sits flush across the
  * top on an off-white bar with a soft downward shadow for the 3D float.
@@ -89,6 +125,7 @@ const COMMUNITY_CHANNELS: Channel[] = [
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mobileCommunityOpen, setMobileCommunityOpen] = useState(false)
+  const [mobileResourcesOpen, setMobileResourcesOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [hidden, setHidden] = useState(false)
   const lastScrollY = useRef(0)
@@ -183,9 +220,7 @@ export function Navbar() {
               <NavLink to="/pricing" active={pathname === '/pricing'}>
                 Pricing
               </NavLink>
-              <NavLink to="/blog" active={pathname.startsWith('/blog')}>
-                Blog
-              </NavLink>
+              <ResourcesDropdown active={pathname.startsWith('/blog') || pathname.startsWith('/glossary')} />
               <CommunityDropdown />
             </div>
 
@@ -301,16 +336,67 @@ export function Navbar() {
           >
             Pricing
           </Link>
-          <Link
-            to="/blog"
-            onClick={() => setMobileOpen(false)}
-            className={`block px-4 py-3 rounded-xl text-[15px] ${
-              pathname.startsWith('/blog') ? 'brand-grad-text' : 'text-graphite'
+          {/* Resources — same accordion pattern as Community below.
+              Houses Blog + Glossary. */}
+          <button
+            type="button"
+            onClick={() => setMobileResourcesOpen((v) => !v)}
+            aria-expanded={mobileResourcesOpen}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-[15px] cursor-pointer ${
+              pathname.startsWith('/blog') || pathname.startsWith('/glossary') ? 'brand-grad-text' : 'text-graphite'
             }`}
             style={{ fontWeight: 500 }}
           >
-            Blog
-          </Link>
+            <span>Resources</span>
+            <ChevronDown
+              weight="bold"
+              size={15}
+              className="text-smoke transition-transform duration-200"
+              style={{ transform: mobileResourcesOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+            />
+          </button>
+          <div
+            className="overflow-hidden transition-[max-height,opacity] duration-300 ease-out"
+            style={{
+              maxHeight: mobileResourcesOpen ? `${RESOURCE_ITEMS.length * 60 + 8}px` : '0px',
+              opacity: mobileResourcesOpen ? 1 : 0,
+            }}
+          >
+            <div className="pl-2 pb-1 space-y-0.5">
+              {RESOURCE_ITEMS.map((r) => (
+                <Link
+                  key={r.title}
+                  to={r.to}
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-black/[0.03] transition-colors"
+                >
+                  <span
+                    className="w-8 h-8 rounded-[9px] bg-white flex items-center justify-center shrink-0 border border-black/[0.05]"
+                    style={{
+                      boxShadow:
+                        '0 1px 0 rgba(255,255,255,0.85) inset, 0 4px 14px -10px rgba(217,74,31,0.22)',
+                    }}
+                  >
+                    {r.icon}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span
+                      className="block text-ink"
+                      style={{ fontSize: '13.5px', fontWeight: 600, letterSpacing: '-0.005em' }}
+                    >
+                      {r.title}
+                    </span>
+                    <span
+                      className="block text-smoke truncate"
+                      style={{ fontSize: '11.5px', fontWeight: 400 }}
+                    >
+                      {r.tagline}
+                    </span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
           {/* Community — collapsible row that mirrors About/Pricing/Blog
               styling. Tapping the row toggles the channel list. */}
           <button
@@ -397,6 +483,138 @@ export function Navbar() {
    Open/close has a small grace timer so moving cursor from trigger
    into panel doesn't snap-close it.
    ──────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────
+   ResourcesDropdown — mirrors CommunityDropdown's open/close grace
+   timer + panel styling. Houses internal Reelst surfaces (Blog,
+   Glossary) so the marketing nav stays one row wide as we add more
+   long-form content. Internal `Link` (not <a>) so SPA routing
+   stays smooth.
+   ───────────────────────────────────────────────────────────────── */
+function ResourcesDropdown({ active }: { active: boolean }) {
+  const [open, setOpen] = useState(false)
+  const closeTimer = useRef<number | null>(null)
+
+  const cancelClose = () => {
+    if (closeTimer.current) {
+      window.clearTimeout(closeTimer.current)
+      closeTimer.current = null
+    }
+  }
+  const queueClose = () => {
+    cancelClose()
+    closeTimer.current = window.setTimeout(() => setOpen(false), 120)
+  }
+  const openNow = () => {
+    cancelClose()
+    setOpen(true)
+  }
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={openNow}
+      onMouseLeave={queueClose}
+      onFocus={openNow}
+      onBlur={queueClose}
+    >
+      <div
+        role="button"
+        tabIndex={0}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="group relative h-11 px-4 inline-flex items-center gap-1 rounded-[14px] text-graphite hover:text-ink transition-colors cursor-pointer select-none"
+        style={{ fontWeight: 500, fontSize: '14.5px', letterSpacing: 'normal', lineHeight: 1 }}
+      >
+        <span
+          aria-hidden
+          className="absolute inset-0 rounded-[14px] opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+          style={{ backgroundColor: 'rgba(10,14,23,0.05)' }}
+        />
+        {/* brand-grad-text needs to be on the text element itself
+            (background-clip: text only works when the gradient bbox
+            matches the glyph bbox). Putting it on the wrapper made
+            the text render transparent on /blog and /glossary. */}
+        <span className={`relative ${active ? 'brand-grad-text' : ''}`}>Resources</span>
+        <ChevronDown
+          weight="bold"
+          size={14}
+          className="relative transition-transform duration-200"
+          style={{
+            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+            color: active ? '#D94A1F' : undefined,
+          }}
+        />
+      </div>
+
+      {/* Hover bridge — invisible strip between trigger and panel so
+          the cursor can travel without leaving hover state. */}
+      <span
+        aria-hidden
+        className="absolute left-0 right-0 top-full h-3"
+        style={{ pointerEvents: open ? 'auto' : 'none' }}
+      />
+
+      <div
+        role="menu"
+        className="absolute left-0 top-[calc(100%+10px)] w-[340px] rounded-[20px] p-2 will-change-transform"
+        style={{
+          backgroundColor: 'rgba(255,255,255,0.96)',
+          border: '1px solid rgba(0,0,0,0.06)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          boxShadow:
+            '0 24px 60px -28px rgba(10,14,23,0.22), 0 12px 28px -22px rgba(217,74,31,0.18), 0 1px 0 rgba(255,255,255,0.95) inset',
+          opacity: open ? 1 : 0,
+          transform: open ? 'translateY(0) scale(1)' : 'translateY(-8px) scale(0.98)',
+          pointerEvents: open ? 'auto' : 'none',
+          transition:
+            'opacity 0.18s ease, transform 0.22s cubic-bezier(0.25, 0.1, 0.25, 1)',
+          fontFamily: 'var(--font-humanist)',
+        }}
+      >
+        {RESOURCE_ITEMS.map((r) => (
+          <Link
+            key={r.title}
+            to={r.to}
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="group/row relative flex items-center gap-3 px-2.5 py-2.5 rounded-[14px] transition-colors hover:bg-black/[0.04]"
+          >
+            <span
+              className="w-10 h-10 rounded-[12px] bg-white flex items-center justify-center shrink-0 border border-black/[0.05] transition-transform duration-200 group-hover/row:scale-[1.04]"
+              style={{
+                boxShadow:
+                  '0 1px 0 rgba(255,255,255,0.85) inset, 0 6px 18px -12px rgba(217,74,31,0.22)',
+              }}
+            >
+              {r.icon}
+            </span>
+            <span className="flex-1 min-w-0">
+              <span
+                className="block text-ink"
+                style={{ fontSize: '14px', fontWeight: 600, letterSpacing: '-0.005em' }}
+              >
+                {r.title}
+              </span>
+              <span
+                className="block text-smoke truncate"
+                style={{ fontSize: '12.5px', fontWeight: 400, letterSpacing: '-0.005em' }}
+              >
+                {r.tagline}
+              </span>
+            </span>
+            <ArrowUpRight
+              weight="bold"
+              size={15}
+              className="shrink-0 text-ash transition-all duration-200 group-hover/row:text-tangerine group-hover/row:-translate-y-0.5 group-hover/row:translate-x-0.5"
+            />
+          </Link>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function CommunityDropdown() {
   const [open, setOpen] = useState(false)
   const closeTimer = useRef<number | null>(null)
