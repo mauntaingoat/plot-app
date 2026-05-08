@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ReelstLogo } from '@/components/ui/ReelstLogo'
 import { renderAuthEmail, type AuthEmailKind } from '@/lib/emailTemplate'
 import {
   renderDigestEmail,
@@ -188,9 +189,8 @@ export default function EmailPreview() {
     <div className="min-h-screen bg-cream" style={{ fontFamily: 'var(--font-humanist)' }}>
       {/* Top bar */}
       <header className="sticky top-0 z-10 bg-warm-white border-b border-border-light px-5 py-3 flex flex-wrap items-center gap-3">
-        <Link to="/" className="flex items-center gap-2 mr-2">
-          <img src="/reelst-logo.png" alt="" className="w-6 h-6" />
-          <span className="text-[15px] font-semibold text-ink tracking-tight">Reelst</span>
+        <Link to="/" className="inline-flex items-center gap-2 mr-2">
+          <ReelstLogo size="xs" />
           <span className="text-[11px] font-semibold uppercase tracking-wider text-tangerine bg-tangerine/10 px-2 py-0.5 rounded-full ml-1">Email preview</span>
         </Link>
 

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { CheckCircle, Lock, ArrowRight, Warning, Eye, EyeSlash } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { ReelstLogo } from '@/components/ui/ReelstLogo'
 import { auth, firebaseConfigured } from '@/config/firebase'
 import {
   applyActionCode,
@@ -49,9 +50,8 @@ export default function AuthAction() {
         transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
         className="w-full max-w-[440px] bg-warm-white rounded-[22px] shadow-sm border border-border-light p-7"
       >
-        <Link to="/" className="flex items-center gap-2 mb-6">
-          <img src="/reelst-logo.png" alt="Reelst" className="w-7 h-7" />
-          <span className="text-[18px] text-ink" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>Reelst</span>
+        <Link to="/" className="mb-6 inline-block">
+          <ReelstLogo size="sm" />
         </Link>
 
         {mode === 'verifyEmail' && (

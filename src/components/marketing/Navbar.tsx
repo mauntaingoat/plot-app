@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { List as Menu, X, ArrowRight, ArrowUpRight, CaretDown as ChevronDown, Envelope as Mail, Article, BookBookmark } from '@phosphor-icons/react'
 import { useAuthModalStore } from '@/stores/authModalStore'
 import { useAuthStore } from '@/stores/authStore'
+import { ReelstLogo } from '@/components/ui/ReelstLogo'
 import {
   InstagramLogo,
   TikTokLogo,
@@ -194,22 +195,8 @@ export function Navbar() {
         >
           <div className="max-w-[1320px] mx-auto px-4 md:px-6 h-[68px] md:h-[78px] flex items-center justify-between gap-8">
             {/* Logo */}
-            <Link
-              to="/"
-              className="flex items-center gap-2 shrink-0 group"
-              aria-label="Reelst home"
-            >
-              <img
-                src="/reelst-logo.png"
-                alt=""
-                className="w-8 h-8 md:w-9 md:h-9 transition-transform duration-300 group-hover:rotate-[-6deg]"
-              />
-              <span
-                className="text-[20px] md:text-[22px] text-ink tracking-[-0.02em]"
-                style={{ fontWeight: 600 }}
-              >
-                Reelst
-              </span>
+            <Link to="/" aria-label="Reelst home">
+              <ReelstLogo size="md" />
             </Link>
 
             {/* Center — desktop links */}

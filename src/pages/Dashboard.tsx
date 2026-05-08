@@ -42,6 +42,7 @@ import { PLATFORM_LIST, PLATFORM_LOGOS, validatePlatformUrl } from '@/components
 import { AdminPanel } from '@/components/dashboard/AdminPanel'
 import { isAdmin } from '@/lib/admin'
 import { PIN_CONFIG, type Pin, type Platform, type ForSalePin, type OpenHouse, type ContentItem, type UserDoc } from '@/lib/types'
+import { ReelstLogo } from '@/components/ui/ReelstLogo'
 
 type DashTab = 'reelst' | 'insights' | 'inbox' | 'content' | 'style' | 'settings' | 'admin'
 
@@ -1538,10 +1539,7 @@ export default function Dashboard() {
         <aside className="w-[240px] shrink-0 border-r border-border-light flex flex-col" style={{ background: 'linear-gradient(180deg, var(--color-ivory) 0%, var(--color-cream) 100%)' }}>
           {/* Logo */}
           <div className="px-5 pt-6 pb-2">
-            <div className="flex items-center gap-2.5">
-              <img src="/reelst-logo.png" alt="Reelst" className="w-7 h-7" />
-              <span className="text-[17px] text-ink" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>Reelst</span>
-            </div>
+            <ReelstLogo size="sm" />
           </div>
 
           {/* Agent card */}

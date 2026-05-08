@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Avatar } from '@/components/ui/Avatar'
+import { ReelstLogo } from '@/components/ui/ReelstLogo'
 
 interface LoadingScreenProps {
   agentName?: string
@@ -87,15 +88,10 @@ export function LoadingScreen({ agentName, agentPhoto, onComplete, minDuration =
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="flex items-center gap-2 mb-8"
+        className="mb-8"
+        style={{ color: 'var(--text-primary, #0A0E17)' }}
       >
-        <img src="/reelst-logo.png" alt="Reelst" className="w-10 h-10" />
-        <span
-          className="text-[24px] font-extrabold tracking-tight"
-          style={{ color: 'var(--text-primary, #0A0E17)' }}
-        >
-          Reelst
-        </span>
+        <ReelstLogo size="lg" color="inherit" />
       </motion.div>
 
       {/* Agent personalization */}
@@ -164,10 +160,9 @@ export function SimpleLoadingScreen() {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-2 mb-6"
+        className="mb-6"
       >
-        <img src="/reelst-logo.png" alt="Reelst" className="w-10 h-10" />
-        <span className="text-[24px] font-extrabold text-white tracking-tight">Reelst</span>
+        <ReelstLogo size="lg" color="white" />
       </motion.div>
       <div className="w-[160px] h-[3px] bg-white/10 rounded-full overflow-hidden">
         <motion.div

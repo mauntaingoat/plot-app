@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Heart, ArrowLeft, Warning } from '@phosphor-icons/react'
 import { app } from '@/config/firebase'
+import { ReelstLogo } from '@/components/ui/ReelstLogo'
 
 /**
  * Public unsubscribe / manage-subscriptions page reached from the
@@ -120,9 +121,8 @@ export default function UnsubManage() {
     <div className="min-h-screen bg-ivory" style={{ fontFamily: 'var(--font-humanist)' }}>
       {/* Header */}
       <header className="bg-warm-white border-b border-border-light px-5 py-4 flex items-center">
-        <Link to="/" className="flex items-center gap-2.5 mr-auto">
-          <img src="/reelst-logo.png" alt="" className="w-7 h-7" />
-          <span className="text-[18px] font-semibold text-ink tracking-tight" style={{ letterSpacing: '-0.02em' }}>Reelst</span>
+        <Link to="/" className="mr-auto">
+          <ReelstLogo size="sm" />
         </Link>
       </header>
 

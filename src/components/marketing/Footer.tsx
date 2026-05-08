@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { ReelstLogo } from '@/components/ui/ReelstLogo'
 
 function InstagramGlyph({ size = 17 }: { size?: number }) {
   return (
@@ -37,31 +38,18 @@ export function FooterContent() {
       <div className="max-w-[1240px] mx-auto px-6 md:px-10 pt-16 md:pt-20 pb-9">
         {/* ── Top row: brand left, socials right ───────────────────── */}
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-10 md:gap-6 pb-12 md:pb-14 border-b border-black/[0.06]">
-          <div className="flex items-start gap-3.5">
-            <img src="/reelst-logo.png" alt="Reelst" className="w-11 h-11 mt-0.5" />
-            <div>
-              <div
-                className="text-ink"
-                style={{
-                  fontSize: 'clamp(2rem, 3.4vw, 2.85rem)',
-                  fontWeight: 500,
-                  letterSpacing: '-0.025em',
-                  lineHeight: 1,
-                }}
-              >
-                Reelst
-              </div>
-              <p
-                className="text-smoke mt-2"
-                style={{
-                  fontSize: '14px',
-                  fontWeight: 400,
-                  letterSpacing: '-0.005em',
-                }}
-              >
-                Your portfolio, your block, your link.
-              </p>
-            </div>
+          <div className="flex flex-col items-start gap-2">
+            <ReelstLogo size="xl" />
+            <p
+              className="text-smoke"
+              style={{
+                fontSize: '14px',
+                fontWeight: 400,
+                letterSpacing: '-0.005em',
+              }}
+            >
+              Your portfolio, your block, your link.
+            </p>
           </div>
 
           <div className="flex items-center gap-2.5">
@@ -94,8 +82,8 @@ export function FooterContent() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-y-10 gap-x-8 pt-12 md:pt-14">
           <FooterColumn title="Product">
             <FooterLink to="/about">About</FooterLink>
-            <FooterLink to="/pricing">Pricing</FooterLink>
             <FooterLink to="/blog">Blog</FooterLink>
+            <FooterLink to="/glossary">Glossary</FooterLink>
           </FooterColumn>
 
           <FooterColumn title="For Agents">

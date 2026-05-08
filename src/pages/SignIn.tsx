@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { auth, firebaseConfigured } from '@/config/firebase'
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import type { UserDoc } from '@/lib/types'
+import { ReelstLogo } from '@/components/ui/ReelstLogo'
 
 export default function SignIn() {
   const navigate = useNavigate()
@@ -80,9 +81,8 @@ export default function SignIn() {
 
       {/* Left: form */}
       <div className="flex-1 flex flex-col justify-center px-6 md:px-16 lg:px-24 py-12 max-w-[600px] mx-auto md:mx-0">
-        <Link to="/" className="flex items-center gap-2 mb-10">
-          <img src="/reelst-logo.png" alt="Reelst" className="w-8 h-8" />
-          <span className="text-[20px] text-ink" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>Reelst</span>
+        <Link to="/" className="mb-10 inline-block">
+          <ReelstLogo size="md" />
         </Link>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">

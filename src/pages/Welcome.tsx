@@ -15,6 +15,7 @@ import { Timestamp } from 'firebase/firestore'
 import type { UserDoc } from '@/lib/types'
 import { STYLE_TEMPLATES, DEFAULT_TEMPLATE_ID, getTemplate, DEFAULT_STYLE, type StyleTemplateId } from '@/lib/style'
 import { getPalette, getFont } from '@/lib/style'
+import { ReelstLogo } from '@/components/ui/ReelstLogo'
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD',
@@ -258,9 +259,8 @@ export default function Welcome() {
             {step === 'hero' && (
               <motion.div key="hero" custom={dir} variants={pageVariants} initial="enter" animate="center" exit="exit" transition={pageTrans}
                 className="text-center space-y-8">
-                <div className="flex items-center justify-center gap-3 mb-2">
-                  <img src="/reelst-logo.png" alt="" className="w-11 h-11" />
-                  <span className="text-[30px] text-[#1A1A1A]" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>Reelst</span>
+                <div className="flex justify-center mb-2">
+                  <ReelstLogo size="xl" />
                 </div>
                 <div className="space-y-3">
                   <h1 className="text-[26px] text-[#1A1A1A] leading-tight" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>
