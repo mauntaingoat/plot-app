@@ -103,24 +103,35 @@ export default function AgentProfile() {
   // legible regardless of what hex the agent picked.
   const palette = useMemo(() => {
     const base = getPalette(style.paletteId)
-    if (!style.customAccentColor && !style.customFontColor && !style.customBackgroundColor) return base
+    if (
+      !style.customAccentColor &&
+      !style.customFontColor &&
+      !style.customBackgroundColor &&
+      !style.customBackgroundImage
+    ) return base
     // BG override targets the card surface AND derives a coordinated
     // canvas/surround shade ~8% darker — matches the rhythm every
     // built-in palette uses (cardBg always lifts off a slightly
-    // darker pageCanvas/surroundBg). `patterned` flips off so any
-    // pattern-specific contrast tweaks don't leak through.
+    // darker pageCanvas/surroundBg). When an image is set it wins
+    // over the hex (cardBg becomes a `url(...) cover` declaration);
+    // canvas/surround stay palette-derived since there's no clean
+    // hex to darken from. `patterned` flips off so any pattern-
+    // specific contrast tweaks don't leak through.
     const customCanvas = style.customBackgroundColor ? darkenHex(style.customBackgroundColor, 0.08) : null
+    const cardBg = style.customBackgroundImage
+      ? `url("${style.customBackgroundImage}") center / cover no-repeat`
+      : style.customBackgroundColor || base.cardBg
     return {
       ...base,
       accent: style.customAccentColor || base.accent,
       accentInk: style.customAccentColor ? readableInkOnHex(style.customAccentColor) : base.accentInk,
       textPrimary: style.customFontColor || base.textPrimary,
-      cardBg: style.customBackgroundColor || base.cardBg,
+      cardBg,
       pageCanvas: customCanvas || base.pageCanvas,
       surroundBg: customCanvas || base.surroundBg,
-      patterned: style.customBackgroundColor ? false : base.patterned,
+      patterned: style.customBackgroundColor || style.customBackgroundImage ? false : base.patterned,
     }
-  }, [style.paletteId, style.customAccentColor, style.customFontColor, style.customBackgroundColor])
+  }, [style.paletteId, style.customAccentColor, style.customFontColor, style.customBackgroundColor, style.customBackgroundImage])
 
   // WebGL pre-check. If unavailable (Safari with hardware accel off,
   // ancient browsers, in-app webviews), we skip every map surface so

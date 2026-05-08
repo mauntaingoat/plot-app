@@ -14,7 +14,12 @@ import {
   Buildings as Building,
   CaretRight as ChevronRight,
   Lock,
+  Image as ImageIcon,
+  Trash,
+  Spinner,
 } from '@phosphor-icons/react'
+import { uploadFile, styleBackgroundPath, FILE_TOO_LARGE } from '@/lib/storage'
+import { resizeImage } from '@/lib/imageResize'
 import type { UserDoc, Platform } from '@/lib/types'
 import {
   PALETTES,
@@ -188,7 +193,7 @@ export function StyleTab({
                 palette={p}
                 active={style.paletteId === p.id}
                 locked={locked}
-                onClick={() => locked ? onPaywall('Extra color palettes are a Pro feature.') : updateStyle({ paletteId: p.id, customAccentColor: null, customBackgroundColor: null })}
+                onClick={() => locked ? onPaywall('Extra color palettes are a Pro feature.') : updateStyle({ paletteId: p.id, customAccentColor: null, customBackgroundColor: null, customBackgroundImage: null })}
               />
             )
           })}
@@ -214,6 +219,15 @@ export function StyleTab({
           isFree={isFree}
           onPaywall={() => onPaywall('Custom profile backgrounds are a Pro feature.')}
           paywallCopy="Pick any hex for the surface your profile elements sit on — upgrade to unlock."
+          imageActive={!!style.customBackgroundImage}
+        />
+
+        <CustomBackgroundImagePicker
+          uid={user.uid}
+          value={style.customBackgroundImage || null}
+          onChange={(url) => updateStyle({ customBackgroundImage: url })}
+          isFree={isFree}
+          onPaywall={() => onPaywall('Custom background images are a Pro feature.')}
         />
       </Section>
 
@@ -498,6 +512,7 @@ function CustomColorPicker({
   isFree,
   onPaywall,
   paywallCopy,
+  imageActive,
 }: {
   label: string
   description: string
@@ -508,6 +523,12 @@ function CustomColorPicker({
   isFree: boolean
   onPaywall: () => void
   paywallCopy: string
+  /** When a sibling image override is active (profile-bg only),
+   *  the color picker is visually de-emphasized + a note tells
+   *  the agent the image is winning. The picker still works in
+   *  case the agent wants to set the fallback color for when
+   *  they later remove the image. */
+  imageActive?: boolean
 }) {
   const active = !!value && HEX_RE.test(value)
   // Some palettes use a gradient or SVG-pattern URL for the fallback
@@ -554,7 +575,7 @@ function CustomColorPicker({
           <p className="text-[12.5px] text-graphite">{paywallCopy}</p>
         </button>
       ) : (
-        <>
+        <div style={{ opacity: imageActive ? 0.5 : 1, transition: 'opacity 0.2s' }}>
           <p className="text-[12px] text-smoke mb-2.5">{description}</p>
           <div className="flex items-center gap-2">
             <label
@@ -595,8 +616,133 @@ function CustomColorPicker({
               </button>
             )}
           </div>
-          {!active && (
+          {!active && !imageActive && (
             <p className="text-[11px] text-ash mt-1.5">Currently using the palette default.</p>
+          )}
+          {imageActive && (
+            <p className="text-[11px] text-ash mt-1.5">A custom image is showing — remove it below to use a color.</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ───────────────────────────────────────────────────────────────
+   CustomBackgroundImagePicker — Pro-gated image upload for the
+   profile card surface. Resizes client-side (max 1600px, 85% JPEG)
+   before uploading to Firebase Storage at
+   `users/{uid}/style/background.jpg`. Single slot per user — re-
+   uploads overwrite. Image takes precedence over `customBackgroundColor`
+   in the public-profile renderer.
+   ─────────────────────────────────────────────────────────────── */
+function CustomBackgroundImagePicker({
+  uid,
+  value,
+  onChange,
+  isFree,
+  onPaywall,
+}: {
+  uid: string
+  value: string | null
+  onChange: (url: string | null) => void
+  isFree: boolean
+  onPaywall: () => void
+}) {
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const onPick = async (file: File | undefined) => {
+    if (!file) return
+    setError(null)
+    setUploading(true)
+    try {
+      const blob = await resizeImage(file, { maxEdge: 1600, quality: 0.85, mimeType: 'image/jpeg' })
+      const wrapped = new File([blob], 'background.jpg', { type: 'image/jpeg' })
+      const url = await uploadFile({ path: styleBackgroundPath(uid), file: wrapped })
+      // Cache-bust so the freshly-uploaded image bypasses the
+      // previous URL's CDN cache when overwriting.
+      onChange(`${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`)
+    } catch (e: any) {
+      setError(
+        e?.code === FILE_TOO_LARGE
+          ? 'That image is too large. Pick something under 12 MB.'
+          : 'Upload failed. Try another image.',
+      )
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t border-border-light">
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider">Or upload an image</p>
+        {isFree && <ProBadge />}
+      </div>
+
+      {isFree ? (
+        <button
+          onClick={onPaywall}
+          className="w-full text-left bg-cream rounded-[12px] p-3 cursor-pointer hover:bg-pearl transition-colors"
+        >
+          <p className="text-[12.5px] text-graphite">Use any photo as your profile background — upgrade to unlock.</p>
+        </button>
+      ) : (
+        <>
+          <p className="text-[12px] text-smoke mb-2.5">
+            Image takes priority over the color above. Auto-resized to fit (max 1600px wide).
+          </p>
+          {value ? (
+            <div className="flex items-center gap-2">
+              <div
+                className="w-10 h-10 rounded-[12px] shrink-0 bg-cream"
+                style={{
+                  background: `url(${value}) center / cover`,
+                  boxShadow: 'inset 0 0 0 1px rgba(10,14,23,0.10)',
+                }}
+                aria-label="Current background image"
+              />
+              <label className="flex-1 h-10 px-3 rounded-[10px] bg-cream border border-border-light text-[12.5px] font-medium text-graphite cursor-pointer hover:bg-pearl flex items-center justify-center gap-1.5">
+                <ImageIcon size={13} /> Replace
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => onPick(e.target.files?.[0])}
+                  className="hidden"
+                  disabled={uploading}
+                />
+              </label>
+              <button
+                onClick={() => onChange(null)}
+                className="h-10 px-3 rounded-[10px] bg-cream text-[12px] font-semibold text-graphite cursor-pointer hover:bg-pearl flex items-center gap-1.5 shrink-0"
+                title="Remove background image"
+              >
+                <Trash size={12} /> Remove
+              </button>
+            </div>
+          ) : (
+            <label className="w-full h-10 px-3 rounded-[10px] bg-cream border border-dashed border-border-light text-[12.5px] font-semibold text-graphite cursor-pointer hover:bg-pearl flex items-center justify-center gap-1.5">
+              {uploading ? (
+                <>
+                  <Spinner size={13} className="animate-spin" /> Uploading…
+                </>
+              ) : (
+                <>
+                  <ImageIcon size={13} /> Upload image
+                </>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => onPick(e.target.files?.[0])}
+                className="hidden"
+                disabled={uploading}
+              />
+            </label>
+          )}
+          {error && (
+            <p className="text-[11px] text-live-red mt-1.5">{error}</p>
           )}
         </>
       )}

@@ -83,4 +83,11 @@ export interface AgentStyle {
    *  this solid hex on mobile + desktop. Card surface stays
    *  palette-derived so cards still visually lift off the canvas. */
   customBackgroundColor?: string | null
+
+  /** Optional Pro custom background image URL (Firebase Storage).
+   *  When set, takes precedence over `customBackgroundColor` and
+   *  the palette's `cardBg` — applied as `background: url(...)
+   *  center / cover` on the profile card surface. Resized client-
+   *  side to max 1600px wide before upload. */
+  customBackgroundImage?: string | null
 }

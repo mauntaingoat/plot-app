@@ -85,3 +85,9 @@ export function avatarPath(uid: string) {
 export function pinMediaPath(pinId: string, filename: string) {
   return `pins/${pinId}/media/${filename}`
 }
+
+/** Path for the agent's custom profile-background image (Pro
+ *  feature). Single slot per user — re-uploads overwrite. */
+export function styleBackgroundPath(uid: string) {
+  return `users/${uid}/style/background.jpg`
+}

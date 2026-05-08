@@ -53,6 +53,7 @@ export const DEFAULT_STYLE: AgentStyle = {
   customAccentColor: null,
   customFontColor: null,
   customBackgroundColor: null,
+  customBackgroundImage: null,
 }
 
 /** Merge a partial style (from Firestore) onto the defaults so we
@@ -74,5 +75,6 @@ export function resolveStyle(partial: Partial<AgentStyle> | null | undefined): A
     customAccentColor: partial.customAccentColor ?? DEFAULT_STYLE.customAccentColor,
     customFontColor: partial.customFontColor ?? DEFAULT_STYLE.customFontColor,
     customBackgroundColor: partial.customBackgroundColor ?? DEFAULT_STYLE.customBackgroundColor,
+    customBackgroundImage: partial.customBackgroundImage ?? DEFAULT_STYLE.customBackgroundImage,
   }
 }

@@ -39,6 +39,7 @@ export type ProAuditKind =
   | 'style.customAccent'
   | 'style.customFont'
   | 'style.customBg'
+  | 'style.customBgImage'
   | 'style.customTicker'
   | 'openHouses'
   | 'activePinsOver3'
@@ -133,6 +134,14 @@ export function auditProUsage(user: UserDoc | null, pins: Pin[]): ProAuditResult
       kind: 'style.customBg',
       label: 'Custom profile background',
       detail: 'Reset the custom background override in Style → Color palette.',
+      fixTab: 'style',
+    })
+  }
+  if (style.customBackgroundImage) {
+    items.push({
+      kind: 'style.customBgImage',
+      label: 'Custom background image',
+      detail: 'Remove the uploaded background image in Style → Color palette.',
       fixTab: 'style',
     })
   }
