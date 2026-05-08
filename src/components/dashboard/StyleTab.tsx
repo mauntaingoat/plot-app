@@ -25,11 +25,13 @@ import {
   PALETTES,
   FONTS,
   SHAPES,
+  STATE_SHAPES,
   DEFAULT_STYLE,
   resolveStyle,
   FREE_PALETTE_COUNT,
   FREE_FONT_COUNT,
   FREE_SHAPE_COUNT,
+  isStateShape,
   type AgentStyle,
   type FrameStyle,
   type TickerAutoKey,
@@ -44,9 +46,9 @@ import { PLATFORM_LIST, PLATFORM_LOGOS_MONO } from '@/components/icons/PlatformL
    ────────────────────────────────────────────────────────────────
    Sections (in order):
      1. Profile basics  (name / bio / brokerage / photo)
-     2. Color palette   (11 themes — 8 solid + 3 patterned)
-     3. Font            (6 pairings)
-     4. Map shape       (9 shapes — 6 geometric + 3 organic blobs)
+     2. Color palette   (12 themes — solid / dark / gradient / pattern)
+     3. Font            (10 pairings)
+     4. Map shape       (6 geometric shapes + 50 US states + DC dropdown)
      5. Frames          (avatar / map / listings — 4 options each)
      6. Sections        (show/hide bio, ticker, social, map)
      7. Ticker stats    (auto toggles + custom items)
@@ -273,7 +275,7 @@ export function StyleTab({
         collapsedPreview={<ShapeGlyphPreview shape={getShape(style.shapeId)} accent={getPalette(style.paletteId).accent} />}
       >
         <div className="grid grid-cols-3 gap-2.5">
-          {SHAPES.map((s, i) => {
+          {SHAPES.filter((s) => !isStateShape(s.id)).map((s, i) => {
             const locked = isFree && i >= FREE_SHAPE_COUNT
             return (
               <ShapeCard
@@ -287,6 +289,14 @@ export function StyleTab({
             )
           })}
         </div>
+
+        <StateShapePicker
+          selectedShapeId={style.shapeId}
+          accent={getPalette(style.paletteId).accent}
+          isFree={isFree}
+          onPick={(stateId) => updateStyle({ shapeId: stateId })}
+          onPaywall={() => onPaywall('State map shapes are a Pro feature.')}
+        />
       </Section>
 
       {/* ── 5. Frames ── */}
@@ -913,6 +923,87 @@ function ShapeCard({
       </svg>
       <p className="text-[11.5px] font-semibold text-ink truncate">{shape.name}</p>
     </motion.button>
+  )
+}
+
+/* ───────────────────────────────────────────────────────────────
+   StateShapePicker — Pro-gated dropdown for the 50 states + DC.
+   Sits below the geometric shape grid in the Map shape section.
+   Live preview tile next to the dropdown shows the selected
+   state's outline filled with the active accent color so the
+   agent can confirm their pick without re-expanding the section.
+   ─────────────────────────────────────────────────────────────── */
+function StateShapePicker({
+  selectedShapeId,
+  accent,
+  isFree,
+  onPick,
+  onPaywall,
+}: {
+  selectedShapeId: string
+  accent: string
+  isFree: boolean
+  onPick: (shapeId: string) => void
+  onPaywall: () => void
+}) {
+  const selectedState = STATE_SHAPES.find((s) => `state_${s.code}` === selectedShapeId) || null
+  // Pull the path d for the live preview tile — same regex trick
+  // ShapeCard uses, but applied to a state's already-baked
+  // unit-space d (no transform needed since the SVG viewBox is
+  // already 0–1).
+  const previewD = selectedState?.d || null
+
+  return (
+    <div className="mt-4 pt-4 border-t border-border-light">
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider">Or pick your state</p>
+        {isFree && <ProBadge />}
+      </div>
+
+      {isFree ? (
+        <button
+          onClick={onPaywall}
+          className="w-full text-left bg-cream rounded-[12px] p-3 cursor-pointer hover:bg-pearl transition-colors"
+        >
+          <p className="text-[12.5px] text-graphite">Use your state's outline as your map shape — upgrade to unlock.</p>
+        </button>
+      ) : (
+        <>
+          <p className="text-[12px] text-smoke mb-2.5">
+            Florida realtor? Texas? Pick your state and your map peek takes its outline.
+          </p>
+          <div className="flex items-center gap-2">
+            <div
+              className="w-10 h-10 rounded-[12px] shrink-0 bg-cream flex items-center justify-center"
+              style={{ boxShadow: 'inset 0 0 0 1px rgba(10,14,23,0.10)' }}
+              aria-hidden
+            >
+              {previewD ? (
+                <svg width="28" height="28" viewBox="0 0 1 1">
+                  <path d={previewD} fill={accent} />
+                </svg>
+              ) : (
+                <span className="text-[10px] font-semibold text-ash">—</span>
+              )}
+            </div>
+            <select
+              value={selectedState ? `state_${selectedState.code}` : ''}
+              onChange={(e) => {
+                if (e.target.value) onPick(e.target.value)
+              }}
+              className="flex-1 h-10 px-3 rounded-[10px] bg-cream border border-border-light text-[13px] text-ink outline-none focus:border-tangerine/50 cursor-pointer"
+            >
+              <option value="">Select a state…</option>
+              {STATE_SHAPES.map((s) => (
+                <option key={s.code} value={`state_${s.code}`}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 

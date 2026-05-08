@@ -104,10 +104,11 @@ export function auditProUsage(user: UserDoc | null, pins: Pin[]): ProAuditResult
   const shapeIdx = SHAPES.findIndex((s) => s.id === style.shapeId)
   if (shapeIdx >= FREE_SHAPE_COUNT) {
     const shape = SHAPES[shapeIdx]
+    const freeNames = SHAPES.slice(0, FREE_SHAPE_COUNT).map((s) => s.name).join(', ')
     items.push({
       kind: 'style.shape',
       label: 'Pro map shape',
-      detail: `"${shape.name}" is a Pro shape — switch to circle, square, or rounded square in Style → Map shape.`,
+      detail: `"${shape.name}" is a Pro shape — switch to ${freeNames} in Style → Map shape.`,
       fixTab: 'style',
     })
   }

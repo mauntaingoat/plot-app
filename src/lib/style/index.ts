@@ -1,6 +1,6 @@
 export type { AgentStyle, FrameStyle, ListingsLayout, TickerAutoKey, TickerCustomItem } from './types'
 export { PALETTES, PALETTE_BY_ID, DEFAULT_PALETTE_ID, getPalette, paletteShadowColor, readableInkOnHex, darkenHex, type Palette } from './palettes'
 export { FONTS, FONT_BY_ID, DEFAULT_FONT_ID, getFont, ensureFontLoaded, type FontPairing } from './fonts'
-export { SHAPES, SHAPE_BY_ID, DEFAULT_SHAPE_ID, getShape, type MapShape, type ShapePath } from './shapes'
+export { SHAPES, SHAPE_BY_ID, DEFAULT_SHAPE_ID, getShape, isStateShape, STATE_SHAPES, type MapShape, type ShapePath, type StateShapeData } from './shapes'
 export { DEFAULT_STYLE, DEFAULT_TICKER_ORDER, resolveStyle, FREE_PALETTE_COUNT, FREE_FONT_COUNT, FREE_SHAPE_COUNT } from './defaults'
 export { STYLE_TEMPLATES, DEFAULT_TEMPLATE_ID, getTemplate, type StyleTemplate, type StyleTemplateId } from './templates'

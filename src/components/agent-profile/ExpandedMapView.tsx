@@ -104,6 +104,7 @@ export function ExpandedMapView({
   const shapePath = shapeDef.path
   const peekScale = shapeDef.peekScale
   const expandScale = shapeDef.expandScale
+  const expandAnchorOffset = shapeDef.expandAnchorOffset
 
   // Fraction of the shape's bbox that's actually visible (used to
   // size the inscribed pin-fit rectangle). Heart fills less than its
@@ -252,8 +253,18 @@ export function ExpandedMapView({
     // clear the cleft past the rounded card corners; geometric
     // shapes that fill their bbox can use 2.6.
     const size = Math.max(shape.width, shape.height) * expandScale
-    const cx = shape.width / 2
-    const cy = shape.height / 2
+    let cx = shape.width / 2
+    let cy = shape.height / 2
+    // State shapes shift (cx, cy) so the polygon's pole of
+    // inaccessibility — not the bbox midpoint — lands at the
+    // container center. Bbox-centered fails for asymmetric states
+    // (Florida's bbox center is in the Gulf of Mexico). Geometric
+    // shapes have no offset and skip this. See `expandAnchorOffset`
+    // on MapShape for the math.
+    if (expandAnchorOffset) {
+      cx += expandAnchorOffset.x * size
+      cy += expandAnchorOffset.y * size
+    }
     return buildClip(cx, cy, size)
   }
 
