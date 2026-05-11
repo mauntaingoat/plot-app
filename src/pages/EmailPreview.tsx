@@ -26,24 +26,32 @@ const SAMPLE_UNSUB_URL = 'https://plot-fe990.web.app/u/sample-unsub-token-replac
 
 /* ─────────────── Mock digest data ─────────────── */
 
+// Real-feeling sample imagery so the cover + per-row thumbnails render
+// in the preview. Swapped at build time for the actual content/pin
+// thumbs the cron picks up.
+const SAMPLE_HOUSE = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1200&q=60'
+const SAMPLE_INTERIOR = 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1200&q=60'
+const SAMPLE_KITCHEN = 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?auto=format&fit=crop&w=1200&q=60'
+const SAMPLE_AVATAR = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=60'
+
 const MOCK_AGENTS: DigestAgent[] = [
   {
     username: 'mayalopez',
     displayName: 'Maya Lopez',
-    photoURL: null,
+    photoURL: SAMPLE_AVATAR,
     updates: [
       {
         kind: 'new_listing',
         primary: '142 Mango Grove Dr',
         secondary: '$1.45M · 4 bd · 3 ba · Coral Gables',
-        thumbnail: null,
+        thumbnail: SAMPLE_HOUSE,
         href: 'https://plot-fe990.web.app/mayalopez',
       },
       {
         kind: 'new_open_house',
         primary: '88 Oak Hill Ln',
         secondary: 'Sat May 11 · 1–4pm',
-        thumbnail: null,
+        thumbnail: SAMPLE_INTERIOR,
         href: 'https://plot-fe990.web.app/mayalopez',
       },
     ],
@@ -71,7 +79,7 @@ const MOCK_AGENTS: DigestAgent[] = [
         kind: 'new_content',
         primary: '301 Bayview Ter',
         secondary: 'New reel',
-        thumbnail: null,
+        thumbnail: SAMPLE_KITCHEN,
         href: 'https://plot-fe990.web.app/sarahkim',
       },
       {
