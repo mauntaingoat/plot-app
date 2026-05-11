@@ -13,7 +13,7 @@ import {
 } from '@/lib/glossary'
 
 /* ════════════════════════════════════════════════════════════════
-   GLOSSARY TERM DETAIL — `/glossary/:slug`
+   GLOSSARY TERM DETAIL, `/glossary/:slug`
    ────────────────────────────────────────────────────────────────
    Per-term page rendering the markdown body with cross-links to
    related terms and a category breadcrumb back to the index.
@@ -34,7 +34,7 @@ export default function GlossaryTerm() {
   if (!term) {
     return (
       <MarketingLayout>
-        <SEOHead title="Term not found — Reelst Glossary" path={`/glossary/${slug ?? ''}`} />
+        <SEOHead title="Term not found, Reelst Glossary" path={`/glossary/${slug ?? ''}`} />
         <div className="bg-marketing min-h-[80vh] pt-32 pb-24">
           <div className="max-w-[680px] mx-auto px-6 md:px-10 text-center">
             <h1
@@ -72,7 +72,7 @@ export default function GlossaryTerm() {
   return (
     <MarketingLayout>
       <SEOHead
-        title={term.seoTitle ?? `${term.title} — Reelst Glossary`}
+        title={term.seoTitle ?? `${term.title}, Reelst Glossary`}
         description={term.seoDescription ?? term.tagline}
         path={`/glossary/${term.slug}`}
       />

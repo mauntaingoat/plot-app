@@ -70,7 +70,7 @@ const COMMUNITY_CHANNELS: Channel[] = [
   {
     href: 'mailto:hello@reelst.co',
     title: 'Email',
-    tagline: 'Say hello — hello@reelst.co',
+    tagline: 'Say hello, hello@reelst.co',
     icon: (
       <div
         className="w-[22px] h-[22px] rounded-[6px] flex items-center justify-center"
@@ -119,7 +119,7 @@ const RESOURCE_ITEMS: ResourceItem[] = [
 ]
 
 /*
- * Clay-style full-width nav. Not a floating pill — sits flush across the
+ * Clay-style full-width nav. Not a floating pill, sits flush across the
  * top on an off-white bar with a soft downward shadow for the 3D float.
  * Auto-hides on scroll-down, returns on scroll-up.
  */
@@ -165,6 +165,16 @@ export function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  // When the nav slides up out of view, force every dropdown closed.
+  // Otherwise the floating menu panels stay anchored to where the
+  // nav used to be and dangle awkwardly mid-page.
+  useEffect(() => {
+    if (!hidden) return
+    setMobileOpen(false)
+    setMobileResourcesOpen(false)
+    setMobileCommunityOpen(false)
+  }, [hidden])
+
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
 
   return (
@@ -180,7 +190,7 @@ export function Navbar() {
         <nav
           className="w-full transition-[background-color,box-shadow] duration-300"
           style={{
-            /* Match the marketing page bg exactly — nav is seamless, no border.
+            /* Match the marketing page bg exactly, nav is seamless, no border.
                On scroll, a very faint shadow hints at depth without introducing
                a visible color seam. */
             backgroundColor: scrolled
@@ -199,7 +209,7 @@ export function Navbar() {
               <ReelstLogo size="md" />
             </Link>
 
-            {/* Center — desktop links */}
+            {/* Center, desktop links */}
             <div className="hidden md:flex items-center gap-0.5 flex-1 justify-start pl-6">
               <NavLink to="/about" active={pathname === '/about'}>
                 About
@@ -207,11 +217,14 @@ export function Navbar() {
               <NavLink to="/pricing" active={pathname === '/pricing'}>
                 Pricing
               </NavLink>
-              <ResourcesDropdown active={pathname.startsWith('/blog') || pathname.startsWith('/glossary')} />
-              <CommunityDropdown />
+              <ResourcesDropdown
+                active={pathname.startsWith('/blog') || pathname.startsWith('/glossary')}
+                forceClose={hidden}
+              />
+              <CommunityDropdown forceClose={hidden} />
             </div>
 
-            {/* Right cluster — desktop */}
+            {/* Right cluster, desktop */}
             <div className="hidden md:flex items-center gap-2 shrink-0">
               {userDoc ? (
                 <button
@@ -262,7 +275,7 @@ export function Navbar() {
               )}
             </div>
 
-            {/* Right cluster — mobile */}
+            {/* Right cluster, mobile */}
             <div className="md:hidden flex items-center gap-2">
               {!userDoc && (
                 <button
@@ -323,7 +336,7 @@ export function Navbar() {
           >
             Pricing
           </Link>
-          {/* Resources — same accordion pattern as Community below.
+          {/* Resources, same accordion pattern as Community below.
               Houses Blog + Glossary. */}
           <button
             type="button"
@@ -384,7 +397,7 @@ export function Navbar() {
               ))}
             </div>
           </div>
-          {/* Community — collapsible row that mirrors About/Pricing/Blog
+          {/* Community, collapsible row that mirrors About/Pricing/Blog
               styling. Tapping the row toggles the channel list. */}
           <button
             type="button"
@@ -463,7 +476,7 @@ export function Navbar() {
 }
 
 /* ────────────────────────────────────────────────────────────────
-   CommunityDropdown — hover-revealed channel list (Huly-flavored).
+   CommunityDropdown, hover-revealed channel list (Huly-flavored).
    Trigger is a NavLink-shaped button; panel drops below with the
    same row geometry as the Community section: cream squircle ·
    brand glyph · title · tagline · ArrowUpRight on hover.
@@ -471,15 +484,21 @@ export function Navbar() {
    into panel doesn't snap-close it.
    ──────────────────────────────────────────────────────────────── */
 /* ─────────────────────────────────────────────────────────────────
-   ResourcesDropdown — mirrors CommunityDropdown's open/close grace
+   ResourcesDropdown, mirrors CommunityDropdown's open/close grace
    timer + panel styling. Houses internal Reelst surfaces (Blog,
    Glossary) so the marketing nav stays one row wide as we add more
    long-form content. Internal `Link` (not <a>) so SPA routing
    stays smooth.
    ───────────────────────────────────────────────────────────────── */
-function ResourcesDropdown({ active }: { active: boolean }) {
+function ResourcesDropdown({ active, forceClose }: { active: boolean; forceClose?: boolean }) {
   const [open, setOpen] = useState(false)
   const closeTimer = useRef<number | null>(null)
+
+  // Parent nav hides on scroll; snap any open panel shut so it doesn't
+  // float in mid-page after the trigger has disappeared.
+  useEffect(() => {
+    if (forceClose) setOpen(false)
+  }, [forceClose])
 
   const cancelClose = () => {
     if (closeTimer.current) {
@@ -533,7 +552,7 @@ function ResourcesDropdown({ active }: { active: boolean }) {
         />
       </div>
 
-      {/* Hover bridge — invisible strip between trigger and panel so
+      {/* Hover bridge, invisible strip between trigger and panel so
           the cursor can travel without leaving hover state. */}
       <span
         aria-hidden
@@ -602,9 +621,13 @@ function ResourcesDropdown({ active }: { active: boolean }) {
   )
 }
 
-function CommunityDropdown() {
+function CommunityDropdown({ forceClose }: { forceClose?: boolean }) {
   const [open, setOpen] = useState(false)
   const closeTimer = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (forceClose) setOpen(false)
+  }, [forceClose])
 
   const cancelClose = () => {
     if (closeTimer.current) {
@@ -650,7 +673,7 @@ function CommunityDropdown() {
         />
       </div>
 
-      {/* Hover bridge — invisible strip between trigger and panel so
+      {/* Hover bridge, invisible strip between trigger and panel so
           the cursor can travel without leaving hover state. */}
       <span
         aria-hidden
@@ -731,7 +754,7 @@ function NavLink({
   /*
    * Clay-style hover: a soft rounded rectangle appears behind the
    * item, sized to the item's text. We render it as an absolute
-   * `::before` via an inline span — drives background opacity so
+   * `::before` via an inline span, drives background opacity so
    * the pill fades in/out smoothly on hover (no layout shift).
    */
   return (

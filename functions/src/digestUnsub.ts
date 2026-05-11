@@ -22,6 +22,50 @@ import * as admin from 'firebase-admin'
 
 if (!admin.apps.length) admin.initializeApp()
 
+// Per-IP rate limits — the unsub token is the only auth, so without
+// these a bot could brute-force the search space to enumerate which
+// emails are subscribed to which agents. Lookup is read-heavy
+// (slightly tighter); update is the actual interaction (more
+// generous so a legit user can toggle many subscriptions in one
+// session). Same transactional Firestore pattern used elsewhere.
+const LOOKUP_PER_HOUR = 20
+const UPDATE_PER_HOUR = 60
+const RATE_WINDOW_MS = 60 * 60 * 1000
+
+interface RateLimitDoc {
+  count: number
+  windowStart: admin.firestore.Timestamp
+}
+
+async function checkRateLimit(key: string, limit: number, windowMs: number): Promise<void> {
+  const ref = admin.firestore().collection('rateLimits').doc(key)
+  await admin.firestore().runTransaction(async (tx) => {
+    const snap = await tx.get(ref)
+    const now = admin.firestore.Timestamp.now()
+    if (!snap.exists) {
+      tx.set(ref, { count: 1, windowStart: now } as RateLimitDoc)
+      return
+    }
+    const data = snap.data() as RateLimitDoc
+    const elapsed = now.toMillis() - data.windowStart.toMillis()
+    if (elapsed >= windowMs) {
+      tx.set(ref, { count: 1, windowStart: now } as RateLimitDoc)
+      return
+    }
+    if (data.count >= limit) {
+      throw new HttpsError(
+        'resource-exhausted',
+        'Too many requests. Try again in a bit.',
+      )
+    }
+    tx.update(ref, { count: admin.firestore.FieldValue.increment(1) })
+  })
+}
+
+function ipKey(req: { rawRequest?: { ip?: string } }): string {
+  return (req.rawRequest?.ip || 'unknown').replace(/[^a-zA-Z0-9.:_-]/g, '_')
+}
+
 interface AgentSummary {
   /** Firestore doc id of the digestSubscriptions doc — the page
    *  passes this back when toggling that specific sub. */
@@ -52,6 +96,7 @@ export const lookupDigestSubscriptions = onCall<{ token?: string }>(
     if (!token || token.length < 32) {
       throw new HttpsError('invalid-argument', 'Invalid token')
     }
+    await checkRateLimit(`unsubLookup_ip_${ipKey(req)}`, LOOKUP_PER_HOUR, RATE_WINDOW_MS)
     const db = admin.firestore()
 
     const anchorSnap = await db
@@ -124,6 +169,7 @@ export const updateDigestSubscription = onCall<{
     if (status !== 'active' && status !== 'unsubscribed') {
       throw new HttpsError('invalid-argument', 'Invalid status')
     }
+    await checkRateLimit(`unsubUpdate_ip_${ipKey(req)}`, UPDATE_PER_HOUR, RATE_WINDOW_MS)
     const db = admin.firestore()
 
     // Resolve token → emailHash anchor

@@ -15,7 +15,7 @@ import {
 } from '@/lib/blog'
 
 /* ════════════════════════════════════════════════════════════════
-   BLOG INDEX — "State of Reel Estate"
+   BLOG INDEX, "State of Reel Estate"
    Hero franchise pitch → featured post hero → category filter →
    masonry grid of recent posts. Pulls from Firestore (`posts`
    collection) authored via FireCMS.
@@ -41,7 +41,7 @@ export default function Blog() {
   return (
     <MarketingLayout>
       <SEOHead
-        title="State of Reel Estate — the Reelst blog"
+        title="State of Reel Estate, the Reelst blog"
         description="Quarterly data reports, agent playbooks, and the inside view on real estate's creator economy."
         path="/blog"
       />
@@ -86,7 +86,7 @@ export default function Blog() {
                 lineHeight: 1.55,
               }}
             >
-              A quarterly read on real estate's creator economy — the data, the
+              A quarterly read on real estate's creator economy, the data, the
               playbooks, and the agents shaping what's next.
             </p>
           </div>

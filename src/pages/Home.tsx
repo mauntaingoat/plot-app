@@ -8,7 +8,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useScrollReveal } from '@/hooks/useScrollReveal'
 
 /* ════════════════════════════════════════════════════════════════
-   SHARED — cream color, tuned to match the generated illustrations'
+   SHARED, cream color, tuned to match the generated illustrations'
    baked-in background so there's no seam between image + section.
    ════════════════════════════════════════════════════════════════ */
 const HERO_CREAM = '#F0E8D0'
@@ -57,7 +57,7 @@ function PinSVG({ size = 56, className = '' }: { size?: number; className?: stri
 }
 
 /* ════════════════════════════════════════════════════════════════
-   CHOREOGRAPHY — simple zigzag path driven by document scroll
+   CHOREOGRAPHY, simple zigzag path driven by document scroll
    progress, with continuous RAF smoothing so the rendered pin
    position LAGS the scroll target. Result: pin feels lazy and
    floaty regardless of how fast the user scrolls.
@@ -74,7 +74,7 @@ function rectOf(selector: string) {
 
 /*
  * Path keyframes, coords in viewport units (vw / vh fractions).
- * The pin is always positioned in-viewport — no off-screen moments,
+ * The pin is always positioned in-viewport, no off-screen moments,
  * no opacity fades. Just a continuous zigzag with gentle rotation.
  */
 const PATH: Array<{ p: number; xf: number; yf: number; rotate: number }> = [
@@ -142,7 +142,7 @@ function interpolatePath(p: number): PinPose {
     const a = PATH[i], b = PATH[i + 1]
     if (p >= a.p && p <= b.p) {
       const tRaw = (p - a.p) / Math.max(0.0001, b.p - a.p)
-      // Ease-in-out for each segment — gentle
+      // Ease-in-out for each segment, gentle
       const t = tRaw < 0.5
         ? 2 * tRaw * tRaw
         : 1 - Math.pow(-2 * tRaw + 2, 2) / 2
@@ -157,11 +157,11 @@ function interpolatePath(p: number): PinPose {
   return { x: last.xf * vw, y: last.yf * vh, rotate: last.rotate }
 }
 
-/* Flipbook cadence — commit a new rendered position at a fixed
+/* Flipbook cadence, commit a new rendered position at a fixed
  * step rate so the pin moves in discrete frames rather than a
  * smooth 60fps glide. Target position is still read continuously
  * from scroll; only the paint is throttled. */
-const STEP_MS = 90 // ~11fps — choppy but steady
+const STEP_MS = 90 // ~11fps, choppy but steady
 
 function TravelingPin() {
   const pinRef = useRef<HTMLDivElement>(null)
@@ -194,7 +194,7 @@ function TravelingPin() {
           el.style.transform = `translate3d(${rx}px, ${ry}px, 0) translate(-50%, -50%) rotate(${rr}deg)`
         }
 
-        // Confetti milestones — fire once per crossing (forward only)
+        // Confetti milestones, fire once per crossing (forward only)
         const p = scrollProgress()
         const milestones: Array<{ key: string; at: number }> = [
           { key: 'hero-drop',   at: 0.10 },
@@ -245,7 +245,7 @@ function TravelingPin() {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   CONFETTI — hand-drawn squiggle paths, tumbling outward
+   CONFETTI, hand-drawn squiggle paths, tumbling outward
    ════════════════════════════════════════════════════════════════ */
 
 const CONFETTI_PIECES = [
@@ -312,7 +312,7 @@ function ConfettiBurst({ x, y }: { x: number; y: number }) {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   SHARED — claim input
+   SHARED, claim input
    ════════════════════════════════════════════════════════════════ */
 
 function ClaimInput({
@@ -386,10 +386,10 @@ function ClaimInput({
 }
 
 /* ════════════════════════════════════════════════════════════════
-   01 — HERO
+   01, HERO
    Centered. Off-white page bg with a rounded inner "card" carrying
    a faint tangerine topographic-wave texture. Three clay pins live
-   at the bottom corners — one leaning on the left, a pair leaning
+   at the bottom corners, one leaning on the left, a pair leaning
    on each other on the right.
    ════════════════════════════════════════════════════════════════ */
 
@@ -405,7 +405,7 @@ function Hero() {
               '0 1px 0 rgba(255,255,255,0.8) inset, 0 30px 80px -30px rgba(217,74,31,0.20), 0 10px 32px -16px rgba(10,14,23,0.08)',
           }}
         >
-          {/* Content — generous bottom padding leaves room below the
+          {/* Content, generous bottom padding leaves room below the
               text for the pins to sit inside the card with their tips
               touching the bottom interior border. */}
           <div className="relative z-10 px-6 md:px-10 pt-20 md:pt-28 pb-44 md:pb-52 flex flex-col items-center text-center">
@@ -434,7 +434,7 @@ function Hero() {
               }}
             >
               A live map of your listings married to the reels, walkthroughs,
-              and neighborhood spotlights you already make — every part of
+              and neighborhood spotlights you already make, every part of
               your agent brand on one shareable link.
             </p>
 
@@ -450,7 +450,7 @@ function Hero() {
             </p>
           </div>
 
-          {/* Pins — children of the card so overflow-hidden contains
+          {/* Pins, children of the card so overflow-hidden contains
               them. Left pin is a single image, right side is a pre-
               composed pair that already leans against itself. Both
               sit with bottom: 0 so tips touch the bottom interior
@@ -498,11 +498,11 @@ function Hero() {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   02 — FEATURE SHOWCASE
+   02, FEATURE SHOWCASE
    Dark section with curved top corners. Left column: meta headline +
    chip picker (sticky on desktop). Right column: per-feature graphic
    placeholder + punchy headline + description. Chip click swaps the
-   right content; no tilt on active — just the brand gradient fill.
+   right content; no tilt on active, just the brand gradient fill.
    Ordered by agent-workflow priority: what you create first (pins,
    content) → how you work (open houses, showings) → how you measure
    (analytics) → how you grow (explore, spotlights).
@@ -524,57 +524,73 @@ const FEATURES: Feature[] = [
   {
     key: 'pins',
     label: 'Map Pins',
-    title: 'Your listings — and your neighborhoods — on a real map.',
-    desc: 'Drop a pin for a property and MLS auto-fills beds, baths, sqft, price, days on market, and more. Or drop a neighborhood pin to sell the area itself — the streets, the parks, the block that makes the zip code feel like home.',
-    video: '/marketing/mappins.mov',
+    title: 'Your listings, and your neighborhoods, on a real map.',
+    desc: 'Drop a pin for a property and MLS auto-fills beds, baths, sqft, price, days on market, and more. Or drop a neighborhood pin to sell the area itself, the streets, the parks, the block that makes the zip code feel like home.',
+    video: '/marketing/mappins.mp4',
   },
   {
     key: 'content',
     label: 'Content',
     title: 'Every reel, inside a pin.',
-    desc: "Shoot walkthroughs. Drop carousels. Go live from the open house. Tap any pin and the listing comes alive with the content you've attached — reels, photos, the whole drawer.",
-    video: '/marketing/content.mov',
+    desc: "Shoot walkthroughs. Drop carousels. Go live from the open house. Tap any pin and the listing comes alive with the content you've attached, reels, photos, the whole drawer.",
+    video: '/marketing/content.mp4',
   },
   {
     key: 'open-houses',
     label: 'Open Houses',
     title: 'Schedule. Share. Fill the room.',
     desc: 'Create an open house from a pin in two taps. Auto-post to your map and email your subscribers. RSVPs land in your inbox, not on a clipboard.',
-    video: '/marketing/openhouse.mov',
+    video: '/marketing/openhouse.mp4',
   },
   {
     key: 'inbox',
     label: 'Inbox',
     title: 'Every signal in one feed.',
-    desc: 'Showing requests, new saves, and waves all land in one inbox — sorted by recency, grouped by day, marked unread until you act on them. The back-and-forth ends here.',
-    video: '/marketing/inbox.mov',
+    desc: 'Showing requests, new saves, and waves all land in one inbox, sorted by recency, grouped by day, marked unread until you act on them. The back-and-forth ends here.',
+    video: '/marketing/inbox.mp4',
   },
   {
     key: 'connect',
     label: 'Connect',
     title: 'Saves bring them back. Waves bring them in.',
-    desc: 'Buyers save you to get your weekly digest and wave at any listing to ask questions — two opt-in channels, both private, both straight to your inbox. No public comments to police.',
-    video: '/marketing/Connect.mov',
+    desc: 'Buyers save you to get your weekly digest and wave at any listing to ask questions, two opt-in channels, both private, both straight to your inbox. No public comments to police.',
+    video: '/marketing/Connect.mp4',
   },
   {
     key: 'analytics',
     label: 'Analytics',
     title: "Know what's actually working.",
-    desc: 'Visits per reel and photo. Taps and saves per pin. Save growth, visitor cities, peak hours, and audience crossover — every signal in one place.',
-    video: '/marketing/analytics.mov',
+    desc: 'Visits per reel and photo. Taps and saves per pin. Save growth, visitor cities, peak hours, and audience crossover, every signal in one place.',
+    video: '/marketing/analytics.mp4',
   },
   {
     key: 'customization',
     label: 'Customization',
     title: 'A profile that looks as distinct as you do.',
-    desc: 'Pick the typeface, palette, and map shape that match your personal brand. Tune the accent, swap fonts, reorder sections — your Reelst link in bio adapts to you, not the other way around.',
-    video: '/marketing/customization.mov',
+    desc: 'Pick the typeface, palette, and map shape that match your personal brand. Tune the accent, swap fonts, reorder sections, your Reelst link in bio adapts to you, not the other way around.',
+    video: '/marketing/customization.mp4',
   },
 ]
 
 function FeatureShowcase() {
   const [activeKey, setActiveKey] = useState<string>(FEATURES[0].key)
   const active = FEATURES.find((f) => f.key === activeKey) || FEATURES[0]
+  // Refs to every mounted <video> so chip-click can restart the active
+  // clip from frame 0 + pause the others. All videos stay mounted (just
+  // hidden) so the browser preloads them in parallel on first paint;
+  // switching is then instant from cache instead of a fresh fetch.
+  const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({})
+  useEffect(() => {
+    Object.entries(videoRefs.current).forEach(([key, el]) => {
+      if (!el) return
+      if (key === activeKey) {
+        try { el.currentTime = 0 } catch { /* not yet ready */ }
+        el.play().catch(() => { /* autoplay may block, harmless */ })
+      } else {
+        el.pause()
+      }
+    })
+  }, [activeKey])
 
   return (
     <div className="bg-marketing">
@@ -619,7 +635,7 @@ function FeatureShowcase() {
 
           {/* ── Right: active feature ── */}
           <div>
-            {/* Packaged screen-recording panel — macOS-style window frame.
+            {/* Packaged screen-recording panel, macOS-style window frame.
                 The video: autoplays on chip change (key remounts it),
                 muted, inline, no loop (stays on last frame), fully
                 non-interactive (pointer-events none + no controls +
@@ -635,7 +651,7 @@ function FeatureShowcase() {
                   '0 30px 60px -30px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,133,82,0.04), 0 40px 80px -60px rgba(217,74,31,0.35)',
               }}
             >
-              {/* Window chrome — compact bar with 3 traffic-light dots */}
+              {/* Window chrome, compact bar with 3 traffic-light dots */}
               <div
                 className="shrink-0 flex items-center px-3 h-[22px] border-b border-white/[0.06]"
                 style={{ background: 'linear-gradient(180deg, #14181F 0%, #0E1219 100%)' }}
@@ -659,11 +675,16 @@ function FeatureShowcase() {
 
               {/* Media area */}
               <div className="relative flex-1 overflow-hidden" style={{ background: '#05080E' }}>
-                {active.video ? (
+                {/* Mount every video up front so they preload in parallel.
+                    Only the active chip's clip is visible + playing — the
+                    rest are paused and opacity:0. This is what makes
+                    chip-clicks feel instant: no fresh fetch, no remount. */}
+                {FEATURES.filter((f) => f.video).map((f) => (
                   <video
-                    key={active.video}
-                    src={active.video}
-                    autoPlay
+                    key={f.key}
+                    ref={(el) => { videoRefs.current[f.key] = el }}
+                    src={f.video}
+                    autoPlay={f.key === FEATURES[0].key}
                     muted
                     playsInline
                     preload="auto"
@@ -671,9 +692,11 @@ function FeatureShowcase() {
                     disablePictureInPicture
                     disableRemotePlayback
                     onContextMenu={(e) => e.preventDefault()}
-                    className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
+                    className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none transition-opacity duration-150"
+                    style={{ opacity: f.key === activeKey ? 1 : 0 }}
                   />
-                ) : active.img ? (
+                ))}
+                {!active.video && (active.img ? (
                   <img
                     src={active.img}
                     alt=""
@@ -696,11 +719,11 @@ function FeatureShowcase() {
                       </div>
                     </div>
                   </div>
-                )}
+                ))}
               </div>
             </div>
 
-            {/* Text block — key prop restarts the CSS fade on chip switch.
+            {/* Text block, key prop restarts the CSS fade on chip switch.
                 min-height reserves space for the longest feature's copy so
                 the section doesn't jump height when the user toggles chips.
                 Tune the min-height if new/longer descriptions are added. */}
@@ -738,7 +761,7 @@ function FeatureShowcase() {
             textTransform: 'uppercase',
           }}
         >
-          Listings, agents, and analytics shown are illustrative — not real data.
+          Listings, agents, and analytics shown are illustrative, not real data.
         </p>
       </div>
     </section>
@@ -747,7 +770,7 @@ function FeatureShowcase() {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   03 — WHY REELST (single hero-style stat card)
+   03, WHY REELST (single hero-style stat card)
    Cream section sharing the hero's bg. One row: cropped Pin it line
    illustration (man's upper body + pin + house) on the LEFT, with a
    centered hero-style grid card on the RIGHT carrying a punchy stat
@@ -809,7 +832,7 @@ function OneLinkCard() {
               >
                 Your sold, for-sale, and spotlight pins. Your reels and
                 walkthroughs. Your socials, your broker, your verified badge
-                — every piece of your agent presence on a single shareable
+               , every piece of your agent presence on a single shareable
                 link.
               </p>
             </div>
@@ -896,8 +919,8 @@ function CloserLook() {
                 }}
               >
                 Agents whose reels, walkthroughs, and neighborhood
-                spotlights live inside their listings — not scattered
-                across feeds and profiles — report 3× the inbound
+                spotlights live inside their listings, not scattered
+                across feeds and profiles, report 3× the inbound
                 inquiries of agents using a static link-in-bio.
               </p>
             </div>
@@ -925,7 +948,7 @@ function CloserLook() {
   )
 }
 
-/* PinAnalyticsSection — wraps the bento `<PinAnalytics />` in its own
+/* PinAnalyticsSection, wraps the bento `<PinAnalytics />` in its own
    marketing-bg, max-width container so it can be slotted into the page
    flow independently of CloserLook. PinAnalytics renders its own inner
    `<section>` with top margin, so this wrapper adds no top padding. */
@@ -940,7 +963,7 @@ function PinAnalyticsSection() {
 }
 
 /* ────────────────────────────────────────────────────────────────
-   PinAnalytics — left column hosts a 6-card bento collage of stat
+   PinAnalytics, left column hosts a 6-card bento collage of stat
    tiles in tangerine/ember shades; right column carries the headline
    (no underline), subhead, and brand CTA. On scroll the cards fly in
    from their own off-axis directions and converge to their final
@@ -954,14 +977,14 @@ function PinAnalytics() {
   const cardRefs = useRef<Array<HTMLDivElement | null>>([])
 
   // Each card's "exploded" offset (px). Mutated in place by the scroll
-  // handler — at p=0 the card sits at this offset, at p=1 it's at 0,0.
+  // handler, at p=0 the card sits at this offset, at p=1 it's at 0,0.
   const explosions = [
-    { ox: -14, oy: -10 }, // 0 Visits      — top-left
-    { ox:  16, oy: -12 }, // 1 Taps        — top-right
-    { ox: -18, oy:   0 }, // 2 Save rate   — left
-    { ox:  14, oy:   0 }, // 3 Subscribers — right
-    { ox: -10, oy:  14 }, // 4 Active    — bottom-left
-    { ox:  20, oy:  10 }, // 5 Co-saves  — bottom-right
+    { ox: -14, oy: -10 }, // 0 Visits     , top-left
+    { ox:  16, oy: -12 }, // 1 Taps       , top-right
+    { ox: -18, oy:   0 }, // 2 Save rate  , left
+    { ox:  14, oy:   0 }, // 3 Subscribers, right
+    { ox: -10, oy:  14 }, // 4 Active   , bottom-left
+    { ox:  20, oy:  10 }, // 5 Co-saves , bottom-right
   ]
 
   useEffect(() => {
@@ -1010,7 +1033,7 @@ function PinAnalytics() {
       className="relative"
     >
       <div className="grid lg:grid-cols-2 gap-14 lg:gap-20 items-center">
-        {/* RIGHT (header) — placed first in DOM so on mobile it stacks
+        {/* RIGHT (header), placed first in DOM so on mobile it stacks
             on top of the bento. On lg+ we re-order it to col 2. */}
         <div className="text-center lg:text-left lg:order-2">
           <p
@@ -1047,7 +1070,7 @@ function PinAnalytics() {
             }}
           >
             Visits, taps, save rate, subscriber growth, when your visitors
-            are active, and which neighborhoods buyers save yours alongside —
+            are active, and which neighborhoods buyers save yours alongside,
             every signal in one place.
           </p>
           <button
@@ -1064,10 +1087,10 @@ function PinAnalytics() {
           </button>
         </div>
 
-        {/* LEFT (bento) — second in DOM, ordered to col 1 on lg+. */}
+        {/* LEFT (bento), second in DOM, ordered to col 1 on lg+. */}
         <div className="relative w-full max-w-[560px] mx-auto lg:order-1">
           <div className="relative grid grid-cols-3 gap-3 md:gap-4">
-            {/* Visits — col-span 2, deep tangerine */}
+            {/* Visits, col-span 2, deep tangerine */}
             <StatCard
               cardRef={(el) => { cardRefs.current[0] = el }}
               initialStyle={initialStyle(0)}
@@ -1082,7 +1105,7 @@ function PinAnalytics() {
               graphic={<GrowthBars color="rgba(255,255,255,0.85)" />}
             />
 
-            {/* Taps — peach, ink text */}
+            {/* Taps, peach, ink text */}
             <StatCard
               cardRef={(el) => { cardRefs.current[1] = el }}
               initialStyle={initialStyle(1)}
@@ -1095,7 +1118,7 @@ function PinAnalytics() {
               caption="taps to open your pins"
             />
 
-            {/* Save rate — ember, donut */}
+            {/* Save rate, ember, donut */}
             <StatCard
               cardRef={(el) => { cardRefs.current[2] = el }}
               initialStyle={initialStyle(2)}
@@ -1109,7 +1132,7 @@ function PinAnalytics() {
               graphic={<Donut color="rgba(255,255,255,0.92)" track="rgba(255,255,255,0.18)" />}
             />
 
-            {/* Subscribers — col-span 2, mid tangerine */}
+            {/* Subscribers, col-span 2, mid tangerine */}
             <StatCard
               cardRef={(el) => { cardRefs.current[3] = el }}
               initialStyle={initialStyle(3)}
@@ -1124,7 +1147,7 @@ function PinAnalytics() {
               graphic={<Sparkline color="rgba(255,255,255,0.92)" />}
             />
 
-            {/* Active hours — col-span 2, deep ember-coral */}
+            {/* Active hours, col-span 2, deep ember-coral */}
             <StatCard
               cardRef={(el) => { cardRefs.current[4] = el }}
               initialStyle={initialStyle(4)}
@@ -1139,7 +1162,7 @@ function PinAnalytics() {
               graphic={<HourBars color="rgba(255,255,255,0.78)" highlight="#FFD4B0" />}
             />
 
-            {/* Crosslist insight — chip cluster shows the *kinds* of
+            {/* Crosslist insight, chip cluster shows the *kinds* of
                 listings buyers who save yours also save. Mixes a
                 feature, a neighborhood, and a price band so the point
                 lands without explaining it. */}
@@ -1163,7 +1186,7 @@ function PinAnalytics() {
   )
 }
 
-/* StatCard — one bento tile. `aspect` locks proportions on resize.
+/* StatCard, one bento tile. `aspect` locks proportions on resize.
    `cardRef` + `initialStyle` are wired by PinAnalytics so the scroll
    handler can mutate transform / opacity directly. */
 function StatCard({
@@ -1253,7 +1276,7 @@ function StatCard({
   )
 }
 
-/* Sparkline — wavy line trending up. Pure SVG, no data. */
+/* Sparkline, wavy line trending up. Pure SVG, no data. */
 function Sparkline({ color }: { color: string }) {
   return (
     <svg viewBox="0 0 120 32" className="w-full h-6" preserveAspectRatio="none">
@@ -1270,7 +1293,7 @@ function Sparkline({ color }: { color: string }) {
   )
 }
 
-/* Donut — single arc representing save rate. */
+/* Donut, single arc representing save rate. */
 function Donut({ color, track }: { color: string; track: string }) {
   const r = 14
   const c = 2 * Math.PI * r
@@ -1293,7 +1316,7 @@ function Donut({ color, track }: { color: string; track: string }) {
   )
 }
 
-/* GrowthBars — 8 ascending bars implying subscriber growth. */
+/* GrowthBars, 8 ascending bars implying subscriber growth. */
 function GrowthBars({ color }: { color: string }) {
   const heights = [22, 28, 26, 38, 44, 50, 58, 70]
   return (
@@ -1314,7 +1337,7 @@ function GrowthBars({ color }: { color: string }) {
   )
 }
 
-/* HourBars — 24 thin bars hinting at hour-of-day distribution. The
+/* HourBars, 24 thin bars hinting at hour-of-day distribution. The
    evening peak is highlighted to match "7-10 PM". */
 function HourBars({ color, highlight }: { color: string; highlight: string }) {
   const data = [
@@ -1338,7 +1361,7 @@ function HourBars({ color, highlight }: { color: string; highlight: string }) {
   )
 }
 
-/* CrosslistChips — small wrapped chip cluster representing the
+/* CrosslistChips, small wrapped chip cluster representing the
    "kinds" of listings co-saved alongside the agent's: a feature
    (pool), a neighborhood (Brickell), a price band ($1.2M+). The
    chip styles inherit the card's ink/peach palette so they read
@@ -1371,16 +1394,16 @@ function CrosslistChips() {
 
 
 /* ════════════════════════════════════════════════════════════════
-   06 — READY
+   06, READY
    Scroll-driven paintbrush underline on "yours". Pin lands below
    the claim CTA.
    ════════════════════════════════════════════════════════════════ */
 
 /* ════════════════════════════════════════════════════════════════
-   PortfolioShowcase — section 4. Text on the LEFT, animated 3D
+   PortfolioShowcase, section 4. Text on the LEFT, animated 3D
    exploded-view composition on the RIGHT: a tilted Reelst profile
    mockup with floating chips orbiting it (verified badge, broker,
-   socials, and SOLD/FOR SALE/SPOTLIGHT pins) — each on its own
+   socials, and SOLD/FOR SALE/SPOTLIGHT pins), each on its own
    bob timer so the scene feels alive.
    ════════════════════════════════════════════════════════════════ */
 
@@ -1433,7 +1456,7 @@ function PortfolioShowcase() {
   const navigate = useNavigate()
   const groupRef = useRef<HTMLDivElement>(null)
 
-  // Scroll-driven 3D tilt — applied to the whole 3D group (phone +
+  // Scroll-driven 3D tilt, applied to the whole 3D group (phone +
   // orbs) so the entire composition rotates as one rigid body. Group
   // enters with rotateY(-25°) and resolves face-on as it scrolls into
   // view, then continues to +25° as it leaves the top.
@@ -1505,7 +1528,7 @@ function PortfolioShowcase() {
               }}
             >
               Pick the typeface, palette, and layout that match your personal
-              brand. Tune the accent, swap fonts, reorder sections — your
+              brand. Tune the accent, swap fonts, reorder sections, your
               Reelst link in bio should look as distinct as you do.
             </p>
             <button
@@ -1529,12 +1552,12 @@ function PortfolioShowcase() {
               className="portfolio-3d"
               style={{ transform: 'rotateY(-22deg)' }}
             >
-              {/* Phone mock — single AgentProfile-shaped layout */}
+              {/* Phone mock, single AgentProfile-shaped layout */}
               <div className="portfolio-phone">
                 <PhoneMock />
               </div>
 
-              {/* Real-estate orbs — same chip language as PinCreate */}
+              {/* Real-estate orbs, same chip language as PinCreate */}
               <div className="orb" style={{ left: '4%', bottom: '14%' }}>
                 <div className="orb-card orb-pin">
                   <span className="orb-pin-icon" style={{ background: '#3B82F6' }}>
@@ -1619,7 +1642,7 @@ function Ready() {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   ScrollBrushWord — draws underline via scroll (retracts on scroll up)
+   ScrollBrushWord, draws underline via scroll (retracts on scroll up)
    ════════════════════════════════════════════════════════════════ */
 
 function ScrollBrushWord({ children }: { children: ReactNode }) {

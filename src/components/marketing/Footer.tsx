@@ -39,7 +39,9 @@ export function FooterContent() {
         {/* ── Top row: brand left, socials right ───────────────────── */}
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-10 md:gap-6 pb-12 md:pb-14 border-b border-black/[0.06]">
           <div className="flex flex-col items-start gap-2">
-            <ReelstLogo size="xl" />
+            <Link to="/" aria-label="Reelst home" className="inline-flex">
+              <ReelstLogo size="xl" />
+            </Link>
             <p
               className="text-smoke"
               style={{

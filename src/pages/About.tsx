@@ -5,7 +5,7 @@ import { SEOHead } from '@/components/marketing/SEOHead'
 import { ScrollFadeText, Glyph } from '@/components/marketing/ScrollFadeText'
 
 /* ════════════════════════════════════════════════════════════════
-   ABOUT — long-form essay. Tangerine prose "lights up" word-by-word
+   ABOUT, long-form essay. Tangerine prose "lights up" word-by-word
    as it sweeps past the scroll trigger. Inline tangerine glyphs pop
    in at key nouns (reels, map, pins, chess, toys, link).
    ════════════════════════════════════════════════════════════════ */
@@ -19,7 +19,7 @@ const ACT_TEXT_STYLE: React.CSSProperties = {
   color: '#FF6B3D',
 }
 
-/* Inline pin chip — for-sale / sold / spotlight rendered in the
+/* Inline pin chip, for-sale / sold / spotlight rendered in the
    same icon-square format as <Glyph>. No text label, just the
    coloured pin marker centred on the cream squircle. */
 function PinChip({ kind }: { kind: 'for-sale' | 'sold' | 'spotlight' }) {
@@ -76,12 +76,12 @@ export default function About() {
     <MarketingLayout>
       <SEOHead
         title="About"
-        description="Real estate found its creator economy. Reelst is the home base — a live map of your listings, your reels, your pins, on a single shareable link."
+        description="Real estate found its creator economy. Reelst is the home base, a live map of your listings, your reels, your pins, on a single shareable link."
         path="/about"
       />
 
       <div className="bg-marketing relative">
-        {/* ── Hero — centered headline + description. The pin scene
+        {/* ── Hero, centered headline + description. The pin scene
               lives outside the document flow as a fixed-to-viewport
               overlay, so it travels with the reader for the entire
               page length. */}
@@ -112,50 +112,50 @@ export default function About() {
                 lineHeight: 1.55,
               }}
             >
-              A link-in-bio tool built specifically for real estate agents —
+              A link-in-bio tool built specifically for real estate agents,
               your listings, your portfolio, your brand, all in one place.
             </p>
           </div>
         </section>
 
         <section className="max-w-[860px] mx-auto px-6 md:px-10 pt-12 pb-32 md:pb-40">
-          {/* ── Act 1 — the shift ──────────────────────────────── */}
+          {/* ── Act 1, the shift ──────────────────────────────── */}
           <ScrollFadeText className="mb-24 md:mb-32" style={ACT_TEXT_STYLE}>
             Real estate just became a creator economy.{' '}
             <Glyph name="chart" /> 96% of buyers start their search
             online. 58% expect to see a <Glyph name="reel" /> video
             of the home before they ever step inside. Listings with reels pull
             403% more inquiries. A new generation of agents is figuring this
-            out — building audiences on TikTok, YouTube, and Instagram, and
+            out, building audiences on TikTok, YouTube, and Instagram, and
             pulling in $100K+ in additional commission within months once they
             start showing up.
           </ScrollFadeText>
 
-          {/* ── Act 2 — the fragmentation ──────────────────────── */}
+          {/* ── Act 2, the fragmentation ──────────────────────── */}
           <ScrollFadeText className="mb-24 md:mb-32" style={ACT_TEXT_STYLE}>
             But the toolkit hasn't caught up. Reels live on Instagram.
             Walkthroughs live on TikTok. Listings live on the MLS. The bio link
             points to a <Glyph name="link" /> static landing page. Buyers find
             a clip they love and then have to detective their way through five
             platforms to figure out who the agent is, where the home is,
-            whether it's still for sale. Agents are creators now — and nothing
+            whether it's still for sale. Agents are creators now, and nothing
             is built for them to be one.
           </ScrollFadeText>
 
-          {/* ── Act 3 — Reelst ─────────────────────────────────── */}
+          {/* ── Act 3, Reelst ─────────────────────────────────── */}
           <ScrollFadeText className="mb-24 md:mb-32" style={ACT_TEXT_STYLE}>
             Reelst is the one place it all clicks together. A{' '}
             <Glyph name="map" /> live map of your listings. The reels and
             walkthroughs you already make, attached to the pin they're about.
             Your pins <PinChip kind="for-sale" /> <PinChip kind="sold" />{' '}
-            <PinChip kind="spotlight" /> — searchable, shareable, on a single
+            <PinChip kind="spotlight" />, searchable, shareable, on a single
             shareable link in your bio.
           </ScrollFadeText>
 
-          {/* ── Act 4 — founder note ───────────────────────────── */}
+          {/* ── Act 4, founder note ───────────────────────────── */}
           <ScrollFadeText className="mb-12" style={ACT_TEXT_STYLE}>
             I'm Mauricio. I've spent the last decade working with creators in
-            niche worlds — <Glyph name="chess" /> chess grandmasters,{' '}
+            niche worlds, <Glyph name="chess" /> chess grandmasters,{' '}
             <Glyph name="robot" /> toy enthusiasts, the kinds of communities
             where deep expertise lives but mainstream attention doesn't. I've
             helped scale channels, taken creators from endemic into
@@ -166,14 +166,14 @@ export default function About() {
 
           <ScrollFadeText className="mb-24 md:mb-32" style={ACT_TEXT_STYLE}>
             Real estate agents are creators with the same problem on a bigger
-            scale. Local expertise, real product, genuine voice — and platforms
+            scale. Local expertise, real product, genuine voice, and platforms
             that flatten all of it into a feed. Reelst is a link-in-bio tool
-            built specifically for real estate agents — your listings, your
+            built specifically for real estate agents, your listings, your
             portfolio, your brand, your personality, all on a single shareable
             page.
           </ScrollFadeText>
 
-          {/* ── Act 5 — close ──────────────────────────────────── */}
+          {/* ── Act 5, close ──────────────────────────────────── */}
           <div className="pt-8 md:pt-12" style={{ borderTop: '1px solid rgba(10,14,23,0.08)' }}>
             <p
               className="text-ink mb-10"

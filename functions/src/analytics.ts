@@ -61,8 +61,10 @@ function getClientIp(request: any): string {
 // it, but tight enough to suffocate scripts trying to inflate
 // pin.views / pin.taps / agent.profileVisits or blow up the events
 // collection for cost-griefing. Returns true if the request should
-// proceed; false to silently drop. Fails OPEN on transaction errors
-// so legitimate tracking isn't lost under contention.
+// proceed; false to silently drop. Fails CLOSED on transaction
+// errors — losing a few legit events during transient Firestore
+// contention is preferable to handing an attacker a free-pass when
+// they cause contention to slip past the limit.
 const TRACKER_PER_HOUR = 200
 const TRACKER_WINDOW_MS = 60 * 60 * 1000
 
@@ -97,8 +99,8 @@ async function allowTrackerCall(ipKey: string): Promise<boolean> {
       return true
     })
   } catch (err) {
-    logger.warn('[analytics] rate limit txn failed; allowing through', { ipKey, err: String(err) })
-    return true
+    logger.warn('[analytics] rate limit txn failed; dropping event', { ipKey, err: String(err) })
+    return false
   }
 }
 

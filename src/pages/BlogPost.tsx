@@ -14,7 +14,7 @@ import {
 } from '@/lib/blog'
 
 /* ════════════════════════════════════════════════════════════════
-   BLOG POST DETAIL — long-form reader
+   BLOG POST DETAIL, long-form reader
    Markdown body via react-markdown + remark-gfm. Pulls 3 related
    posts (same category) for the bottom rail. SEO meta from the
    post's seoTitle / seoDescription / ogImage fields.

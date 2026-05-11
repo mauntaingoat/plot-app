@@ -100,10 +100,12 @@ service cloud.firestore {
     }
 
     // ── SHOWING REQUESTS ──
-    // ANYONE can create a request (lead capture form on listings)
-    // Only the receiving agent can read/update/delete
+    // Anonymous buyer creates go through the submitShowingRequest
+    // callable (admin SDK, rate-limited, server-validated) — direct
+    // client writes are blocked. Only the receiving agent can read /
+    // update / delete their own requests.
     match /showing_requests/{reqId} {
-      allow create: if true;
+      allow create: if false; // Cloud Function only
       allow read: if isSignedIn() && resource.data.agentId == request.auth.uid;
       allow update: if isSignedIn() && resource.data.agentId == request.auth.uid;
       allow delete: if isSignedIn() && resource.data.agentId == request.auth.uid;
@@ -248,6 +250,27 @@ service cloud.firestore {
       allow delete: if isSignedIn()
         && get(/databases/$(database)/documents/pins/$(pinId)).data.agentId == request.auth.uid;
       allow create, update: if false;
+    }
+
+    // ── BLOG POSTS (FireCMS-managed) ──
+    // Public reads only for posts whose status is "published" — drafts +
+    // scheduled posts stay invisible to anonymous /blog visitors.
+    // Writes are restricted to specific editor emails (custom-claim
+    // alternative kept simple while there's a single editor; broaden to
+    // a roles collection if more editors join).
+    match /posts/{postId} {
+      allow read: if resource.data.status == 'published';
+      allow write: if request.auth != null
+        && request.auth.token.email == 'mauriiromano123@gmail.com';
+    }
+
+    // ── BLOG AUTHORS (FireCMS-managed) ──
+    // Public reads (author bio renders on the post page).
+    // Writes restricted to the same editor allowlist as posts.
+    match /authors/{authorId} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.auth.token.email == 'mauriiromano123@gmail.com';
     }
 
     // ── DEFAULT DENY ──

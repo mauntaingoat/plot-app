@@ -8,12 +8,12 @@ interface SEOHeadProps {
 }
 
 const BASE_URL = 'https://reel.st'
-const DEFAULT_TITLE = 'Reelst — The Link in Your Bio for Real Estate Agents'
-const DEFAULT_DESC = 'A live map of your listings married to the reels, walkthroughs, and neighborhood spotlights you already make — every part of your real estate brand on one shareable link.'
+const DEFAULT_TITLE = 'Reelst, The Link in Your Bio for Real Estate Agents'
+const DEFAULT_DESC = 'A live map of your listings married to the reels, walkthroughs, and neighborhood spotlights you already make, every part of your real estate brand on one shareable link.'
 const DEFAULT_OG = '/icons/og-image.png'
 
 export function SEOHead({ title, description, ogImage, path = '' }: SEOHeadProps) {
-  const fullTitle = title ? `${title} — Reelst` : DEFAULT_TITLE
+  const fullTitle = title ? `${title}, Reelst` : DEFAULT_TITLE
   const desc = description || DEFAULT_DESC
   const img = ogImage || DEFAULT_OG
   const url = `${BASE_URL}${path}`

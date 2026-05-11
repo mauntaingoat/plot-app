@@ -12,7 +12,7 @@ import {
 } from '@/lib/glossary'
 
 /* ════════════════════════════════════════════════════════════════
-   GLOSSARY INDEX — `/glossary`
+   GLOSSARY INDEX, `/glossary`
    ────────────────────────────────────────────────────────────────
    A–Z hub for real-estate + content terms agents care about.
    Optimized for SEO: each term has its own page, internal cross-
@@ -62,8 +62,8 @@ export default function Glossary() {
   return (
     <MarketingLayout>
       <SEOHead
-        title="Glossary — Reelst"
-        description="Real estate and content marketing terms agents need to know — from MLS and CMA to link in bio and save bait."
+        title="Glossary, Reelst"
+        description="Real estate and content marketing terms agents need to know, from MLS and CMA to link in bio and save bait."
         path="/glossary"
       />
 
@@ -107,7 +107,7 @@ export default function Glossary() {
                 lineHeight: 1.55,
               }}
             >
-              The terms agents and buyers run into every day — from MLS and escrow to
+              The terms agents and buyers run into every day, from MLS and escrow to
               link in bio, save bait, and everything in between. Plain definitions,
               honest examples.
             </p>

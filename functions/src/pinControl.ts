@@ -102,18 +102,18 @@ export const setPinEnabled = onCall<SetPinEnabledData>(
 
       if (cap < 9999) {
         // Count this agent's currently-active pins. Mirrors the
-        // client-side isPinActive(): enabled=true AND status!='archived'
-        // AND content.length > 0. We can't filter on content.length in
-        // a query, so we count enabled+non-archived in the query and
-        // then filter content in-memory.
+        // client-side isPinActive(): enabled=true AND status!='archived'.
+        // Content count is intentionally NOT a factor — an enabled
+        // empty pin still counts against the cap so the limit can't
+        // be skirted by toggling on placeholder pins.
         const activeSnap = await db
           .collection('pins')
           .where('agentId', '==', uid)
           .where('enabled', '==', true)
           .get()
         const activeCount = activeSnap.docs.filter((d) => {
-          const data = d.data() as { status?: string; content?: unknown[] }
-          return data.status !== 'archived' && Array.isArray(data.content) && data.content.length > 0
+          const data = d.data() as { status?: string }
+          return data.status !== 'archived'
         }).length
 
         if (activeCount >= cap) {

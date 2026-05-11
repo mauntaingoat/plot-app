@@ -66,7 +66,7 @@ export default function Terms() {
 
             <section>
               <h2>6. Content Ownership & License</h2>
-              <p>You retain ownership of all content you post to Reelst — including reels, videos, photos, captions, Spotlight descriptions, and listing copy. By posting content, you grant Reelst a non-exclusive, worldwide, royalty-free license to host, transcode, display, reproduce, and distribute that content as needed to operate and promote the Service (including on your public profile and in marketing materials with your permission).</p>
+              <p>You retain ownership of all content you post to Reelst, including reels, videos, photos, captions, Spotlight descriptions, and listing copy. By posting content, you grant Reelst a non-exclusive, worldwide, royalty-free license to host, transcode, display, reproduce, and distribute that content as needed to operate and promote the Service (including on your public profile and in marketing materials with your permission).</p>
               <p>You represent that you own or have the rights to all content you post and that posting it does not infringe any third-party rights (including photography copyrights, music rights, and right-of-publicity).</p>
             </section>
 
@@ -82,7 +82,7 @@ export default function Terms() {
 
             <section>
               <h2>9. Showing Requests & Lead Capture</h2>
-              <p>When a Visitor submits a Showing Request through the Service, we route the Visitor's contact information and message to the relevant Agent's inbox. Reelst does not act as a real estate brokerage, agency, or transaction intermediary — any subsequent showing, communication, or transaction occurs directly between the Visitor and the Agent.</p>
+              <p>When a Visitor submits a Showing Request through the Service, we route the Visitor's contact information and message to the relevant Agent's inbox. Reelst does not act as a real estate brokerage, agency, or transaction intermediary, any subsequent showing, communication, or transaction occurs directly between the Visitor and the Agent.</p>
             </section>
 
             <section>

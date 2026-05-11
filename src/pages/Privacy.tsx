@@ -56,7 +56,7 @@ export default function Privacy() {
               <p>We store the content you publish: reels, photos, video walkthroughs, captions, Spotlight descriptions, listing details (price, beds, baths, sqft, MLS-derived fields, days on market), open-house schedules, and the geographic coordinates associated with each pin.</p>
 
               <h3>Engagement data</h3>
-              <p>We record interactions with your profile and pins — visits, taps, saves, waves, content plays — so Agents can see how their territory is performing in their Insights dashboard.</p>
+              <p>We record interactions with your profile and pins, visits, taps, saves, waves, content plays, so Agents can see how their territory is performing in their Insights dashboard.</p>
 
               <h3>Usage & device data</h3>
               <p>We automatically collect general usage information including pages visited, device type, browser, IP address, approximate location (from IP), and referring URLs.</p>
@@ -80,11 +80,11 @@ export default function Privacy() {
               <h2>5. Third-Party Services</h2>
               <p>We rely on the following processors to operate Reelst. Each has its own privacy policy governing the data they handle:</p>
               <ul>
-                <li><strong>Firebase (Google)</strong> — authentication, real-time database, file storage, analytics</li>
-                <li><strong>Mapbox</strong> — map rendering, address geocoding</li>
-                <li><strong>Mux</strong> — video upload, transcoding, and adaptive playback for reels and livestreams</li>
-                <li><strong>Stripe</strong> — payment processing for paid subscription tiers</li>
-                <li><strong>Email and notification providers</strong> — transactional email delivery for Showing Request alerts and account notifications</li>
+                <li><strong>Firebase (Google)</strong>, authentication, real-time database, file storage, analytics</li>
+                <li><strong>Mapbox</strong>, map rendering, address geocoding</li>
+                <li><strong>Mux</strong>, video upload, transcoding, and adaptive playback for reels and livestreams</li>
+                <li><strong>Stripe</strong>, payment processing for paid subscription tiers</li>
+                <li><strong>Email and notification providers</strong>, transactional email delivery for Showing Request alerts and account notifications</li>
               </ul>
             </section>
 

@@ -26,6 +26,7 @@ import { defineSecret } from 'firebase-functions/params'
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import * as admin from 'firebase-admin'
 import nodemailer from 'nodemailer'
+import * as crypto from 'crypto'
 import { renderAuthEmail, type AuthEmailKind } from './email/template'
 
 if (!admin.apps.length) admin.initializeApp()
@@ -34,6 +35,52 @@ const GMAIL_USER = defineSecret('GMAIL_USER')
 const GMAIL_APP_PASSWORD = defineSecret('GMAIL_APP_PASSWORD')
 
 const FROM_DISPLAY = 'Reelst'
+
+// Mitigates two abuse paths:
+//   1. Reset-email spam → bot floods a victim's inbox until Gmail flags
+//      Reelst as a spam sender (account-takeover-adjacent).
+//   2. Email enumeration → both 'verify' and 'reset' are gated before the
+//      auth lookup so non-existent addresses consume quota too, denying
+//      the timing oracle.
+// 3 sends / 15min per-email AND per-IP — real resends easily fit; same
+// transactional Firestore pattern used by submitWave + propertyLookup.
+const PER_EMAIL_LIMIT = 3
+const PER_IP_LIMIT = 3
+const RATE_WINDOW_MS = 15 * 60 * 1000
+
+interface RateLimitDoc {
+  count: number
+  windowStart: admin.firestore.Timestamp
+}
+
+function hashEmail(email: string): string {
+  return crypto.createHash('sha256').update(email.trim().toLowerCase()).digest('hex')
+}
+
+async function checkRateLimit(key: string, limit: number, windowMs: number): Promise<void> {
+  const ref = admin.firestore().collection('rateLimits').doc(key)
+  await admin.firestore().runTransaction(async (tx) => {
+    const snap = await tx.get(ref)
+    const now = admin.firestore.Timestamp.now()
+    if (!snap.exists) {
+      tx.set(ref, { count: 1, windowStart: now } as RateLimitDoc)
+      return
+    }
+    const data = snap.data() as RateLimitDoc
+    const elapsed = now.toMillis() - data.windowStart.toMillis()
+    if (elapsed >= windowMs) {
+      tx.set(ref, { count: 1, windowStart: now } as RateLimitDoc)
+      return
+    }
+    if (data.count >= limit) {
+      throw new HttpsError(
+        'resource-exhausted',
+        'Too many email requests. Try again in a few minutes.',
+      )
+    }
+    tx.update(ref, { count: admin.firestore.FieldValue.increment(1) })
+  })
+}
 
 interface Payload {
   kind: AuthEmailKind
@@ -63,6 +110,13 @@ export const sendAuthEmail = onCall(
     }
 
     const cleanEmail = email.trim().toLowerCase()
+
+    // Rate limit BEFORE the auth lookup so non-existent emails consume
+    // quota too — denies a timing-based enumeration oracle and stops
+    // an in-progress flood from racking up admin.auth() lookups.
+    const ip = (req.rawRequest?.ip || 'unknown').replace(/[^a-zA-Z0-9.:_-]/g, '_')
+    await checkRateLimit(`authEmail_ip_${ip}`, PER_IP_LIMIT, RATE_WINDOW_MS)
+    await checkRateLimit(`authEmail_email_${hashEmail(cleanEmail)}`, PER_EMAIL_LIMIT, RATE_WINDOW_MS)
 
     // Look up the user (mostly to grab a name for the greeting). For
     // password reset we don't want to leak whether an account exists,

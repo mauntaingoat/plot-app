@@ -78,9 +78,9 @@ function SmoothScroll() {
       pathname.startsWith('/glossary/')
     if (!isMarketing) return
     const lenis = new Lenis({
-      lerp: 0.06,
-      wheelMultiplier: 0.55,
-      touchMultiplier: 1.1,
+      lerp: 0.12,
+      wheelMultiplier: 0.85,
+      touchMultiplier: 1.4,
       smoothWheel: true,
       syncTouch: false,
     })

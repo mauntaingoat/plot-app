@@ -5,7 +5,7 @@ import * as THREE from 'three'
  * Generative cityscape/neighborhood landscape.
  * Light mode, tangerine-tinted, low undulating surface.
  * Mouse-following light adds interactive depth.
- * Transparent bg — sits on top of the ivory hero section.
+ * Transparent bg, sits on top of the ivory hero section.
  */
 export function CityScape() {
   const mountRef = useRef<HTMLDivElement>(null)

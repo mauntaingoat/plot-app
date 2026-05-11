@@ -18,7 +18,7 @@ import {
        scale 1 + opacity 1, with a slight overshoot. The width
        transition is what physically pushes the next word to the
        right as the icon "pops in".
-   The reveal is one-shot — once a word/icon has been revealed it
+   The reveal is one-shot, once a word/icon has been revealed it
    stays revealed (no flicker on scroll-back).
    ════════════════════════════════════════════════════════════════ */
 
@@ -89,7 +89,7 @@ export function ScrollFadeText({
       const triggerY = (window.innerHeight || 1) * trigger
       // Diagonal trigger: words with higher X need to scroll further before
       // crossing, so on a single line the left-most word reveals first and
-      // the right-most last — yielding a word-by-word sweep instead of a
+      // the right-most last, yielding a word-by-word sweep instead of a
       // line-by-line flash.
       // Tilt MUST stay below the prose's line-height so a line finishes
       // revealing left-to-right before the next line starts. With body
@@ -152,7 +152,7 @@ import type { Icon as LucideIcon } from '@phosphor-icons/react'
 
 const TANGERINE = '#FF6B3D'
 
-/* Stylised chess pawn glyph — head + neck + body + base. Reads as
+/* Stylised chess pawn glyph, head + neck + body + base. Reads as
    a chess piece even at small inline sizes. */
 function ChessPawnSvg() {
   return (

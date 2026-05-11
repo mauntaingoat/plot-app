@@ -492,12 +492,17 @@ export async function createShowingRequest(
     localStorage.setItem('reelst_showing_requests', JSON.stringify(list))
     return id
   }
-  const ref = await addDoc(collection(db, 'showing_requests'), {
-    ...data,
-    status: 'new',
-    createdAt: serverTimestamp(),
-  })
-  return ref.id
+  // Routes through the submitShowingRequest callable (rate-limited,
+  // server-validated). Direct client writes to /showing_requests are
+  // blocked by the Firestore rule.
+  const { getFunctions, httpsCallable } = await import('firebase/functions')
+  const { app } = await import('@/config/firebase')
+  const fn = httpsCallable<typeof data, { ok: boolean; requestId: string }>(
+    getFunctions(app ?? undefined),
+    'submitShowingRequest',
+  )
+  const res = await fn(data)
+  return res.data.requestId
 }
 
 export async function listShowingRequests(agentId: string): Promise<ShowingRequest[]> {

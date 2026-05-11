@@ -10,6 +10,25 @@ interface State {
   retryCount: number
 }
 
+// Browsers phrase the "lazy chunk 404" error differently — Chrome says
+// "Failed to fetch dynamically imported module", Safari says "Importing
+// a module script failed", Firefox says "error loading dynamically
+// imported module". Match any of them.
+function isStaleChunkError(err: Error): boolean {
+  const msg = err?.message || ''
+  return (
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('Importing a module script failed') ||
+    msg.includes('error loading dynamically imported module') ||
+    msg.includes('ChunkLoadError')
+  )
+}
+
+// One-shot reload guard so a bundle that's *actually* broken (vs.
+// merely stale) doesn't trigger an infinite reload loop. Cleared by
+// the user closing the tab.
+const RELOAD_FLAG = 'reelst:reloaded-for-stale-chunk'
+
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { error: null, retryCount: 0 }
 
@@ -25,6 +44,20 @@ export class ErrorBoundary extends Component<Props, State> {
       console.warn('[ErrorBoundary] suppressed Firestore internal assertion, auto-retrying')
       this.setState((s) => ({ error: null, retryCount: s.retryCount + 1 }))
       return
+    }
+    // Stale lazy-chunk after a deploy: the old index.html references a
+    // hash that no longer exists on the server. Force-reload to fetch
+    // the new index.html with current asset hashes. Skip if we already
+    // tried this in the current tab session — that signals a real
+    // problem (build broken, server down) we should show the fallback
+    // for instead of looping.
+    if (isStaleChunkError(error) && typeof sessionStorage !== 'undefined') {
+      if (!sessionStorage.getItem(RELOAD_FLAG)) {
+        sessionStorage.setItem(RELOAD_FLAG, '1')
+        console.warn('[ErrorBoundary] stale chunk detected, force-reloading')
+        window.location.reload()
+        return
+      }
     }
     console.error(`[ErrorBoundary${this.props.label ? `: ${this.props.label}` : ''}]`, error, info)
   }

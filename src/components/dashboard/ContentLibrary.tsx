@@ -4,7 +4,7 @@ import { UploadSimple as Upload, Play, Image, FilmStrip as Film, MapPin, Plus, D
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { DarkBottomSheet } from '@/components/ui/BottomSheet'
-import { getAgentContent, createContent, updateContent, linkContentToPin, archiveContent as archiveContentDoc } from '@/lib/firestore'
+import { updateContent, archiveContent as archiveContentDoc } from '@/lib/firestore'
 import { type Pin, type ContentItem, type ContentDoc, isTallAspect } from '@/lib/types'
 import { preloadImages } from '@/lib/imageCache'
 
@@ -205,25 +205,25 @@ export function ContentLibrary({ pins, agentId, onAssignContent, onArchiveConten
                 if (toPinId === '__none__') {
                   // Unlink — move to unlinked state + remove from pin
                   if (pin) onArchiveContent(content.id, pin.id)
-                  // Check if content doc already exists in content collection, else create
-                  getAgentContent(agentId).then((docs) => {
-                    const existing = docs.find((d) => d.id === content.id)
-                    if (existing) {
-                      updateContent(content.id, { pinId: null })
-                    } else {
-                      createContent({
-                        agentId,
-                        pinId: null,
-                        type: content.type,
-                        mediaUrl: content.mediaUrl,
-                        ...(content.mediaUrls ? { mediaUrls: content.mediaUrls } : {}),
-                        thumbnailUrl: content.thumbnailUrl,
-                        caption: content.caption,
-                        ...(content.duration != null ? { duration: content.duration } : {}),
-                        ...(content.publishAt !== undefined ? { publishAt: content.publishAt } : {}),
-                        ...(content.aspect ? { aspect: content.aspect } : {}),
-                      })
-                    }
+                  // Mirror the unlink into /content. Use upsertContent
+                  // so the doc keyed on the existing content.id is
+                  // either updated (if present) or created at the
+                  // SAME id (if not). The old code used createContent
+                  // here, which addDoc'd a fresh auto-id doc — that
+                  // showed up as a duplicate alongside the original.
+                  import('@/lib/firestore').then(({ upsertContent }) => {
+                    upsertContent(content.id, {
+                      agentId,
+                      pinId: null,
+                      type: content.type,
+                      mediaUrl: content.mediaUrl,
+                      ...(content.mediaUrls ? { mediaUrls: content.mediaUrls } : {}),
+                      thumbnailUrl: content.thumbnailUrl,
+                      caption: content.caption,
+                      ...(content.duration != null ? { duration: content.duration } : {}),
+                      ...(content.publishAt !== undefined ? { publishAt: content.publishAt } : {}),
+                      ...(content.aspect ? { aspect: content.aspect } : {}),
+                    } as any)
                   }).catch(() => {})
                   setUnlinkedContent((prev) => {
                     if (prev.some((c) => c.id === content.id)) return prev

@@ -50,7 +50,7 @@ export function Globe({
         height: width,
         phi: 0,
         theta: 0.2,
-        // dark: 1 inverts the color scheme — land dots become baseColor on a transparent bg
+        // dark: 1 inverts the color scheme, land dots become baseColor on a transparent bg
         dark: 1,
         diffuse: 3,
         mapSamples: 24000,
@@ -113,7 +113,7 @@ export function Globe({
           pointerEvents: "none",
         }}
       />
-      {/* Circular thumbnail pins — tangerine ring + listing photo */}
+      {/* Circular thumbnail pins, tangerine ring + listing photo */}
       {markers.map((m) => (
         <div
           key={m.id}

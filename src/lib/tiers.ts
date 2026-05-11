@@ -73,8 +73,12 @@ export function getTierLimits(user: UserDoc | null): TierLimits {
   return TIERS[getUserTier(user)]
 }
 
+// "Active" = toggled on and not archived. Content count intentionally
+// excluded — an enabled empty pin still counts against the cap so a
+// free agent can't park placeholder pins all toggled-on to skirt the
+// limit.
 export function isPinActive(pin: Pin): boolean {
-  return pin.enabled && (pin as any).status !== 'archived' && pin.content.length > 0
+  return pin.enabled && (pin as any).status !== 'archived'
 }
 
 export function countActivePins(pins: Pin[]): number {

@@ -8,7 +8,7 @@ import { SEOHead } from '@/components/marketing/SEOHead'
 import { useAuthStore } from '@/stores/authStore'
 
 /* ════════════════════════════════════════════════════════════════
-   PRICING — two tiers (Free + Pro), comparison table, FAQ.
+   PRICING, two tiers (Free + Pro), comparison table, FAQ.
    Typography mirrors Hero/FeatureShowcase:
      fontFamily: var(--font-humanist), weight 500 (600 for the
      brand-grad accent on the second line), letterSpacing -0.035em,
@@ -57,11 +57,11 @@ const PLANS = [
 const FAQS = [
   {
     q: 'Do I need a real estate license to use Reelst?',
-    a: 'Yes. Every agent profile is verified before going live — we check your license number, legal name, and state against your state\'s licensure data. Profiles stay hidden from the public until verification clears.',
+    a: 'Yes. Every agent profile is verified before going live, we check your license number, legal name, and state against your state\'s licensure data. Profiles stay hidden from the public until verification clears.',
   },
   {
     q: 'What\'s the difference between Free and Pro?',
-    a: 'Free covers the basics: up to 3 active pins, full content per pin (reels, photo carousels, photos), and core stats — visits, taps, saves, and waves. Pro at $19/mo unlocks unlimited pins, the full insights dashboard (peak hours, visitor cities, audience crossover, content conversion), open-house scheduling, email digests to your subscribers, and the expanded customization library — extra palettes, fonts, and map shapes.',
+    a: 'Free covers the basics: up to 3 active pins, full content per pin (reels, photo carousels, photos), and core stats, visits, taps, saves, and waves. Pro at $19/mo unlocks unlimited pins, the full insights dashboard (peak hours, visitor cities, audience crossover, content conversion), open-house scheduling, email digests to your subscribers, and the expanded customization library, extra palettes, fonts, and map shapes.',
   },
   {
     q: 'Can I import my existing listings?',
@@ -73,19 +73,19 @@ const FAQS = [
   },
   {
     q: 'What can I post on a pin?',
-    a: 'Each pin is a container for your reels (videos up to 3 minutes), photo carousels, and standalone photos. Video is processed through Mux for adaptive streaming so playback stays smooth on any connection. Listing photos auto-pull from MLS when available.',
+    a: 'Each pin is a container for your reels (videos up to 3 minutes), photo carousels, and standalone photos. Video uses adaptive streaming so playback stays smooth on any connection. Listing photos auto-pull from MLS when available.',
   },
   {
     q: 'Do I keep my leads, or does Reelst?',
-    a: 'You keep them. Showing requests, email subscribers, and waves all land in your inbox under your account — your contacts, your relationship. Reelst never resells leads or routes them to a competing agent.',
+    a: 'You keep them. Showing requests, email subscribers, and waves all land in your inbox under your account, your contacts, your relationship. Reelst never resells leads or routes them to a competing agent.',
   },
   {
     q: 'What happens when a listing sells?',
-    a: 'Mark it sold from the dashboard. The pin\'s type flips from For Sale to Sold, the price card switches to your sold price and sold date, and the listing stays on your map as part of your portfolio — every reel and walkthrough you attached stays put.',
+    a: 'Mark it sold from the dashboard. The pin\'s type flips from For Sale to Sold, the price card switches to your sold price and sold date, and the listing stays on your map as part of your portfolio, every reel and walkthrough you attached stays put.',
   },
   {
     q: 'Can I cancel or downgrade anytime?',
-    a: 'Yes. Cancel from your dashboard — you keep Pro through the end of the billing period, then drop to Free. Your pins, content, and subscribers stay with you.',
+    a: 'Yes. Cancel from your dashboard, you keep Pro through the end of the billing period, then drop to Free. Your pins, content, and subscribers stay with you.',
   },
   {
     q: 'Is there a team or brokerage plan?',
@@ -112,7 +112,7 @@ export default function Pricing() {
       />
 
       <div className="bg-marketing">
-        {/* ── HERO CARD — same map-grid framing as Home hero ─────── */}
+        {/* ── HERO CARD, same map-grid framing as Home hero ─────── */}
         <section className="pt-20 md:pt-24 pb-12 md:pb-16">
           <div className="max-w-[1320px] mx-auto px-4 md:px-6">
             <div
@@ -281,7 +281,7 @@ export default function Pricing() {
           </div>
         </section>
 
-        {/* ── FAQ — magazine-style numbered list ─────────────────── */}
+        {/* ── FAQ, magazine-style numbered list ─────────────────── */}
         <section className="max-w-[860px] mx-auto px-6 md:px-10 pt-12 md:pt-16 pb-24 md:pb-32">
           <div className="text-center mb-12 md:mb-16">
             <h2
