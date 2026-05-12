@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { X, Heart, Check, ShareNetwork as Share2, Crosshair as Locate } from '@phosphor-icons/react'
 import { MapCanvas, type MapCanvasHandle } from '@/components/map/MapCanvas'
@@ -9,6 +9,7 @@ import { useMapStore, applyPropertyFilters } from '@/stores/mapStore'
 import type { Pin, UserDoc, PinType } from '@/lib/types'
 import { CyclingCountBadge } from './ListingsTab'
 import { getShape } from '@/lib/style'
+import { ShareModal } from './ShareModal'
 
 /* ════════════════════════════════════════════════════════════════
    EXPANDED MAP VIEW — Rendered at the AgentProfile card scope so
@@ -397,16 +398,9 @@ export function ExpandedMapView({
   // hillshade / sky stripped after style.load) is what actually
   // protects the Metal cache from evicting other tabs' shaders.
 
-  const handleShare = async () => {
-    try {
-      await navigator.share({
-        title: `${agent.displayName} on Reelst`,
-        url: window.location.href,
-      })
-    } catch {
-      try { await navigator.clipboard.writeText(window.location.href) } catch {}
-    }
-  }
+  const [shareOpen, setShareOpen] = useState(false)
+  const handleShare = () => setShareOpen(true)
+  const firstName = agent.displayName?.split(' ')[0] || agent.username || 'this agent'
 
   const {
     activeFilters,
@@ -704,6 +698,15 @@ export function ExpandedMapView({
           </div>
           </motion.div>
         </motion.div>
+
+      <ShareModal
+        isOpen={shareOpen}
+        onClose={() => setShareOpen(false)}
+        title={`${agent.displayName || firstName} on Reelst`}
+        message={`Check out ${firstName}'s map of listings on Reelst`}
+        heroImageUrl={agentPhotoUrl ?? agent.photoURL ?? null}
+        agentName={agent.displayName || firstName}
+      />
     </>
   )
 }
