@@ -15,6 +15,7 @@ import { PaywallPrompt } from '@/components/dashboard/PaywallPrompt'
 import { PinBreakdown, ContentConversion, GeoHeatmap, TimeOfDay, SaveGrowth } from '@/components/dashboard/AdvancedInsights'
 import { SavedMapInsights, CustomBranding } from '@/components/dashboard/StudioFeatures'
 import { QRCodeModal } from '@/components/dashboard/QRCodeModal'
+import { ShareModal } from '@/components/agent-profile/ShareModal'
 import { OpenHouseEditor } from '@/components/dashboard/OpenHouseEditor'
 import { PinEditModal } from '@/components/dashboard/PinEditModal'
 import { ShowingInbox } from '@/components/dashboard/ShowingInbox'
@@ -130,6 +131,7 @@ export default function Dashboard() {
   const [copied, setCopied] = useState(false)
   const [paywall, setPaywall] = useState<{ open: boolean; reason: string; upgradeTo?: Tier }>({ open: false, reason: '' })
   const [qrPin, setQrPin] = useState<Pin | null>(null)
+  const [shareOpen, setShareOpen] = useState(false)
   const [errorBanner, setErrorBanner] = useState<string | null>(null)
   const errorTimerRef = useRef<number | null>(null)
   const [pendingChanges, setPendingChanges] = useState<PendingPinChange[]>([])
@@ -450,11 +452,7 @@ export default function Dashboard() {
   }
   const requestSignOut = () => setShowSignOutConfirm(true)
 
-  const handleSharePlot = async () => {
-    const url = `https://reel.st/${activeUser?.username || ''}`
-    try { await navigator.share({ title: 'My Reelst', url }) }
-    catch { navigator.clipboard.writeText(url) }
-  }
+  const handleSharePlot = () => setShareOpen(true)
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(`https://reel.st/${activeUser?.username || ''}`)
@@ -1383,6 +1381,16 @@ export default function Dashboard() {
         onClose={() => setQrPin(null)}
         pin={qrPin}
         agent={activeUser}
+      />
+
+      <ShareModal
+        isOpen={shareOpen}
+        onClose={() => setShareOpen(false)}
+        url={`${typeof window !== 'undefined' ? window.location.origin : ''}/${activeUser?.username || ''}`}
+        title={`${activeUser?.displayName || activeUser?.username || 'My profile'} on Reelst`}
+        message={`Check out my map of listings on Reelst`}
+        heroImageUrl={activeUser?.photoURL || null}
+        agentName={activeUser?.displayName || activeUser?.username || undefined}
       />
 
       <OpenHouseEditor

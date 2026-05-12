@@ -39,6 +39,55 @@ const CRAWLER_USER_AGENTS = [
   'bingbot',
 ]
 
+// Single-segment paths that are NOT usernames. The /:username rewrite
+// catches all single-segment hits, so the og function has to guard
+// against trying to look these up as agents.
+const RESERVED_PATHS = new Set([
+  'about', 'pricing', 'blog', 'glossary', 'terms', 'privacy',
+  'sign-up', 'sign-in', 'welcome', 'verify', 'dashboard',
+  'saved', 'dev', 'u', 'auth', 'sitemap.xml', 'robots.txt',
+  'favicon.ico', 'icons', 'email', 'marketing', 'index.html',
+])
+
+// Canonical share URL base. Hardcoded to current production until the
+// reel.st domain ships — once DNS swaps over, update this in one place.
+const PUBLIC_BASE_URL = 'https://plot-fe990.web.app'
+const DEFAULT_OG_IMAGE = `${PUBLIC_BASE_URL}/icons/og-image.png`
+
+// In-memory cache of the SPA shell. Vite builds index.html with
+// content-hashed asset refs that change on deploy; we cache for the
+// life of the function instance and accept a tiny lag (one cold
+// start) after a fresh deploy. Hosting serves /index.html directly
+// from the static bucket — no rewrite re-trigger.
+let cachedIndexHtml: string | null = null
+async function getIndexHtml(): Promise<string> {
+  if (cachedIndexHtml) return cachedIndexHtml
+  const resp = await fetch(`${PUBLIC_BASE_URL}/index.html`)
+  if (!resp.ok) throw new Error(`index.html fetch ${resp.status}`)
+  cachedIndexHtml = await resp.text()
+  return cachedIndexHtml
+}
+
+// Loose response type — v2 doesn't re-export Response and we only
+// need a few methods (set/status/send). Matches the Express Response
+// that v1 onRequest hands us.
+type HttpResponse = {
+  set(name: string, value: string): unknown
+  status(code: number): HttpResponse
+  send(body: string): unknown
+}
+async function serveSpaShell(res: HttpResponse): Promise<void> {
+  try {
+    const html = await getIndexHtml()
+    res.set('Cache-Control', 'no-cache')
+    res.set('Content-Type', 'text/html; charset=utf-8')
+    res.status(200).send(html)
+  } catch (err) {
+    console.error('[og] failed to fetch SPA shell', err)
+    res.status(502).send('Reelst is briefly unavailable. Please refresh.')
+  }
+}
+
 function isCrawler(userAgent: string | undefined): boolean {
   if (!userAgent) return false
   const ua = userAgent.toLowerCase()
@@ -57,7 +106,7 @@ function escapeHtml(str: string): string {
 function buildAgentHTML(agent: any, url: string): string {
   const title = `${agent.displayName} on Reelst`
   const desc = agent.bio || `${agent.displayName} — interactive map of listings, reels, and spotlights.`
-  const image = agent.photoURL || 'https://reel.st/icons/og-image.png'
+  const image = agent.photoURL || DEFAULT_OG_IMAGE
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -106,33 +155,46 @@ function buildAgentHTML(agent: any, url: string): string {
 
 export const og = functions.https.onRequest(async (req, res) => {
   const userAgent = req.get('user-agent')
-  const username = (req.params[0] || '').replace(/^\//, '').split('?')[0]
+  // req.path is `/:username`; strip the leading slash + querystring.
+  const rawPath = (req.path || '').replace(/^\/+/, '').split('?')[0]
+  const segment = rawPath.toLowerCase()
 
-  // Real users — serve the SPA
+  // Reserved single-segment paths (marketing pages, dashboard, etc.)
+  // are NOT agent profiles. Serve the SPA inline so the path is
+  // preserved and React Router handles the route.
+  if (!segment || RESERVED_PATHS.has(segment)) {
+    await serveSpaShell(res)
+    return
+  }
+
+  // Real users — serve the SPA shell inline. Critical to NOT redirect
+  // to /index.html here, because that would cause the browser to
+  // navigate to /index.html, which (a) loses the username path and
+  // (b) would be re-treated as a username by the /:username rewrite.
   if (!isCrawler(userAgent)) {
-    res.set('Cache-Control', 'public, max-age=3600')
-    res.redirect(`/index.html`)
+    await serveSpaShell(res)
     return
   }
 
   // Crawler — look up agent and build custom HTML
   try {
     const db = admin.firestore()
-    // Lookup by username
-    const usernameDoc = await db.collection('usernames').doc(username.toLowerCase()).get()
+    const usernameDoc = await db.collection('usernames').doc(segment).get()
     if (!usernameDoc.exists) {
-      res.status(404).send('Agent not found')
+      // Unknown username — let the SPA handle it (renders the NotFound
+      // page with its own OG tags).
+      await serveSpaShell(res)
       return
     }
     const { uid } = usernameDoc.data() || {}
     const userDoc = await db.collection('users').doc(uid).get()
     if (!userDoc.exists) {
-      res.status(404).send('Agent not found')
+      await serveSpaShell(res)
       return
     }
 
     const agent = userDoc.data()
-    const url = `https://reel.st/${username}`
+    const url = `${PUBLIC_BASE_URL}/${segment}`
     const html = buildAgentHTML(agent, url)
 
     res.set('Cache-Control', 'public, max-age=300, s-maxage=600')
@@ -140,6 +202,6 @@ export const og = functions.https.onRequest(async (req, res) => {
     res.status(200).send(html)
   } catch (e) {
     console.error('OG function error:', e)
-    res.redirect('/index.html')
+    await serveSpaShell(res)
   }
 })

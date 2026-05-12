@@ -805,7 +805,7 @@ export default function AgentProfile() {
           isOpen={shareOpen}
           onClose={() => setShareOpen(false)}
           title={`${agent.displayName || firstName} on Reelst`}
-          message={agent.bio?.split('\n')[0] || `Check out ${agent.displayName || firstName}'s listings on Reelst`}
+          message={`Check out ${agent.displayName || firstName}'s map of listings on Reelst`}
           heroImageUrl={agent.photoURL || null}
           agentName={agent.displayName || firstName}
         />

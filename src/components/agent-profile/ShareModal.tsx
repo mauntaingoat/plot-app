@@ -9,11 +9,8 @@ import {
   FacebookLogo,
   XLogo,
   WhatsappLogo,
-  MessengerLogo,
   LinkedinLogo,
-  ThreadsLogo,
   Check,
-  Download,
 } from '@phosphor-icons/react'
 import { useSwipeToDismiss } from '@/hooks/useSwipeToDismiss'
 import { useSheetLifecycle } from '@/hooks/useSheetLifecycle'
@@ -63,6 +60,46 @@ export function ShareModal({
   const [copied, setCopied] = useState(false)
   const [igGenerating, setIgGenerating] = useState(false)
 
+  // Desktop = no touch input + wider screen. On desktop we hide the
+  // Instagram story button entirely (IG has no public web intent for
+  // posting stories — only the mobile app does), so the "share" there
+  // would mean "download an image and figure it out yourself," which
+  // we don't want to ship.
+  const isDesktop =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(pointer: fine)').matches &&
+    window.innerWidth >= 768
+
+  // The CSS tokens we use (--page-canvas, --text-primary, etc.) are
+  // set by AgentProfile's route wrapper for the public-profile case.
+  // When opened from Dashboard (which sits in its own dark-themed
+  // surface), those tokens aren't defined for the modal's portal-like
+  // mount point, so we fall back to a light palette and look wrong on
+  // a dark dashboard. Detect the dashboard's dark class and apply the
+  // matching palette inline. The shared brand accent stays the same.
+  const isDark =
+    typeof document !== 'undefined' &&
+    document.documentElement.classList.contains('dark-dashboard')
+  const palette = isDark
+    ? {
+        pageCanvas: '#141826',
+        textPrimary: '#F4F5F8',
+        textSecondary: '#C9CDDA',
+        textMuted: '#8A91A3',
+        surface2: 'rgba(255,255,255,0.06)',
+        accent: '#D94A1F',
+        accentInk: '#FFFFFF',
+      }
+    : {
+        pageCanvas: '#FAFAF8',
+        textPrimary: '#0A0E1A',
+        textSecondary: '#475569',
+        textMuted: '#94A3B8',
+        surface2: 'rgba(0,0,0,0.05)',
+        accent: '#D94A1F',
+        accentInk: '#FFFFFF',
+      }
+
   const shareUrl = url ?? (typeof window !== 'undefined' ? window.location.href : '')
   const shareText = message ?? title
 
@@ -98,35 +135,56 @@ export function ShareModal({
   const onEmail = () =>
     open(`mailto:?subject=${enc(title)}&body=${enc(`${shareText}\n\n${shareUrl}`)}`)
 
+  // FB and LinkedIn no longer accept prefilled-text params (FB removed
+  // `quote=` after 2017, LinkedIn deprecated `summary=`/`title=` in
+  // 2021). Both scrape OG tags from the destination URL — so a "good
+  // premade post" means good `og:title` / `og:description` / `og:image`
+  // on the public profile page, not URL params here.
   const onFacebook = () => open(`https://www.facebook.com/sharer/sharer.php?u=${enc(shareUrl)}`)
   const onTwitter = () => open(`https://twitter.com/intent/tweet?url=${enc(shareUrl)}&text=${enc(shareText)}`)
   const onWhatsapp = () => open(`https://wa.me/?text=${enc(`${shareText} ${shareUrl}`)}`)
-  const onMessenger = () => open(`fb-messenger://share?link=${enc(shareUrl)}`)
   const onLinkedIn = () => open(`https://www.linkedin.com/sharing/share-offsite/?url=${enc(shareUrl)}`)
-  const onThreads = () => open(`https://www.threads.net/intent/post?text=${enc(`${shareText} ${shareUrl}`)}`)
 
-  // Instagram has no public web-stories share intent. Best we can do is
-  // generate a branded 1080×1920 story-ready image client-side, drop it
-  // into the user's downloads, and pop the IG app/site so they can post
-  // it manually. Friction beats nothing — it's the same workflow Linktree
-  // uses for IG share.
+  // Instagram has no public web-stories share intent. On mobile (iOS
+  // Safari especially) we can hand the rendered story image to
+  // `navigator.share({ files })` — the native share sheet surfaces
+  // Instagram with a one-tap "Add to Story" path. If that's not
+  // available (older mobile browsers, Android quirks), we fall back
+  // to download + open instagram.com. The button is hidden on desktop
+  // entirely since there's no good story-posting path there.
   const onInstagram = async () => {
     setIgGenerating(true)
     try {
-      const blobUrl = await renderStoryImage({ heroImageUrl: heroImageUrl ?? null, title, agentName })
+      const blob = await renderStoryImage({ heroImageUrl: heroImageUrl ?? null, title, agentName })
+      const filename = `reelst-${slugify(title)}.png`
+      const file = new File([blob], filename, { type: 'image/png' })
+
+      const navAny = navigator as any
+      const canShareFile = typeof navAny.canShare === 'function' && navAny.canShare({ files: [file] })
+
+      if (canShareFile && typeof navAny.share === 'function') {
+        try {
+          await navAny.share({ files: [file], title })
+          return
+        } catch {
+          // User canceled or share failed — fall through to download.
+        }
+      }
+
+      const blobUrl = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = blobUrl
-      a.download = `reelst-${slugify(title)}.png`
+      a.download = filename
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
       setTimeout(() => URL.revokeObjectURL(blobUrl), 4000)
+      open('https://www.instagram.com/')
     } catch (err) {
       console.warn('[ShareModal] story image render failed', err)
     } finally {
       setIgGenerating(false)
     }
-    open('https://www.instagram.com/')
   }
 
   if (!mounted) return null
@@ -144,6 +202,13 @@ export function ShareModal({
         onClick={(e) => e.stopPropagation()}
         className="capture-sheet relative w-full md:max-w-[440px] rounded-t-[28px] md:rounded-[28px] overflow-hidden"
         style={{
+          ['--page-canvas' as any]: palette.pageCanvas,
+          ['--text-primary' as any]: palette.textPrimary,
+          ['--text-secondary' as any]: palette.textSecondary,
+          ['--text-muted' as any]: palette.textMuted,
+          ['--surface-2' as any]: palette.surface2,
+          ['--accent' as any]: palette.accent,
+          ['--accent-ink' as any]: palette.accentInk,
           background: 'var(--page-canvas)',
           color: 'var(--text-primary)',
           boxShadow: '0 -20px 60px -16px rgba(10,14,23,0.35), 0 30px 80px -30px rgba(10,14,23,0.4)',
@@ -223,15 +288,17 @@ export function ShareModal({
             <QuickAction icon={<Mail size={18} />} label="Email" onClick={onEmail} />
           </div>
 
-          {/* Socials grid */}
+          {/* Socials grid — IG hidden on desktop (no story-post path on
+              web); Messenger + Threads removed entirely. */}
           <div className="grid grid-cols-4 gap-2">
-            <SocialAction
-              icon={<InstagramLogo size={20} weight="bold" />}
-              label={igGenerating ? 'Saving…' : 'Story'}
-              onClick={onInstagram}
-              tint="linear-gradient(135deg,#FFD089,#FF6B3D 50%,#A855F7 100%)"
-              hint={<Download size={9} weight="bold" />}
-            />
+            {!isDesktop && (
+              <SocialAction
+                icon={<InstagramLogo size={20} weight="bold" />}
+                label={igGenerating ? 'Saving…' : 'Story'}
+                onClick={onInstagram}
+                tint="linear-gradient(135deg,#FFD089,#FF6B3D 50%,#A855F7 100%)"
+              />
+            )}
             <SocialAction
               icon={<FacebookLogo size={20} weight="bold" />}
               label="Facebook"
@@ -251,22 +318,10 @@ export function ShareModal({
               tint="#25D366"
             />
             <SocialAction
-              icon={<MessengerLogo size={20} weight="bold" />}
-              label="Messenger"
-              onClick={onMessenger}
-              tint="linear-gradient(135deg,#00B2FF,#006AFF)"
-            />
-            <SocialAction
               icon={<LinkedinLogo size={20} weight="bold" />}
               label="LinkedIn"
               onClick={onLinkedIn}
               tint="#0A66C2"
-            />
-            <SocialAction
-              icon={<ThreadsLogo size={20} weight="bold" />}
-              label="Threads"
-              onClick={onThreads}
-              tint="#0F1419"
             />
           </div>
         </div>
@@ -336,11 +391,11 @@ function slugify(s: string) {
 }
 
 /**
- * Renders a 1080×1920 PNG in the user's downloads folder formatted
- * for an Instagram story. Centered hero image (when available) on a
- * Reelst-branded gradient with the title and Reelst URL pinned to
- * the bottom. Returns a blob URL the caller is responsible for
- * revoking.
+ * Renders a 1080×1920 PNG formatted for an Instagram story. Centered
+ * hero image (when available) on a Reelst-branded gradient with the
+ * title and Reelst URL pinned to the bottom. Returns the raw PNG
+ * Blob; the caller chooses whether to hand it to `navigator.share`
+ * (mobile native share sheet) or fall back to a download anchor.
  */
 async function renderStoryImage({
   heroImageUrl,
@@ -350,7 +405,7 @@ async function renderStoryImage({
   heroImageUrl: string | null
   title: string
   agentName?: string
-}): Promise<string> {
+}): Promise<Blob> {
   const W = 1080
   const H = 1920
   const canvas = document.createElement('canvas')
@@ -420,8 +475,8 @@ async function renderStoryImage({
   ctx.font = '600 36px "Outfit", sans-serif'
   ctx.fillText('reel.st', W / 2, 1762)
 
-  return new Promise<string>((resolve) =>
-    canvas.toBlob((b) => resolve(URL.createObjectURL(b!)), 'image/png'),
+  return new Promise<Blob>((resolve) =>
+    canvas.toBlob((b) => resolve(b!), 'image/png'),
   )
 }
 

@@ -15,6 +15,7 @@
     ],
     "rewrites": [
       { "source": "/sitemap.xml", "function": "sitemap" },
+      { "source": "/:username", "function": "og" },
       { "source": "**", "destination": "/index.html" }
     ],
     "headers": [
