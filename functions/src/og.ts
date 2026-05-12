@@ -54,18 +54,20 @@ const RESERVED_PATHS = new Set([
 const PUBLIC_BASE_URL = 'https://plot-fe990.web.app'
 const DEFAULT_OG_IMAGE = `${PUBLIC_BASE_URL}/icons/og-image.png`
 
-// In-memory cache of the SPA shell. Vite builds index.html with
-// content-hashed asset refs that change on deploy; we cache for the
-// life of the function instance and accept a tiny lag (one cold
-// start) after a fresh deploy. Hosting serves /index.html directly
-// from the static bucket — no rewrite re-trigger.
-let cachedIndexHtml: string | null = null
+// Fetch the SPA shell fresh on every request. Vite stamps content-
+// hashed asset refs into index.html, and those hashes change on every
+// deploy — caching the HTML in module memory caused warm function
+// instances to serve dead asset URLs after a hosting deploy, breaking
+// every reserved-path and unknown-username SPA load until cold start.
+// Hosting serves /index.html as a static file (the `**` rewrite never
+// fires for the exact path /index.html because the static file wins),
+// so this is a fast, CDN-backed fetch — no recursive function call.
 async function getIndexHtml(): Promise<string> {
-  if (cachedIndexHtml) return cachedIndexHtml
-  const resp = await fetch(`${PUBLIC_BASE_URL}/index.html`)
+  const resp = await fetch(`${PUBLIC_BASE_URL}/index.html`, {
+    headers: { 'Cache-Control': 'no-cache' },
+  })
   if (!resp.ok) throw new Error(`index.html fetch ${resp.status}`)
-  cachedIndexHtml = await resp.text()
-  return cachedIndexHtml
+  return await resp.text()
 }
 
 // Loose response type — v2 doesn't re-export Response and we only
