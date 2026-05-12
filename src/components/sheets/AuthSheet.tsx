@@ -33,7 +33,7 @@ const US_STATES = [
 export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: AuthSheetProps) {
   const navigate = useNavigate()
   const { setUserDoc } = useAuthStore()
-  const { available, checking, check } = useUsername()
+  const { available, checking, reserved, check } = useUsername()
   const { claim: claimLicense } = useLicense()
 
   const [step, setStep] = useState<Step>(initialMode === 'login' ? 'login' : 'choose-role')
@@ -67,7 +67,7 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
   }, [isOpen, initialMode])
 
   const handleUsernameChange = (val: string) => {
-    const cleaned = val.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24)
+    const cleaned = val.toLowerCase().replace(/[^a-z]/g, '').slice(0, 24)
     setUsernameVal(cleaned)
     check(cleaned)
   }
@@ -297,7 +297,11 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
                 </div>
               </div>
 
-              {!checking && available === false && <p className="text-[12px] text-live-red -mt-2">Taken. Try another.</p>}
+              {!checking && available === false && (
+                <p className="text-[12px] text-live-red -mt-2">
+                  {reserved ? 'Reserved. Try another.' : 'Taken. Try another.'}
+                </p>
+              )}
 
               <Button variant="primary" size="xl" fullWidth onClick={() => setStep('license-verify')} disabled={!available || checking || username.length < 3}>
                 Continue

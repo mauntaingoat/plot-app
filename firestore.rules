@@ -33,9 +33,44 @@ service cloud.firestore {
     // ── USERNAMES (username → uid lookup table) ──
     // Public read so login/profile lookups work
     // Only the claiming user can create their own entry
+    // Username must be 3-24 lowercase letters, and not collide with
+    // any reserved route, brand identity, or system-y name.
+    // KEEP RESERVED LIST IN SYNC WITH src/lib/reservedUsernames.ts
     match /usernames/{username} {
       allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && username.matches('^[a-z]{3,24}$')
+        && !(username in [
+          'about', 'pricing', 'blog', 'glossary', 'terms', 'privacy',
+          'signup', 'signin', 'welcome', 'verify', 'dashboard',
+          'saved', 'auth', 'dev', 'email', 'marketing', 'index',
+          'u', 'sitemap', 'robots', 'favicon', 'icons',
+          'register', 'community', 'connect', 'termsofuse', 'privacypolicy',
+          'explore', 'features', 'faq', 'faqs', 'contact', 'careers', 'jobs',
+          'press', 'news', 'team', 'company', 'mission', 'story', 'brand',
+          'partners', 'investors', 'media', 'plans',
+          'download', 'app', 'mobile', 'ios', 'android', 'demo', 'trial',
+          'pro', 'premium', 'enterprise', 'free',
+          'agents', 'agent', 'broker', 'brokers', 'brokerage',
+          'listings', 'listing', 'properties', 'property', 'homes', 'home',
+          'neighborhoods', 'markets', 'reviews',
+          'search', 'discover', 'browse', 'feed', 'nearby',
+          'settings', 'account', 'accounts', 'profile', 'profiles',
+          'billing', 'subscription', 'subscriptions', 'invoices',
+          'payment', 'payments', 'notifications', 'inbox', 'messages', 'chat',
+          'admin', 'administrator', 'root', 'owner', 'staff', 'moderator',
+          'mod', 'support', 'help', 'helpdesk', 'security', 'legal',
+          'compliance', 'abuse',
+          'api', 'www', 'mail', 'smtp', 'ftp', 'cdn', 'static', 'assets',
+          'public', 'private',
+          'login', 'logout', 'signout', 'me', 'you', 'myself', 'user', 'users',
+          'noreply', 'nobody', 'null', 'undefined', 'anonymous', 'system',
+          'bot', 'official',
+          'reelstofficial', 'realestate', 'realtor', 'mls', 'zillow', 'redfin', 'compass',
+          'info', 'hello', 'contact', 'customerservice', 'customer',
+          'inquiry', 'inquiries', 'feedback'
+        ]);
       allow update, delete: if false;
     }
 

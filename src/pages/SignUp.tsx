@@ -29,11 +29,11 @@ export default function SignUp() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { setUserDoc } = useAuthStore()
-  const { available, checking, check } = useUsername()
+  const { available, checking, reserved, check } = useUsername()
   const { claim: claimLicense } = useLicense()
 
   // Pre-fill username from URL param (from claim form on Home/Footer)
-  const prefillUsername = searchParams.get('username')?.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24) || ''
+  const prefillUsername = searchParams.get('username')?.toLowerCase().replace(/[^a-z]/g, '').slice(0, 24) || ''
 
   const [step, _setStep] = useState<Step>(prefillUsername ? 'username' : 'role')
   const [direction, setDirection] = useState(1)
@@ -65,7 +65,7 @@ export default function SignUp() {
   const [duplicateLicense, setDuplicateLicense] = useState<{ exists: boolean; username?: string } | null>(null)
 
   const handleUsernameChange = (val: string) => {
-    const cleaned = val.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24)
+    const cleaned = val.toLowerCase().replace(/[^a-z]/g, '').slice(0, 24)
     setUsernameVal(cleaned)
     check(cleaned)
   }
@@ -238,7 +238,11 @@ export default function SignUp() {
                   {!checking && available === false && <div className="w-5 h-5 rounded-full bg-live-red flex items-center justify-center"><X size={12} className="text-white" /></div>}
                 </div>
               </div>
-              {!checking && available === false && <p className="text-[12px] text-live-red -mt-3">Taken. Try another.</p>}
+              {!checking && available === false && (
+                <p className="text-[12px] text-live-red -mt-3">
+                  {reserved ? 'Reserved. Try another.' : 'Taken. Try another.'}
+                </p>
+              )}
               <button
                 type="button"
                 onClick={() => setStep('license')}

@@ -7,14 +7,14 @@ import { useUsername } from '@/hooks/useUsername'
 
 export function StepUsername() {
   const { username, setUsername, setUsernameAvailable, nextStep } = useOnboardingStore()
-  const { available, checking, check } = useUsername()
+  const { available, checking, reserved, check } = useUsername()
 
   useEffect(() => {
     setUsernameAvailable(available)
   }, [available, setUsernameAvailable])
 
   const handleChange = (val: string) => {
-    const cleaned = val.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24)
+    const cleaned = val.toLowerCase().replace(/[^a-z]/g, '').slice(0, 24)
     setUsername(cleaned)
     check(cleaned)
   }
@@ -93,7 +93,7 @@ export function StepUsername() {
           animate={{ opacity: 1, y: 0 }}
           className="text-[13px] text-live-red mb-4 -mt-4"
         >
-          This username is taken. Try another.
+          {reserved ? 'That username is reserved. Try another.' : 'This username is taken. Try another.'}
         </motion.p>
       )}
       {!checking && available === true && (
@@ -117,7 +117,7 @@ export function StepUsername() {
       </Button>
 
       <p className="text-[11px] text-ash text-center mt-4">
-        3-24 characters. Letters, numbers, and underscores only.
+        3-24 letters. No numbers or symbols.
       </p>
     </div>
   )

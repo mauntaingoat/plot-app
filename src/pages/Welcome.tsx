@@ -30,7 +30,7 @@ export default function Welcome() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { setUserDoc: setAuthDoc } = useAuthStore()
-  const { available, checking, check } = useUsername()
+  const { available, checking, reserved, check } = useUsername()
   const { available: licenseAvailable, checking: licenseChecking, takenBy: licenseTakenBy, check: checkLicense, claim: claimLicense } = useLicense()
   const prefillUsername = searchParams.get('username')?.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24) || ''
 
@@ -300,7 +300,7 @@ export default function Welcome() {
                   <div className="flex-1 flex items-center px-3">
                     <span className="text-[16px] font-semibold text-[#1A1A1A]">reel.st/</span>
                     <input type="text" value={username} autoFocus placeholder="yourname"
-                      onChange={(e) => { const v = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24); setUsername(v); if (v.length >= 3) check(v) }}
+                      onChange={(e) => { const v = e.target.value.toLowerCase().replace(/[^a-z]/g, '').slice(0, 24); setUsername(v); if (v.length >= 3) check(v) }}
                       className="text-[16px] font-semibold text-tangerine placeholder:text-[#D4D0C8] outline-none bg-transparent w-full" />
                   </div>
                   <button onClick={nextStep} disabled={!available || username.length < 3}
@@ -314,7 +314,9 @@ export default function Welcome() {
                     <span className="text-[12px] text-sold-green flex items-center gap-1"><Check size={13} /> Available</span>
                   )}
                   {!checking && available === false && (
-                    <span className="text-[12px] text-live-red">That username is taken</span>
+                    <span className="text-[12px] text-live-red">
+                      {reserved ? 'That username is reserved' : 'That username is taken'}
+                    </span>
                   )}
                 </div>
               </motion.div>
