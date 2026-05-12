@@ -126,14 +126,22 @@ if (typeof window !== 'undefined') {
 
 /** Gate any agent-only route on email verification. Signed-in users
  *  who haven't verified yet are bounced to /verify. Signed-out users
- *  pass through (the inner page handles their own auth requirement). */
+ *  pass through (the inner page handles their own auth requirement).
+ *
+ *  Also gates on userDoc being loaded for the current auth state.
+ *  Without that gate, a fresh sign-in renders the dashboard for one
+ *  frame with userDoc=null (the snapshot subscription hasn't resolved
+ *  yet), which trips a Firestore SDK assertion during the transition
+ *  and flashes the ErrorBoundary fallback before recovering. */
 function RequireVerified({ children }: { children: ReactNode }) {
   const initialized = useAuthStore((s) => s.initialized)
   const firebaseUser = useAuthStore((s) => s.firebaseUser)
+  const userDoc = useAuthStore((s) => s.userDoc)
   if (!initialized) return <SimpleLoadingScreen />
   if (firebaseUser && !firebaseUser.emailVerified) {
     return <Navigate to="/verify" replace />
   }
+  if (firebaseUser && !userDoc) return <SimpleLoadingScreen />
   return <>{children}</>
 }
 
