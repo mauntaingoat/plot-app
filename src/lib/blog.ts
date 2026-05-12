@@ -11,8 +11,9 @@ import { db } from '@/config/firebase'
 
 /* ════════════════════════════════════════════════════════════════
    BLOG / "STATE OF REEL ESTATE"
-   Firestore-backed CMS data layer. Posts are authored in FireCMS
-   (see /cms/firecms.config.tsx) and read here by the public site.
+   Firestore-backed data layer. Posts are written to /posts and
+   /authors by scripts/publish-blog-post.mjs (admin SDK over ADC)
+   and read here by the public site.
    ════════════════════════════════════════════════════════════════ */
 
 export type PostStatus = 'draft' | 'published' | 'scheduled'

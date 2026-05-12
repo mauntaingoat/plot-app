@@ -18,7 +18,7 @@ import {
    BLOG INDEX, "State of Reel Estate"
    Hero franchise pitch → featured post hero → category filter →
    masonry grid of recent posts. Pulls from Firestore (`posts`
-   collection) authored via FireCMS.
+   collection) populated by scripts/publish-blog-post.mjs.
    ════════════════════════════════════════════════════════════════ */
 
 export default function Blog() {

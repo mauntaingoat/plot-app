@@ -14,7 +14,7 @@
    v1 is hardcoded here so we can ship the full hub on day one.
    When the catalog grows past ~150 terms or starts changing weekly
    we can mirror this into a `glossaryTerms` Firestore collection
-   (managed via FireCMS, same pattern as posts) and read from there.
+   and load it the same way as posts.
    ──────────────────────────────────────────────────────────────── */
 
 export type GlossaryCategory =
