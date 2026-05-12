@@ -60,7 +60,7 @@ async function main() {
     slug: 'south-florida-real-estate-content',
     title: 'The Rise of Real Estate Content in South Florida',
     excerpt:
-      'How Miami, Brickell, and Coral Gables became the most-watched real estate market on social media — and what it tells us about where the rest of the country is headed.',
+      'How Miami, Brickell, and Coral Gables became the most-watched real estate market on social media, and what it tells us about where the rest of the country is headed.',
     body,
     coverImage: null,
     category: 'state-of-reel-estate',
@@ -78,7 +78,7 @@ async function main() {
     authorId: AUTHOR_ID,
     authorName: 'Mauricio Romano',
     authorAvatar: null,
-    seoTitle: 'The Rise of Real Estate Content in South Florida — Reelst',
+    seoTitle: 'The Rise of Real Estate Content in South Florida | Reelst',
     seoDescription:
       'Miami, Brickell, and Coral Gables agents now dominate real estate content on Instagram and TikTok. The data, the playbook, and what it signals for every other US market.',
     ogImage: null,

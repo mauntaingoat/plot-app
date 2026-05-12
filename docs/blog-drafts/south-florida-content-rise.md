@@ -19,7 +19,7 @@ ogImage: null  # add a cover image after upload
 
 # The Rise of Real Estate Content in South Florida
 
-There is a specific kind of [reel](/glossary/reel) that South Florida agents seem to have invented. The shot opens on a wide drone pull-back over a Coconut Grove rooftop. The agent, let's call her Maya, turns slowly toward the camera, sun behind her, and says one sentence. Maybe two. The address. A number. The cut.
+There is a specific kind of [reel](/glossary/reel) that South Florida agents seem to have invented. The shot opens on a wide drone pull-back over a Coconut Grove rooftop. The agent turns slowly toward the camera, sun behind, and says one sentence. Maybe two. The address. A number. The cut.
 
 That single, 18-second format has, over the last 36 months, quietly reshaped what real estate marketing looks like, not just in Miami, not just in Florida, but across the country. The center of gravity is in South Florida, and the rest of the US is studying the playbook.
 
@@ -55,7 +55,7 @@ We watched ~3,200 South Florida agent reels published between January and Octobe
 
 ### 1. The "address-only" walkthrough
 
-Open with the listing's exterior. 8–14 seconds inside, three to five quick cuts of the most photogenic rooms. Close with the agent on camera saying just the address and one stat: *"$4.95M, four-bedroom, Coconut Grove."* No price reveal, no "DM for info", just the spec.
+Open with the listing's exterior. 8 to 14 seconds inside, three to five quick cuts of the most photogenic rooms. Close with the agent on camera saying just the address and one stat: *"$4.95M, four-bedroom, Coconut Grove."* No price reveal, no "DM for info", just the spec.
 
 The genius is the restraint. The viewer doesn't feel sold. They feel briefed.
 
@@ -63,7 +63,7 @@ The genius is the restraint. The viewer doesn't feel sold. They feel briefed.
 
 A 60-second piece on a single neighborhood, woven through the agent's own POV. *"Five things you didn't know about Surfside."* *"Why I keep telling clients to skip South Beach for Sunny Isles."* These aren't listings; they're city guides. They earn followers from people not currently buying, which becomes the audience for everything after.
 
-The signal-to-noise on these is very high. They're saved at 4–6× the rate of listing reels, which the Instagram algorithm reads loudly. [Save bait](/glossary/save-bait) done right is the cheat code for compounding reach.
+The signal-to-noise on these is very high. They're saved at 4 to 6× the rate of listing reels, which the Instagram algorithm reads loudly. [Save bait](/glossary/save-bait) done right is the cheat code for compounding reach.
 
 ### 3. The "behind the deal" thread
 
