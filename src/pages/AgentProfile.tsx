@@ -674,16 +674,20 @@ export default function AgentProfile() {
             // `--surround-bg`) on a route wrapper and everything
             // updates in lockstep.
             background: 'var(--card-bg)',
-            // Anchor the bg to the viewport — patterns (topography,
-            // brick, formal) and gradients now scale to viewport
-            // dimensions and stay still while content scrolls
-            // through. The bg is still clipped to the card's bbox,
-            // so on desktop the pattern is visible only within the
-            // 720px column but tiled/scaled relative to the full
-            // window. Note: shorthand `background:` resets
-            // `background-attachment`, so this longhand has to come
-            // AFTER it in source order.
-            backgroundAttachment: 'fixed',
+            // Anchor the bg to the viewport on desktop — patterns
+            // (topography, brick, formal) and gradients scale to
+            // viewport dimensions and stay still while content
+            // scrolls through, giving a "windowing" effect through
+            // the centered 720px card. iOS Safari is broken with
+            // `background-attachment: fixed`: it temporarily strips
+            // the fixed paint during scroll to save GPU time, then
+            // re-applies after scroll ends — visible as a 1-frame
+            // flash of the underlying `--page-canvas` (solid color)
+            // mid-scroll. Mobile gets `scroll` so the pattern moves
+            // with the card; on a full-bleed mobile card this is
+            // visually equivalent. Longhand has to come AFTER the
+            // shorthand `background:` since shorthand resets it.
+            backgroundAttachment: isDesktop ? 'fixed' : 'scroll',
             // When the map is expanded, the card locks to viewport
             // height so the map can fill it without scroll bleed.
             // Otherwise it grows naturally with content.
