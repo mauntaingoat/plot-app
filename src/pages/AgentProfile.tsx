@@ -26,7 +26,6 @@ import { useMapStore, applyPropertyFilters } from '@/stores/mapStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAgent, useAgentPins } from '@/hooks/useQueries'
 import { AccountSheet } from '@/components/sheets/AccountSheet'
-import { useSaves } from '@/hooks/useSaves'
 import { firebaseConfigured } from '@/config/firebase'
 import type { UserDoc, Pin } from '@/lib/types'
 import { preloadImages } from '@/lib/imageCache'
@@ -173,7 +172,6 @@ export default function AgentProfile() {
   const inGracePeriod = !!agent && agent.emailVerified === false && !!agent.expiresAt
   const notFound = !agentLoading && (!agent || inGracePeriod)
 
-  const { saves } = useSaves()
   const [viewMode, setViewMode] = useState<'map' | 'feed'>('map')
   const [loadingComplete, setLoadingComplete] = useState(false)
 

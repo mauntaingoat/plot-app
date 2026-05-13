@@ -1,13 +1,12 @@
 import { useRef, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Eye, MapPin, House as Home, X, BookmarkSimple as Bookmark, ShareNetwork as Share2, SpeakerHigh as Volume2, SpeakerSlash as VolumeX, Heart, HandWaving as Hand } from '@phosphor-icons/react'
+import { Eye, MapPin, House as Home, X, ShareNetwork as Share2, SpeakerHigh as Volume2, SpeakerSlash as VolumeX, Heart, HandWaving as Hand } from '@phosphor-icons/react'
 import { Avatar } from '@/components/ui/Avatar'
 import { ListingOnlySheet } from '@/components/viewers/ListingOnlySheet'
 import { WaveModal } from '@/components/agent-profile/WaveModal'
 import { ShareModal } from '@/components/agent-profile/ShareModal'
 import { type Pin, type UserDoc, type ContentItem, isTallAspect } from '@/lib/types'
 import { getAllContent } from '@/lib/contentUtils'
-import { useSaves } from '@/hooks/useSaves'
 import { preloadImages } from '@/lib/imageCache'
 import { formatCompact } from '@/lib/format'
 
@@ -255,12 +254,6 @@ function FeedCard({ content, pin, agent, isPreview, hideRailExtras, immersive, a
   // stories removed
   const neighborhoodName = pin.type === 'spotlight' && 'name' in pin ? pin.name : pin.neighborhoodId
   const hasOpenHouse = pin.type === 'for_sale' && 'openHouse' in pin && pin.openHouse
-  const { isSaved, toggleSave } = useSaves()
-  const saved = isSaved(pin.id, content.id)
-  const handleSave = () => {
-    toggleSave(pin.id, content.id, content.type)
-  }
-
   const viewTracked = useRef(false)
 
   // Lazy load video: only mount when near viewport, preload 200px ahead
@@ -420,15 +413,6 @@ function FeedCard({ content, pin, agent, isPreview, hideRailExtras, immersive, a
             className="cursor-pointer flex items-center justify-center"
           >
             <Heart weight="fill" size={26} className={agentSaved ? 'text-tangerine' : 'text-white'} />
-          </motion.button>
-        )}
-
-        {!isOwnProfile && !hideRailExtras && (
-          <motion.button whileTap={!isPreview ? { scale: 0.75 } : undefined}
-            onClick={!isPreview ? handleSave : undefined}
-            className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}>
-            <Bookmark size={26} className={saved ? 'text-tangerine' : 'text-white'} fill={saved ? '#FF6B3D' : 'none'} />
-            <span className="text-[10px] text-white font-semibold">{formatCompact(content.saves || 0)}</span>
           </motion.button>
         )}
 
