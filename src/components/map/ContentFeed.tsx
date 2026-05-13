@@ -91,7 +91,9 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
         const fn = httpsCallable(getFunctions(app ?? undefined), 'getSignedPlaybackUrls')
         fn({ playbackIds: unique }).then((res: any) => {
           if (res.data?.urls) setSignedUrls(res.data.urls)
-        }).catch(() => {})
+        }).catch((err) => {
+          console.error('[ContentFeed] failed to fetch signed playback URLs', err)
+        })
       })
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps

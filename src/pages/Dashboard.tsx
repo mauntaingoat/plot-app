@@ -832,7 +832,7 @@ export default function Dashboard() {
                 </div>
               </motion.div>
             )}
-            <ShowingInbox agentId={activeUser.uid} />
+            <ShowingInbox agentId={activeUser.uid} onError={showError} />
           </div>
         )}
 

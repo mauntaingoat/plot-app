@@ -7,6 +7,9 @@ import type { ShowingRequest, ShowingRequestStatus } from '@/lib/types'
 
 interface ShowingInboxProps {
   agentId: string
+  /** Surface a user-visible error message — wired from Dashboard's
+   *  errorBanner. If omitted, errors only hit the console. */
+  onError?: (message: string) => void
 }
 
 const STATUS_COLORS: Record<ShowingRequestStatus, { bg: string; text: string; label: string }> = {
@@ -32,7 +35,7 @@ function formatGroupDate(key: string): string {
   return new Date(key + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-export function ShowingInbox({ agentId }: ShowingInboxProps) {
+export function ShowingInbox({ agentId, onError }: ShowingInboxProps) {
   const [requests, setRequests] = useState<ShowingRequest[]>([])
   const [notifications, setNotifications] = useState<NotificationDoc[]>([])
   const [loading, setLoading] = useState(true)
@@ -117,15 +120,30 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
   const unreadGifts = gifts.filter((n) => !n.read).length
 
   const updateStatus = async (id: string, status: ShowingRequestStatus) => {
-    setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)))
-    await updateShowingRequestStatus(id, status).catch(() => {})
+    // Optimistic update — flip the UI immediately, revert on failure so
+    // the agent doesn't believe a buyer was notified when the write
+    // never landed.
+    const prev = requests.find((r) => r.id === id)
+    if (!prev) return
+    const prevStatus = prev.status
+    setRequests((rs) => rs.map((r) => (r.id === id ? { ...r, status } : r)))
+    try {
+      await updateShowingRequestStatus(id, status)
+    } catch (err) {
+      console.error('[ShowingInbox] failed to update showing status', err)
+      setRequests((rs) => rs.map((r) => (r.id === id ? { ...r, status: prevStatus } : r)))
+      onError?.("Couldn't update the showing — check your connection and try again.")
+    }
   }
 
   const handleExpandGroup = (groupKey: string, items: NotificationDoc[]) => {
     setExpandedGroup(expandedGroup === groupKey ? null : groupKey)
     const unread = items.filter((n) => !n.read).map((n) => n.id)
     if (unread.length > 0) {
-      markNotificationsRead(unread).catch(() => {})
+      markNotificationsRead(unread).catch((err) => {
+        // Low-impact: the next subscription tick resyncs read state.
+        console.error('[ShowingInbox] failed to mark notifications read', err)
+      })
       setNotifications((prev) => prev.map((n) => unread.includes(n.id) ? { ...n, read: true } : n))
     }
   }
@@ -199,7 +217,9 @@ export function ShowingInbox({ agentId }: ShowingInboxProps) {
           {tab === 'all' && gifts.map((g) => {
             const handleTap = () => {
               if (g.read) return
-              markNotificationsRead([g.id]).catch(() => {})
+              markNotificationsRead([g.id]).catch((err) => {
+                console.error('[ShowingInbox] failed to mark gift read', err)
+              })
               setNotifications((prev) => prev.map((n) => (n.id === g.id ? { ...n, read: true } : n)))
             }
             return (
