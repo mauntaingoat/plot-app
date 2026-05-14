@@ -312,31 +312,6 @@ export async function removeContentFromPin(pinId: string, contentId: string) {
   })
 }
 
-// ── Sharded counter normalization ──
-// Pin tap/view/save counts are written across 10 random shards
-// (e.g. taps_0..taps_9) by functions/src/analytics.ts to avoid the
-// ~1 write/sec/doc Firestore limit on viral pins. On read, sum the
-// shards back together AND add the legacy single-field value so
-// historical data written before sharding still shows up.
-function sumShards(data: Record<string, unknown>, field: string): number {
-  let sum = Number(data[field]) || 0
-  for (let i = 0; i < 10; i++) {
-    sum += Number(data[`${field}_${i}`]) || 0
-  }
-  return sum
-}
-
-function pinFromDoc(d: { id: string; data: () => Record<string, unknown> }): Pin {
-  const data = d.data()
-  return {
-    ...(data as object),
-    id: d.id,
-    taps: sumShards(data, 'taps'),
-    views: sumShards(data, 'views'),
-    saves: sumShards(data, 'saves'),
-  } as Pin
-}
-
 export async function getAgentPins(agentId: string): Promise<Pin[]> {
   if (!db) return []
   const notArchived = (d: { data: () => Record<string, unknown> }) => d.data().status !== 'archived'
@@ -349,7 +324,7 @@ export async function getAgentPins(agentId: string): Promise<Pin[]> {
       limit(1000)
     )
     const snap = await getDocs(q)
-    return snap.docs.filter(notArchived).map((d) => pinFromDoc(d))
+    return snap.docs.filter(notArchived).map((d) => ({ id: d.id, ...d.data() }) as Pin)
   } catch (err) {
     console.warn('[firestore] getAgentPins falling back (no index?):', (err as Error).message)
     const fallbackQ = query(
@@ -360,7 +335,7 @@ export async function getAgentPins(agentId: string): Promise<Pin[]> {
     const snap = await getDocs(fallbackQ)
     return snap.docs
       .filter((d) => d.data().enabled !== false && d.data().status !== 'archived')
-      .map((d) => pinFromDoc(d))
+      .map((d) => ({ id: d.id, ...d.data() }) as Pin)
   }
 }
 
@@ -373,7 +348,7 @@ export async function getPinsByIds(pinIds: string[]): Promise<Pin[]> {
     const { documentId } = await import('firebase/firestore')
     const q = query(collection(db!, 'pins'), where(documentId(), 'in', chunk))
     const snap = await getDocs(q)
-    results.push(...snap.docs.map((d) => pinFromDoc(d)))
+    results.push(...snap.docs.map((d) => ({ id: d.id, ...d.data() } as Pin)))
   }
   return results
 }
@@ -391,13 +366,13 @@ export function subscribeToAgentPins(agentId: string, callback: (pins: Pin[]) =>
   return onSnapshot(
     q,
     (snap) => {
-      callback(snap.docs.filter(notArchived).map((d) => pinFromDoc(d)))
+      callback(snap.docs.filter(notArchived).map((d) => ({ id: d.id, ...d.data() }) as Pin))
     },
     (err) => {
       console.warn('[firestore] subscribeToAgentPins fallback:', err.message)
       const fallbackQ = query(collection(db!, 'pins'), where('agentId', '==', agentId), limit(1000))
       getDocs(fallbackQ).then((snap) => {
-        callback(snap.docs.filter((d) => d.data().enabled !== false && d.data().status !== 'archived').map((d) => pinFromDoc(d)))
+        callback(snap.docs.filter((d) => d.data().enabled !== false && d.data().status !== 'archived').map((d) => ({ id: d.id, ...d.data() }) as Pin))
       }).catch(() => callback([]))
     },
   )
@@ -415,7 +390,7 @@ export function subscribeToAllAgentPins(agentId: string, callback: (pins: Pin[])
   // `displayPins` in Dashboard.tsx so disabled ones don't render in
   // the user-facing card grid.
   const toPins = (docs: typeof import('firebase/firestore').QuerySnapshot.prototype.docs) =>
-    docs.filter((d) => d.data().status !== 'archived').map((d) => pinFromDoc(d))
+    docs.filter((d) => d.data().status !== 'archived').map((d) => ({ id: d.id, ...d.data() }) as Pin)
   const q = query(
     collection(db, 'pins'),
     where('agentId', '==', agentId),
@@ -896,7 +871,7 @@ export function subscribeToGeoPins(
     limit(1000),
   )
   return onSnapshot(q, (snap) => {
-    callback(snap.docs.map((d) => pinFromDoc(d)))
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Pin)))
   }, (err) => { console.warn('[firestore] geohash subscription error:', err.message) })
 }
 

@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { preloadRoute } from '@/lib/preloadRoutes'
 import { List as Menu, X, ArrowRight, ArrowUpRight, CaretDown as ChevronDown, Envelope as Mail, Article, BookBookmark } from '@phosphor-icons/react'
 import { useAuthModalStore } from '@/stores/authModalStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -320,7 +319,6 @@ export function Navbar() {
           <Link
             to="/about"
             onClick={() => setMobileOpen(false)}
-            onTouchStart={() => preloadRoute('/about')}
             className={`block px-4 py-3 rounded-xl text-[15px] ${
               pathname === '/about' ? 'brand-grad-text' : 'text-graphite'
             }`}
@@ -331,7 +329,6 @@ export function Navbar() {
           <Link
             to="/pricing"
             onClick={() => setMobileOpen(false)}
-            onTouchStart={() => preloadRoute('/pricing')}
             className={`block px-4 py-3 rounded-xl text-[15px] ${
               pathname === '/pricing' ? 'brand-grad-text' : 'text-graphite'
             }`}
@@ -371,7 +368,6 @@ export function Navbar() {
                   key={r.title}
                   to={r.to}
                   onClick={() => setMobileOpen(false)}
-                  onTouchStart={() => preloadRoute(r.to)}
                   className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-black/[0.03] transition-colors"
                 >
                   <span
@@ -588,8 +584,6 @@ function ResourcesDropdown({ active, forceClose }: { active: boolean; forceClose
             to={r.to}
             role="menuitem"
             onClick={() => setOpen(false)}
-            onMouseEnter={() => preloadRoute(r.to)}
-            onFocus={() => preloadRoute(r.to)}
             className="group/row relative flex items-center gap-3 px-2.5 py-2.5 rounded-[14px] transition-colors hover:bg-black/[0.04]"
           >
             <span
@@ -766,9 +760,6 @@ function NavLink({
   return (
     <Link
       to={to}
-      onMouseEnter={() => preloadRoute(to)}
-      onFocus={() => preloadRoute(to)}
-      onTouchStart={() => preloadRoute(to)}
       className={`group relative h-11 px-4 inline-flex items-center rounded-[14px] text-[14.5px] transition-colors ${
         active ? 'text-ink' : 'text-graphite hover:text-ink'
       }`}

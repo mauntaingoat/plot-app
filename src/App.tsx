@@ -63,9 +63,9 @@ function ScrollToTop() {
   return null
 }
 
-// Smooth scroll on the marketing pages only. `wheelMultiplier: 1.0`
-// matches native scroll input speed; `lerp: 0.12` keeps a light
-// easing so motion glides instead of snapping.
+// Heavy-dampened smooth scroll on the marketing pages only.
+// `wheelMultiplier: 0.55` caps input speed so aggressive wheel flicks
+// don't fling the page. `lerp: 0.06` makes the page lazily follow.
 const MARKETING_ROUTES = ['/', '/about', '/blog', '/pricing', '/glossary', '/terms', '/privacy']
 
 function SmoothScroll() {
@@ -78,16 +78,9 @@ function SmoothScroll() {
     if (!isMarketing) return
     const lenis = new Lenis({
       lerp: 0.12,
-      wheelMultiplier: 1.0,
+      wheelMultiplier: 0.85,
       touchMultiplier: 1.4,
-      // Native wheel + trackpad scroll on desktop. Lenis was
-      // intercepting OS-level inertial momentum (especially on Mac
-      // trackpads) and re-easing it, which produced a tad of micro-
-      // jitter. With smoothWheel:false the browser handles wheel
-      // input directly — matches mobile's native touch feel where
-      // syncTouch:false already lets the OS drive the scroll.
-      // lenis.scrollTo() in-page navigation still works.
-      smoothWheel: false,
+      smoothWheel: true,
       syncTouch: false,
     })
     let raf = 0

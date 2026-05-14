@@ -73,20 +73,7 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error(`[ErrorBoundary${this.props.label ? `: ${this.props.label}` : ''}]`, error, info)
   }
 
-  // Full page reload instead of a React state reset. A render-time
-  // error rarely fixes itself on re-render — but `location.reload()`
-  // fetches a fresh `index.html` with current asset hashes, which is
-  // exactly what the user needs when they're stuck on a stale-chunk
-  // error after a deploy and the one-shot auto-reload already fired
-  // earlier in the tab session.
-  reset = () => {
-    if (typeof window !== 'undefined') {
-      try { sessionStorage.removeItem(RELOAD_FLAG) } catch { /* ignore */ }
-      window.location.reload()
-    } else {
-      this.setState({ error: null })
-    }
-  }
+  reset = () => this.setState({ error: null })
 
   render() {
     if (this.state.reloading) {
