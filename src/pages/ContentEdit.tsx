@@ -47,8 +47,6 @@ export default function ContentEdit() {
   const title = isReel ? 'Edit Reel' : 'Edit Carousel'
 
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [saveProgress, setSaveProgress] = useState('')
   const [carouselDraft, setCarouselDraft] = useState<CarouselDraft | null>(null)
 
   // On mount: fetch the media from its URL and load into the editor.
@@ -132,51 +130,47 @@ export default function ContentEdit() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const handleSave = async () => {
+  // Build the runner closure with all the state we need captured at
+  // click-time, enqueue it on the global upload store, and bounce back
+  // to the dashboard immediately. The persistent UploadBar shows
+  // progress so the user can navigate freely while the work runs.
+  const handleSave = () => {
     if (!content) return
-    setSaving(true)
-    setSaveProgress('Preparing…')
+    const contentId = content.id
+    const pinId = pin?.id || `unlinked-${content.id}`
+    const pinIdNullable = pin?.id || null
 
-    try {
-      const pinId = pin?.id || `unlinked-${content.id}`
-      const contentId = content.id
-
+    const runner = async (setProgress: (label: string, pct: number) => void) => {
       if (isReel) {
-        // Render via the same pipeline as pin creation — uploads clips
-        // to Firebase Storage, then hands URLs to Mux for transcoding.
         const latestClips = useEditorStore.getState().clips
-        if (latestClips.length === 0) { setSaving(false); return }
+        if (latestClips.length === 0) return
+        const editorAspect = useEditorStore.getState().aspect
+        const overlays = useEditorStore.getState().overlays
 
-        setSaveProgress('Rendering…')
+        setProgress('Preparing reel…', 0.02)
         const result = await renderComposition({
           clips: latestClips,
-          aspect: useEditorStore.getState().aspect,
-          overlays: useEditorStore.getState().overlays,
+          aspect: editorAspect,
+          overlays,
           pinId,
           contentId,
           caption: content.caption || '',
           onProgress: (phase, pct) => {
-            if (phase === 'upload') setSaveProgress(`Uploading… ${Math.round(pct * 100)}%`)
-            else if (phase === 'queue') setSaveProgress('Almost there…')
-            else setSaveProgress('Preparing…')
+            if (phase === 'upload') {
+              setProgress(`Uploading clips · ${Math.round(pct * 100)}%`, 0.05 + pct * 0.45)
+            } else {
+              setProgress('Encoding your reel — this can take a couple of minutes', 0.55 + pct * 0.4)
+            }
           },
         })
 
-        // If the user picked a thumbnail in the editor, upload that
-        // captured frame to Storage and prefer it over Mux's auto-
-        // generated one. Otherwise fall back to Mux, then to whatever
-        // the doc already had.
+        setProgress('Saving…', 0.96)
         const customThumbUrl = await uploadCustomThumbnail(latestClips, pinId, contentId)
-
-        // Update the content doc: clear mediaUrl (Mux webhook will set it),
-        // store sourceUrl for future editing, set status to preparing.
-        setSaveProgress('Saving…')
-        const { upsertContent } = await import('@/lib/firestore')
+        const { upsertContent, updatePin } = await import('@/lib/firestore')
         const { auth: fbAuth } = await import('@/config/firebase')
-        const editorAspect = useEditorStore.getState().aspect
         const reelPatch = {
           agentId: fbAuth?.currentUser?.uid || '',
-          pinId: pin?.id || null,
+          pinId: pinIdNullable,
           type: 'reel' as const,
           status: 'ready' as const,
           mediaUrl: result.processedUrl || result.storageUrl || '',
@@ -189,18 +183,17 @@ export default function ContentEdit() {
           muxPlaybackId: result.muxPlaybackId,
           mp4Url: result.mp4Url,
         }
-        await upsertContent(contentId, reelPatch as any)
+        await upsertContent(contentId, reelPatch as never)
 
-        // If linked to a pin, also update the pin's content array
         if (pin?.id) {
-          const { updatePin } = await import('@/lib/firestore')
           const updatedContent = (pin.content || []).map((c) =>
             c.id === contentId ? { ...c, ...reelPatch } : c,
           )
-          await updatePin(pin.id, { content: updatedContent } as any)
+          await updatePin(pin.id, { content: updatedContent } as never)
         }
+        setProgress('Published', 1)
       } else if (isPhoto && carouselDraft) {
-        setSaveProgress('Uploading photos…')
+        setProgress('Uploading photos…', 0.05)
         const rawUrls: string[] = []
         for (let i = 0; i < carouselDraft.photos.length; i++) {
           const photo = carouselDraft.photos[i]
@@ -209,6 +202,10 @@ export default function ContentEdit() {
           const url = await uploadFile({
             path: pinMediaPath(pinId, filename),
             file: photo.file,
+            onProgress: (pct) => {
+              const total = carouselDraft.photos.length
+              setProgress(`Uploading photo ${i + 1} of ${total}`, 0.05 + ((i + pct / 100) / total) * 0.7)
+            },
           })
           rawUrls.push(url)
         }
@@ -216,7 +213,7 @@ export default function ContentEdit() {
         let finalUrls = rawUrls
         const aspect = carouselDraft.aspect || '4:5'
         if (aspect !== 'original') {
-          setSaveProgress('Cropping…')
+          setProgress('Cropping…', 0.8)
           try {
             const { cropPhotosServer } = await import('@/features/content-create/lib/crop')
             finalUrls = await cropPhotosServer({ urls: rawUrls, aspect, pinId, contentId })
@@ -225,7 +222,7 @@ export default function ContentEdit() {
           }
         }
 
-        setSaveProgress('Saving…')
+        setProgress('Saving…', 0.95)
         const { auth: fbAuth } = await import('@/config/firebase')
         const patch: Partial<ContentItem> = {
           mediaUrl: finalUrls[0] || content.mediaUrl,
@@ -236,33 +233,31 @@ export default function ContentEdit() {
           ...(finalUrls.length > 1 ? { mediaUrls: finalUrls } : {}),
           aspect,
         }
-        const { upsertContent } = await import('@/lib/firestore')
+        const { upsertContent, updatePin } = await import('@/lib/firestore')
         await upsertContent(contentId, {
           agentId: fbAuth?.currentUser?.uid || '',
-          pinId: pin?.id || null,
+          pinId: pinIdNullable,
           type: 'photo',
           ...patch,
           mediaUrl: patch.mediaUrl || '',
           caption: content.caption || '',
-        } as any)
+        } as never)
 
         if (pin?.id) {
-          const { updatePin } = await import('@/lib/firestore')
           const updatedContent = (pin.content || []).map((c) =>
             c.id === contentId ? { ...c, ...patch } : c,
           )
-          await updatePin(pin.id, { content: updatedContent } as any)
+          await updatePin(pin.id, { content: updatedContent } as never)
         }
+        setProgress('Published', 1)
       }
-
-      exitToDashboard()
-    } catch (err) {
-      console.error('[ContentEdit] save failed', err)
-      alert(`Save failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
-    } finally {
-      setSaving(false)
-      setSaveProgress('')
     }
+
+    const pinLabel = isReel ? 'Reel' : 'Photo carousel'
+    void import('@/stores/uploadStore').then(({ useUploadStore }) => {
+      useUploadStore.getState().enqueueContent({ pinLabel, runner })
+    })
+    exitToDashboard()
   }
 
   if (!content) {
@@ -316,11 +311,10 @@ export default function ContentEdit() {
                 variant="primary"
                 size="xl"
                 fullWidth
-                loading={saving}
                 disabled={editorClips.length === 0}
                 onClick={handleSave}
               >
-                {saving ? (saveProgress || 'Saving…') : 'Save'}
+                Save
               </Button>
             </div>
           } />
@@ -332,11 +326,10 @@ export default function ContentEdit() {
                 variant="primary"
                 size="xl"
                 fullWidth
-                loading={saving}
                 disabled={!carouselDraft || carouselDraft.photos.length === 0}
                 onClick={handleSave}
               >
-                {saving ? (saveProgress || 'Saving…') : 'Save'}
+                Save
               </Button>
             </div>
           </div>

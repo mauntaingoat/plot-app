@@ -564,7 +564,7 @@ export default function PinCreate() {
    * - To the existing pin's content[] array (if existingPinId is set)
    * - To the standalone `content` Firestore collection (if no pin)
    */
-  const handlePublishContent = async () => {
+  const handlePublishContent = () => {
     if (contentDrafts.length === 0) return
 
     if (!userDoc?.uid || userDoc.uid.startsWith('demo') || userDoc.uid.startsWith('carolina')) {
@@ -572,31 +572,26 @@ export default function PinCreate() {
       return
     }
 
-    setSaving(true)
-    setStep('publishing')
-    setRenderPhase('upload')
-    setRenderProgress(0)
-
     const agentId = userDoc.uid
-    // When adding content to an existing pin, use that pin's ID for
-    // Storage paths and to attach the content items to the pin doc.
     const targetPinId = existingPinId || null
     const storagePinId = targetPinId || `unlinked-${Date.now()}`
+    const draftsSnapshot = contentDrafts
 
-    try {
+    const runner = async (setProgress: (label: string, pct: number) => void) => {
       const newContentItems: import('@/lib/types').ContentItem[] = []
 
-      for (let i = 0; i < contentDrafts.length; i++) {
-        const draft = contentDrafts[i]
+      for (let i = 0; i < draftsSnapshot.length; i++) {
+        const draft = draftsSnapshot[i]
         const contentId = `content-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+        const draftLabel = draftsSnapshot.length > 1 ? ` ${i + 1} of ${draftsSnapshot.length}` : ''
 
         if (draft.kind === 'carousel') {
           const items = await publishCarouselPhotos(
             draft,
             storagePinId,
             (phase, pct) => {
-              setRenderPhase(phase as RenderPhase)
-              setRenderProgress(Math.round(((i + pct) / contentDrafts.length) * 100))
+              const baseLabel = phase === 'crop' ? `Cropping${draftLabel}` : `Uploading photo${draftLabel}`
+              setProgress(baseLabel, (i + pct) / draftsSnapshot.length)
             },
           )
           for (const item of items) {
@@ -620,21 +615,21 @@ export default function PinCreate() {
           }))
 
           const result = await renderComposition({
-            clips: draftClips as any,
+            clips: draftClips as never,
             aspect: draft.aspect,
             overlays: draft.overlays,
             pinId: storagePinId,
             contentId,
             caption: draft.caption ?? '',
             onProgress: (phase, pct) => {
-              setRenderPhase(phase)
-              setRenderProgress(Math.round(((i + pct) / contentDrafts.length) * 100))
+              if (phase === 'upload') {
+                setProgress(`Uploading reel${draftLabel} · ${Math.round(pct * 100)}%`, (i + pct * 0.5) / draftsSnapshot.length)
+              } else {
+                setProgress(`Encoding reel${draftLabel} — this can take a couple of minutes`, (i + 0.5 + pct * 0.5) / draftsSnapshot.length)
+              }
             },
           })
 
-          // If the user picked a thumbnail in the editor, draft.thumbnailUrl
-          // is a `data:image/jpeg;base64,…` string. Upload it to Storage so
-          // we don't persist a 100KB+ data URL into Firestore.
           const customThumbUrl = await uploadCustomThumbnail(draft.thumbnailUrl, storagePinId, contentId)
           const draftThumbFallback = draft.thumbnailUrl?.startsWith('data:') ? '' : (draft.thumbnailUrl || '')
 
@@ -659,15 +654,14 @@ export default function PinCreate() {
         }
       }
 
-      // Attach to existing pin OR save as standalone content docs.
+      setProgress('Saving…', 0.97)
       if (targetPinId && newContentItems.length > 0) {
         const { updatePin } = await import('@/lib/firestore')
-        // Fetch current pin content and append
         const { getDoc, doc } = await import('firebase/firestore')
         const { db } = await import('@/config/firebase')
         if (db) {
           const pinSnap = await getDoc(doc(db, 'pins', targetPinId))
-          const existing: any[] = pinSnap.exists() ? (pinSnap.data().content || []) : []
+          const existing: import('@/lib/types').ContentItem[] = pinSnap.exists() ? (pinSnap.data().content || []) : []
           await updatePin(targetPinId, { content: [...existing, ...newContentItems] })
         }
       } else {
@@ -688,13 +682,16 @@ export default function PinCreate() {
           })
         }
       }
-
-      navigate('/dashboard', dashState())
-    } catch (err) {
-      setSaving(false)
-      setStep('publish')
-      alert(`Failed to publish content — ${err instanceof Error ? err.message : 'Unknown error'}`)
     }
+
+    const pinLabel = draftsSnapshot.length === 1
+      ? (draftsSnapshot[0].kind === 'carousel' ? 'Photo carousel' : 'Reel')
+      : `${draftsSnapshot.length} new posts`
+
+    void import('@/stores/uploadStore').then(({ useUploadStore }) => {
+      useUploadStore.getState().enqueueContent({ pinLabel, runner })
+    })
+    navigate('/dashboard', dashState())
   }
 
   /**
