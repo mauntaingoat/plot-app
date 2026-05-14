@@ -37,7 +37,17 @@ export interface CreateMuxAssetResult {
 
 export async function createMuxAsset(args: CreateMuxAssetArgs): Promise<CreateMuxAssetResult> {
   const functions = getFunctions(app ?? undefined)
-  const fn = httpsCallable<CreateMuxAssetArgs, CreateMuxAssetResult>(functions, 'createMuxAsset')
+  // The Firebase Functions web SDK defaults to a 70-second client
+  // timeout. Mobile-uploaded reels (iPhone 4K HEVC, 200MB+) routinely
+  // need 80-180 seconds for FFmpeg + Mux processing on the server,
+  // so a 70s ceiling guarantees a deadline-exceeded error even
+  // though the server function (timeoutSeconds:300) is still
+  // working. Match the server timeout — 540s leaves a buffer.
+  const fn = httpsCallable<CreateMuxAssetArgs, CreateMuxAssetResult>(
+    functions,
+    'createMuxAsset',
+    { timeout: 540_000 },
+  )
   const res = await fn(args)
   return res.data
 }
