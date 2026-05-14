@@ -34,6 +34,33 @@ async function logEvent(data: {
   await db.collection('events').add(payload)
 }
 
+// ── Sharded counter writes ──
+// Firestore caps sustained writes at ~1/sec/doc, which throttles
+// the views/taps/saves counters on viral pins. Spread each increment
+// across 10 random shards (taps_0..taps_9) so the effective write
+// capacity is 10x. Read side sums all shards back together — see
+// `sumShards` in src/lib/firestore.ts.
+const COUNTER_SHARDS = 10
+function counterShardField(field: 'taps' | 'views' | 'saves'): string {
+  return `${field}_${Math.floor(Math.random() * COUNTER_SHARDS)}`
+}
+
+// Sum all shards back into a single number for read-side guard checks
+// (e.g. "don't decrement saves below zero"). Includes the legacy
+// single-field value so pins written before sharding still total
+// correctly.
+function sumShardsFromSnap(
+  snap: admin.firestore.DocumentSnapshot,
+  field: 'taps' | 'views' | 'saves',
+): number {
+  const data = snap.data() ?? {}
+  let sum = Number((data as Record<string, unknown>)[field]) || 0
+  for (let i = 0; i < COUNTER_SHARDS; i++) {
+    sum += Number((data as Record<string, unknown>)[`${field}_${i}`]) || 0
+  }
+  return sum
+}
+
 function getClientIp(request: any): string {
   return request.rawRequest?.ip
     || request.rawRequest?.headers?.['x-forwarded-for']?.split(',')[0]?.trim()
@@ -134,12 +161,12 @@ export const trackView = onCall<{ pinId: string; contentId?: string; localHour?:
           }
         }
         tx.update(pinRef, {
-          views: admin.firestore.FieldValue.increment(1),
+          [counterShardField('views')]: admin.firestore.FieldValue.increment(1),
           content,
         })
       })
     } else {
-      await pinRef.update({ views: admin.firestore.FieldValue.increment(1) })
+      await pinRef.update({ [counterShardField('views')]: admin.firestore.FieldValue.increment(1) })
     }
 
     await logEvent({
@@ -173,9 +200,9 @@ export const trackEngagement = onCall<{ pinId: string; action: 'tap' | 'save' | 
     if (request.auth?.uid === agentId) return
 
     if (action === 'tap') {
-      await pinRef.update({ taps: admin.firestore.FieldValue.increment(1) }).catch(() => {})
+      await pinRef.update({ [counterShardField('taps')]: admin.firestore.FieldValue.increment(1) }).catch(() => {})
     } else if (action === 'save') {
-      await pinRef.update({ saves: admin.firestore.FieldValue.increment(1) }).catch(() => {})
+      await pinRef.update({ [counterShardField('saves')]: admin.firestore.FieldValue.increment(1) }).catch(() => {})
       if (contentId) {
         await db.runTransaction(async (tx) => {
           const snap = await tx.get(pinRef)
@@ -189,9 +216,11 @@ export const trackEngagement = onCall<{ pinId: string; action: 'tap' | 'save' | 
         }).catch(() => {})
       }
     } else if (action === 'unsave') {
-      const snap = await pinRef.get()
-      if (snap.exists && (snap.data()?.saves || 0) > 0) {
-        await pinRef.update({ saves: admin.firestore.FieldValue.increment(-1) }).catch(() => {})
+      // Reuse the snap fetched above (line ~170) for the floor-check.
+      // Decrement only if the summed saves total is positive so we
+      // don't end up with a negative displayed count after the sum.
+      if (sumShardsFromSnap(pinSnap, 'saves') > 0) {
+        await pinRef.update({ [counterShardField('saves')]: admin.firestore.FieldValue.increment(-1) }).catch(() => {})
       }
       if (contentId) {
         await db.runTransaction(async (tx) => {
