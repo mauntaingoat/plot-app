@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { TrendUp as TrendingUp, Eye, CursorClick as MousePointerClick, BookmarkSimple as Bookmark, HandWaving as Hand, MapPin, Clock, FilmStrip as Film, Image, CalendarDots as CalendarClock } from '@phosphor-icons/react'
+import { TrendUp as TrendingUp, Eye, CursorClick as MousePointerClick, BookmarkSimple as Bookmark, HandWaving as Hand, Clock, FilmStrip as Film, Image, CalendarDots as CalendarClock } from '@phosphor-icons/react'
 import { getAgentEvents, getSubscriberSnapshots, type AnalyticsEvent, type SubscriberSnapshot } from '@/lib/firestore'
 import type { Pin } from '@/lib/types'
 
@@ -271,95 +271,6 @@ export function ContentConversion({ pins }: ContentConversionProps) {
             <span className="text-[10px] opacity-70">·</span>
             <span className="text-[10px] opacity-70">{stats[hoverIdx].waves.toLocaleString()} waves</span>
           </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Geographic Heatmap (placeholder bars showing top cities) ──
-interface GeoHeatmapProps {
-  pins: Pin[]
-  agentId?: string
-  /** Bump to force a re-fetch of the 30-day events window. The
-   *  Dashboard increments this on tab focus so cards stay current
-   *  without a live subscription. */
-  refreshKey?: number
-}
-
-export function GeoHeatmap({ pins, agentId, refreshKey }: GeoHeatmapProps) {
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
-  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
-  const [events, setEvents] = useState<AnalyticsEvent[]>([])
-  useDismissOnScroll(() => setHoverIdx(null))
-
-  useEffect(() => {
-    if (agentId) getAgentEvents(agentId, 30).then(setEvents).catch(() => {})
-  }, [agentId, refreshKey])
-
-  const cities = useMemo(() => {
-    // Total geo-tagged profile visits — used as the denominator for
-    // audience-share %. Visits without a `city` (local dev, IPs that
-    // didn't resolve) still feed the total so the share reflects the
-    // share of *known* audience location, not of just the top 6 rows.
-    const cityMap = new Map<string, number>()
-    let totalGeoVisits = 0
-    events.forEach((e) => {
-      if (e.type !== 'profile_visit') return
-      if (!e.city) return
-      totalGeoVisits++
-      cityMap.set(e.city, (cityMap.get(e.city) || 0) + 1)
-    })
-    const sorted = Array.from(cityMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6)
-    const topCount = sorted[0]?.[1] || 1
-    const denom = totalGeoVisits || 1
-    return sorted.map(([city, visitors]) => ({
-      city: `${city}`,
-      visitors,
-      pct: Math.round((visitors / topCount) * 100),
-      percentage: Math.round((visitors / denom) * 100),
-    }))
-  }, [events])
-
-  return (
-    <div className="bg-warm-white rounded-[18px] border border-border-light p-5 relative">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[14px] font-bold text-ink">Top Visitor Cities</h3>
-        <MapPin size={14} className="text-smoke" />
-      </div>
-      <div className="space-y-2.5" onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}>
-        {cities.map((c, i) => (
-          <div
-            key={c.city}
-            className="flex items-center gap-3 cursor-pointer"
-            onMouseEnter={() => setHoverIdx(i)}
-            onMouseLeave={() => setHoverIdx(null)}
-          >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-[12px] font-semibold text-ink truncate">{c.city}</p>
-                <span className="text-[12px] font-bold text-ink font-mono ml-2">{c.visitors.toLocaleString()}</span>
-              </div>
-              <div className="h-1.5 rounded-full bg-cream overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${c.pct}%` }}
-                  transition={{ duration: 0.6, delay: i * 0.05 }}
-                  className="h-full bg-gradient-to-r from-listing-blue to-tangerine rounded-full"
-                />
-              </div>
-            </div>
-          </div>
-        ))}
-        {cities.length === 0 && <p className="text-[12px] text-smoke text-center py-4">No visitor data yet.</p>}
-      </div>
-      {hoverIdx !== null && cities[hoverIdx] && (
-        <div
-          className="fixed pointer-events-none z-[100] px-3 py-2 bg-ink text-warm-white rounded-[10px] shadow-xl"
-          style={{ left: mousePos.x + 12, top: mousePos.y + 12 }}
-        >
-          <p className="text-[11px] font-bold">{cities[hoverIdx].city}</p>
-          <p className="text-[10px] opacity-70 mt-0.5">{cities[hoverIdx].visitors.toLocaleString()} visitors · {cities[hoverIdx].percentage}% of audience</p>
         </div>
       )}
     </div>

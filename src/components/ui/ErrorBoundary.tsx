@@ -8,6 +8,11 @@ interface Props {
 interface State {
   error: Error | null
   retryCount: number
+  // True between the moment a stale-chunk error is caught and the
+  // moment window.location.reload() actually takes effect. Render a
+  // clean loading screen instead of the error fallback so users never
+  // see "App failed to load" during a deploy-triggered reload.
+  reloading: boolean
 }
 
 // Browsers phrase the "lazy chunk 404" error differently — Chrome says
@@ -30,11 +35,17 @@ function isStaleChunkError(err: Error): boolean {
 const RELOAD_FLAG = 'reelst:reloaded-for-stale-chunk'
 
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { error: null, retryCount: 0 }
+  state: State = { error: null, retryCount: 0, reloading: false }
 
   static getDerivedStateFromError(error: Error): Partial<State> {
     if (error.message?.includes('INTERNAL ASSERTION FAILED')) {
       return { error: null }
+    }
+    // Stale chunk after a hosting deploy — componentDidCatch will
+    // window.location.reload(). Don't render the error fallback in
+    // the gap; show a quiet loading state instead.
+    if (isStaleChunkError(error)) {
+      return { error: null, reloading: true }
     }
     return { error }
   }
@@ -65,6 +76,13 @@ export class ErrorBoundary extends Component<Props, State> {
   reset = () => this.setState({ error: null })
 
   render() {
+    if (this.state.reloading) {
+      return (
+        <div className="flex items-center justify-center min-h-screen bg-ivory">
+          <div className="w-8 h-8 rounded-full border-2 border-pearl border-t-tangerine animate-spin" />
+        </div>
+      )
+    }
     if (this.state.error) {
       return (
         <div className="flex flex-col items-center justify-center text-center px-6 py-12 gap-3">

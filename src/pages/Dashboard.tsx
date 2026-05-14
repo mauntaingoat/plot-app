@@ -12,7 +12,7 @@ import { SetupRing } from '@/components/dashboard/SetupRing'
 import { SetupChecklist } from '@/components/dashboard/SetupChecklist'
 import { InsightsChart } from '@/components/dashboard/InsightsChart'
 import { PaywallPrompt } from '@/components/dashboard/PaywallPrompt'
-import { PinBreakdown, ContentConversion, GeoHeatmap, TimeOfDay, SaveGrowth } from '@/components/dashboard/AdvancedInsights'
+import { PinBreakdown, ContentConversion, TimeOfDay, SaveGrowth } from '@/components/dashboard/AdvancedInsights'
 import { SavedMapInsights, CustomBranding } from '@/components/dashboard/StudioFeatures'
 import { QRCodeModal } from '@/components/dashboard/QRCodeModal'
 import { ShareModal } from '@/components/agent-profile/ShareModal'
@@ -778,7 +778,6 @@ export default function Dashboard() {
                 <ContentConversion pins={pins} />
                 <SaveGrowth currentSaves={subscriberCount} agentId={activeUser.uid} refreshKey={insightsRefreshKey} />
                 <TimeOfDay agentId={activeUser.uid} refreshKey={insightsRefreshKey} />
-                <GeoHeatmap pins={pins} agentId={activeUser.uid} refreshKey={insightsRefreshKey} />
                 {/* Audience Crossover — included with Pro analytics now
                     that Studio is gone. Anonymized competitive-set
                     insight powered by digestSubscriptions overlap. */}

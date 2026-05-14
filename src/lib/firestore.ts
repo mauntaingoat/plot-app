@@ -1123,9 +1123,6 @@ export interface AnalyticsEvent {
   pinId?: string
   contentId?: string
   actorUid?: string
-  city?: string
-  region?: string
-  country?: string
   hour: number
   date: string
   createdAt: import('firebase/firestore').Timestamp

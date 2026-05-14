@@ -14,9 +14,6 @@ async function logEvent(data: {
   actorUid?: string
   dedupeId?: string
   localHour?: number
-  city?: string
-  region?: string
-  country?: string
 }) {
   const db = admin.firestore()
   // Firestore Admin SDK rejects writes with undefined-valued fields by
@@ -24,7 +21,7 @@ async function logEvent(data: {
   // an incognito tab — `actorUid` comes through as undefined and the
   // entire event-row write throws, while the parallel `profileVisits`
   // increment (no undefined fields) succeeds anyway. Result: counter
-  // ticks up but TimeOfDay / GeoHeatmap / 7-day chart all stay empty.
+  // ticks up but TimeOfDay / 7-day chart all stay empty.
   // Strip undefineds defensively so any caller stays safe.
   const payload: Record<string, unknown> = {
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -35,18 +32,6 @@ async function logEvent(data: {
     if (v !== undefined) payload[k] = v
   }
   await db.collection('events').add(payload)
-}
-
-// Simple IP → city lookup via ip-api.com (free, no key needed, 45 req/min)
-async function geolocateIp(ip: string): Promise<{ city: string; region: string; country: string } | null> {
-  if (!ip || ip === '127.0.0.1' || ip === '::1') return null
-  try {
-    const res = await fetch(`http://ip-api.com/json/${ip}?fields=city,regionName,country`)
-    if (!res.ok) return null
-    const data = await res.json()
-    if (data.city) return { city: data.city, region: data.regionName || '', country: data.country || '' }
-  } catch { /* ignore */ }
-  return null
 }
 
 function getClientIp(request: any): string {
@@ -157,7 +142,6 @@ export const trackView = onCall<{ pinId: string; contentId?: string; localHour?:
       await pinRef.update({ views: admin.firestore.FieldValue.increment(1) })
     }
 
-    const geo = await geolocateIp(ipRaw)
     await logEvent({
       type: 'view',
       agentId,
@@ -166,7 +150,6 @@ export const trackView = onCall<{ pinId: string; contentId?: string; localHour?:
       actorUid: request.auth?.uid,
       dedupeId,
       localHour: request.data.localHour,
-      ...(geo || {}),
     })
   },
 )
@@ -255,14 +238,12 @@ export const trackProfileVisit = onCall<{ agentId: string; localHour?: number }>
     const ipKey = ipRaw.replace(/[^a-zA-Z0-9.:_-]/g, '_')
     if (!(await allowTrackerCall(`tracker_visit_ip_${ipKey}`))) return
 
-    const geo = await geolocateIp(ipRaw)
     await Promise.all([
       logEvent({
         type: 'profile_visit',
         agentId,
         actorUid: request.auth?.uid,
         localHour,
-        ...(geo || {}),
       }),
       // Lifetime counter on the user doc — drives the dashboard's
       // "Visits" stat card without scanning the events collection.
