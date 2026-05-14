@@ -5,7 +5,7 @@ import {
   type DocumentData, type Unsubscribe,
 } from 'firebase/firestore'
 import { db, firebaseConfigured } from '@/config/firebase'
-import type { UserDoc, Pin, ForSalePin, SoldPin, SpotlightPin, ContentItem, ContentDoc, Coordinates, PinType, ShowingRequest, ContentReport, ReportReason, LicenseDispute, DmcaRequest, PendingPinChange, DigestSubscription, Wave } from '@/lib/types'
+import type { UserDoc, Pin, ForSalePin, SoldPin, SpotlightPin, ContentItem, ContentDoc, Coordinates, PinType, ShowingRequest, ContentReport, ReportReason, DmcaRequest, PendingPinChange, DigestSubscription, Wave } from '@/lib/types'
 import { TYPE_SPECIFIC_FIELDS } from '@/lib/types'
 
 // ══════════════════════════════════════════
@@ -849,24 +849,6 @@ export async function updateReportStatus(reportId: string, status: ContentReport
 // LICENSE DISPUTES
 // ══════════════════════════════════════════
 
-export async function createDispute(
-  data: Omit<LicenseDispute, 'id' | 'createdAt' | 'status'>,
-): Promise<string> {
-  if (!db) {
-    const id = `dispute_${Date.now()}`
-    const list = JSON.parse(localStorage.getItem('reelst_disputes') || '[]')
-    list.push({ ...data, id, status: 'pending', createdAt: { toMillis: () => Date.now() } })
-    localStorage.setItem('reelst_disputes', JSON.stringify(list))
-    return id
-  }
-  const ref = await addDoc(collection(db, 'disputes'), {
-    ...data,
-    status: 'pending',
-    createdAt: serverTimestamp(),
-  })
-  return ref.id
-}
-
 // ══════════════════════════════════════════
 // GEO-SCOPED PIN LISTENERS
 // ══════════════════════════════════════════
@@ -891,15 +873,6 @@ export function subscribeToGeoPins(
   return onSnapshot(q, (snap) => {
     callback(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Pin)))
   }, (err) => { console.warn('[firestore] geohash subscription error:', err.message) })
-}
-
-export async function listDisputes(): Promise<LicenseDispute[]> {
-  if (!db) {
-    return JSON.parse(localStorage.getItem('reelst_disputes') || '[]')
-  }
-  const q = query(collection(db, 'disputes'), orderBy('createdAt', 'desc'), limit(50))
-  const snap = await getDocs(q)
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as LicenseDispute))
 }
 
 // ══════════════════════════════════════════

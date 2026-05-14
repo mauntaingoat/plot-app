@@ -180,14 +180,6 @@ service cloud.firestore {
       allow read, update, delete: if false; // admin-only
     }
 
-    // ── LICENSE DISPUTES ──
-    // Signed-in users can create disputes; only their own are readable
-    match /disputes/{disputeId} {
-      allow create: if isSignedIn() || true; // allow during signup (pre-auth)
-      allow read: if isSignedIn() && (resource.data.claimantUid == request.auth.uid || resource.data.existingUid == request.auth.uid);
-      allow update, delete: if false;
-    }
-
     // ── NOTIFICATIONS ──
     // Agents can read their own notifications and mark as read
     match /notifications/{notifId} {

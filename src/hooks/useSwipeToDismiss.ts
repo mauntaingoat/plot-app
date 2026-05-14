@@ -33,12 +33,19 @@ export function useSwipeToDismiss(
       isDragging.current = false
     }
 
+    // Tap-vs-drag threshold. Without this, a 1-2px finger jitter on
+    // any tap fires touchmove with dy>0, which preventDefault()'s the
+    // sequence and cancels the click on iOS — making buttons inside
+    // the sheet (e.g. the close X) feel dead. Require 8px of real
+    // movement before claiming the gesture is a drag.
+    const DRAG_THRESHOLD = 8
+
     const onTouchMove = (e: TouchEvent) => {
       const dy = e.touches[0].clientY - touchStartY.current
       const scrollEl = scrollRef?.current ?? null
       const atTop = !scrollEl || scrollEl.scrollTop <= 1
 
-      if (atTop && dy > 0) {
+      if (atTop && (isDragging.current ? dy > 0 : dy > DRAG_THRESHOLD)) {
         if (!isDragging.current) isDragging.current = true
         translateY.current = dy
         const resistance = Math.min(dy, dy * 0.6 + 40)

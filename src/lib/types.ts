@@ -194,24 +194,6 @@ export interface DmcaRequest {
   createdAt: Timestamp
 }
 
-// ── License disputes ──
-
-export type DisputeStatus = 'pending' | 'resolved_for_claimant' | 'resolved_for_existing' | 'dismissed'
-
-export interface LicenseDispute {
-  id: string
-  claimantUid: string
-  claimantName: string
-  claimantEmail: string
-  existingUid: string // the user who currently holds the license
-  licenseNumber: string
-  licenseState: string
-  licenseName: string // name on the license per the claimant
-  evidence: string // free-text explanation
-  status: DisputeStatus
-  createdAt: Timestamp
-}
-
 // ── Pin (listing or neighborhood) ──
 
 export type PinStatus = 'active' | 'archived'
