@@ -7,21 +7,8 @@ import { ReelstLogo } from '@/components/ui/ReelstLogo'
 import {
   InstagramLogo,
   TikTokLogo,
-  YouTubeLogo,
   LinkedInLogo,
 } from '@/components/icons/PlatformLogos'
-
-function XLogo({ size = 22 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24">
-      <rect width="24" height="24" rx="6" fill="#0A0E17" />
-      <path
-        d="M16.5 5.5h2.4l-5.25 6 6.18 7h-4.84l-3.79-4.96L6.85 18.5H4.45l5.62-6.42L4.13 5.5h4.96l3.43 4.54L16.5 5.5zm-.85 11.06h1.33L8.45 6.86H7.02l8.63 9.7z"
-        fill="white"
-      />
-    </svg>
-  )
-}
 
 type Channel = {
   href: string
@@ -44,20 +31,6 @@ const COMMUNITY_CHANNELS: Channel[] = [
     title: 'TikTok',
     tagline: 'See agents in the wild',
     icon: <TikTokLogo size={22} />,
-    external: true,
-  },
-  {
-    href: 'https://youtube.com/@reelst',
-    title: 'YouTube',
-    tagline: 'Walkthroughs and deep dives',
-    icon: <YouTubeLogo size={22} />,
-    external: true,
-  },
-  {
-    href: 'https://x.com/reelst',
-    title: 'X',
-    tagline: 'Product launches and news',
-    icon: <XLogo size={22} />,
     external: true,
   },
   {
