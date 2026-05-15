@@ -194,7 +194,7 @@ export default function About() {
 
             <button
               onClick={() => navigate('/sign-up')}
-              className="brand-btn h-12 px-6 rounded-full text-[14px] md:text-[15px] inline-flex items-center gap-2 cursor-pointer"
+              className="brand-btn brand-btn--no-tilt h-12 px-6 rounded-[8px] text-[14px] md:text-[15px] inline-flex items-center gap-2 cursor-pointer"
               style={{
                 fontFamily: 'var(--font-humanist)',
                 fontWeight: 600,
