@@ -34,8 +34,10 @@ const ACTIVE_PIN_CAP: Record<Tier, number> = {
 }
 
 const ADMIN_UIDS = new Set<string>([
-  // Mirror of /src/lib/admin.ts admin uids — admins effectively get the
-  // Pro cap. Keep in sync if the admin list changes.
+  // Mirror of /src/lib/admin.ts ADMIN_UIDS — admins effectively get the
+  // Pro cap. Keep in sync if the admin list changes; task #229 will
+  // replace both with a custom-claim check.
+  'nEiT2aIp0QPhzPoPJkeSNwPb6i33',
 ])
 
 interface UserDocLite {
