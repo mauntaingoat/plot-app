@@ -370,17 +370,38 @@ function ClaimInput({
         }`}
         style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
       />
-      <button
-        onClick={handleClaim}
-        className="brand-btn shrink-0 h-11 px-5 rounded-full text-[13px] md:text-[14px] flex items-center gap-1.5 cursor-pointer"
-        style={{
-          fontFamily: 'var(--font-humanist)',
-          fontWeight: 600,
-          boxShadow: '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)',
-        }}
-      >
-        Claim it <ArrowRight weight="bold" size={14} />
-      </button>
+      {/* Layered button — on hover the foreground tangerine pill shifts
+          up-left, revealing two soft card layers behind it. Test version
+          for the homepage Claim button only; can apply elsewhere if it
+          lands well. */}
+      <div className="relative inline-flex shrink-0 group">
+        {/* Layer 3 (deepest, lightest) — light peach */}
+        <span
+          aria-hidden
+          className="absolute inset-0 rounded-[12px] transition-transform duration-200 ease-out group-hover:translate-x-1.5 group-hover:translate-y-1.5"
+          style={{ background: 'rgb(248, 214, 181)' }}
+        />
+        {/* Layer 2 (middle) — ember */}
+        <span
+          aria-hidden
+          className="absolute inset-0 rounded-[12px] transition-transform duration-200 ease-out group-hover:translate-x-1 group-hover:translate-y-1"
+          style={{ background: 'rgb(239, 139, 94)' }}
+        />
+        {/* Layer 1 (foreground) — the actual brand-gradient button */}
+        <button
+          onClick={handleClaim}
+          className="relative h-11 px-5 rounded-[12px] text-[13px] md:text-[14px] flex items-center gap-1.5 cursor-pointer transition-transform duration-200 ease-out group-hover:-translate-x-1 group-hover:-translate-y-1"
+          style={{
+            background: 'var(--brand-grad)',
+            color: '#fff',
+            fontFamily: 'var(--font-humanist)',
+            fontWeight: 600,
+            boxShadow: '0 6px 16px -6px rgba(217,74,31,0.40), inset 0 1px 0 rgba(255,255,255,0.24)',
+          }}
+        >
+          Claim it <ArrowRight weight="bold" size={14} />
+        </button>
+      </div>
     </div>
   )
 }
