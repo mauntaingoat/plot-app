@@ -3,6 +3,7 @@ import { ArrowRight, House as HomeIcon, Key, Compass } from '@phosphor-icons/rea
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { SEOHead } from '@/components/marketing/SEOHead'
 import { ScrollFadeText, Glyph } from '@/components/marketing/ScrollFadeText'
+import { LayeredCTA } from '@/components/marketing/LayeredCTA'
 
 /* ════════════════════════════════════════════════════════════════
    ABOUT, long-form essay. Tangerine prose "lights up" word-by-word
@@ -192,18 +193,9 @@ export default function About() {
               Get found.
             </p>
 
-            <button
-              onClick={() => navigate('/sign-up')}
-              className="brand-btn brand-btn--no-tilt h-12 px-6 rounded-[8px] text-[14px] md:text-[15px] inline-flex items-center gap-2 cursor-pointer"
-              style={{
-                fontFamily: 'var(--font-humanist)',
-                fontWeight: 600,
-                boxShadow:
-                  '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)',
-              }}
-            >
+            <LayeredCTA onClick={() => navigate('/sign-up')} size="md">
               Claim your link <ArrowRight weight="bold" size={15} />
-            </button>
+            </LayeredCTA>
           </div>
         </section>
       </div>

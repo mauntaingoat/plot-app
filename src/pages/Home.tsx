@@ -4,6 +4,7 @@ import { ArrowRight, Eye, CursorClick as MousePointerClick, BookmarkSimple as Bo
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { FooterContent } from '@/components/marketing/Footer'
 import { SEOHead } from '@/components/marketing/SEOHead'
+import { LayeredCTA } from '@/components/marketing/LayeredCTA'
 import { useAuthStore } from '@/stores/authStore'
 import { useScrollReveal } from '@/hooks/useScrollReveal'
 
@@ -370,39 +371,9 @@ function ClaimInput({
         }`}
         style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
       />
-      {/* Layered button — on hover all three layers translate up-right,
-          with the foreground moving most and each layer behind moving a
-          uniform step less, so the reveals stay evenly spaced (4px
-          between each). Test version for the homepage Claim button
-          only; can apply elsewhere if it lands well. */}
-      <div className="relative inline-flex shrink-0 group">
-        {/* Layer 3 (deepest, moves least) — ember */}
-        <span
-          aria-hidden
-          className="absolute inset-0 rounded-[8px] border-[0.5px] border-ink transition-transform duration-200 ease-out group-hover:translate-x-[6px] group-hover:-translate-y-[6px]"
-          style={{ background: 'rgb(239, 139, 94)' }}
-        />
-        {/* Layer 2 (middle, moves a step more) — light peach */}
-        <span
-          aria-hidden
-          className="absolute inset-0 rounded-[8px] border-[0.5px] border-ink transition-transform duration-200 ease-out group-hover:translate-x-[12px] group-hover:-translate-y-[12px]"
-          style={{ background: 'rgb(248, 214, 181)' }}
-        />
-        {/* Layer 1 (foreground, moves the most) — brand-gradient button */}
-        <button
-          onClick={handleClaim}
-          className="relative h-11 px-5 rounded-[8px] text-[13px] md:text-[14px] flex items-center gap-1.5 cursor-pointer transition-transform duration-200 ease-out group-hover:translate-x-[18px] group-hover:-translate-y-[18px]"
-          style={{
-            background: 'var(--brand-grad)',
-            color: '#fff',
-            fontFamily: 'var(--font-humanist)',
-            fontWeight: 600,
-            boxShadow: '0 6px 16px -6px rgba(217,74,31,0.40), inset 0 1px 0 rgba(255,255,255,0.24)',
-          }}
-        >
-          Claim it <ArrowRight weight="bold" size={14} />
-        </button>
-      </div>
+      <LayeredCTA onClick={handleClaim} size="sm">
+        Claim it <ArrowRight weight="bold" size={14} />
+      </LayeredCTA>
     </div>
   )
 }
@@ -1095,18 +1066,9 @@ function PinAnalytics() {
             are active, and which neighborhoods buyers save yours alongside,
             every signal in one place.
           </p>
-          <button
-            onClick={() => navigate('/sign-up')}
-            className="brand-btn brand-btn--no-tilt h-12 px-6 rounded-[8px] text-[14px] md:text-[15px] inline-flex items-center gap-2 cursor-pointer"
-            style={{
-              fontFamily: 'var(--font-humanist)',
-              fontWeight: 600,
-              boxShadow:
-                '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)',
-            }}
-          >
+          <LayeredCTA onClick={() => navigate('/sign-up')} size="md">
             Become a Reelst agent <ArrowRight weight="bold" size={15} />
-          </button>
+          </LayeredCTA>
         </div>
 
         {/* LEFT (bento), second in DOM, ordered to col 1 on lg+. */}
@@ -1553,18 +1515,9 @@ function PortfolioShowcase() {
               brand. Tune the accent, swap fonts, reorder sections, your
               Reelst link in bio should look as distinct as you do.
             </p>
-            <button
-              onClick={() => navigate('/sign-up')}
-              className="brand-btn brand-btn--no-tilt h-12 px-6 rounded-[8px] text-[14px] md:text-[15px] inline-flex items-center gap-2 cursor-pointer"
-              style={{
-                fontFamily: 'var(--font-humanist)',
-                fontWeight: 600,
-                boxShadow:
-                  '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)',
-              }}
-            >
+            <LayeredCTA onClick={() => navigate('/sign-up')} size="md">
               Claim your link <ArrowRight weight="bold" size={15} />
-            </button>
+            </LayeredCTA>
           </div>
 
           {/* ── RIGHT: animated stage ── */}

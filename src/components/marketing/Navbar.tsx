@@ -229,7 +229,7 @@ export function Navbar() {
               {userDoc ? (
                 <button
                   onClick={() => navigate('/dashboard')}
-                  className="brand-btn h-11 px-5 rounded-full text-[14px] cursor-pointer flex items-center gap-1.5"
+                  className="brand-btn brand-btn--no-tilt h-11 px-5 rounded-[8px] text-[14px] cursor-pointer flex items-center gap-1.5"
                   style={{
                     fontFamily: 'var(--font-humanist)',
                     fontWeight: 600,
@@ -260,7 +260,7 @@ export function Navbar() {
                   <span aria-hidden className="w-px h-5 bg-ink/15" />
                   <button
                     onClick={() => navigate('/sign-up')}
-                    className="brand-btn h-11 px-5 rounded-full text-[14px] cursor-pointer flex items-center gap-1.5"
+                    className="brand-btn brand-btn--no-tilt h-11 px-5 rounded-[8px] text-[14px] cursor-pointer flex items-center gap-1.5"
                     style={{
                       fontFamily: 'var(--font-humanist)',
                       fontWeight: 600,
@@ -280,7 +280,7 @@ export function Navbar() {
               {!userDoc && (
                 <button
                   onClick={() => navigate('/sign-up')}
-                  className="brand-btn h-10 px-4 rounded-full text-[13px] cursor-pointer flex items-center gap-1"
+                  className="brand-btn brand-btn--no-tilt h-10 px-4 rounded-[8px] text-[13px] cursor-pointer flex items-center gap-1"
                   style={{
                     fontFamily: 'var(--font-humanist)',
                     fontWeight: 600,

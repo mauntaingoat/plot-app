@@ -54,7 +54,7 @@ export default function GlossaryTerm() {
             </p>
             <button
               onClick={() => navigate('/glossary')}
-              className="brand-btn brand-btn--no-tilt h-11 px-5 rounded-[8px] text-[14px] cursor-pointer inline-flex items-center gap-1.5"
+              className="brand-btn brand-btn--no-tilt h-11 px-5 rounded-full text-[14px] cursor-pointer inline-flex items-center gap-1.5"
               style={{ fontFamily: 'var(--font-humanist)', fontWeight: 600 }}
             >
               <ArrowLeft weight="bold" size={14} /> Back to glossary

@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { Check, X, ArrowRight, Plus } from '@phosphor-icons/react'
-import { Button } from '@/components/ui/Button'
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { SEOHead } from '@/components/marketing/SEOHead'
+import { LayeredCTA } from '@/components/marketing/LayeredCTA'
 import { useAuthStore } from '@/stores/authStore'
 
 /* ════════════════════════════════════════════════════════════════
@@ -223,15 +223,9 @@ export default function Pricing() {
                   {plan.desc}
                 </p>
 
-                <Button
-                  variant={plan.featured ? 'primary' : 'secondary'}
-                  size="lg"
-                  fullWidth
-                  onClick={handleCta}
-                  iconRight={<ArrowRight size={15} />}
-                >
-                  {plan.cta}
-                </Button>
+                <LayeredCTA size="md" fullWidth onClick={handleCta}>
+                  {plan.cta} <ArrowRight size={15} weight="bold" />
+                </LayeredCTA>
 
                 <ul className="mt-6 space-y-2.5">
                   {plan.features.map((f) => {
