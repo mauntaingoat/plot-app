@@ -338,7 +338,7 @@ function ClaimInput({
   return (
     <div
       data-pin={dataPin}
-      className={`flex items-center w-full max-w-[460px] p-1.5 rounded-[18px] transition-all ${className} ${
+      className={`flex items-center w-full max-w-[460px] p-1.5 rounded-[14px] transition-all ${className} ${
         isDark
           ? 'bg-white/[0.06] border border-white/[0.12] backdrop-blur-sm focus-within:border-tangerine/60 focus-within:bg-white/[0.09]'
           : 'bg-white border border-black/[0.08] focus-within:border-tangerine/40 focus-within:shadow-[0_0_0_5px_rgba(255,133,82,0.10)]'
@@ -379,19 +379,19 @@ function ClaimInput({
         {/* Layer 3 (deepest, moves least) — ember */}
         <span
           aria-hidden
-          className="absolute inset-0 rounded-[12px] border border-ink transition-transform duration-200 ease-out group-hover:translate-x-1 group-hover:-translate-y-1"
+          className="absolute inset-0 rounded-[8px] border border-ink transition-transform duration-200 ease-out group-hover:translate-x-1 group-hover:-translate-y-1"
           style={{ background: 'rgb(239, 139, 94)' }}
         />
         {/* Layer 2 (middle, moves a step more) — light peach */}
         <span
           aria-hidden
-          className="absolute inset-0 rounded-[12px] border border-ink transition-transform duration-200 ease-out group-hover:translate-x-2 group-hover:-translate-y-2"
+          className="absolute inset-0 rounded-[8px] border border-ink transition-transform duration-200 ease-out group-hover:translate-x-2 group-hover:-translate-y-2"
           style={{ background: 'rgb(248, 214, 181)' }}
         />
         {/* Layer 1 (foreground, moves the most) — brand-gradient button */}
         <button
           onClick={handleClaim}
-          className="relative h-11 px-5 rounded-[12px] text-[13px] md:text-[14px] flex items-center gap-1.5 cursor-pointer transition-transform duration-200 ease-out group-hover:translate-x-3 group-hover:-translate-y-3"
+          className="relative h-11 px-5 rounded-[8px] text-[13px] md:text-[14px] flex items-center gap-1.5 cursor-pointer transition-transform duration-200 ease-out group-hover:translate-x-3 group-hover:-translate-y-3"
           style={{
             background: 'var(--brand-grad)',
             color: '#fff',
