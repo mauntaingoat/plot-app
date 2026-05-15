@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, type ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuthListener } from '@/hooks/useAuth'
@@ -45,7 +45,14 @@ const NotFound = lazy(() => import('@/pages/NotFound'))
 
 function ScrollToTop() {
   const { pathname, hash } = useLocation()
-  useEffect(() => {
+  // useLayoutEffect (not useEffect) so the scroll reset happens BEFORE
+  // the browser paints the new route and before any child useEffect
+  // fires. Avoids a flicker on routes that read window.scrollY in their
+  // own mount effect (e.g. Home.tsx's scroll-driven card animations) —
+  // they'd otherwise see the previous page's scroll position and
+  // animate to the "scrolled-far-down" state for one frame before this
+  // hook resets it.
+  useLayoutEffect(() => {
     if (hash) {
       // Defer: target may not be mounted yet when route first renders.
       const id = hash.slice(1)
