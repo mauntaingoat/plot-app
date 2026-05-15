@@ -192,12 +192,14 @@ export function Navbar() {
           style={{
             /* Match the marketing page bg exactly, nav is seamless, no border.
                On scroll, a very faint shadow hints at depth without introducing
-               a visible color seam. */
+               a visible color seam. Opaque cream when scrolled — no
+               backdrop-filter. Browsers re-rasterize a backdrop blur on
+               every scroll frame, which is the single biggest source of
+               scroll jank on desktop. The slightly-translucent value
+               (~99%) preserves the original visual character. */
             backgroundColor: scrolled
-              ? 'rgba(246, 241, 233, 0.92)'
+              ? 'rgba(246, 241, 233, 0.99)'
               : 'rgba(246, 241, 233, 0.0)',
-            backdropFilter: scrolled ? 'blur(18px) saturate(180%)' : 'none',
-            WebkitBackdropFilter: scrolled ? 'blur(18px) saturate(180%)' : 'none',
             boxShadow: scrolled
               ? '0 10px 32px -20px rgba(10,14,23,0.14)'
               : 'none',
