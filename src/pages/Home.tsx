@@ -338,7 +338,7 @@ function ClaimInput({
   return (
     <div
       data-pin={dataPin}
-      className={`flex items-center w-full max-w-[460px] p-1.5 rounded-full transition-all ${className} ${
+      className={`flex items-center w-full max-w-[460px] p-1.5 rounded-[18px] transition-all ${className} ${
         isDark
           ? 'bg-white/[0.06] border border-white/[0.12] backdrop-blur-sm focus-within:border-tangerine/60 focus-within:bg-white/[0.09]'
           : 'bg-white border border-black/[0.08] focus-within:border-tangerine/40 focus-within:shadow-[0_0_0_5px_rgba(255,133,82,0.10)]'
