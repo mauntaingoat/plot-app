@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, type ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import Lenis from 'lenis'
 import { useAuthListener } from '@/hooks/useAuth'
 import { useAuthStore } from '@/stores/authStore'
 import { SimpleLoadingScreen } from '@/components/ui/LoadingScreen'
@@ -63,40 +62,6 @@ function ScrollToTop() {
   return null
 }
 
-// Heavy-dampened smooth scroll on the marketing pages only.
-// `wheelMultiplier: 0.55` caps input speed so aggressive wheel flicks
-// don't fling the page. `lerp: 0.06` makes the page lazily follow.
-const MARKETING_ROUTES = ['/', '/about', '/blog', '/pricing', '/glossary', '/terms', '/privacy']
-
-function SmoothScroll() {
-  const { pathname } = useLocation()
-  useEffect(() => {
-    const isMarketing =
-      MARKETING_ROUTES.includes(pathname) ||
-      pathname.startsWith('/blog/') ||
-      pathname.startsWith('/glossary/')
-    if (!isMarketing) return
-    const lenis = new Lenis({
-      lerp: 0.12,
-      wheelMultiplier: 0.85,
-      touchMultiplier: 1.4,
-      smoothWheel: true,
-      syncTouch: false,
-    })
-    let raf = 0
-    const loop = (time: number) => {
-      lenis.raf(time)
-      raf = requestAnimationFrame(loop)
-    }
-    raf = requestAnimationFrame(loop)
-    return () => {
-      cancelAnimationFrame(raf)
-      lenis.destroy()
-    }
-  }, [pathname])
-  return null
-}
-
 // Global auth modal — works on any page
 function GlobalAuthModal() {
   const { isOpen, mode, close } = useAuthModalStore()
@@ -150,7 +115,6 @@ function AppRoutes() {
   return (
     <>
       <ScrollToTop />
-      <SmoothScroll />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
