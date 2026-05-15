@@ -379,13 +379,13 @@ function ClaimInput({
         {/* Layer 3 (deepest, moves least) — ember */}
         <span
           aria-hidden
-          className="absolute inset-0 rounded-[12px] transition-transform duration-200 ease-out group-hover:translate-x-1 group-hover:-translate-y-1"
+          className="absolute inset-0 rounded-[12px] border border-ink transition-transform duration-200 ease-out group-hover:translate-x-1 group-hover:-translate-y-1"
           style={{ background: 'rgb(239, 139, 94)' }}
         />
         {/* Layer 2 (middle, moves a step more) — light peach */}
         <span
           aria-hidden
-          className="absolute inset-0 rounded-[12px] transition-transform duration-200 ease-out group-hover:translate-x-2 group-hover:-translate-y-2"
+          className="absolute inset-0 rounded-[12px] border border-ink transition-transform duration-200 ease-out group-hover:translate-x-2 group-hover:-translate-y-2"
           style={{ background: 'rgb(248, 214, 181)' }}
         />
         {/* Layer 1 (foreground, moves the most) — brand-gradient button */}
