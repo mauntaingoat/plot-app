@@ -370,7 +370,7 @@ function ClaimInput({
         }`}
         style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
       />
-      {/* Layered button — on hover all three layers translate up-left,
+      {/* Layered button — on hover all three layers translate up-right,
           with the foreground moving most and each layer behind moving a
           uniform step less, so the reveals stay evenly spaced (4px
           between each). Test version for the homepage Claim button
@@ -379,19 +379,19 @@ function ClaimInput({
         {/* Layer 3 (deepest, moves least) — ember */}
         <span
           aria-hidden
-          className="absolute inset-0 rounded-[12px] transition-transform duration-200 ease-out group-hover:-translate-x-1 group-hover:-translate-y-1"
+          className="absolute inset-0 rounded-[12px] transition-transform duration-200 ease-out group-hover:translate-x-1 group-hover:-translate-y-1"
           style={{ background: 'rgb(239, 139, 94)' }}
         />
         {/* Layer 2 (middle, moves a step more) — light peach */}
         <span
           aria-hidden
-          className="absolute inset-0 rounded-[12px] transition-transform duration-200 ease-out group-hover:-translate-x-2 group-hover:-translate-y-2"
+          className="absolute inset-0 rounded-[12px] transition-transform duration-200 ease-out group-hover:translate-x-2 group-hover:-translate-y-2"
           style={{ background: 'rgb(248, 214, 181)' }}
         />
         {/* Layer 1 (foreground, moves the most) — brand-gradient button */}
         <button
           onClick={handleClaim}
-          className="relative h-11 px-5 rounded-[12px] text-[13px] md:text-[14px] flex items-center gap-1.5 cursor-pointer transition-transform duration-200 ease-out group-hover:-translate-x-3 group-hover:-translate-y-3"
+          className="relative h-11 px-5 rounded-[12px] text-[13px] md:text-[14px] flex items-center gap-1.5 cursor-pointer transition-transform duration-200 ease-out group-hover:translate-x-3 group-hover:-translate-y-3"
           style={{
             background: 'var(--brand-grad)',
             color: '#fff',
