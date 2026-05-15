@@ -61,7 +61,7 @@ const FAQS = [
   },
   {
     q: 'What\'s the difference between Free and Pro?',
-    a: 'Free covers the basics: up to 3 active pins, full content per pin (reels, photo carousels, photos), and core stats, visits, taps, saves, and waves. Pro at $19/mo unlocks unlimited pins, the full insights dashboard (peak hours, visitor cities, audience crossover, content conversion), open-house scheduling, email digests to your subscribers, and the expanded customization library, extra palettes, fonts, and map shapes.',
+    a: 'Free covers the basics: up to 3 active pins, full content per pin (reels, photo carousels, photos), and core stats, visits, taps, saves, and waves. Pro at $19/mo unlocks unlimited pins, the full insights dashboard (peak hours, save growth, audience crossover, content conversion), open-house scheduling, email digests to your subscribers, and the expanded customization library, extra palettes, fonts, and map shapes.',
   },
   {
     q: 'Can I import my existing listings?',

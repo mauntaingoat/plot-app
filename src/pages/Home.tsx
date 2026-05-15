@@ -560,7 +560,7 @@ const FEATURES: Feature[] = [
     key: 'analytics',
     label: 'Analytics',
     title: "Know what's actually working.",
-    desc: 'Visits per reel and photo. Taps and saves per pin. Save growth, visitor cities, peak hours, and audience crossover, every signal in one place.',
+    desc: 'Visits per reel and photo. Taps and saves per pin. Save growth, peak hours, and audience crossover, every signal in one place.',
     video: '/marketing/analytics.mp4',
   },
   {

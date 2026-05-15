@@ -792,7 +792,7 @@ export default function Dashboard() {
                 </div>
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-warm-white/50 rounded-[18px]">
                   <p className="text-[16px] font-bold text-ink mb-1">Unlock full analytics</p>
-                  <p className="text-[13px] text-smoke mb-4 text-center max-w-[280px]">Per-pin breakdown, visitor cities, peak hours, content stats, and more.</p>
+                  <p className="text-[13px] text-smoke mb-4 text-center max-w-[280px]">Per-pin breakdown, peak hours, save growth, content stats, and more.</p>
                   <button
                     onClick={() => setPaywall({ open: true, reason: 'Advanced analytics is a Pro feature.', upgradeTo: 'pro' })}
                     className="brand-btn-flat h-11 px-6 rounded-full text-[14px] cursor-pointer inline-flex items-center gap-1.5"
