@@ -6,7 +6,7 @@ import { ArrowRight, Envelope as Mail, Lock } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { SEOHead } from '@/components/marketing/SEOHead'
-import { GoogleLogo, AppleLogo } from '@/components/icons/PlatformLogos'
+import { GoogleLogo } from '@/components/icons/PlatformLogos'
 import { ForgotPasswordModal } from '@/components/auth/ForgotPasswordModal'
 import { useAuthStore } from '@/stores/authStore'
 import { auth, firebaseConfigured } from '@/config/firebase'
@@ -93,7 +93,6 @@ export default function SignIn() {
 
           <div className="space-y-3">
             <Button variant="secondary" size="xl" fullWidth icon={<GoogleLogo size={20} />} onClick={handleGoogle} loading={loading}>Continue with Google</Button>
-            <Button variant="secondary" size="xl" fullWidth icon={<AppleLogo size={20} />} disabled>Continue with Apple</Button>
           </div>
 
           <div className="flex items-center gap-3"><div className="flex-1 h-px bg-pearl" /><span className="text-[12px] text-smoke font-medium uppercase tracking-wider">or</span><div className="flex-1 h-px bg-pearl" /></div>
@@ -140,7 +139,7 @@ export default function SignIn() {
             <button
               type="submit"
               disabled={loading}
-              className="brand-btn brand-btn--no-tilt w-full h-12 px-6 rounded-full text-[15px] inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="brand-btn brand-btn--no-tilt w-full h-12 px-6 rounded-[8px] text-[15px] inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
                 fontFamily: 'var(--font-humanist)',
                 fontWeight: 600,

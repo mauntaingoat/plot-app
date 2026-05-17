@@ -35,6 +35,46 @@ const MUX_WEBHOOK_SECRET = defineSecret('MUX_WEBHOOK_SECRET')
 const MUX_SIGNING_KEY_ID = defineSecret('MUX_SIGNING_KEY_ID')
 const MUX_SIGNING_PRIVATE_KEY = defineSecret('MUX_SIGNING_PRIVATE_KEY')
 
+// Per-user rate limit on createMuxAsset. Mux is paid per ingest minute
+// and per stored minute; without this a compromised client or a
+// runaway loop could mint thousands of assets in minutes. 50 renders /
+// rolling 24-hour window is generous for normal agents (typical
+// workflow is a handful of reels per session) while bounding worst-
+// case cost from a single bad actor.
+const MUX_UPLOAD_LIMIT_PER_DAY = 50
+const MUX_UPLOAD_WINDOW_MS = 24 * 60 * 60 * 1000
+
+interface MuxRateLimitDoc {
+  count: number
+  windowStart: admin.firestore.Timestamp
+}
+
+async function checkAndIncrementMuxRateLimit(uid: string): Promise<void> {
+  const ref = admin.firestore().collection('rateLimits').doc(`${uid}_createMuxAsset`)
+  await admin.firestore().runTransaction(async (tx) => {
+    const snap = await tx.get(ref)
+    const now = admin.firestore.Timestamp.now()
+    if (!snap.exists) {
+      tx.set(ref, { count: 1, windowStart: now } as MuxRateLimitDoc)
+      return
+    }
+    const data = snap.data() as MuxRateLimitDoc
+    const elapsed = now.toMillis() - data.windowStart.toMillis()
+    if (elapsed >= MUX_UPLOAD_WINDOW_MS) {
+      tx.set(ref, { count: 1, windowStart: now } as MuxRateLimitDoc)
+      return
+    }
+    if (data.count >= MUX_UPLOAD_LIMIT_PER_DAY) {
+      const hoursLeft = Math.ceil((MUX_UPLOAD_WINDOW_MS - elapsed) / (60 * 60 * 1000))
+      throw new HttpsError(
+        'resource-exhausted',
+        `Upload limit reached (${MUX_UPLOAD_LIMIT_PER_DAY}/day). Try again in ${hoursLeft} hour${hoursLeft !== 1 ? 's' : ''}.`,
+      )
+    }
+    tx.update(ref, { count: admin.firestore.FieldValue.increment(1) })
+  })
+}
+
 /* ─────────── Types ─────────── */
 
 interface ClipInput {
@@ -194,6 +234,8 @@ export const createMuxAsset = onCall<CreateMuxAssetRequest, Promise<CreateMuxAss
       throw new HttpsError('invalid-argument', 'Maximum 20 clips per render.')
     }
 
+    await checkAndIncrementMuxRateLimit(request.auth.uid)
+
     const mux = new Mux({
       tokenId: MUX_TOKEN_ID.value(),
       tokenSecret: MUX_TOKEN_SECRET.value(),
@@ -277,6 +319,12 @@ export const createMuxAsset = onCall<CreateMuxAssetRequest, Promise<CreateMuxAss
         inputs: [{ url: finalUrl }] as any,
         playback_policy: ['signed'],
         video_quality: 'basic',
+        // Cap the HLS encoding ladder at 1080p. Basic tier defaults here
+        // today, but stating it explicitly prevents a future tier change
+        // (or an accidental quality bump) from auto-enabling 4K
+        // encoding/storage/delivery costs on vertical reels nobody
+        // watches at 4K.
+        max_resolution_tier: '1080p',
         mp4_support: 'capped-1080p',
         passthrough: JSON.stringify({ pinId, contentId, caption: caption ?? '' }),
       })

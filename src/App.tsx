@@ -10,6 +10,29 @@ import { useAuthModalStore } from '@/stores/authModalStore'
 import { OfflineBanner } from '@/components/ui/OfflineBanner'
 import { resetFirestore } from '@/config/firebase'
 
+// Marketing + auth + lightweight pages are eagerly imported so they
+// land in the main bundle — no Suspense fallback, no dark-flash
+// loading screen on navigation. The dark SimpleLoadingScreen is meant
+// to flow into the dashboard / agent profile, not the cream
+// marketing site. Keeping Mapbox/Mux-heavy app pages lazy preserves
+// chunk-splitting where it actually helps payload size.
+import Home from '@/pages/Home'
+import About from '@/pages/About'
+import Pricing from '@/pages/Pricing'
+import Blog from '@/pages/Blog'
+import BlogPost from '@/pages/BlogPost'
+import Glossary from '@/pages/Glossary'
+import GlossaryTerm from '@/pages/GlossaryTerm'
+import Terms from '@/pages/Terms'
+import Privacy from '@/pages/Privacy'
+import Welcome from '@/pages/Welcome'
+import SignIn from '@/pages/SignIn'
+import Verify from '@/pages/Verify'
+import AuthAction from '@/pages/AuthAction'
+import EmailPreview from '@/pages/EmailPreview'
+import UnsubManage from '@/pages/UnsubManage'
+import NotFound from '@/pages/NotFound'
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -21,27 +44,14 @@ const queryClient = new QueryClient({
   },
 })
 
-const Home = lazy(() => import('@/pages/Home'))
-const About = lazy(() => import('@/pages/About'))
-const Pricing = lazy(() => import('@/pages/Pricing'))
-const Blog = lazy(() => import('@/pages/Blog'))
-const BlogPost = lazy(() => import('@/pages/BlogPost'))
-const Glossary = lazy(() => import('@/pages/Glossary'))
-const GlossaryTerm = lazy(() => import('@/pages/GlossaryTerm'))
-const Terms = lazy(() => import('@/pages/Terms'))
-const Privacy = lazy(() => import('@/pages/Privacy'))
-const Welcome = lazy(() => import('@/pages/Welcome'))
-const SignIn = lazy(() => import('@/pages/SignIn'))
+// Heavy app surfaces stay lazy — Mapbox + Mux + dashboard chunks
+// would balloon the main bundle. These routes flow into the dark
+// SimpleLoadingScreen, which is the intended look for the app side.
 const AgentProfile = lazy(() => import('@/pages/AgentProfile'))
 const Dashboard = lazy(() => import('@/pages/Dashboard'))
 const PinCreate = lazy(() => import('@/pages/PinCreate'))
 const ContentEdit = lazy(() => import('@/pages/ContentEdit'))
 const SharedMap = lazy(() => import('@/pages/SharedMap'))
-const Verify = lazy(() => import('@/pages/Verify'))
-const AuthAction = lazy(() => import('@/pages/AuthAction'))
-const EmailPreview = lazy(() => import('@/pages/EmailPreview'))
-const UnsubManage = lazy(() => import('@/pages/UnsubManage'))
-const NotFound = lazy(() => import('@/pages/NotFound'))
 
 function ScrollToTop() {
   const { pathname, hash } = useLocation()

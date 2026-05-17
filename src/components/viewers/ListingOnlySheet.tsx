@@ -8,6 +8,7 @@ import { formatPrice } from '@/lib/firestore'
 import { displayAddressWithUnit } from '@/lib/format'
 import { OpenHouseBlock } from '@/components/listing/OpenHouseBlock'
 import { ShareModal } from '@/components/agent-profile/ShareModal'
+import { pinUrl } from '@/lib/shareUrl'
 import type { Pin, ForSalePin, SoldPin, UserDoc } from '@/lib/types'
 
 interface ListingOnlySheetProps {
@@ -120,10 +121,9 @@ export function ListingOnlySheet({ pin, agent, onClose, isPreview, embedded, isS
       <ShareModal
         isOpen={shareOpen}
         onClose={() => setShareOpen(false)}
+        url={pinUrl(agent.username, pin.id)}
         title={displayAddressWithUnit(pin.address, pin.unit).split(',')[0]}
         message={`${formatPrice(('price' in lp ? lp.price : (lp as SoldPin).soldPrice) || 0)} · ${lp.beds} bd · ${lp.baths} ba · ${lp.sqft.toLocaleString()} sqft`}
-        heroImageUrl={photos[0] || agent.photoURL || null}
-        agentName={agent.displayName}
       />
     </>
   )

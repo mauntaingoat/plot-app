@@ -55,6 +55,13 @@ const FROM_DISPLAY = 'Reelst'
 const SITE_BASE_URL = 'https://plot-fe990.web.app'
 const FALLBACK_DIFF_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 
+// Volume caps. Without these a recipient who follows 50 agents OR
+// one agent who posts 100 things in a week would get a wall-of-email
+// digest. Beyond the caps we render an overflow strip + per-agent
+// "+ N more updates" link that points them to the full profile.
+const MAX_UPDATES_PER_AGENT = 3
+const MAX_AGENTS_WITH_UPDATES_PER_EMAIL = 10
+
 const BLOG_CATEGORY_LABELS: Record<string, string> = {
   'state-of-reel-estate': 'State of Reel Estate',
   playbook: 'Playbook',
@@ -183,6 +190,27 @@ export const sendWeeklyDigest = onSchedule(
           })
         }
 
+        // Apply per-agent + per-email caps. Order matters:
+        // 1. Trim each agent's updates to the per-agent cap, stashing
+        //    the dropped count on `moreUpdatesCount` so the template
+        //    can render a "+ N more updates from X" footer.
+        // 2. Sort agents by total updates desc (most-active first).
+        // 3. Split into in-email vs overflow by the per-email cap.
+        //    Overflow only includes agents who actually had updates —
+        //    quiet-agent roster handling further down is unaffected.
+        for (const a of agents) {
+          if (a.updates.length > MAX_UPDATES_PER_AGENT) {
+            a.moreUpdatesCount = a.updates.length - MAX_UPDATES_PER_AGENT
+            a.updates = a.updates.slice(0, MAX_UPDATES_PER_AGENT)
+          }
+        }
+        const withUpdates = agents.filter((a) => a.updates.length > 0)
+        const quiet = agents.filter((a) => a.updates.length === 0)
+        withUpdates.sort((a, b) => b.updates.length - a.updates.length)
+        const featured = withUpdates.slice(0, MAX_AGENTS_WITH_UPDATES_PER_EMAIL)
+        const overflowAgents = withUpdates.slice(MAX_AGENTS_WITH_UPDATES_PER_EMAIL)
+        const cappedAgents = [...featured, ...quiet]
+
         // Blog teaser eligibility: post is newer than the OLDEST
         // lastSentAt across the recipient's group (so an agent they
         // just saved doesn't suppress the blog they haven't seen).
@@ -205,12 +233,13 @@ export const sendWeeklyDigest = onSchedule(
         }
 
         const { subject, html, text } = renderDigestEmail({
-          agents,
+          agents: cappedAgents,
           blogPost,
           recipientName: null,
           fromAddress: GMAIL_USER.value(),
           baseUrl: SITE_BASE_URL,
           unsubUrl,
+          overflowAgents,
         })
 
         await transporter.sendMail({

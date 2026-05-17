@@ -4,6 +4,7 @@ import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { SEOHead } from '@/components/marketing/SEOHead'
 import { ScrollFadeText, Glyph } from '@/components/marketing/ScrollFadeText'
 import { LayeredCTA } from '@/components/marketing/LayeredCTA'
+import { useAuthedDestination } from '@/hooks/useAuthedDestination'
 
 /* ════════════════════════════════════════════════════════════════
    ABOUT, long-form essay. Tangerine prose "lights up" word-by-word
@@ -72,6 +73,7 @@ function PinChip({ kind }: { kind: 'for-sale' | 'sold' | 'spotlight' }) {
 
 export default function About() {
   const navigate = useNavigate()
+  const signUpDest = useAuthedDestination('/sign-up')
 
   return (
     <MarketingLayout>
@@ -193,7 +195,7 @@ export default function About() {
               Get found.
             </p>
 
-            <LayeredCTA onClick={() => navigate('/sign-up')} size="md">
+            <LayeredCTA onClick={() => navigate(signUpDest)} size="md">
               Claim your link <ArrowRight weight="bold" size={15} />
             </LayeredCTA>
           </div>

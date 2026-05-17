@@ -282,22 +282,22 @@ service cloud.firestore {
     // ── BLOG POSTS (FireCMS-managed) ──
     // Public reads only for posts whose status is "published" — drafts +
     // scheduled posts stay invisible to anonymous /blog visitors.
-    // Writes are restricted to specific editor emails (custom-claim
-    // alternative kept simple while there's a single editor; broaden to
-    // a roles collection if more editors join).
+    // Writes gated by the `admin: true` custom claim, set via
+    // functions/grant-admin.mjs. Add more admins by running the script
+    // for additional UIDs — no rules change needed.
     match /posts/{postId} {
       allow read: if resource.data.status == 'published';
       allow write: if request.auth != null
-        && request.auth.token.email == 'mauriiromano123@gmail.com';
+        && request.auth.token.admin == true;
     }
 
     // ── BLOG AUTHORS (FireCMS-managed) ──
     // Public reads (author bio renders on the post page).
-    // Writes restricted to the same editor allowlist as posts.
+    // Writes restricted to the same admin-claim allowlist as posts.
     match /authors/{authorId} {
       allow read: if true;
       allow write: if request.auth != null
-        && request.auth.token.email == 'mauriiromano123@gmail.com';
+        && request.auth.token.admin == true;
     }
 
     // ── DEFAULT DENY ──

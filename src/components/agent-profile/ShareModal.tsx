@@ -5,7 +5,6 @@ import {
   Link as LinkIcon,
   Envelope as Mail,
   ChatCenteredText as MessageSquare,
-  InstagramLogo,
   FacebookLogo,
   XLogo,
   WhatsappLogo,
@@ -23,8 +22,16 @@ import { useSheetLifecycle } from '@/hooks/useSheetLifecycle'
    WaveModal so all engagement primitives feel like one family.
 
    Quick row: Copy link · Text · Email
-   Social row: Instagram (story image) · Facebook · X · WhatsApp ·
-                Messenger · LinkedIn · Threads
+   Social row: Facebook · X · WhatsApp · LinkedIn
+   (Instagram Story removed — there's no clean web path to auto-launch
+   IG Story composer without a registered Meta App ID, and a system-
+   share-sheet detour added more friction than value.)
+
+   Mobile: each social button attempts the app's URL scheme first
+   (fb://, twitter://, wa.me/, linkedin://) so the user lands directly
+   in the target app. If the scheme doesn't resolve (app not installed)
+   the click silently falls back to the web sharer URL via a
+   visibilitychange race. No iOS system share sheet detour.
    ──────────────────────────────────────────────────────────────── */
 
 interface ShareModalProps {
@@ -36,12 +43,6 @@ interface ShareModalProps {
   title: string
   /** Optional one-line description used in tweets / SMS / email body. */
   message?: string
-  /** Optional hero image URL (listing photo / content thumbnail) used
-   *  to compose the downloadable Instagram-story image. When omitted
-   *  the IG button still works but generates a logo-only card. */
-  heroImageUrl?: string | null
-  /** Agent display name — surfaced on the IG-story canvas card. */
-  agentName?: string
 }
 
 export function ShareModal({
@@ -50,55 +51,28 @@ export function ShareModal({
   url,
   title,
   message,
-  heroImageUrl,
-  agentName,
 }: ShareModalProps) {
   const sheetRef = useRef<HTMLDivElement>(null)
   const { mounted, visible } = useSheetLifecycle(isOpen, 320)
   useSwipeToDismiss(sheetRef, null, mounted && visible, () => onClose())
 
   const [copied, setCopied] = useState(false)
-  const [igGenerating, setIgGenerating] = useState(false)
 
-  // Desktop = no touch input + wider screen. On desktop we hide the
-  // Instagram story button entirely (IG has no public web intent for
-  // posting stories — only the mobile app does), so the "share" there
-  // would mean "download an image and figure it out yourself," which
-  // we don't want to ship.
-  const isDesktop =
+  // Mobile = coarse pointer OR narrow viewport. Used to decide whether
+  // a social tap should route through the URL-scheme deep-link path
+  // (mobile) vs the web sharer URL (desktop).
+  const isMobile =
     typeof window !== 'undefined' &&
-    window.matchMedia('(pointer: fine)').matches &&
-    window.innerWidth >= 768
+    (window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768)
 
-  // The CSS tokens we use (--page-canvas, --text-primary, etc.) are
-  // set by AgentProfile's route wrapper for the public-profile case.
-  // When opened from Dashboard (which sits in its own dark-themed
-  // surface), those tokens aren't defined for the modal's portal-like
-  // mount point, so we fall back to a light palette and look wrong on
-  // a dark dashboard. Detect the dashboard's dark class and apply the
-  // matching palette inline. The shared brand accent stays the same.
-  const isDark =
-    typeof document !== 'undefined' &&
-    document.documentElement.classList.contains('dark-dashboard')
-  const palette = isDark
-    ? {
-        pageCanvas: '#141826',
-        textPrimary: '#F4F5F8',
-        textSecondary: '#C9CDDA',
-        textMuted: '#8A91A3',
-        surface2: 'rgba(255,255,255,0.06)',
-        accent: '#D94A1F',
-        accentInk: '#FFFFFF',
-      }
-    : {
-        pageCanvas: '#FAFAF8',
-        textPrimary: '#0A0E1A',
-        textSecondary: '#475569',
-        textMuted: '#94A3B8',
-        surface2: 'rgba(0,0,0,0.05)',
-        accent: '#D94A1F',
-        accentInk: '#FFFFFF',
-      }
+  // Theming: rely entirely on the inherited CSS tokens
+  // (--page-canvas, --text-primary, --text-secondary, --text-muted,
+  // --surface-2, --accent, --accent-ink, --font-mono) set by the
+  // agent profile's route wrapper. Matches the SaveAgentModal /
+  // WaveModal pattern so all three sheets pick up the agent's
+  // palette + font automatically. The dashboard sets its own dark
+  // versions of the same tokens via the `.dark-dashboard` class so
+  // Share looks right there too without a special-case override.
 
   const shareUrl = url ?? (typeof window !== 'undefined' ? window.location.href : '')
   const shareText = message ?? title
@@ -135,57 +109,58 @@ export function ShareModal({
   const onEmail = () =>
     open(`mailto:?subject=${enc(title)}&body=${enc(`${shareText}\n\n${shareUrl}`)}`)
 
-  // FB and LinkedIn no longer accept prefilled-text params (FB removed
-  // `quote=` after 2017, LinkedIn deprecated `summary=`/`title=` in
-  // 2021). Both scrape OG tags from the destination URL — so a "good
-  // premade post" means good `og:title` / `og:description` / `og:image`
-  // on the public profile page, not URL params here.
-  const onFacebook = () => open(`https://www.facebook.com/sharer/sharer.php?u=${enc(shareUrl)}`)
-  const onTwitter = () => open(`https://twitter.com/intent/tweet?url=${enc(shareUrl)}&text=${enc(shareText)}`)
-  const onWhatsapp = () => open(`https://wa.me/?text=${enc(`${shareText} ${shareUrl}`)}`)
-  const onLinkedIn = () => open(`https://www.linkedin.com/sharing/share-offsite/?url=${enc(shareUrl)}`)
-
-  // Instagram has no public web-stories share intent. On mobile (iOS
-  // Safari especially) we can hand the rendered story image to
-  // `navigator.share({ files })` — the native share sheet surfaces
-  // Instagram with a one-tap "Add to Story" path. If that's not
-  // available (older mobile browsers, Android quirks), we fall back
-  // to download + open instagram.com. The button is hidden on desktop
-  // entirely since there's no good story-posting path there.
-  const onInstagram = async () => {
-    setIgGenerating(true)
-    try {
-      const blob = await renderStoryImage({ heroImageUrl: heroImageUrl ?? null, title, agentName })
-      const filename = `reelst-${slugify(title)}.png`
-      const file = new File([blob], filename, { type: 'image/png' })
-
-      const navAny = navigator as any
-      const canShareFile = typeof navAny.canShare === 'function' && navAny.canShare({ files: [file] })
-
-      if (canShareFile && typeof navAny.share === 'function') {
-        try {
-          await navAny.share({ files: [file], title })
-          return
-        } catch {
-          // User canceled or share failed — fall through to download.
-        }
-      }
-
-      const blobUrl = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = blobUrl
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 4000)
-      open('https://www.instagram.com/')
-    } catch (err) {
-      console.warn('[ShareModal] story image render failed', err)
-    } finally {
-      setIgGenerating(false)
+  // Mobile: try the app's URL scheme first. iOS treats unknown
+  // schemes as no-ops (no error, no app prompt) so we set a timer to
+  // fall back to the web URL if the page is still visible after a
+  // short window (i.e. the scheme didn't open an app). Cleared if
+  // visibility changes (= user got into the app). Desktop: skip the
+  // scheme attempt and open the web sharer directly.
+  //
+  // Why URL schemes vs navigator.share: navigator.share on mobile
+  // surfaces the iOS system share sheet, which is one extra tap the
+  // user has to make. URL schemes go directly to the target app.
+  const openInApp = (scheme: string, webUrl: string) => {
+    if (!isMobile) {
+      open(webUrl)
+      return
     }
+    const fallbackId = window.setTimeout(() => {
+      window.removeEventListener('visibilitychange', onHide)
+      open(webUrl)
+    }, 700)
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') {
+        window.clearTimeout(fallbackId)
+        window.removeEventListener('visibilitychange', onHide)
+      }
+    }
+    window.addEventListener('visibilitychange', onHide)
+    window.location.href = scheme
   }
+
+  // FB and LinkedIn no longer accept prefilled-text params via the web
+  // sharer (FB removed `quote=` after 2017, LinkedIn deprecated
+  // `summary=` in 2021); the destination URL's OG tags are what the
+  // preview pulls from — handled by functions/src/og.ts.
+  const onFacebook = () =>
+    openInApp(
+      `fb://share?link=${enc(shareUrl)}`,
+      `https://www.facebook.com/sharer/sharer.php?u=${enc(shareUrl)}`,
+    )
+  const onTwitter = () =>
+    openInApp(
+      `twitter://post?message=${enc(`${shareText} ${shareUrl}`)}`,
+      `https://twitter.com/intent/tweet?url=${enc(shareUrl)}&text=${enc(shareText)}`,
+    )
+  const onWhatsapp = () =>
+    // wa.me is itself a universal link — opens WhatsApp app directly
+    // on mobile, no scheme detour needed. Web URL handles desktop.
+    open(`https://wa.me/?text=${enc(`${shareText} ${shareUrl}`)}`)
+  const onLinkedIn = () =>
+    openInApp(
+      `linkedin://shareArticle?mini=true&url=${enc(shareUrl)}&title=${enc(title)}`,
+      `https://www.linkedin.com/sharing/share-offsite/?url=${enc(shareUrl)}`,
+    )
 
   if (!mounted) return null
 
@@ -202,13 +177,6 @@ export function ShareModal({
         onClick={(e) => e.stopPropagation()}
         className="capture-sheet relative w-full md:max-w-[440px] rounded-t-[28px] md:rounded-[28px] overflow-hidden"
         style={{
-          ['--page-canvas' as any]: palette.pageCanvas,
-          ['--text-primary' as any]: palette.textPrimary,
-          ['--text-secondary' as any]: palette.textSecondary,
-          ['--text-muted' as any]: palette.textMuted,
-          ['--surface-2' as any]: palette.surface2,
-          ['--accent' as any]: palette.accent,
-          ['--accent-ink' as any]: palette.accentInk,
           background: 'var(--page-canvas)',
           color: 'var(--text-primary)',
           boxShadow: '0 -20px 60px -16px rgba(10,14,23,0.35), 0 30px 80px -30px rgba(10,14,23,0.4)',
@@ -288,17 +256,10 @@ export function ShareModal({
             <QuickAction icon={<Mail size={18} />} label="Email" onClick={onEmail} />
           </div>
 
-          {/* Socials grid — IG hidden on desktop (no story-post path on
-              web); Messenger + Threads removed entirely. */}
+          {/* Socials grid — 4 buttons fit one row, mobile taps route
+              through the native share sheet (tryNativeShare) so the
+              user lands directly in the FB / X / WhatsApp app. */}
           <div className="grid grid-cols-4 gap-2">
-            {!isDesktop && (
-              <SocialAction
-                icon={<InstagramLogo size={20} weight="bold" />}
-                label={igGenerating ? 'Saving…' : 'Story'}
-                onClick={onInstagram}
-                tint="linear-gradient(135deg,#FFD089,#FF6B3D 50%,#A855F7 100%)"
-              />
-            )}
             <SocialAction
               icon={<FacebookLogo size={20} weight="bold" />}
               label="Facebook"
@@ -386,137 +347,3 @@ function prettyUrl(u: string) {
   }
 }
 
-function slugify(s: string) {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'share'
-}
-
-/**
- * Renders a 1080×1920 PNG formatted for an Instagram story. Centered
- * hero image (when available) on a Reelst-branded gradient with the
- * title and Reelst URL pinned to the bottom. Returns the raw PNG
- * Blob; the caller chooses whether to hand it to `navigator.share`
- * (mobile native share sheet) or fall back to a download anchor.
- */
-async function renderStoryImage({
-  heroImageUrl,
-  title,
-  agentName,
-}: {
-  heroImageUrl: string | null
-  title: string
-  agentName?: string
-}): Promise<Blob> {
-  const W = 1080
-  const H = 1920
-  const canvas = document.createElement('canvas')
-  canvas.width = W
-  canvas.height = H
-  const ctx = canvas.getContext('2d')!
-
-  // Brand gradient background
-  const grad = ctx.createLinearGradient(0, 0, 0, H)
-  grad.addColorStop(0, '#1A1A1A')
-  grad.addColorStop(1, '#0A0E17')
-  ctx.fillStyle = grad
-  ctx.fillRect(0, 0, W, H)
-
-  // Tangerine wash from top
-  const wash = ctx.createRadialGradient(W / 2, -200, 100, W / 2, H / 2, H)
-  wash.addColorStop(0, 'rgba(217,74,31,0.55)')
-  wash.addColorStop(1, 'rgba(217,74,31,0)')
-  ctx.fillStyle = wash
-  ctx.fillRect(0, 0, W, H)
-
-  // Hero image (rounded square, centered)
-  if (heroImageUrl) {
-    try {
-      const img = await loadImage(heroImageUrl)
-      const size = 800
-      const x = (W - size) / 2
-      const y = 360
-      const r = 48
-      ctx.save()
-      roundedPath(ctx, x, y, size, size, r)
-      ctx.clip()
-      const ratio = Math.max(size / img.width, size / img.height)
-      const drawW = img.width * ratio
-      const drawH = img.height * ratio
-      ctx.drawImage(img, x + (size - drawW) / 2, y + (size - drawH) / 2, drawW, drawH)
-      ctx.restore()
-    } catch {
-      /* If the image is CORS-tainted or fails to load, skip it. */
-    }
-  }
-
-  // Reelst eyebrow
-  ctx.fillStyle = '#FF8552'
-  ctx.font = '600 32px "Outfit", sans-serif'
-  ctx.textAlign = 'center'
-  ctx.fillText('REELST', W / 2, 220)
-
-  // Title
-  ctx.fillStyle = '#FFFFFF'
-  ctx.font = '600 68px "Outfit", sans-serif'
-  ctx.textAlign = 'center'
-  wrapText(ctx, title, W / 2, 1320, W - 160, 80)
-
-  // Subtitle (agent or call to action)
-  if (agentName) {
-    ctx.fillStyle = 'rgba(255,255,255,0.72)'
-    ctx.font = '500 36px "Outfit", sans-serif'
-    ctx.fillText(`with ${agentName}`, W / 2, 1500)
-  }
-
-  // Footer URL chip
-  ctx.fillStyle = 'rgba(255,255,255,0.16)'
-  roundedPath(ctx, (W - 480) / 2, 1700, 480, 96, 48)
-  ctx.fill()
-  ctx.fillStyle = '#FFFFFF'
-  ctx.font = '600 36px "Outfit", sans-serif'
-  ctx.fillText('reel.st', W / 2, 1762)
-
-  return new Promise<Blob>((resolve) =>
-    canvas.toBlob((b) => resolve(b!), 'image/png'),
-  )
-}
-
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => resolve(img)
-    img.onerror = reject
-    img.src = src
-  })
-}
-
-function roundedPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath()
-  ctx.moveTo(x + r, y)
-  ctx.arcTo(x + w, y, x + w, y + h, r)
-  ctx.arcTo(x + w, y + h, x, y + h, r)
-  ctx.arcTo(x, y + h, x, y, r)
-  ctx.arcTo(x, y, x + w, y, r)
-  ctx.closePath()
-}
-
-function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number) {
-  const words = text.split(' ')
-  const lines: string[] = []
-  let line = ''
-  for (const w of words) {
-    const test = line ? `${line} ${w}` : w
-    if (ctx.measureText(test).width > maxWidth && line) {
-      lines.push(line)
-      line = w
-    } else {
-      line = test
-    }
-  }
-  if (line) lines.push(line)
-  // Cap at 3 lines so the layout stays clean.
-  const capped = lines.slice(0, 3)
-  if (lines.length > 3) capped[2] = capped[2].replace(/\s*\S+$/, '…')
-  const startY = y - ((capped.length - 1) * lineHeight) / 2
-  capped.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight))
-}

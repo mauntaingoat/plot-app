@@ -3,6 +3,7 @@ import { onAuthStateChanged, type User } from 'firebase/auth'
 import { doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore'
 import { auth, db, firebaseConfigured } from '@/config/firebase'
 import { useAuthStore } from '@/stores/authStore'
+import { setAdminFromClaims } from '@/lib/admin'
 import type { UserDoc } from '@/lib/types'
 
 /** Self-heal a missing Firestore user doc. SignUp swallows
@@ -77,6 +78,15 @@ export function useAuthListener() {
       if (unsubUserDoc) {
         unsubUserDoc()
         unsubUserDoc = null
+      }
+
+      // Pull custom claims out of the ID token so isAdmin() works
+      // synchronously across the app. Cleared on sign-out so a stale
+      // admin flag can't leak across user switches.
+      if (user) {
+        user.getIdTokenResult().then((r) => setAdminFromClaims(r.claims)).catch(() => setAdminFromClaims(null))
+      } else {
+        setAdminFromClaims(null)
       }
 
       if (user) {

@@ -28,17 +28,12 @@ if (!admin.apps.length) admin.initializeApp()
 // React app's TS into the functions build.
 type Tier = 'free' | 'pro'
 
+// Mirror of TIERS in /src/lib/tiers.ts. Pro is capped at 500 active
+// pins as a per-agent cost ceiling on RentCast sync + Mux storage.
 const ACTIVE_PIN_CAP: Record<Tier, number> = {
   free: 3,
-  pro: 9999,
+  pro: 500,
 }
-
-const ADMIN_UIDS = new Set<string>([
-  // Mirror of /src/lib/admin.ts ADMIN_UIDS — admins effectively get the
-  // Pro cap. Keep in sync if the admin list changes; task #229 will
-  // replace both with a custom-claim check.
-  'nEiT2aIp0QPhzPoPJkeSNwPb6i33',
-])
 
 interface UserDocLite {
   tier?: Tier
@@ -46,8 +41,10 @@ interface UserDocLite {
   giftExpiry?: admin.firestore.Timestamp | number | null
 }
 
-function resolveTier(uid: string, userDoc: UserDocLite | undefined): Tier {
-  if (ADMIN_UIDS.has(uid)) return 'pro'
+// Admins are granted tier='pro' directly on their user doc at grant
+// time (functions/grant-admin.mjs), so this no longer needs an admin
+// short-circuit — the gift / tier path resolves it.
+function resolveTier(_uid: string, userDoc: UserDocLite | undefined): Tier {
   const gift = userDoc?.giftTier
   const expiry = userDoc?.giftExpiry
   if (gift && expiry) {

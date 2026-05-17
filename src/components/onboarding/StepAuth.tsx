@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth'
 import { auth } from '@/config/firebase'
-import { createUserDoc } from '@/lib/firestore'
+import { createUserDoc, getUserById } from '@/lib/firestore'
 import { useUsername } from '@/hooks/useUsername'
 import { useOnboardingStore } from '@/stores/onboardingStore'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { GoogleLogo, AppleLogo } from '@/components/icons/PlatformLogos'
+import { GoogleLogo } from '@/components/icons/PlatformLogos'
 import { Envelope as Mail, Lock, Shield } from '@phosphor-icons/react'
 export function StepAuth() {
   const { email, setEmail, password, setPassword, username, nextStep } = useOnboardingStore()
@@ -55,6 +55,15 @@ export function StepAuth() {
     try {
       const provider = new GoogleAuthProvider()
       const cred = await signInWithPopup(auth!, provider)
+      // Firebase merges Google sign-in into any existing UID for this
+      // email. If the merged UID already finished onboarding, bail —
+      // running finishAuth would clobber username + user doc.
+      const existing = await getUserById(cred.user.uid)
+      if (existing && existing.onboardingComplete) {
+        await signOut(auth!)
+        setError('This email is already registered. Please sign in instead.')
+        return
+      }
       await finishAuth(
         cred.user.uid,
         cred.user.email || '',
@@ -89,9 +98,6 @@ export function StepAuth() {
       <div className="space-y-3 mb-6">
         <Button variant="secondary" size="xl" fullWidth icon={<GoogleLogo size={20} />} onClick={handleGoogle} loading={loading}>
           Continue with Google
-        </Button>
-        <Button variant="secondary" size="xl" fullWidth icon={<AppleLogo size={20} />} disabled>
-          Continue with Apple
         </Button>
       </div>
 

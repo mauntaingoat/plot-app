@@ -4,8 +4,6 @@ import * as admin from 'firebase-admin'
 
 if (!admin.apps.length) admin.initializeApp()
 
-const ADMIN_UIDS = ['nEiT2aIp0QPhzPoPJkeSNwPb6i33']
-
 export const adminAction = onCall<{
   action: 'verify' | 'reject' | 'gift' | 'revokeGift'
   targetUid: string
@@ -14,7 +12,10 @@ export const adminAction = onCall<{
 }>(
   { cors: true, maxInstances: 5 },
   async (request) => {
-    if (!request.auth || !ADMIN_UIDS.includes(request.auth.uid)) {
+    // Custom claim, set via functions/grant-admin.mjs. Token cache is
+    // ~1h so newly-granted admins must sign out/in once before this
+    // gate sees the claim.
+    if (!request.auth || request.auth.token.admin !== true) {
       throw new HttpsError('permission-denied', 'Admin access required.')
     }
 

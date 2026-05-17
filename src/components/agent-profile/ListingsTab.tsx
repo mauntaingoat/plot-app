@@ -190,27 +190,49 @@ function ScrollerLayout({
   // We add vertical padding (and matching negative margin so the row
   // still aligns with the section) so the frame chrome can fully
   // render without being chopped at the top/bottom of each card.
+  //
+  // Shadow frames offset 6px right — bump the inter-card gap so card
+  // N's shadow doesn't kiss card N+1's left edge.
+  const wantsShadow = listingFrame === 'shadow' || listingFrame === 'border_shadow'
+  const gap = wantsShadow ? 16 : 8
+  // Leading/trailing inset for the carousel. Implemented as actual
+  // flex-child spacer divs (not scroller padding) because horizontal
+  // scroll containers eat trailing padding-right and earlier
+  // negative-margin + padding tricks weren't producing visible
+  // leading on iOS/Safari. Spacer divs are guaranteed to take up
+  // flex space the cards sit beside.
+  const inset = 16
   return (
     <div
-      className="overflow-x-auto -mx-5 md:-mx-7 px-5 md:px-7 -my-2 py-2 snap-x snap-mandatory"
+      className="overflow-x-auto -mx-5 md:-mx-7 -my-2 py-2 snap-x snap-mandatory"
       style={{
         scrollbarWidth: 'none',
         WebkitOverflowScrolling: 'touch',
+        // Snap-mandatory + snap-start on the first card was auto-
+        // aligning it to the scrollport's left edge on mount, eating
+        // the leading spacer. scrollPaddingInline shifts the snap
+        // alignment inward by `inset` on each side so the spacers
+        // stay visible at scroll extremes.
+        scrollPaddingInlineStart: `${inset}px`,
+        scrollPaddingInlineEnd: `${inset}px`,
       }}
     >
       <style>{`.listings-scroller::-webkit-scrollbar { display: none }`}</style>
-      <div className="listings-scroller flex" style={{ gap: '8px' }}>
+      <div className="listings-scroller flex" style={{ gap: `${gap}px` }}>
+        <div className="shrink-0" style={{ width: `${inset}px` }} aria-hidden="true" />
         {pins.map((pin) => (
           <div
             key={pin.id}
             className="snap-start shrink-0"
-            // Width = (100% - 2 gaps of 8px) / 3 = calc((100% - 16px) / 3)
-            // so exactly three cards fit a 100%-width row.
-            style={{ width: 'calc((100% - 16px) / 3)' }}
+            // Width math accounts for: 3 cards + 2 inter-card gaps +
+            // 2 leading/trailing spacers (each `inset` px) + 2 gaps
+            // adjacent to those spacers. Total flex content = 100%.
+            style={{ width: `calc((100% - ${inset * 2}px - ${gap * 4}px) / 3)` }}
           >
             <ListingCardCompact pin={pin} frame={listingFrame} aspect="9/16" onClick={() => onSelectPin(pin)} />
           </div>
         ))}
+        <div className="shrink-0" style={{ width: `${inset}px` }} aria-hidden="true" />
       </div>
     </div>
   )
@@ -243,9 +265,14 @@ function GridLayout({
     )
   }
 
+  // Shadow frames offset 6px right + down — bump the gap so card
+  // N's shadow doesn't kiss its row/column neighbors.
+  const wantsShadow = listingFrame === 'shadow' || listingFrame === 'border_shadow'
+  const gap = wantsShadow ? 16 : 8
+
   if (total === 2) {
     return (
-      <div className="grid grid-cols-2" style={{ gap: '8px' }}>
+      <div className="grid grid-cols-2" style={{ gap: `${gap}px` }}>
         {pins.map((pin) => (
           <ListingCardCompact key={pin.id} pin={pin} frame={listingFrame} aspect="1/1" onClick={() => onSelectPin(pin)} />
         ))}
@@ -255,7 +282,7 @@ function GridLayout({
 
   // 3+ cards — 3-col grid at 9:16, wraps onto more rows.
   return (
-    <div className="grid grid-cols-3" style={{ gap: '8px' }}>
+    <div className="grid grid-cols-3" style={{ gap: `${gap}px` }}>
       {pins.map((pin) => (
         <ListingCardCompact key={pin.id} pin={pin} frame={listingFrame} aspect="9/16" onClick={() => onSelectPin(pin)} />
       ))}

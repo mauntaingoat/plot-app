@@ -255,7 +255,7 @@ export function SaveAgentModal({
                     className="mt-4 text-center"
                     style={{ color: 'var(--text-muted)', fontSize: '11.5px', fontWeight: 400 }}
                   >
-                    By subscribing, you agree to receive emails from {agentName} via Reelst.
+                    By subscribing, you agree to receive emails about {agentName} via Reelst.
                   </p>
                 </motion.div>
               ) : (

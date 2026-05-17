@@ -279,6 +279,22 @@ export function Navbar() {
         </nav>
       </header>
 
+      {/* Mobile menu scrim — catches outside clicks to close the menu.
+          Sits below the menu (z-65) and below the header (z-70) so
+          the menu itself + header buttons (X, Start, logo) stay
+          interactive. Plain dim, no backdrop-blur (per design pref). */}
+      <div
+        className="fixed inset-0 z-[64] md:hidden"
+        onClick={() => setMobileOpen(false)}
+        aria-hidden
+        style={{
+          pointerEvents: mobileOpen ? 'auto' : 'none',
+          opacity: mobileOpen ? 1 : 0,
+          backgroundColor: 'rgba(10,14,23,0.12)',
+          transition: 'opacity 0.2s ease',
+        }}
+      />
+
       {/* Mobile dropdown */}
       <div
         className="fixed top-[80px] left-4 right-4 z-[65] bg-ivory/95 backdrop-blur-2xl border border-black/[0.06] rounded-[20px] shadow-xl md:hidden will-change-transform"
@@ -433,17 +449,30 @@ export function Navbar() {
               ))}
             </div>
           </div>
-          <button
-            onClick={() => {
-              setMobileOpen(false)
-              if (isMobile) openAuth('login')
-              else navigate('/sign-in')
-            }}
-            className="block w-full text-left px-4 py-3 rounded-xl text-[15px] text-graphite cursor-pointer"
-            style={{ fontWeight: 500 }}
-          >
-            Sign in
-          </button>
+          {userDoc ? (
+            <button
+              onClick={() => {
+                setMobileOpen(false)
+                navigate(userDoc.onboardingComplete ? '/dashboard' : '/welcome')
+              }}
+              className="block w-full text-left px-4 py-3 rounded-xl text-[15px] text-graphite cursor-pointer"
+              style={{ fontWeight: 500 }}
+            >
+              Dashboard
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                setMobileOpen(false)
+                if (isMobile) openAuth('login')
+                else navigate('/sign-in')
+              }}
+              className="block w-full text-left px-4 py-3 rounded-xl text-[15px] text-graphite cursor-pointer"
+              style={{ fontWeight: 500 }}
+            >
+              Sign in
+            </button>
+          )}
         </div>
       </div>
     </>

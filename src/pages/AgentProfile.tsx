@@ -185,6 +185,25 @@ export default function AgentProfile() {
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null)
   const [selectedPinTab, setSelectedPinTab] = useState<'content' | 'listing' | undefined>(undefined)
   const [modalKey, setModalKey] = useState(0) // increment to force remount
+
+  // Deep-link support: if the URL has ?pin=<id> (optionally with
+  // ?content=<id>), auto-open the matching pin's ListingModal on
+  // either tab once pins are loaded. Runs once per `?pin` value so
+  // dismissing the modal doesn't immediately re-open it.
+  const deepLinkPinId = searchParams.get('pin')
+  const deepLinkContentId = searchParams.get('content')
+  const appliedDeepLinkRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!deepLinkPinId || allPins.length === 0) return
+    if (appliedDeepLinkRef.current === deepLinkPinId) return
+    const pin = allPins.find((p) => p.id === deepLinkPinId)
+    if (!pin) return
+    appliedDeepLinkRef.current = deepLinkPinId
+    // If ?content= was provided, open the Content tab; otherwise the
+    // Listing tab (or whatever the modal's natural default is).
+    setSelectedPinTab(deepLinkContentId ? 'content' : 'listing')
+    setSelectedPin(pin)
+  }, [deepLinkPinId, deepLinkContentId, allPins])
   const [indicatorPins, setIndicatorPins] = useState<{ pins: Pin[]; type: 'openhouse' } | null>(null)
   const [showAgentDetail, setShowAgentDetail] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
@@ -808,8 +827,6 @@ export default function AgentProfile() {
           onClose={() => setShareOpen(false)}
           title={`${agent.displayName || firstName} on Reelst`}
           message={`Check out ${agent.displayName || firstName}'s map of listings on Reelst`}
-          heroImageUrl={agent.photoURL || null}
-          agentName={agent.displayName || firstName}
         />
 
         {/* Agent-level Wave — fired from the top-left header icon.

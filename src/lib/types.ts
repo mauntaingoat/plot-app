@@ -3,7 +3,9 @@ import type { AgentStyle } from './style/types'
 
 // ── User types ──
 
-export type UserRole = 'consumer' | 'agent'
+// Reelst is agents-only — there is no consumer / browse-only account.
+// Kept as a type for forward compatibility; only 'agent' is valid.
+export type UserRole = 'agent'
 export type AgentType = 'agent' | 'brokerage' | 'developer'
 
 export interface Platform {

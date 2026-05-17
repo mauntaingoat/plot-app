@@ -16,6 +16,7 @@ import { PinBreakdown, ContentConversion, TimeOfDay, SaveGrowth } from '@/compon
 import { SavedMapInsights, CustomBranding } from '@/components/dashboard/StudioFeatures'
 import { QRCodeModal } from '@/components/dashboard/QRCodeModal'
 import { ShareModal } from '@/components/agent-profile/ShareModal'
+import { profileUrl } from '@/lib/shareUrl'
 import { OpenHouseEditor } from '@/components/dashboard/OpenHouseEditor'
 import { PinEditModal } from '@/components/dashboard/PinEditModal'
 import { ShowingInbox } from '@/components/dashboard/ShowingInbox'
@@ -479,7 +480,10 @@ export default function Dashboard() {
   }
 
   const activeUser = impersonating || currentUser
-  const profileUrl = `reel.st/${activeUser?.username || 'you'}`
+  // Pretty profile string for the UI (e.g. the URL chip near the
+  // copy button). Not a real URL — the canonical shareable URL comes
+  // from shareUrl.profileUrl() which includes the actual origin.
+  const displayProfileUrl = `reel.st/${activeUser?.username || 'you'}`
 
   // Pro-downgrade audit. When a paid agent (gifted Pro) reverts to
   // Free, lingering Pro picks (Pro palette/font/shape, custom colors,
@@ -1385,11 +1389,9 @@ export default function Dashboard() {
       <ShareModal
         isOpen={shareOpen}
         onClose={() => setShareOpen(false)}
-        url={`${typeof window !== 'undefined' ? window.location.origin : ''}/${activeUser?.username || ''}`}
+        url={profileUrl(activeUser?.username)}
         title={`${activeUser?.displayName || activeUser?.username || 'My profile'} on Reelst`}
         message={`Check out my map of listings on Reelst`}
-        heroImageUrl={activeUser?.photoURL || null}
-        agentName={activeUser?.displayName || activeUser?.username || undefined}
       />
 
       <OpenHouseEditor
@@ -1641,7 +1643,7 @@ export default function Dashboard() {
             </h1>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 bg-warm-white border border-border-light rounded-full pl-4 pr-1.5 py-1.5">
-                <span className="text-[13px] text-smoke font-medium select-all">{profileUrl}</span>
+                <span className="text-[13px] text-smoke font-medium select-all">{displayProfileUrl}</span>
                 <button
                   onClick={handleCopyLink}
                   className="w-7 h-7 rounded-full bg-cream flex items-center justify-center cursor-pointer hover:bg-pearl transition-colors"

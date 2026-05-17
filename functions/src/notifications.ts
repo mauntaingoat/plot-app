@@ -14,15 +14,92 @@
 
 import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore'
 import { logger } from 'firebase-functions/v2'
+import { defineSecret } from 'firebase-functions/params'
 import * as admin from 'firebase-admin'
+import nodemailer from 'nodemailer'
+import { renderNotificationEmail, type NotificationKind } from './email/notificationEmail'
 
 if (!admin.apps.length) admin.initializeApp()
+
+// Shared with sendAuthEmail + sendWeeklyDigest. Re-declaring the
+// secret here (defineSecret is idempotent on the same name) so the
+// triggers below can list them in their options array.
+const GMAIL_USER = defineSecret('GMAIL_USER')
+const GMAIL_APP_PASSWORD = defineSecret('GMAIL_APP_PASSWORD')
+
+// Origin for the dashboard CTA + image refs inside notification
+// emails. Hardcoded until reel.st DNS flips, mirroring the constant
+// in functions/src/og.ts. Update both in one go when DNS swaps.
+const PUBLIC_BASE_URL = 'https://plot-fe990.web.app'
+
+// Map the FCM/inbox preference key to the email template's kind enum.
+// kinds are 1:1 with notificationPrefs buckets, but the strings differ
+// (snake_case in the email layer, camelCase in the prefs schema).
+const KIND_BY_PREF: Record<string, NotificationKind> = {
+  showingRequest: 'showing_request',
+  pinSaved: 'pin_saved',
+  newSubscriber: 'new_subscriber',
+  newWave: 'new_wave',
+}
 
 interface NotifPayload {
   title: string
   body: string
   url?: string
   tag?: string
+  /** Extras surfaced inline in the email (visitor contact, question). */
+  emailExtras?: {
+    visitorEmail?: string | null
+    visitorPhone?: string | null
+    question?: string | null
+  }
+}
+
+async function sendNotificationEmail(
+  recipientEmail: string,
+  recipientName: string | null,
+  kind: NotificationKind,
+  payload: NotifPayload,
+): Promise<void> {
+  // Best-effort. We never want a mail failure to interrupt the
+  // inbox-doc write or the FCM push — they're already done by the
+  // time this runs. Logging is enough.
+  try {
+    const fromAddress = GMAIL_USER.value()
+    const appPassword = GMAIL_APP_PASSWORD.value()
+    if (!fromAddress || !appPassword) {
+      logger.warn('[notifyUser] email skipped: GMAIL secrets not configured')
+      return
+    }
+
+    const { subject, html, text } = renderNotificationEmail({
+      kind,
+      recipientName,
+      title: payload.title,
+      body: payload.body,
+      actionUrl: `${PUBLIC_BASE_URL}${payload.url || '/dashboard'}`,
+      baseUrl: PUBLIC_BASE_URL,
+      extras: payload.emailExtras,
+    })
+
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      auth: { user: fromAddress, pass: appPassword },
+    })
+
+    await transporter.sendMail({
+      from: `Reelst <${fromAddress}>`,
+      to: recipientEmail,
+      subject,
+      html,
+      text,
+      replyTo: fromAddress,
+    })
+  } catch (err) {
+    logger.warn('[notifyUser] notification email send failed', { err, kind, to: recipientEmail })
+  }
 }
 
 async function notifyUser(uid: string, prefKey: 'showingRequest' | 'pinSaved' | 'newSubscriber' | 'newWave', payload: NotifPayload) {
@@ -31,6 +108,8 @@ async function notifyUser(uid: string, prefKey: 'showingRequest' | 'pinSaved' | 
   if (!userSnap.exists) return
 
   const user = userSnap.data() as {
+    email?: string
+    displayName?: string
     fcmTokens?: string[]
     notificationPrefs?: Record<string, boolean>
   }
@@ -46,6 +125,15 @@ async function notifyUser(uid: string, prefKey: 'showingRequest' | 'pinSaved' | 
   if (!enabled) {
     logger.info(`notifyUser: ${prefKey} disabled for ${uid}`)
     return
+  }
+
+  // Per-event email — runs in parallel with FCM. Gated by the same
+  // toggle: when notificationPrefs[prefKey] is on, the agent gets the
+  // inbox doc (unconditional), an FCM push (if tokens), AND an email.
+  // Inbox stays the source of truth; email is the optional reach.
+  const emailKind = KIND_BY_PREF[prefKey]
+  if (user.email && emailKind) {
+    void sendNotificationEmail(user.email, user.displayName || null, emailKind, payload)
   }
 
   const tokens = user.fcmTokens || []
@@ -142,7 +230,7 @@ async function writeNotification(data: {
 // request's status='new', once from the unread notification doc).
 // We still fire the FCM push so the agent gets a real-time alert.
 export const onNewShowingRequest = onDocumentCreated(
-  { document: 'showing_requests/{reqId}', region: 'us-central1' },
+  { document: 'showing_requests/{reqId}', region: 'us-central1', secrets: [GMAIL_USER, GMAIL_APP_PASSWORD] },
   async (event) => {
     const data = event.data?.data()
     if (!data?.agentId) return
@@ -158,7 +246,7 @@ export const onNewShowingRequest = onDocumentCreated(
 
 // ── Trigger: pin saved ──
 export const onPinSaved = onDocumentCreated(
-  { document: 'saves/{saveId}', region: 'us-central1' },
+  { document: 'saves/{saveId}', region: 'us-central1', secrets: [GMAIL_USER, GMAIL_APP_PASSWORD] },
   async (event) => {
     const data = event.data?.data()
     if (!data?.pinId) return
@@ -195,7 +283,7 @@ export const onPinSaved = onDocumentCreated(
 // Re-subscriptions (status flipping back to 'active') do NOT retrigger
 // this — the trigger only fires on doc create.
 export const onNewDigestSubscription = onDocumentCreated(
-  { document: 'digestSubscriptions/{subId}', region: 'us-central1' },
+  { document: 'digestSubscriptions/{subId}', region: 'us-central1', secrets: [GMAIL_USER, GMAIL_APP_PASSWORD] },
   async (event) => {
     const data = event.data?.data()
     if (!data?.agentId || !data?.email) return
@@ -225,7 +313,7 @@ export const onNewDigestSubscription = onDocumentCreated(
 // The agent's subscriber count auto-decrements via the existing
 // dailySubscriberSnapshot logic — we don't touch counts here.
 export const onDigestSubscriptionUpdated = onDocumentUpdated(
-  { document: 'digestSubscriptions/{subId}', region: 'us-central1' },
+  { document: 'digestSubscriptions/{subId}', region: 'us-central1', secrets: [GMAIL_USER, GMAIL_APP_PASSWORD] },
   async (event) => {
     const before = event.data?.before?.data()
     const after = event.data?.after?.data()
@@ -259,7 +347,7 @@ export const onDigestSubscriptionUpdated = onDocumentUpdated(
 
 // ── Trigger: new wave (buyer question on a listing) ──
 export const onNewWave = onDocumentCreated(
-  { document: 'pins/{pinId}/waves/{waveId}', region: 'us-central1' },
+  { document: 'pins/{pinId}/waves/{waveId}', region: 'us-central1', secrets: [GMAIL_USER, GMAIL_APP_PASSWORD] },
   async (event) => {
     const data = event.data?.data()
     if (!data?.agentId) return
@@ -272,6 +360,11 @@ export const onNewWave = onDocumentCreated(
       body: `${visitor} has a question about ${addressShort}`,
       url: '/dashboard?tab=inbox',
       tag: `wave_${event.params.waveId}`,
+      emailExtras: {
+        visitorEmail: (data.visitorEmail as string | undefined) ?? null,
+        visitorPhone: (data.visitorPhone as string | undefined) ?? null,
+        question: (data.question as string | undefined) ?? null,
+      },
     })
 
     await writeNotification({

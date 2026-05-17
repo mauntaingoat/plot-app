@@ -10,6 +10,7 @@ import type { Pin, UserDoc, PinType } from '@/lib/types'
 import { CyclingCountBadge } from './ListingsTab'
 import { getShape } from '@/lib/style'
 import { ShareModal } from './ShareModal'
+import { profileUrl } from '@/lib/shareUrl'
 
 /* ════════════════════════════════════════════════════════════════
    EXPANDED MAP VIEW — Rendered at the AgentProfile card scope so
@@ -660,9 +661,6 @@ export function ExpandedMapView({
                 <FilterDropdown label="Baths"
                   options={[{ value: '1', label: '1+' }, { value: '2', label: '2+' }, { value: '3', label: '3+' }, { value: '4', label: '4+' }]}
                   selected={propertyFilters.baths} onToggle={(v) => togglePropertyFilter('baths', v)} onClear={() => clearPropertyFilter('baths')} />
-                <FilterDropdown label="Type"
-                  options={[{ value: 'single_family', label: 'Single Family' }, { value: 'condo', label: 'Condo' }, { value: 'townhouse', label: 'Townhouse' }, { value: 'multi_family', label: 'Multi-Family' }, { value: 'land', label: 'Land' }, { value: 'commercial', label: 'Commercial' }]}
-                  selected={propertyFilters.homeType} onToggle={(v) => togglePropertyFilter('homeType', v)} onClear={() => clearPropertyFilter('homeType')} />
                 <FilterDropdown label="Sqft"
                   options={[{ value: '0-1000', label: 'Under 1,000' }, { value: '1000-1500', label: '1,000–1,500' }, { value: '1500-2000', label: '1,500–2,000' }, { value: '2000-3000', label: '2,000–3,000' }, { value: '3000+', label: '3,000+' }]}
                   selected={propertyFilters.sqft} onToggle={(v) => togglePropertyFilter('sqft', v)} onClear={() => clearPropertyFilter('sqft')} />
@@ -702,10 +700,9 @@ export function ExpandedMapView({
       <ShareModal
         isOpen={shareOpen}
         onClose={() => setShareOpen(false)}
+        url={profileUrl(agent.username)}
         title={`${agent.displayName || firstName} on Reelst`}
         message={`Check out ${firstName}'s map of listings on Reelst`}
-        heroImageUrl={agentPhotoUrl ?? agent.photoURL ?? null}
-        agentName={agent.displayName || firstName}
       />
     </>
   )

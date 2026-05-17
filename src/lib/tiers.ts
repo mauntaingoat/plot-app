@@ -1,5 +1,4 @@
 import type { UserDoc, Pin } from './types'
-import { isAdmin } from './admin'
 
 export type Tier = 'free' | 'pro'
 
@@ -44,7 +43,12 @@ export const TIERS: Record<Tier, TierLimits> = {
     id: 'pro',
     name: 'Pro',
     price: 19,
-    maxActivePins: 9999,
+    // Effective safety cap — keeps marketing "unlimited" honest for
+    // any realistic agent (typical 10-30 listings) while bounding worst-
+    // case per-agent cost on RentCast sync (1 call/day/active pin) and
+    // Mux storage. Treated as "you'll never hit this" by users; only
+    // fires for runaway scripts or scraped imports.
+    maxActivePins: 500,
     maxContentPerPin: 999,
     maxSpotlightContent: 999,
     maxVideoSeconds: 180,
@@ -57,9 +61,11 @@ export const TIERS: Record<Tier, TierLimits> = {
 
 export function getUserTier(user: UserDoc | null): Tier {
   if (!user) return 'free'
-  // Admins get Pro automatically. Was Studio when we had three tiers;
-  // collapsed to Pro now that Studio is gone.
-  if (isAdmin(user.uid)) return 'pro'
+  // Admins are granted Pro by writing tier='pro' onto their user doc
+  // at grant time (see functions/grant-admin.mjs). This means the
+  // tier check below works for everyone — no isAdmin() branch needed
+  // here, and `getUserTier` works for ANY user (including ones whose
+  // claims aren't accessible to the current viewer).
   const giftTier = (user as any).giftTier as Tier | undefined
   const giftExpiry = (user as any).giftExpiry as any
   if (giftTier && giftExpiry) {

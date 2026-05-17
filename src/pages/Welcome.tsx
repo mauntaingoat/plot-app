@@ -7,9 +7,9 @@ import { useUsername } from '@/hooks/useUsername'
 import { useLicense } from '@/hooks/useLicense'
 import { useAuthStore } from '@/stores/authStore'
 import { auth } from '@/config/firebase'
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth'
 import { sendVerificationEmail, verificationDeadline } from '@/lib/emailVerification'
-import { createUserDoc } from '@/lib/firestore'
+import { createUserDoc, getUserById } from '@/lib/firestore'
 import { uploadFile, avatarPath } from '@/lib/storage'
 import { Timestamp } from 'firebase/firestore'
 import type { UserDoc } from '@/lib/types'
@@ -71,6 +71,18 @@ export default function Welcome() {
     setLoading(true); setError('')
     try {
       const result = await signInWithPopup(auth, new GoogleAuthProvider())
+      // Firebase "one account per email" merges the Google sign-in into
+      // any existing UID for this email. If that UID already finished
+      // onboarding we MUST NOT run the new-user save flow — it would
+      // overwrite username/displayName/photoURL/bio on the existing
+      // account. Sign back out and route them to /sign-in instead.
+      const existing = await getUserById(result.user.uid)
+      if (existing && existing.onboardingComplete) {
+        await signOut(auth)
+        setError('An account with this email already exists. Please sign in instead.')
+        setLoading(false)
+        return
+      }
       await saveProfile(result.user.uid, result.user.email || '')
     } catch (err: any) {
       // User dismissing the popup or letting it fall behind isn't a
@@ -273,7 +285,7 @@ export default function Welcome() {
                 </div>
                 <button
                   onClick={() => setStep('username')}
-                  className="brand-btn brand-btn--no-tilt w-full h-12 px-6 rounded-full text-[15px] inline-flex items-center justify-center gap-2 cursor-pointer"
+                  className="brand-btn brand-btn--no-tilt w-full h-12 px-6 rounded-[8px] text-[15px] inline-flex items-center justify-center gap-2 cursor-pointer"
                   style={{
                     fontWeight: 600,
                     boxShadow:
@@ -304,7 +316,7 @@ export default function Welcome() {
                       className="text-[16px] font-semibold text-tangerine placeholder:text-[#D4D0C8] outline-none bg-transparent w-full" />
                   </div>
                   <button onClick={nextStep} disabled={!available || username.length < 3}
-                    className="shrink-0 flex items-center gap-2 px-6 py-3 rounded-xl bg-tangerine text-white text-[14px] font-bold cursor-pointer hover:brightness-105 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                    className="shrink-0 flex items-center gap-2 px-6 py-3 rounded-[8px] bg-tangerine text-white text-[14px] font-bold cursor-pointer hover:brightness-105 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
                     Claim it <ArrowRight size={15} />
                   </button>
                 </div>
@@ -334,7 +346,7 @@ export default function Welcome() {
                   onKeyDown={(e) => e.key === 'Enter' && displayName.trim() && nextStep()}
                   className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-[#EAE7E0] text-[15px] text-[#2A2A2A] placeholder:text-[#D4D0C8] outline-none focus:border-tangerine/40 transition-colors" />
                 <button onClick={nextStep} disabled={!displayName.trim()}
-                  className="w-full py-3.5 rounded-full bg-tangerine text-white text-[15px] font-bold cursor-pointer hover:brightness-105 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                  className="w-full py-3.5 rounded-[8px] bg-tangerine text-white text-[15px] font-bold cursor-pointer hover:brightness-105 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
                   Continue
                 </button>
               </motion.div>
@@ -379,7 +391,7 @@ export default function Welcome() {
                   })}
                 </div>
                 <button onClick={nextStep} disabled={goals.length === 0}
-                  className="w-full py-3.5 rounded-full bg-tangerine text-white text-[15px] font-bold cursor-pointer hover:brightness-105 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                  className="w-full py-3.5 rounded-[8px] bg-tangerine text-white text-[15px] font-bold cursor-pointer hover:brightness-105 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
                   Continue
                 </button>
               </motion.div>
@@ -407,12 +419,12 @@ export default function Welcome() {
                 </button>
                 <div className="flex gap-3">
                   <button onClick={nextStep}
-                    className="flex-1 py-3.5 rounded-full border-2 border-[#EAE7E0] text-[14px] font-semibold text-[#8A8A8A] cursor-pointer hover:bg-[#F5F3EE] transition-colors">
+                    className="flex-1 py-3.5 rounded-[8px] border-2 border-[#EAE7E0] text-[14px] font-semibold text-[#8A8A8A] cursor-pointer hover:bg-[#F5F3EE] transition-colors">
                     Skip
                   </button>
                   {photoPreview && (
                     <button onClick={nextStep}
-                      className="flex-1 py-3.5 rounded-full bg-tangerine text-white text-[14px] font-bold cursor-pointer hover:brightness-105 transition-all">
+                      className="flex-1 py-3.5 rounded-[8px] bg-tangerine text-white text-[14px] font-bold cursor-pointer hover:brightness-105 transition-all">
                       Continue
                     </button>
                   )}
@@ -457,7 +469,7 @@ export default function Welcome() {
                     className="w-full px-4 py-3.5 rounded-2xl bg-white border-2 border-[#EAE7E0] text-[14px] text-[#2A2A2A] placeholder:text-[#D4D0C8] outline-none focus:border-tangerine/40" />
                 </div>
                 <button onClick={nextStep} disabled={!licenseState || !licenseNumber || !licenseName || licenseAvailable === false || licenseChecking}
-                  className="w-full py-3.5 rounded-full bg-tangerine text-white text-[15px] font-bold cursor-pointer hover:brightness-105 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                  className="w-full py-3.5 rounded-[8px] bg-tangerine text-white text-[15px] font-bold cursor-pointer hover:brightness-105 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
                   Continue
                 </button>
               </motion.div>
@@ -521,7 +533,7 @@ export default function Welcome() {
                   </div>
                 )}
                 <button onClick={nextStep}
-                  className="w-full py-3.5 rounded-full bg-tangerine text-white text-[15px] font-bold cursor-pointer hover:brightness-105 transition-all">
+                  className="w-full py-3.5 rounded-[8px] bg-tangerine text-white text-[15px] font-bold cursor-pointer hover:brightness-105 transition-all">
                   Continue
                 </button>
               </motion.div>
@@ -586,7 +598,7 @@ export default function Welcome() {
                   You can swap palette, font, map shape, frames, and more later in <span className="font-semibold text-[#8A8A8A]">Style</span>.
                 </p>
                 <button onClick={nextStep}
-                  className="w-full py-3.5 rounded-full bg-tangerine text-white text-[15px] font-bold cursor-pointer hover:brightness-105 transition-all">
+                  className="w-full py-3.5 rounded-[8px] bg-tangerine text-white text-[15px] font-bold cursor-pointer hover:brightness-105 transition-all">
                   Continue
                 </button>
               </motion.div>
@@ -600,7 +612,7 @@ export default function Welcome() {
                   <p className="text-[14px] text-[#8A8A8A] mt-1">Create your account to save everything.</p>
                 </div>
                 <button onClick={handleGoogle} disabled={loading}
-                  className="w-full flex items-center justify-center gap-3 py-3.5 rounded-2xl border-2 border-[#EAE7E0] text-[14px] font-semibold text-[#2A2A2A] cursor-pointer hover:bg-[#F5F3EE] transition-colors disabled:opacity-50">
+                  className="w-full flex items-center justify-center gap-3 py-3.5 rounded-[8px] border-2 border-[#EAE7E0] text-[14px] font-semibold text-[#2A2A2A] cursor-pointer hover:bg-[#F5F3EE] transition-colors disabled:opacity-50">
                   <GoogleLogo size={20} /> Sign up with Google
                 </button>
                 <div className="flex items-center gap-3">
@@ -617,7 +629,7 @@ export default function Welcome() {
                 </div>
                 {error && <p className="text-[12px] text-live-red">{error}</p>}
                 <button onClick={handleEmail} disabled={loading || !email || password.length < 6}
-                  className="w-full py-3.5 rounded-full bg-[#1A1A1A] text-white text-[14px] font-bold cursor-pointer hover:bg-[#2A2A2A] transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                  className="w-full py-3.5 rounded-[8px] bg-[#1A1A1A] text-white text-[14px] font-bold cursor-pointer hover:bg-[#2A2A2A] transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
                   {loading ? <Loader2 size={18} className="animate-spin mx-auto" /> : 'Create account'}
                 </button>
                 <p className="text-[11px] text-[#BBBBBB] text-center">
@@ -641,13 +653,13 @@ export default function Welcome() {
                 <div className="space-y-2">
                   <button
                     onClick={() => navigate('/dashboard/pin/new?from=onboarding')}
-                    className="brand-btn brand-btn--no-tilt w-full py-3.5 rounded-full text-white text-[15px] font-bold cursor-pointer"
+                    className="brand-btn brand-btn--no-tilt w-full py-3.5 rounded-[8px] text-white text-[15px] font-bold cursor-pointer"
                   >
                     Add a pin
                   </button>
                   <button
                     onClick={() => setStep('done')}
-                    className="w-full py-3 rounded-full text-[13px] font-semibold text-[#8A8A8A] cursor-pointer hover:text-[#1A1A1A] transition-colors"
+                    className="w-full py-3 rounded-[8px] text-[13px] font-semibold text-[#8A8A8A] cursor-pointer hover:text-[#1A1A1A] transition-colors"
                   >
                     Skip for now
                   </button>
@@ -672,11 +684,11 @@ export default function Welcome() {
                   </p>
                 </div>
                 <button onClick={() => navigate('/dashboard')}
-                  className="w-full py-4 rounded-full bg-tangerine text-white text-[15px] font-bold cursor-pointer hover:brightness-105 transition-all shadow-lg shadow-tangerine/20">
+                  className="w-full py-4 rounded-[8px] bg-tangerine text-white text-[15px] font-bold cursor-pointer hover:brightness-105 transition-all shadow-lg shadow-tangerine/20">
                   Go to Dashboard
                 </button>
                 <button onClick={() => navigate('/dashboard/pin/new')}
-                  className="w-full py-3.5 rounded-full border-2 border-[#EAE7E0] text-[14px] font-semibold text-[#2A2A2A] cursor-pointer hover:bg-[#F5F3EE] transition-colors">
+                  className="w-full py-3.5 rounded-[8px] border-2 border-[#EAE7E0] text-[14px] font-semibold text-[#2A2A2A] cursor-pointer hover:bg-[#F5F3EE] transition-colors">
                   Drop your first pin
                 </button>
               </motion.div>

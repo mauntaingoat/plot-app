@@ -505,8 +505,8 @@ input:focus, textarea:focus {
   inset: 0;
   transform-style: preserve-3d;
   transform-origin: 50% 50%;
-  transition: transform 0.08s linear;
   will-change: transform;
+  backface-visibility: hidden;
 }
 
 .portfolio-phone {

@@ -40,12 +40,35 @@ export async function getUserById(uid: string): Promise<UserDoc | null> {
   return { uid: snap.id, ...snap.data() } as UserDoc
 }
 
-export async function createUserDoc(uid: string, data: Partial<UserDoc>) {
-  if (!db) return
-  await setDoc(doc(db, 'users', uid), {
+/**
+ * Create a user doc for a fresh UID. NEVER overwrites an existing
+ * doc — if `users/{uid}` already exists this is a no-op that returns
+ * the existing doc.
+ *
+ * Background: every email/Google sign-in routes through Firebase
+ * Auth's "one account per email" merge, so the SAME UID can show up
+ * across multiple sign-up code paths (Welcome.tsx, StepAuth.tsx,
+ * AuthSheet.tsx). If any of those paths called `setDoc(..., data)`
+ * unconditionally it would wipe the user's username, brand style,
+ * tier, etc. back to defaults — which is what happened to the admin
+ * account twice (2026-05-16, 2026-05-17).
+ *
+ * The fix: bake the existence check into the primitive. Anyone who
+ * needs to UPDATE an existing user must call `updateUserDoc` instead.
+ * That makes the data-loss bug structurally impossible regardless of
+ * which sign-in path is taken.
+ */
+export async function createUserDoc(uid: string, data: Partial<UserDoc>): Promise<UserDoc | null> {
+  if (!db) return null
+  const ref = doc(db, 'users', uid)
+  const existing = await getDoc(ref)
+  if (existing.exists()) {
+    return { uid: existing.id, ...existing.data() } as UserDoc
+  }
+  await setDoc(ref, {
     uid,
     email: '',
-    role: 'consumer',
+    role: 'agent',
     createdAt: serverTimestamp(),
     username: null,
     displayName: '',
@@ -67,6 +90,8 @@ export async function createUserDoc(uid: string, data: Partial<UserDoc>) {
     setupPercent: 0,
     ...data,
   })
+  const after = await getDoc(ref)
+  return after.exists() ? ({ uid: after.id, ...after.data() } as UserDoc) : null
 }
 
 export async function updateUserDoc(uid: string, data: Partial<UserDoc>) {

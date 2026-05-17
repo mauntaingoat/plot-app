@@ -7,6 +7,7 @@ import { SEOHead } from '@/components/marketing/SEOHead'
 import { LayeredCTA } from '@/components/marketing/LayeredCTA'
 import { useAuthStore } from '@/stores/authStore'
 import { useScrollReveal } from '@/hooks/useScrollReveal'
+import { useAuthedDestination } from '@/hooks/useAuthedDestination'
 
 /* ════════════════════════════════════════════════════════════════
    SHARED, cream color, tuned to match the generated illustrations'
@@ -966,6 +967,7 @@ function PinAnalyticsSection() {
    ──────────────────────────────────────────────────────────────── */
 function PinAnalytics() {
   const navigate = useNavigate()
+  const signUpDest = useAuthedDestination('/sign-up')
   const sectionRef = useRef<HTMLDivElement>(null)
   const cardRefs = useRef<Array<HTMLDivElement | null>>([])
 
@@ -1066,7 +1068,7 @@ function PinAnalytics() {
             are active, and which neighborhoods buyers save yours alongside,
             every signal in one place.
           </p>
-          <LayeredCTA onClick={() => navigate('/sign-up')} size="md">
+          <LayeredCTA onClick={() => navigate(signUpDest)} size="md">
             Become a Reelst agent <ArrowRight weight="bold" size={15} />
           </LayeredCTA>
         </div>
@@ -1438,6 +1440,7 @@ function PhoneMock() {
 
 function PortfolioShowcase() {
   const navigate = useNavigate()
+  const signUpDest = useAuthedDestination('/sign-up')
   const groupRef = useRef<HTMLDivElement>(null)
 
   // Scroll-driven 3D tilt, applied to the whole 3D group (phone +
@@ -1450,7 +1453,10 @@ function PortfolioShowcase() {
       const group = groupRef.current
       if (!group) return
       const rect = group.getBoundingClientRect()
-      const vh = window.innerHeight
+      // Use clientHeight not innerHeight — innerHeight changes when
+      // the mobile URL bar collapses on scroll, which jerks the rotY
+      // calc on every scroll frame and causes the phone to stutter.
+      const vh = document.documentElement.clientHeight
       let p = (vh - rect.top) / (vh + rect.height)
       p = Math.max(0, Math.min(1, p))
       const rotY = -25 + 50 * p
@@ -1515,7 +1521,7 @@ function PortfolioShowcase() {
               brand. Tune the accent, swap fonts, reorder sections, your
               Reelst link in bio should look as distinct as you do.
             </p>
-            <LayeredCTA onClick={() => navigate('/sign-up')} size="md">
+            <LayeredCTA onClick={() => navigate(signUpDest)} size="md">
               Claim your link <ArrowRight weight="bold" size={15} />
             </LayeredCTA>
           </div>

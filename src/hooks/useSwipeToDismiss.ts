@@ -27,7 +27,17 @@ export function useSwipeToDismiss(
     const sheet = sheetRef.current
     if (!sheet || !active) return
 
+    // Stop touch propagation out of the sheet. When a modal sheet
+    // opens on top of another bottom-sheet (e.g. ShareModal opened
+    // from ListingModal), the child sheet sits INSIDE the parent in
+    // the DOM tree. Without this, every touchmove on the child also
+    // bubbles to the parent's swipe handler — the parent drags in
+    // unison with the child. Stopping propagation at the source keeps
+    // the gesture contained to the active sheet. Inner content (the
+    // sheet's own scrollable area) still receives touches during the
+    // capture/target phase, so internal scroll is unaffected.
     const onTouchStart = (e: TouchEvent) => {
+      e.stopPropagation()
       touchStartY.current = e.touches[0].clientY
       translateY.current = 0
       isDragging.current = false
@@ -41,6 +51,7 @@ export function useSwipeToDismiss(
     const DRAG_THRESHOLD = 8
 
     const onTouchMove = (e: TouchEvent) => {
+      e.stopPropagation()
       const dy = e.touches[0].clientY - touchStartY.current
       const scrollEl = scrollRef?.current ?? null
       const atTop = !scrollEl || scrollEl.scrollTop <= 1
@@ -60,7 +71,8 @@ export function useSwipeToDismiss(
       }
     }
 
-    const onTouchEnd = () => {
+    const onTouchEnd = (e: TouchEvent) => {
+      e.stopPropagation()
       if (isDragging.current) {
         if (translateY.current > 80) {
           sheet.style.transform = 'translateY(100%) translateZ(0)'

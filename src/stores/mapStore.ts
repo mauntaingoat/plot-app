@@ -7,7 +7,6 @@ interface PropertyFilters {
   price: Set<string>
   beds: Set<string>
   baths: Set<string>
-  homeType: Set<string>
   sqft: Set<string>
 }
 
@@ -52,7 +51,7 @@ interface MapState {
 
 const emptyPropertyFilters: PropertyFilters = {
   price: new Set(), beds: new Set(), baths: new Set(),
-  homeType: new Set(), sqft: new Set(),
+  sqft: new Set(),
 }
 
 export const useMapStore = create<MapState>((set, get) => ({
@@ -144,11 +143,6 @@ export function applyPropertyFilters(pins: Pin[], filters: PropertyFilters): Pin
     if (filters.baths.size > 0 && 'baths' in pin) {
       const match = Array.from(filters.baths).some((r) => pin.baths >= parseInt(r))
       if (!match) return false
-    }
-
-    // Home type
-    if (filters.homeType.size > 0 && 'homeType' in pin) {
-      if (!filters.homeType.has(pin.homeType)) return false
     }
 
     // Sqft

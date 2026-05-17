@@ -5,7 +5,7 @@ import { Check, X, ArrowRight, Plus } from '@phosphor-icons/react'
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { SEOHead } from '@/components/marketing/SEOHead'
 import { LayeredCTA } from '@/components/marketing/LayeredCTA'
-import { useAuthStore } from '@/stores/authStore'
+import { useAuthedDestination } from '@/hooks/useAuthedDestination'
 
 /* ════════════════════════════════════════════════════════════════
    PRICING, two tiers (Free + Pro), comparison table, FAQ.
@@ -95,13 +95,10 @@ const FAQS = [
 
 export default function Pricing() {
   const navigate = useNavigate()
-  const { userDoc } = useAuthStore()
+  const ctaDest = useAuthedDestination('/sign-up')
   const [openFaq, setOpenFaq] = useState<number | null>(null)
 
-  const handleCta = () => {
-    if (userDoc) navigate('/dashboard')
-    else navigate('/sign-up')
-  }
+  const handleCta = () => navigate(ctaDest)
 
   return (
     <MarketingLayout>

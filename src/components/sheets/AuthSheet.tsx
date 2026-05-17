@@ -4,14 +4,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import { Timestamp } from 'firebase/firestore'
 import { auth, firebaseConfigured } from '@/config/firebase'
-import { createUserDoc, checkLicenseDuplicate } from '@/lib/firestore'
+import { createUserDoc, checkLicenseDuplicate, getUserById } from '@/lib/firestore'
 import { sendVerificationEmail, verificationDeadline } from '@/lib/emailVerification'
 import { useAuthStore } from '@/stores/authStore'
 import { ResponsiveSheet } from '@/components/ui/ResponsiveSheet'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { GoogleLogo, AppleLogo } from '@/components/icons/PlatformLogos'
-import { Envelope as Mail, Lock, ArrowRight, ArrowLeft, MapPin, Eye, At as AtSign, Check, X, CircleNotch as Loader2, Shield, Warning as AlertTriangle } from '@phosphor-icons/react'
+import { GoogleLogo } from '@/components/icons/PlatformLogos'
+import { Envelope as Mail, Lock, ArrowRight, ArrowLeft, At as AtSign, Check, X, CircleNotch as Loader2, Shield, Warning as AlertTriangle } from '@phosphor-icons/react'
 import { useUsername } from '@/hooks/useUsername'
 import { useLicense } from '@/hooks/useLicense'
 import type { UserDoc } from '@/lib/types'
@@ -22,7 +22,10 @@ interface AuthSheetProps {
   mode?: 'login' | 'signup'
 }
 
-type Step = 'choose-role' | 'claim-username' | 'license-verify' | 'create-account' | 'login'
+// Signup flow is agent-only — Reelst no longer has a consumer/browse
+// role. Signup starts at 'claim-username'; the prior 'choose-role'
+// step was removed along with the "I'm browsing" path.
+type Step = 'claim-username' | 'license-verify' | 'create-account' | 'login'
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD',
@@ -36,8 +39,7 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
   const { available, checking, reserved, check } = useUsername()
   const { claim: claimLicense } = useLicense()
 
-  const [step, setStep] = useState<Step>(initialMode === 'login' ? 'login' : 'choose-role')
-  const [role, setRole] = useState<'agent' | 'consumer' | null>(null)
+  const [step, setStep] = useState<Step>(initialMode === 'login' ? 'login' : 'claim-username')
   const [username, setUsernameVal] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -55,7 +57,7 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
 
   useEffect(() => {
     if (isOpen) {
-      setStep(initialMode === 'login' ? 'login' : 'choose-role')
+      setStep(initialMode === 'login' ? 'login' : 'claim-username')
       setError('')
       setLicenseNumber('')
       setLicenseState('')
@@ -74,7 +76,7 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
 
   const handleCreateAccount = () => {
     if (!email.trim()) { setError('Enter an email'); return }
-    if (role === 'agent' && !displayName.trim()) { setError('Enter your name'); return }
+    if (!displayName.trim()) { setError('Enter your name'); return }
     setLoading(true)
     setError('')
 
@@ -84,31 +86,31 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
       const newUser: UserDoc = {
         uid,
         email,
-        role: role || 'consumer',
-        agentType: role === 'agent' ? 'agent' : undefined,
+        role: 'agent',
+        agentType: 'agent',
         createdAt: Timestamp.now(),
-        username: role === 'agent' ? username : null,
+        username,
         displayName: displayName || email.split('@')[0],
         photoURL: null,
         bio: '',
         brokerage: null,
-        licenseNumber: role === 'agent' ? licenseNumber : null,
-        licenseState: role === 'agent' ? licenseState : null,
-        licenseName: role === 'agent' ? licenseName : null,
-        verificationStatus: role === 'agent' ? 'pending' : 'unverified',
+        licenseNumber,
+        licenseState,
+        licenseName,
+        verificationStatus: 'pending',
         fairHousingAccepted: fairHousing,
         dataSecurityAccepted: dataSecurity,
         emailVerified: false,
         platforms: [],
-        onboardingComplete: role === 'consumer',
-        onboardingStep: role === 'consumer' ? 8 : 2,
+        onboardingComplete: false,
+        onboardingStep: 2,
         tier: 'free', brandColor: null,
-        setupPercent: role === 'agent' ? 20 : 0,
+        setupPercent: 20,
       }
       setUserDoc(newUser)
       setLoading(false)
       onClose()
-      if (role === 'agent') navigate('/dashboard')
+      navigate('/dashboard')
       return
     }
 
@@ -120,20 +122,20 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
         const expiresAt = verificationDeadline()
         await createUserDoc(cred.user.uid, {
           email,
-          role: role || 'consumer',
+          role: 'agent',
           displayName: displayName || email.split('@')[0],
-          username: role === 'agent' ? username : null,
-          licenseNumber: role === 'agent' ? licenseNumber : null,
-          licenseState: role === 'agent' ? licenseState : null,
-          licenseName: role === 'agent' ? licenseName : null,
-          verificationStatus: role === 'agent' ? 'pending' : 'unverified',
+          username,
+          licenseNumber,
+          licenseState,
+          licenseName,
+          verificationStatus: 'pending',
           fairHousingAccepted: fairHousing,
           dataSecurityAccepted: dataSecurity,
           expiresAt: Timestamp.fromDate(expiresAt),
         } as Partial<UserDoc>)
         // Send email verification
         try { await sendVerificationEmail(cred.user) } catch {}
-        if (role === 'agent' && licenseNumber && licenseState) {
+        if (licenseNumber && licenseState) {
           try { await claimLicense(licenseNumber, licenseState, cred.user.uid, username || null, expiresAt) }
           catch (err: any) {
             if (err?.code === 'permission-denied' || /already exists/i.test(err?.message || '')) {
@@ -144,7 +146,7 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
           }
         }
         onClose()
-        if (role === 'agent') navigate('/dashboard')
+        navigate('/dashboard')
       } catch (e: any) {
         setError(e.code === 'auth/email-already-in-use' ? 'Email already in use' : e.code === 'auth/weak-password' ? 'Password needs 6+ chars' : 'Something went wrong')
       } finally {
@@ -201,9 +203,26 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
     setLoading(true)
     try {
       const cred = await signInWithPopup(auth!, new GoogleAuthProvider())
-      await createUserDoc(cred.user.uid, { email: cred.user.email || '', displayName: cred.user.displayName || '', role: role || 'consumer' }).catch(() => {})
+      // Firebase merges Google sign-in into any existing UID for this
+      // email. If a finished user doc already exists, this is a sign-IN
+      // — just route to the dashboard. Never call createUserDoc on an
+      // existing UID (it's now a no-op anyway, but defense in depth).
+      const existing = await getUserById(cred.user.uid)
+      if (existing && existing.onboardingComplete) {
+        onClose()
+        navigate('/dashboard')
+        return
+      }
+      // Brand new user. Reelst is agents-only — there is no consumer
+      // role. Default role: 'agent' so the dashboard works the moment
+      // they land. Onboarding finishes the rest of the profile.
+      await createUserDoc(cred.user.uid, {
+        email: cred.user.email || '',
+        displayName: cred.user.displayName || '',
+        role: 'agent',
+      }).catch(() => {})
       onClose()
-      if (role === 'agent') navigate('/dashboard')
+      navigate('/dashboard')
     } catch { setError('Google sign-in failed') }
     finally { setLoading(false) }
   }
@@ -213,58 +232,9 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
       <div className="px-6 pb-8 pt-4 md:pt-6">
         
 
-          {/* ── Step: Choose Role ── */}
-          {step === 'choose-role' && (
-            <div className="space-y-5">
-              <div className="text-center space-y-1">
-                <h2 className="text-[24px] font-extrabold text-ink tracking-tight">Join Reelst</h2>
-                <p className="text-[14px] text-smoke">How do you want to use Reelst?</p>
-              </div>
-
-              <div className="space-y-3">
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => { setRole('agent'); setStep('claim-username') }}
-                  className="w-full flex items-center gap-4 p-5 rounded-[18px] bg-cream border-2 border-transparent hover:border-tangerine/30 text-left cursor-pointer transition-all"
-                >
-                  <div className="w-12 h-12 rounded-[14px] bg-gradient-to-br from-tangerine to-ember flex items-center justify-center">
-                    <MapPin size={22} className="text-white" />
-                  </div>
-                  <div>
-                    <p className="text-[16px] font-bold text-ink">I'm an agent</p>
-                    <p className="text-[13px] text-smoke">Claim your Reelst link, add pins, grow your audience</p>
-                  </div>
-                </motion.button>
-
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => { setRole('consumer'); setStep('create-account') }}
-                  className="w-full flex items-center gap-4 p-5 rounded-[18px] bg-cream border-2 border-transparent hover:border-listing-blue/30 text-left cursor-pointer transition-all"
-                >
-                  <div className="w-12 h-12 rounded-[14px] bg-listing-blue/15 flex items-center justify-center">
-                    <Eye size={22} className="text-listing-blue" />
-                  </div>
-                  <div>
-                    <p className="text-[16px] font-bold text-ink">I'm browsing</p>
-                    <p className="text-[13px] text-smoke">Save listings, follow agents, explore neighborhoods</p>
-                  </div>
-                </motion.button>
-              </div>
-
-              <p className="text-center text-[13px] text-smoke">
-                Already have an account?{' '}
-                <button onClick={() => setStep('login')} className="text-tangerine font-semibold">Sign in</button>
-              </p>
-            </div>
-          )}
-
           {/* ── Step: Claim Username (Agent only) ── */}
           {step === 'claim-username' && (
             <div className="space-y-5">
-              <button onClick={() => setStep('choose-role')} className="flex items-center gap-1 text-[13px] text-smoke font-medium">
-                <ArrowLeft size={14} /> Back
-              </button>
-
               <div className="text-center space-y-1">
                 <div className="w-16 h-16 rounded-[18px] bg-gradient-to-br from-tangerine to-ember flex items-center justify-center mx-auto mb-3">
                   <AtSign size={28} className="text-white" />
@@ -302,6 +272,11 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
                   {reserved ? 'Reserved. Try another.' : 'Taken. Try another.'}
                 </p>
               )}
+
+              <p className="text-center text-[13px] text-smoke">
+                Already have an account?{' '}
+                <button onClick={() => setStep('login')} className="text-tangerine font-semibold">Sign in</button>
+              </p>
 
               <Button variant="primary" size="xl" fullWidth onClick={() => setStep('license-verify')} disabled={!available || checking || username.length < 3}>
                 Continue
@@ -416,15 +391,13 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
           {/* ── Step: Create Account ── */}
           {step === 'create-account' && (
             <div className="space-y-5">
-              <button onClick={() => setStep(role === 'agent' ? 'license-verify' : 'choose-role')} className="flex items-center gap-1 text-[13px] text-smoke font-medium cursor-pointer">
+              <button onClick={() => setStep('license-verify')} className="flex items-center gap-1 text-[13px] text-smoke font-medium cursor-pointer">
                 <ArrowLeft size={14} /> Back
               </button>
 
               <div className="text-center space-y-1">
-                <h2 className="text-[24px] font-extrabold text-ink tracking-tight">
-                  {role === 'agent' ? 'Create your account' : 'Create account'}
-                </h2>
-                {role === 'agent' && username && (
+                <h2 className="text-[24px] font-extrabold text-ink tracking-tight">Create your account</h2>
+                {username && (
                   <p className="text-[14px] text-smoke">Securing <span className="text-tangerine font-bold">reel.st/{username}</span></p>
                 )}
               </div>
@@ -432,9 +405,6 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
               <div className="space-y-3">
                 <Button variant="secondary" size="xl" fullWidth icon={<GoogleLogo size={20} />} onClick={handleGoogle} loading={loading}>
                   Continue with Google
-                </Button>
-                <Button variant="secondary" size="xl" fullWidth icon={<AppleLogo size={20} />} disabled>
-                  Continue with Apple
                 </Button>
               </div>
 
@@ -445,16 +415,14 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
               </div>
 
               <div className="space-y-3">
-                {role === 'agent' && (
-                  <Input placeholder="Full name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-                )}
+                <Input placeholder="Full name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
                 <Input placeholder="Email address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} icon={<Mail size={16} />} />
                 {firebaseConfigured && (
                   <Input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} icon={<Lock size={16} />} />
                 )}
                 {error && <p className="text-[12px] text-live-red">{error}</p>}
                 <Button variant="primary" size="xl" fullWidth onClick={handleCreateAccount} loading={loading} iconRight={<ArrowRight size={18} />}>
-                  {role === 'agent' ? 'Get started' : 'Create account'}
+                  Get started
                 </Button>
               </div>
             </div>
@@ -489,7 +457,7 @@ export function AuthSheet({ isOpen, onClose, mode: initialMode = 'signup' }: Aut
 
               <p className="text-center text-[13px] text-smoke">
                 Don't have an account?{' '}
-                <button onClick={() => setStep('choose-role')} className="text-tangerine font-semibold">Sign up</button>
+                <button onClick={() => setStep('claim-username')} className="text-tangerine font-semibold">Sign up</button>
               </p>
             </div>
           )}

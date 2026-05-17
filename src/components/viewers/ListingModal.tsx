@@ -4,6 +4,7 @@ import { X, Bed, Bathtub as Bath, ArrowsOut as Maximize, MapPin, ShareNetwork as
 import { SaveAgentModal } from '@/components/agent-profile/SaveAgentModal'
 import { WaveModal } from '@/components/agent-profile/WaveModal'
 import { ShareModal } from '@/components/agent-profile/ShareModal'
+import { pinUrl } from '@/lib/shareUrl'
 import { ReportSheet } from '@/components/moderation/ReportSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
@@ -339,19 +340,13 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
       <ShareModal
         isOpen={shareOpen}
         onClose={() => setShareOpen(false)}
+        url={pinUrl(agent.username, pin.id)}
         title={pin.address?.split(',')[0] || agent.displayName || 'Reelst'}
         message={
           'price' in pin && pin.price
             ? `${formatPrice(pin.price)} · ${(pin as ForSalePin).beds} bd · ${(pin as ForSalePin).baths} ba`
             : `${agent.displayName} on Reelst`
         }
-        heroImageUrl={
-          ('photos' in pin && (pin as ForSalePin).photos?.[0]) ||
-          ('heroPhotoUrl' in pin && (pin as ForSalePin).heroPhotoUrl) ||
-          agent.photoURL ||
-          null
-        }
-        agentName={agent.displayName}
       />
     </>
   )
@@ -365,8 +360,13 @@ function ContentTab({ pin, agent, isPreview, onDismiss, embedded, isSignedIn, on
 
   if (visibleContent.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-midnight">
-        <div className="text-center px-6">
+      // min-h-full + flex centering so the empty state fills the
+      // scroll container's visible height instead of collapsing to
+      // intrinsic height and landing under the absolute-positioned
+      // header close button. py-24 keeps the title clear of the X
+      // button area on shorter viewports.
+      <div className="min-h-full flex items-center justify-center bg-midnight px-6 py-24">
+        <div className="text-center">
           <p className="text-[15px] font-semibold text-white mb-1">No content yet</p>
           <p className="text-[13px] text-ghost">No reels, stories, or videos for this {pin.type === 'spotlight' ? 'spotlight' : 'listing'}.</p>
         </div>
@@ -399,6 +399,10 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isOwnProfile, o
   const cardRef = useRef<HTMLDivElement>(null)
   const [isNearViewport, setIsNearViewport] = useState(false)
   const [carouselIdx, setCarouselIdx] = useState(0)
+  // Default sound ON. Browsers may still autoplay-block an unmuted
+  // <video>; the play().catch() in the viewport observer swallows that
+  // — first user tap (mute toggle, scroll, anywhere) unblocks audio.
+  const [isMuted, setIsMuted] = useState(false)
 
   useEffect(() => {
     if (content.mediaUrls) content.mediaUrls.forEach((url) => { const img = new Image(); img.src = url })
@@ -450,14 +454,23 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isOwnProfile, o
               <video
                 ref={(el) => {
                   (videoRef as any).current = el
-                  if (el) el.muted = true
+                  if (el) el.muted = isMuted
                 }}
                 src={videoSrc}
-                className={`relative w-full h-full ${
+                className={`relative w-full h-full cursor-pointer ${
                   isTallAspect(content.aspect) ? 'object-cover' : 'object-contain'
                 }`}
-                loop playsInline muted preload="auto"
+                loop playsInline muted={isMuted} preload="auto"
                 autoPlay
+                // Tap-anywhere to toggle mute. No on-screen button —
+                // ContentFeed (the standalone content viewer) keeps its
+                // visible toggle; in-pin video relies on the full
+                // surface as the hit target instead.
+                onClick={() => {
+                  const next = !isMuted
+                  setIsMuted(next)
+                  if (videoRef.current) videoRef.current.muted = next
+                }}
               />
             </>
           ) : isVideo && videoSrc && !isNearViewport ? (

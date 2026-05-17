@@ -39,6 +39,11 @@ export interface DigestAgent {
   displayName: string
   photoURL: string | null
   updates: DigestUpdate[]
+  /** When this agent had MORE updates than fit in the email cap, the
+   *  template renders a "+ N more updates from X" footer under their
+   *  card linking to the full profile. Optional / absent when nothing
+   *  was truncated. Set by sendWeeklyDigest after applying caps. */
+  moreUpdatesCount?: number
 }
 
 export interface DigestBlogPost {
@@ -58,6 +63,11 @@ interface RenderInput {
   baseUrl: string
   unsubUrl: string
   sendDate?: Date
+  /** Agents who had updates this week but didn't make the per-email
+   *  cap. Rendered as a compact "+ N more agents updated this week"
+   *  strip near the bottom of the email so the recipient knows to
+   *  open Reelst for the rest. */
+  overflowAgents?: DigestAgent[]
 }
 
 interface RenderOutput {
@@ -100,6 +110,7 @@ export function renderDigestEmail({
   baseUrl,
   unsubUrl,
   sendDate,
+  overflowAgents,
 }: RenderInput): RenderOutput {
   const cleanBase = baseUrl.replace(/\/+$/, '')
   const name = (recipientName || '').trim().split(' ')[0]
@@ -129,6 +140,12 @@ export function renderDigestEmail({
   const blogTeaser = blogPost ? renderBlogTeaser(blogPost, cleanBase) : ''
   const roster = totalUpdates === 0 && !blogPost && agentsWithoutUpdates.length > 0
     ? renderAgentRoster(agentsWithoutUpdates, cleanBase)
+    : ''
+  // Overflow: agents who had updates this week but were trimmed by
+  // the per-email cap in sendWeeklyDigest. Compact strip near the
+  // bottom so the recipient knows to open Reelst for the rest.
+  const overflowStrip = overflowAgents && overflowAgents.length > 0
+    ? renderOverflowAgents(overflowAgents, cleanBase)
     : ''
 
   const html = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -211,6 +228,7 @@ export function renderDigestEmail({
       <td align="center" style="padding:0 16px;">
         <table role="presentation" width="640" cellspacing="0" cellpadding="0" border="0" style="max-width:640px;width:100%;">
           ${agentSections}
+          ${overflowStrip}
           ${roster}
           ${blogTeaser}
           <tr><td style="height:32px;line-height:32px;font-size:1px;">&nbsp;</td></tr>
@@ -362,6 +380,20 @@ function renderAgentCard(agent: DigestAgent, cleanBase: string): string {
 
   const rows = agent.updates.map((u, i) => renderUpdateRow(u, i === agent.updates.length - 1)).join('\n')
 
+  // When sendWeeklyDigest trims this agent's updates to the per-agent
+  // cap, it stashes the count of dropped updates here so we can render
+  // a "+ N more updates from {agent}" footer linking to their profile.
+  const moreFooter = agent.moreUpdatesCount && agent.moreUpdatesCount > 0
+    ? `
+      <tr>
+        <td style="padding:0 22px 16px;">
+          <a href="${escapeAttr(profileUrl)}" style="display:inline-block;font-family:${SANS};font-size:12px;font-weight:600;color:${BRAND.tangerine};text-decoration:none;">
+            + ${agent.moreUpdatesCount} more update${agent.moreUpdatesCount === 1 ? '' : 's'} from ${escapeHtml(agent.displayName.split(' ')[0])} →
+          </a>
+        </td>
+      </tr>`
+    : ''
+
   return `
 <tr>
   <td style="padding:20px 0 0;">
@@ -393,6 +425,41 @@ function renderAgentCard(agent: DigestAgent, cleanBase: string): string {
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
             ${rows}
           </table>
+        </td>
+      </tr>
+      ${moreFooter}
+    </table>
+  </td>
+</tr>`
+}
+
+/* ─────────────── Overflow agents (per-email cap) ─────────────── */
+// Rendered when sendWeeklyDigest had to cap which agents-with-updates
+// fit in this email. Compact strip: counts how many more agents had
+// updates and lists their first names + a CTA to open Reelst.
+function renderOverflowAgents(overflow: DigestAgent[], cleanBase: string): string {
+  const firsts = overflow.slice(0, 5).map((a) => a.displayName.split(' ')[0])
+  const remainder = overflow.length - firsts.length
+  const nameList = remainder > 0
+    ? `${firsts.join(', ')} + ${remainder} more`
+    : firsts.length > 1
+      ? `${firsts.slice(0, -1).join(', ')} and ${firsts[firsts.length - 1]}`
+      : firsts[0] || ''
+  return `
+<tr>
+  <td style="padding:24px 0 0;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:${BRAND.creamSoft};border-radius:16px;">
+      <tr>
+        <td style="padding:18px 22px;">
+          <p style="margin:0 0 4px;font-family:${SANS};font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:${BRAND.graphite};">
+            + ${overflow.length} more agent${overflow.length === 1 ? '' : 's'} updated this week
+          </p>
+          <p style="margin:0 0 12px;font-family:${SANS};font-size:14px;color:${BRAND.ink};line-height:1.5;">
+            ${escapeHtml(nameList)}
+          </p>
+          <a href="${escapeAttr(cleanBase)}" style="display:inline-block;font-family:${SANS};font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:${BRAND.tangerine};text-decoration:none;">
+            See all on Reelst →
+          </a>
         </td>
       </tr>
     </table>

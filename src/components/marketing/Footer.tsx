@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { ReelstLogo } from '@/components/ui/ReelstLogo'
+import { useAuthedDestination } from '@/hooks/useAuthedDestination'
 
 function InstagramGlyph({ size = 17 }: { size?: number }) {
   return (
@@ -33,6 +34,8 @@ export function Footer() {
 }
 
 export function FooterContent() {
+  const signUpDest = useAuthedDestination('/sign-up')
+  const signInDest = useAuthedDestination('/sign-in')
   return (
     <div style={{ fontFamily: 'var(--font-humanist)' }}>
       <div className="max-w-[1240px] mx-auto px-6 md:px-10 pt-16 md:pt-20 pb-9">
@@ -89,8 +92,8 @@ export function FooterContent() {
           </FooterColumn>
 
           <FooterColumn title="For Agents">
-            <FooterLink to="/sign-up">Sign up</FooterLink>
-            <FooterLink to="/sign-in">Sign in</FooterLink>
+            <FooterLink to={signUpDest}>Sign up</FooterLink>
+            <FooterLink to={signInDest}>Sign in</FooterLink>
             <FooterLink to="/pricing">Plans &amp; tiers</FooterLink>
           </FooterColumn>
 

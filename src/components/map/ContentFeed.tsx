@@ -5,6 +5,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { ListingOnlySheet } from '@/components/viewers/ListingOnlySheet'
 import { WaveModal } from '@/components/agent-profile/WaveModal'
 import { ShareModal } from '@/components/agent-profile/ShareModal'
+import { contentUrl } from '@/lib/shareUrl'
 import { type Pin, type UserDoc, type ContentItem, isTallAspect } from '@/lib/types'
 import { getAllContent } from '@/lib/contentUtils'
 import { preloadImages } from '@/lib/imageCache'
@@ -218,10 +219,9 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
         <ShareModal
           isOpen={!!sharePayload}
           onClose={() => setSharePayload(null)}
+          url={contentUrl(agent.username, sharePayload.pin.id, sharePayload.content.id)}
           title={sharePayload.pin.address.split(',')[0]}
           message={sharePayload.content.caption || `${agent.displayName} on Reelst`}
-          heroImageUrl={sharePayload.content.thumbnailUrl || sharePayload.content.mediaUrl || agent.photoURL || null}
-          agentName={agent.displayName}
         />
       )}
     </>
@@ -236,7 +236,7 @@ function FeedCard({ content, pin, agent, isPreview, hideRailExtras, immersive, a
   const videoRef = useRef<HTMLVideoElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const [isNearViewport, setIsNearViewport] = useState(false)
-  const [isMuted, setIsMuted] = useState(true)
+  const [isMuted, setIsMuted] = useState(false)
   const [carouselIdx, setCarouselIdx] = useState(0)
 
   useEffect(() => {
