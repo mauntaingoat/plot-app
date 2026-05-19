@@ -464,39 +464,6 @@ export function subscribeToAllAgentPins(agentId: string, callback: (pins: Pin[])
   )
 }
 
-// ══════════════════════════════════════════
-// SAVES
-// ══════════════════════════════════════════
-
-export async function savePin(userId: string, pinId: string, contentId?: string) {
-  if (!db) return
-  const saveId = contentId ? `${userId}_${pinId}_${contentId}` : `${userId}_${pinId}`
-  await setDoc(doc(db, 'saves', saveId), {
-    userId,
-    pinId,
-    contentId: contentId || null,
-    createdAt: serverTimestamp(),
-  })
-  const { getFunctions, httpsCallable } = await import('firebase/functions')
-  const { app } = await import('@/config/firebase')
-  httpsCallable(getFunctions(app ?? undefined), 'trackEngagement')({ pinId, action: 'save', contentId, localHour: new Date().getHours() }).catch(() => {})
-}
-
-export async function unsavePin(userId: string, pinId: string, contentId?: string) {
-  if (!db) return
-  const saveId = contentId ? `${userId}_${pinId}_${contentId}` : `${userId}_${pinId}`
-  await deleteDoc(doc(db, 'saves', saveId))
-  const { getFunctions, httpsCallable } = await import('firebase/functions')
-  const { app } = await import('@/config/firebase')
-  httpsCallable(getFunctions(app ?? undefined), 'trackEngagement')({ pinId, action: 'unsave', contentId, localHour: new Date().getHours() }).catch(() => {})
-}
-
-export async function getUserSaves(userId: string): Promise<{ pinId: string; contentId?: string }[]> {
-  if (!db) return []
-  const q = query(collection(db, 'saves'), where('userId', '==', userId), limit(1000))
-  const snap = await getDocs(q)
-  return snap.docs.map((d) => ({ pinId: d.data().pinId, contentId: d.data().contentId }))
-}
 
 // ── Shared saved maps ──
 
@@ -796,8 +763,9 @@ export async function updateWaveStatus(pinId: string, waveId: string, status: Wa
 export async function incrementPinTap(pinId: string) {
   const { getFunctions, httpsCallable } = await import('firebase/functions')
   const { app } = await import('@/config/firebase')
+  const { getVisitorId } = await import('@/lib/visitorId')
   const fn = httpsCallable(getFunctions(app ?? undefined), 'trackEngagement')
-  fn({ pinId, action: 'tap', localHour: new Date().getHours() }).catch(() => {})
+  fn({ pinId, action: 'tap', localHour: new Date().getHours(), visitorId: getVisitorId() }).catch(() => {})
 }
 
 // ══════════════════════════════════════════
@@ -1173,6 +1141,7 @@ export interface AnalyticsEvent {
   pinId?: string
   contentId?: string
   actorUid?: string
+  visitorId?: string
   hour: number
   date: string
   createdAt: import('firebase/firestore').Timestamp
@@ -1233,38 +1202,110 @@ export async function getSubscriberSnapshots(agentId: string, days = 30): Promis
   }
 }
 
-export async function getSavedMapInsights(agentId: string): Promise<{ pattern: string; overlap: string; strength: number; savers: number }[]> {
-  if (!db) return []
-  const pinsSnap = await getDocs(query(collection(db, 'pins'), where('agentId', '==', agentId), where('enabled', '==', true), limit(100)))
-  const pinIds = pinsSnap.docs.map((d) => d.id)
-  if (pinIds.length < 2) return []
+// ── Within-profile crossover (Lens A) ──
+//
+// "Visitors who tapped this pin also tapped..." Aggregates the agent's
+// own tap events keyed by visitorId. Anonymous visitors without a
+// visitorId are excluded — they have no stable identity to group on
+// (all 'anon' events from before #233 collapsed to one bucket).
+//
+// Returns one entry per pin the agent owns, each with up to 5 ranked
+// co-tap pins. Empty arrays for pins with no co-tap data — the UI
+// renders the empty state when totalSharedVisitors falls below the
+// threshold.
+export interface CoTap {
+  pinId: string
+  address: string
+  overlapPct: number
+  sharedVisitors: number
+}
 
-  const savesMap = new Map<string, Set<string>>()
-  for (const pid of pinIds) {
-    const savesSnap = await getDocs(query(collection(db, 'saves'), where('pinId', '==', pid), limit(500)))
-    const userIds = new Set(savesSnap.docs.map((d) => d.data().userId as string))
-    savesMap.set(pid, userIds)
+export interface WithinProfileCrossoverEntry {
+  pinId: string
+  address: string
+  totalVisitors: number
+  coTaps: CoTap[]
+}
+
+export async function getWithinProfileCrossover(
+  agentId: string,
+  windowDays?: number,
+): Promise<Record<string, WithinProfileCrossoverEntry>> {
+  if (!db) return {}
+
+  // Tap events for this agent, optionally windowed.
+  const constraints: import('firebase/firestore').QueryConstraint[] = [
+    where('agentId', '==', agentId),
+    where('type', '==', 'tap'),
+    limit(5000),
+  ]
+  if (windowDays && windowDays > 0) {
+    const since = new Date()
+    since.setDate(since.getDate() - windowDays)
+    constraints.push(where('date', '>=', since.toISOString().slice(0, 10)))
+  }
+  const eventsSnap = await getDocs(query(collection(db, 'events'), ...constraints)).catch(() => null)
+  if (!eventsSnap) return {}
+
+  // visitorId -> Set<pinId>
+  const visitorPins = new Map<string, Set<string>>()
+  for (const doc of eventsSnap.docs) {
+    const d = doc.data() as { visitorId?: string; pinId?: string }
+    if (!d.visitorId || !d.pinId) continue
+    if (!visitorPins.has(d.visitorId)) visitorPins.set(d.visitorId, new Set())
+    visitorPins.get(d.visitorId)!.add(d.pinId)
   }
 
-  const insights: { pattern: string; overlap: string; strength: number; savers: number }[] = []
-  const pinAddrs = new Map(pinsSnap.docs.map((d) => [d.id, (d.data().address as string || '').split(',')[0]]))
-  const entries = Array.from(savesMap.entries())
-
-  for (let i = 0; i < entries.length; i++) {
-    for (let j = i + 1; j < entries.length; j++) {
-      const [pidA, usersA] = entries[i]
-      const [pidB, usersB] = entries[j]
-      const overlap = [...usersA].filter((u) => usersB.has(u)).length
-      if (overlap === 0) continue
-      const strength = Math.round((overlap / Math.min(usersA.size, usersB.size)) * 100)
-      insights.push({
-        pattern: pinAddrs.get(pidA) || pidA,
-        overlap: pinAddrs.get(pidB) || pidB,
-        strength,
-        savers: overlap,
-      })
+  // pinId -> Set<visitorId>
+  const pinVisitors = new Map<string, Set<string>>()
+  for (const [visitorId, pins] of visitorPins) {
+    for (const pinId of pins) {
+      if (!pinVisitors.has(pinId)) pinVisitors.set(pinId, new Set())
+      pinVisitors.get(pinId)!.add(visitorId)
     }
   }
 
-  return insights.sort((a, b) => b.strength - a.strength).slice(0, 6)
+  // Pin addresses — pull from pins collection (one read for all pins).
+  const pinsSnap = await getDocs(
+    query(collection(db, 'pins'), where('agentId', '==', agentId), limit(500)),
+  ).catch(() => null)
+  const addresses = new Map<string, string>()
+  if (pinsSnap) {
+    for (const p of pinsSnap.docs) {
+      const data = p.data() as { address?: string }
+      addresses.set(p.id, (data.address || '').split(',')[0] || p.id)
+    }
+  }
+
+  // Build co-tap rankings per pin.
+  const out: Record<string, WithinProfileCrossoverEntry> = {}
+  for (const [pinId, visitors] of pinVisitors) {
+    const coCount = new Map<string, number>()
+    for (const visitorId of visitors) {
+      const pins = visitorPins.get(visitorId)!
+      for (const other of pins) {
+        if (other === pinId) continue
+        coCount.set(other, (coCount.get(other) || 0) + 1)
+      }
+    }
+    const coTaps: CoTap[] = []
+    for (const [other, sharedVisitors] of coCount) {
+      coTaps.push({
+        pinId: other,
+        address: addresses.get(other) || other,
+        overlapPct: Math.round((sharedVisitors / visitors.size) * 100),
+        sharedVisitors,
+      })
+    }
+    coTaps.sort((a, b) => b.overlapPct - a.overlapPct || b.sharedVisitors - a.sharedVisitors)
+    out[pinId] = {
+      pinId,
+      address: addresses.get(pinId) || pinId,
+      totalVisitors: visitors.size,
+      coTaps: coTaps.slice(0, 5),
+    }
+  }
+
+  return out
 }
+

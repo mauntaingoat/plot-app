@@ -7,18 +7,24 @@ import {
   type DigestAgent,
   type DigestBlogPost,
 } from '@/lib/digestEmailTemplate'
+import {
+  renderNotificationEmail,
+  type NotificationKind,
+} from '@/lib/notificationEmailTemplate'
 
 /**
- * Local renderer for the Reelst transactional emails. Two surfaces:
+ * Local renderer for the Reelst transactional emails. Three surfaces:
  *   - Auth (verify / reset) — what `sendAuthEmail` ships
- *   - Digest (weekly subscriber digest) — what `sendWeeklyDigest` will ship
+ *   - Digest (weekly subscriber digest) — what `sendWeeklyDigest` ships
+ *   - Notification (per-event alerts) — what `notifyUser` ships when
+ *     the agent's notificationPrefs toggle is on
  *
  * Mock data is hard-coded. Toggle scenarios via the "Scenario" pill row.
  *
  * Route: /dev/email-preview
  */
 
-type Surface = 'auth' | 'digest'
+type Surface = 'auth' | 'digest' | 'notification'
 type DigestScenario = 'all-updates' | 'some-updates' | 'no-updates-with-blog' | 'no-updates-no-blog' | 'one-agent-one-update'
 
 const SAMPLE_ACTION_URL = 'https://plot-fe990.web.app/auth/action?mode=verifyEmail&oobCode=SAMPLE_OOB_CODE_REPLACE_ME&apiKey=SAMPLE_KEY&continueUrl=https%3A%2F%2Fplot-fe990.web.app%2Fdashboard&lang=en'
@@ -135,10 +141,47 @@ function buildDigestInput(scenario: DigestScenario): { agents: DigestAgent[]; bl
 
 /* ─────────────── Component ─────────────── */
 
+// Notification preview mock content — three event kinds. "Save" and
+// "Subscribe" are the same thing in the data layer (hitting "Save
+// Agent" on a public profile writes a digestSubscriptions doc); the
+// internal kind name is `new_subscriber`, the user-facing label is
+// "Save". `extras` only renders for waves (per the template).
+const NOTIFICATION_MOCK: Record<NotificationKind, { title: string; body: string; actionUrl: string; extras?: { visitorEmail?: string; visitorPhone?: string; question?: string } }> = {
+  showing_request: {
+    title: 'New showing request',
+    body: 'Anna Martinez wants to tour 142 Mango Grove Dr.',
+    // Wave + showing CTAs in production are `mailto:` links so the
+    // agent's "Reply now" tap opens their default mail app with the
+    // visitor's address pre-populated. Save CTAs route to the
+    // dashboard inbox tab.
+    actionUrl: 'mailto:anna.martinez@example.com?subject=Re%3A%20Showing%20request%20for%20142%20Mango%20Grove%20Dr&body=Hi%20Anna%2C%0A%0A',
+    extras: {
+      visitorEmail: 'anna.martinez@example.com',
+      visitorPhone: '+1 305 555 0142',
+    },
+  },
+  new_subscriber: {
+    title: 'New save',
+    body: 'anna.martinez@example.com just saved you on Reelst.',
+    actionUrl: 'https://plot-fe990.web.app/dashboard?tab=inbox',
+  },
+  new_wave: {
+    title: 'New wave 👋',
+    body: 'Anna Martinez has a question about 142 Mango Grove Dr.',
+    actionUrl: 'mailto:anna.martinez@example.com?subject=Re%3A%20Your%20question%20about%20142%20Mango%20Grove%20Dr&body=Hi%20Anna%2C%0A%0A',
+    extras: {
+      visitorEmail: 'anna.martinez@example.com',
+      visitorPhone: '+1 305 555 0142',
+      question: 'Is the kitchen renovation included in the asking price? Curious whether the appliances are new.',
+    },
+  },
+}
+
 export default function EmailPreview() {
   const [surface, setSurface] = useState<Surface>('auth')
   const [authKind, setAuthKind] = useState<AuthEmailKind>('verify')
   const [digestScenario, setDigestScenario] = useState<DigestScenario>('some-updates')
+  const [notificationKind, setNotificationKind] = useState<NotificationKind>('new_wave')
   const [name, setName] = useState('Mau')
   const [from, setFrom] = useState('mau@avigage.com')
   const [showText, setShowText] = useState(false)
@@ -158,6 +201,19 @@ export default function EmailPreview() {
         baseUrl,
       })
     }
+    if (surface === 'notification') {
+      const mock = NOTIFICATION_MOCK[notificationKind]
+      return renderNotificationEmail({
+        kind: notificationKind,
+        recipientName: name.trim() || null,
+        title: mock.title,
+        body: mock.body,
+        actionUrl: mock.actionUrl,
+        baseUrl,
+        fromAddress: from.trim() || 'mau@avigage.com',
+        extras: mock.extras,
+      })
+    }
     const { agents, blogPost } = buildDigestInput(digestScenario)
     return renderDigestEmail({
       agents,
@@ -167,7 +223,7 @@ export default function EmailPreview() {
       baseUrl,
       unsubUrl: SAMPLE_UNSUB_URL,
     })
-  }, [surface, authKind, digestScenario, name, from, baseUrl])
+  }, [surface, authKind, digestScenario, notificationKind, name, from, baseUrl])
 
   // Auto-size iframe to its content so each surface fits without trailing whitespace.
   // The iframe re-renders via srcDoc whenever `rendered.html` changes; we re-measure on load
@@ -204,7 +260,7 @@ export default function EmailPreview() {
 
         {/* Surface toggle */}
         <div className="flex items-center gap-1 bg-cream rounded-full p-1">
-          {(['auth', 'digest'] as const).map((s) => (
+          {(['auth', 'digest', 'notification'] as const).map((s) => (
             <button
               key={s}
               onClick={() => setSurface(s)}
@@ -212,13 +268,13 @@ export default function EmailPreview() {
                 surface === s ? 'bg-ink text-warm-white' : 'text-graphite hover:bg-pearl'
               }`}
             >
-              {s === 'auth' ? 'Auth' : 'Digest'}
+              {s === 'auth' ? 'Auth' : s === 'digest' ? 'Digest' : 'Notification'}
             </button>
           ))}
         </div>
 
         {/* Sub-toggle: depends on surface */}
-        {surface === 'auth' ? (
+        {surface === 'auth' && (
           <div className="flex items-center gap-1 bg-cream rounded-full p-1">
             {(['verify', 'reset'] as const).map((k) => (
               <button
@@ -232,7 +288,8 @@ export default function EmailPreview() {
               </button>
             ))}
           </div>
-        ) : (
+        )}
+        {surface === 'digest' && (
           <div className="flex items-center gap-1 bg-cream rounded-full p-1 flex-wrap">
             {([
               ['all-updates', 'All updates'],
@@ -246,6 +303,25 @@ export default function EmailPreview() {
                 onClick={() => setDigestScenario(id)}
                 className={`px-3 py-1.5 rounded-full text-[11.5px] font-bold cursor-pointer transition-colors ${
                   digestScenario === id ? 'bg-ink text-warm-white' : 'text-graphite hover:bg-pearl'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+        {surface === 'notification' && (
+          <div className="flex items-center gap-1 bg-cream rounded-full p-1 flex-wrap">
+            {([
+              ['new_wave', 'Wave'],
+              ['showing_request', 'Showing'],
+              ['new_subscriber', 'Save'],
+            ] as const).map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setNotificationKind(id)}
+                className={`px-3 py-1.5 rounded-full text-[11.5px] font-bold cursor-pointer transition-colors ${
+                  notificationKind === id ? 'bg-ink text-warm-white' : 'text-graphite hover:bg-pearl'
                 }`}
               >
                 {label}

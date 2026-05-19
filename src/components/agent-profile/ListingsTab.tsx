@@ -1,13 +1,67 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bed, Bathtub as Bath, ArrowsOut as Maximize, House as Home, Key, Compass, Play } from '@phosphor-icons/react'
+import { ArrowsOut as Maximize, House as Home, Key, Compass, Play } from '@phosphor-icons/react'
 import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
 import { OpenHouseBadge } from '@/components/ui/OpenHouseBadge'
 import { displayAddressWithUnit } from '@/lib/format'
 import { formatPrice } from '@/lib/firestore'
 import { nextSession } from '@/lib/openHouse'
-import type { Pin, ForSalePin, SoldPin, OpenHouse, UserDoc } from '@/lib/types'
+import type { Palette, FontPairing } from '@/lib/style'
+import type { Pin, ForSalePin, SoldPin, SpotlightPin, OpenHouse, UserDoc } from '@/lib/types'
 import type { FrameStyle } from '@/lib/style'
+
+/** Card body uses a TINTED version of `palette.accent` as its
+ *  background — full-saturation accent flooding a large surface
+ *  reads as heavy + clashes; a soft tint stays branded while
+ *  letting the address + bd/ba text actually breathe. CSS
+ *  color-mix() ships in every evergreen browser (Chrome 111+,
+ *  Safari 16.2+, Firefox 113+). Subtle top-to-bottom gradient
+ *  gives the surface a "lit from above" feel rather than flat
+ *  paint — the user described it as "shadowyer" in design review. */
+const CARD_BODY_TOP_PCT = 84   // 84% white = barely-tinted top
+const CARD_BODY_BOTTOM_PCT = 72 // 72% white = punchier-tinted bottom
+function cardBodyBackground(accent: string): string {
+  const top = `color-mix(in srgb, #FFFFFF ${CARD_BODY_TOP_PCT}%, ${accent} ${100 - CARD_BODY_TOP_PCT}%)`
+  const bottom = `color-mix(in srgb, #FFFFFF ${CARD_BODY_BOTTOM_PCT}%, ${accent} ${100 - CARD_BODY_BOTTOM_PCT}%)`
+  return `linear-gradient(180deg, ${top} 0%, ${bottom} 100%)`
+}
+
+/* ─────────────── Thumbnail resolution ───────────────
+   Priority used by the new Zillow-style card:
+     1. Content thumbnail (first content item's thumbnailUrl/mediaUrl,
+        plus its `aspect` field if known)
+     2. Listing hero photo (heroPhotoUrl / photos[0]) — MLS landscape,
+        we don't have aspect metadata so default to 4:3
+     3. Type-icon fallback (For Sale / Sold / Spotlight) — square
+   `aspect` returned in CSS-friendly W/H form (e.g. '9 / 16'). */
+const ASPECT_TO_CSS: Record<string, string> = {
+  '9:16': '9 / 16',
+  '4:5':  '4 / 5',
+  '1:1':  '1 / 1',
+  '3:4':  '3 / 4',  // 3 wide, 4 tall — tallish landscape
+  '4:3':  '4 / 3',
+  '16:9': '16 / 9',
+}
+
+function resolveThumb(pin: Pin): { src: string | null; aspect: string } {
+  const firstContent = pin.content?.[0]
+  if (firstContent) {
+    const src = firstContent.thumbnailUrl || firstContent.mediaUrl || (firstContent.mediaUrls && firstContent.mediaUrls[0]) || null
+    if (src) {
+      const a = firstContent.aspect && ASPECT_TO_CSS[firstContent.aspect]
+        ? ASPECT_TO_CSS[firstContent.aspect]
+        : '9 / 16' // reels default
+      return { src, aspect: a }
+    }
+  }
+  if (pin.type !== 'spotlight' && 'heroPhotoUrl' in pin && pin.heroPhotoUrl) {
+    return { src: pin.heroPhotoUrl, aspect: '4 / 3' }
+  }
+  if (pin.type === 'spotlight' && pin.heroPhotoUrl) {
+    return { src: pin.heroPhotoUrl, aspect: '4 / 3' }
+  }
+  return { src: null, aspect: '1 / 1' }
+}
 
 /* ════════════════════════════════════════════════════════════════
    LISTINGS TAB — peek-map + card grid, fullscreen on demand
@@ -39,9 +93,27 @@ interface ListingsTabProps {
   listingFrame?: FrameStyle
   mapFrame?: FrameStyle
   showMap?: boolean
+  /** Width-to-height ratio of the agent's map shape (1 for the
+   *  geometric shapes, varies for state shapes — NJ ~0.43, TX
+   *  ~1.1). The peek slot's bbox sizes itself to this aspect so
+   *  the silhouette fills the peek tightly instead of rendering
+   *  as a thin sliver in a wide rectangle surrounded by empty
+   *  cardbg topography. */
+  shapeAspect?: number
   /** Layout strategy for listings — `scroller` (3 visible, drag right
    *  to scroll) or `grid` (wraps onto more rows instead of scrolling). */
   listingsLayout?: 'scroller' | 'grid'
+  /** Agent's resolved palette — body of each card uses a TINTED
+   *  version of palette.accent (~22% accent + 78% white, top→bottom
+   *  gradient) so the brand color still reads as accent but the
+   *  large surface area doesn't overwhelm. Body ink is hardcoded to
+   *  near-black since the tinted bg is always on the light end,
+   *  regardless of how dark the accent itself is. */
+  palette: Palette
+  /** Agent's chosen font pairing — body of each card uses font.body
+   *  for everything (price, address, beds/baths, description). The
+   *  status chip on the thumbnail keeps its own mono caps style. */
+  font: FontPairing
 }
 
 export function ListingsTab({
@@ -57,6 +129,9 @@ export function ListingsTab({
   mapFrame = 'none',
   showMap = true,
   listingsLayout = 'scroller',
+  palette,
+  font,
+  shapeAspect = 1,
 }: ListingsTabProps) {
 
   // mapFrame is consumed by ExpandedMapView (the component that
@@ -96,13 +171,35 @@ export function ListingsTab({
             itself (ExpandedMapView) — its clip-path means only the
             visible shape is clickable — plus the "Open map" pill
             below as a separate affordance. */}
+        {showMap && <style>{`
+          /* Map peek slot — height is a FIXED pixel value (not
+             vh-relative), so the silhouette renders at the same
+             size on a short-viewport landscape phone as it does
+             on a tall-viewport desktop. The page just scrolls
+             vertically when there isn't enough room — nothing
+             distorts or compresses. Width derives from the
+             shape aspect ratio set inline on the element below,
+             so the silhouette tightly fills the peek.
+             ExpandedMapView reads this div's bbox imperatively
+             to compute the shape size. */
+          .listings-map-peek {
+            height: 320px;
+            margin-left: auto;
+            margin-right: auto;
+            max-width: 100%;
+          }
+        `}</style>}
         {showMap && <div
           ref={peekRef}
-          className="block w-full mb-6 rounded-[20px] relative"
+          className="listings-map-peek block mb-6 rounded-[20px] relative"
           style={{
-            // Bumped from 20vh / 220px so the heart-masked map
-            // reads as a substantial shape, not a small icon.
-            height: 'min(32vh, 320px)',
+            // Width derives from height × shape aspect — narrow
+            // states (NJ ~0.43) get a narrow peek, square shapes
+            // (heart, circle) get a square peek, wide states
+            // (Wyoming ~1.43) get a wide peek. `max-width: 100%`
+            // in the class above caps it at cardbg width so a
+            // very wide shape on a narrow card still fits.
+            aspectRatio: `${shapeAspect} / 1`,
             background: 'transparent',
             pointerEvents: 'none',
           }}
@@ -133,9 +230,9 @@ export function ListingsTab({
         </div>}
 
         {visiblePins.length === 0 ? null : listingsLayout === 'grid' ? (
-          <GridLayout pins={visiblePins} listingFrame={listingFrame} onSelectPin={onSelectPin} />
+          <GridLayout pins={visiblePins} listingFrame={listingFrame} palette={palette} font={font} onSelectPin={onSelectPin} />
         ) : (
-          <ScrollerLayout pins={visiblePins} listingFrame={listingFrame} onSelectPin={onSelectPin} />
+          <ScrollerLayout pins={visiblePins} listingFrame={listingFrame} palette={palette} font={font} onSelectPin={onSelectPin} />
         )}
       </div>
     </>
@@ -153,192 +250,291 @@ export function ListingsTab({
 function ScrollerLayout({
   pins,
   listingFrame,
+  palette,
+  font,
   onSelectPin,
 }: {
   pins: Pin[]
   listingFrame: FrameStyle
+  palette: Palette
+  font: FontPairing
   onSelectPin: (pin: Pin) => void
 }) {
   const total = pins.length
 
   if (total === 1) {
     return (
+      // Single-pin layout: centered, capped at ~one masonry column's
+      // width so a tall (9:16 reel) thumbnail doesn't balloon to the
+      // full container height. Matches the visual weight of a card
+      // sitting in a 4-column grid.
       <div className="flex justify-center">
-        <div className="w-1/2">
-          <ListingCardCompact pin={pins[0]} frame={listingFrame} aspect="1/1" onClick={() => onSelectPin(pins[0])} />
+        <div className="w-full max-w-[240px]">
+          <ListingCardZillow pin={pins[0]} frame={listingFrame} palette={palette} font={font} onClick={() => onSelectPin(pins[0])} />
         </div>
       </div>
     )
   }
 
   if (total === 2) {
+    // Two cards fill the row at 50% each — mirrors GridLayout's
+    // 2-pin case so card sizing stays consistent between layouts
+    // (the only difference between grid and scroller should be how
+    // the rest of the cards flow, not how the first two render).
+    const wantsShadow = listingFrame === 'shadow' || listingFrame === 'border_shadow'
+    const gap = wantsShadow ? 16 : 12
     return (
-      <div className="grid grid-cols-2" style={{ gap: '8px' }}>
+      <div className="grid grid-cols-2 items-start" style={{ gap: `${gap}px` }}>
         {pins.map((pin) => (
-          <ListingCardCompact key={pin.id} pin={pin} frame={listingFrame} aspect="1/1" onClick={() => onSelectPin(pin)} />
+          <ListingCardZillow key={pin.id} pin={pin} frame={listingFrame} palette={palette} font={font} onClick={() => onSelectPin(pin)} />
         ))}
       </div>
     )
   }
 
-  // 3+ cards — horizontal scroller. Each card is exactly 1/3 of the
-  // row (with gap accounted for) so 3 fit perfectly when total === 3,
-  // and the 4th peeks in when total >= 4 to signal scroll affordance.
+  // 3+ cards — horizontal scroller. Visible card count tracks the
+  // grid layout's breakpoint (2 mobile / 3 sm / 4 lg) so a card in
+  // the scroller renders at the same size as a card in the grid —
+  // the only thing that differs between the two layouts is how the
+  // overflow is handled (scroller runs the row + scrolls, grid
+  // wraps into a masonry).
+  //
+  // Padding-inline on the scroll wrapper (NOT spacer divs, NOT parent
+  // padding) gives the cardbg-edge buffer. Scroll-wrapper padding
+  // stays put while content scrolls — so the buffer is always
+  // visible on both sides regardless of scroll position.
+  //
+  // `-mx-5 md:-mx-7` extends the scroller's BOX to the cardbg's
+  // outer edges (cancelling the parent's `px-5 md:px-7` padding so
+  // the scroller can place its own buffer instead).
   //
   // `overflow-x: auto` forces `overflow-y: auto` per spec, which would
   // clip the card's outline (+3px) and offset shadow (+6px / +6px).
-  // We add vertical padding (and matching negative margin so the row
-  // still aligns with the section) so the frame chrome can fully
-  // render without being chopped at the top/bottom of each card.
+  // Vertical padding (with matching negative margin) lets the frame
+  // chrome fully render without being chopped.
   //
   // Shadow frames offset 6px right — bump the inter-card gap so card
   // N's shadow doesn't kiss card N+1's left edge.
+  const visibleCount = useMasonryColCount(pins.length)
   const wantsShadow = listingFrame === 'shadow' || listingFrame === 'border_shadow'
   const gap = wantsShadow ? 16 : 8
-  // Leading/trailing inset for the carousel. Implemented as actual
-  // flex-child spacer divs (not scroller padding) because horizontal
-  // scroll containers eat trailing padding-right and earlier
-  // negative-margin + padding tricks weren't producing visible
-  // leading on iOS/Safari. Spacer divs are guaranteed to take up
-  // flex space the cards sit beside.
-  const inset = 16
+  const leadPad = 20
+  const trailPad = 20
   return (
     <div
-      className="overflow-x-auto -mx-5 md:-mx-7 -my-2 py-2 snap-x snap-mandatory"
+      className="overflow-x-auto -mx-5 md:-mx-7 -my-2 py-2"
       style={{
         scrollbarWidth: 'none',
         WebkitOverflowScrolling: 'touch',
-        // Snap-mandatory + snap-start on the first card was auto-
-        // aligning it to the scrollport's left edge on mount, eating
-        // the leading spacer. scrollPaddingInline shifts the snap
-        // alignment inward by `inset` on each side so the spacers
-        // stay visible at scroll extremes.
-        scrollPaddingInlineStart: `${inset}px`,
-        scrollPaddingInlineEnd: `${inset}px`,
+        // padding-LEFT on the scroll wrapper is honored — it stays
+        // put on the left side regardless of scroll position. We
+        // can't use padding-right symmetrically because Webkit/Blink
+        // has a long-standing bug where horizontal scroll containers
+        // "eat" trailing padding, so the right buffer comes from a
+        // flex-child spacer at the end of the list instead.
+        paddingLeft: `${leadPad}px`,
+        // Prevent horizontal overscroll bounce so the trailing
+        // spacer doesn't slide off-screen past max-scroll.
+        overscrollBehaviorX: 'contain',
       }}
     >
       <style>{`.listings-scroller::-webkit-scrollbar { display: none }`}</style>
-      <div className="listings-scroller flex" style={{ gap: `${gap}px` }}>
-        <div className="shrink-0" style={{ width: `${inset}px` }} aria-hidden="true" />
+      {/* items-start lets each card keep its native thumbnail height
+          (instead of flex's default stretch-to-tallest), so the
+          scroller reads like the masonry grid — different-height
+          rectangles in a row instead of one uniform strip.
+          w-full pins the flex container to the scroll wrapper's
+          content-area width so child percentages resolve against it
+          (instead of the flex container's overflowed max-content). */}
+      <div className="listings-scroller flex items-start w-full" style={{ gap: `${gap}px` }}>
         {pins.map((pin) => (
           <div
             key={pin.id}
-            className="snap-start shrink-0"
-            // Width math accounts for: 3 cards + 2 inter-card gaps +
-            // 2 leading/trailing spacers (each `inset` px) + 2 gaps
-            // adjacent to those spacers. Total flex content = 100%.
-            style={{ width: `calc((100% - ${inset * 2}px - ${gap * 4}px) / 3)` }}
+            className="shrink-0"
+            // `visibleCount` cards + (visibleCount - 1) inter-card
+            // gaps + 1 gap before the trailing spacer + trailing
+            // spacer = 100% of the scroller's content area. So
+            // exactly `visibleCount` cards are visible when the
+            // scroller starts at scrollLeft = 0; the rest are
+            // pushed off-screen to the right and reveal on scroll.
+            style={{ width: `calc((100% - ${gap}px * ${visibleCount} - ${trailPad}px) / ${visibleCount})` }}
           >
-            <ListingCardCompact pin={pin} frame={listingFrame} aspect="9/16" onClick={() => onSelectPin(pin)} />
+            <ListingCardZillow pin={pin} frame={listingFrame} palette={palette} font={font} onClick={() => onSelectPin(pin)} />
           </div>
         ))}
-        <div className="shrink-0" style={{ width: `${inset}px` }} aria-hidden="true" />
+        <div className="shrink-0" style={{ width: `${trailPad}px`, minWidth: `${trailPad}px` }} aria-hidden="true" />
       </div>
     </div>
   )
 }
 
-/* ─────────────── Grid layout ───────────────
-   Same column scale as scroller for the first row, but 4+ wraps to
-   additional rows instead of scrolling sideways:
-     1   → centered 1:1 (half-width)
-     2   → 2 cols 1:1
-     3+  → 3-col grid at 9:16, wraps onto more rows */
+/* ─────────────── Grid layout (masonry / Pinterest) ───────────────
+   Each card's thumbnail keeps its native aspect ratio (9:16 reels,
+   4:3 listing photos, 1:1 type-icon fallbacks). Column width is
+   uniform, height varies — cards in column 1 flow vertically
+   independent of column 2/3, so the section reads as a collage of
+   different-height rectangles rather than a strict row grid.
+   Implementation uses CSS multi-column (column-count + break-inside:
+   avoid) — zero JS, no virtualization, works in every browser. */
 function GridLayout({
   pins,
   listingFrame,
+  palette,
+  font,
   onSelectPin,
 }: {
   pins: Pin[]
   listingFrame: FrameStyle
+  palette: Palette
+  font: FontPairing
   onSelectPin: (pin: Pin) => void
 }) {
   const total = pins.length
 
   if (total === 1) {
     return (
+      // Single-pin layout: centered, capped at ~one masonry column's
+      // width so a tall (9:16 reel) thumbnail doesn't balloon to the
+      // full container height. Matches the visual weight of a card
+      // sitting in a 4-column grid.
       <div className="flex justify-center">
-        <div className="w-1/2">
-          <ListingCardCompact pin={pins[0]} frame={listingFrame} aspect="1/1" onClick={() => onSelectPin(pins[0])} />
+        <div className="w-full max-w-[240px]">
+          <ListingCardZillow pin={pins[0]} frame={listingFrame} palette={palette} font={font} onClick={() => onSelectPin(pins[0])} />
         </div>
       </div>
     )
   }
 
-  // Shadow frames offset 6px right + down — bump the gap so card
-  // N's shadow doesn't kiss its row/column neighbors.
+  // Shadow frames offset 6px right + down — bump the gap so a card's
+  // shadow doesn't kiss its column / row neighbors.
   const wantsShadow = listingFrame === 'shadow' || listingFrame === 'border_shadow'
-  const gap = wantsShadow ? 16 : 8
+  const gap = wantsShadow ? 16 : 12
 
-  if (total === 2) {
-    return (
-      <div className="grid grid-cols-2" style={{ gap: `${gap}px` }}>
-        {pins.map((pin) => (
-          <ListingCardCompact key={pin.id} pin={pin} frame={listingFrame} aspect="1/1" onClick={() => onSelectPin(pin)} />
-        ))}
-      </div>
-    )
-  }
+  // JS-driven flex columns (instead of CSS multi-column). The
+  // multi-column approach kept rendering "ghost" outlines/shadows
+  // from adjacent columns onto the top of cards (a Webkit/Blink
+  // quirk around `break-inside-avoid` + `outline` + box-shadow),
+  // and on mobile occasionally clipped card bottoms when the column
+  // height balancing landed mid-shadow. Splitting into N separate
+  // flex columns sidesteps the multi-column engine entirely —
+  // each card lives in a simple vertical stack, no fragmentation.
+  const colCount = useMasonryColCount(total)
+  const columns = useMemo(() => {
+    const cols: Pin[][] = Array.from({ length: colCount }, () => [])
+    const heights = Array.from({ length: colCount }, () => 0)
+    pins.forEach((pin) => {
+      const { aspect } = resolveThumb(pin)
+      const [aw, ah] = aspect.split('/').map((s) => parseFloat(s.trim()))
+      // Card height per unit width = thumb (h/w) + ~0.35 for the
+      // text body below. Place each pin into the currently-shortest
+      // column so totals stay balanced (mirrors what CSS column-fill:
+      // balance was doing).
+      const cardHeight = ah / aw + 0.35
+      let target = 0
+      for (let i = 1; i < colCount; i++) {
+        if (heights[i] < heights[target]) target = i
+      }
+      cols[target].push(pin)
+      heights[target] += cardHeight
+    })
+    return cols
+  }, [pins, colCount])
 
-  // 3+ cards — 3-col grid at 9:16, wraps onto more rows.
   return (
-    <div className="grid grid-cols-3" style={{ gap: `${gap}px` }}>
-      {pins.map((pin) => (
-        <ListingCardCompact key={pin.id} pin={pin} frame={listingFrame} aspect="9/16" onClick={() => onSelectPin(pin)} />
+    <div className="flex items-start" style={{ gap: `${gap}px` }}>
+      {columns.map((col, i) => (
+        <div key={i} className="flex-1 min-w-0 flex flex-col" style={{ gap: `${gap}px` }}>
+          {col.map((pin) => (
+            <ListingCardZillow
+              key={pin.id}
+              pin={pin}
+              frame={listingFrame}
+              palette={palette}
+              font={font}
+              onClick={() => onSelectPin(pin)}
+            />
+          ))}
+        </div>
       ))}
     </div>
   )
 }
 
-/* ─────────────── Compact listing card ─────────────── */
+/** Tracks viewport width and picks a masonry column count that
+ *  mirrors the old Tailwind breakpoints (2 / sm:3 / lg:4). Caps
+ *  at `total` so a 3-pin set never renders a stray empty column. */
+function useMasonryColCount(total: number): number {
+  const [colCount, setColCount] = useState<number>(() => {
+    if (typeof window === 'undefined') return Math.min(2, total)
+    return computeMasonryColCount(window.innerWidth, total)
+  })
+  useEffect(() => {
+    const onResize = () => setColCount(computeMasonryColCount(window.innerWidth, total))
+    onResize()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [total])
+  return colCount
+}
 
-function ListingCardCompact({
+function computeMasonryColCount(viewportWidth: number, total: number): number {
+  let target = 2
+  if (viewportWidth >= 1024) target = 4
+  else if (viewportWidth >= 640) target = 3
+  return Math.max(1, Math.min(target, total))
+}
+
+/* ─────────────── Listing card (Zillow style) ───────────────
+   Thumbnail on top at its native aspect ratio, text content stacked
+   below. Card width matches column width; height varies with the
+   thumbnail's aspect + the fixed text rows below. Single card design
+   reused by both grid (masonry) and scroller (uniform-width) layouts. */
+
+function ListingCardZillow({
   pin,
   frame = 'none',
-  aspect = '9/16',
+  forceAspect,
+  palette,
+  font,
   onClick,
 }: {
   pin: Pin
   frame?: FrameStyle
-  /** CSS aspect-ratio (e.g., "1/1", "9/16"). Caller decides per layout. */
-  aspect?: '1/1' | '9/16'
+  /** When set, override the thumbnail's native aspect ratio. Used by
+   *  the horizontal scroller layout to force uniform card heights so
+   *  the carousel reads as a clean strip; the masonry grid leaves
+   *  this undefined so each thumbnail keeps its native ratio. */
+  forceAspect?: string
+  palette: Palette
+  font: FontPairing
   onClick: () => void
 }) {
   const wantsBorder = frame === 'border' || frame === 'border_shadow'
   const wantsShadow = frame === 'shadow' || frame === 'border_shadow'
-  // Prefer the content's own thumbnail when one exists — content is
-  // authored in the platform's native 9:16 frame, so the card crop
-  // matches what the buyer will see when they tap in. Fall back to
-  // heroPhotoUrl (landscape MLS photo) only when there's no content.
-  const firstContent = pin.content?.[0]
-  const contentImage = firstContent?.thumbnailUrl || firstContent?.mediaUrl || null
-  const heroPhoto = pin.type !== 'spotlight' && 'heroPhotoUrl' in pin && pin.heroPhotoUrl
-    ? pin.heroPhotoUrl
-    : null
-  const heroImage = contentImage || heroPhoto
+
+  const { src: thumbSrc, aspect: nativeAspect } = resolveThumb(pin)
+  const thumbAspect = forceAspect || nativeAspect
 
   const isSold = pin.type === 'sold'
   const isSpotlight = pin.type === 'spotlight'
   const fp = !isSpotlight ? (pin as ForSalePin | SoldPin) : null
+  const sp = isSpotlight ? (pin as SpotlightPin) : null
   const price = fp ? ('price' in fp ? fp.price : (fp as SoldPin).soldPrice) : null
   const beds = fp && 'beds' in fp ? (fp as ForSalePin | SoldPin).beds : null
   const baths = fp && 'baths' in fp ? (fp as ForSalePin | SoldPin).baths : null
+  const sqft = fp && 'sqft' in fp ? (fp as ForSalePin | SoldPin).sqft : null
 
   const openHouse: OpenHouse | null | undefined =
     pin.type === 'for_sale' && 'openHouse' in pin ? (pin as ForSalePin).openHouse : null
   const hasOpenHouse = nextSession(openHouse) !== null
 
-  // Top-right content-type icon — only shown when the listing has
-  // rich content beyond a single hero photo. Single photos = no icon.
-  // Multi-photo "carousel" content is `type: 'photo'` with mediaUrls
-  // length > 1 (there is no separate 'carousel' ContentType — that
-  // string lives only in the editor's internal CarouselStep type).
+  // Top-right glyphs — open-house badge + content-type indicator.
+  const firstContent = pin.content?.[0]
   const contentType = firstContent?.type
   const hasMultiplePhotos = (firstContent?.mediaUrls?.length ?? 0) > 1
   const hasReel = contentType === 'reel'
 
-  // Top-left status pill copy + color. Open House replaces "For Sale"
-  // when the listing has an active or upcoming session.
+  // Top-left status pill copy + color.
   const statusLabel = hasOpenHouse
     ? 'Open House'
     : isSold
@@ -354,126 +550,156 @@ function ListingCardCompact({
         ? '#D94A1F'
         : '#2D6FD3'
 
+  // Trailing context label in the detail row (Zillow's
+  // "House for sale"). Spotlight cards skip this since they use
+  // a different body layout entirely.
+  const contextLabel = isSold ? 'Sold home' : 'House for sale'
+
+  // Body styling — bg is a tinted gradient of palette.accent (soft
+  // brand pop, doesn't overwhelm at large surface area). Ink is
+  // always near-black since the tinted bg is always on the light
+  // end of the spectrum (22% accent over 78% white).
+  const bodyBg = cardBodyBackground(palette.accent)
+  const bodyInk = '#0A0E17'
+  const bodyMuted = 'rgba(10,14,23,0.62)'
+  const bodySubtle = 'rgba(10,14,23,0.36)'
+
   return (
     <button
       onClick={onClick}
-      className="group relative block w-full overflow-hidden text-left bg-cream cursor-pointer rounded-[14px]"
+      className="group relative block w-full overflow-hidden text-left cursor-pointer rounded-[14px]"
       style={{
-        // Aspect comes from the parent layout (1:1 for ≤2-col layouts
-        // and the deck; 9:16 for the 3-col scroller). Image inside
-        // uses contain-blur so the photo's native framing is
-        // preserved regardless of the card's aspect.
-        aspectRatio: aspect.replace('/', ' / '),
-        // Border + shadow both use the palette accent (dot color in
-        // the swatch) for cohesion with the wave / save / verified
-        // badge / map frame.
         outline: wantsBorder ? '3px solid var(--accent, #D94A1F)' : undefined,
         outlineOffset: wantsBorder ? '0' : undefined,
-        boxShadow: wantsShadow ? '6px 6px 0 0 var(--accent, #D94A1F)' : undefined,
+        boxShadow: wantsShadow
+          ? '6px 6px 0 0 var(--accent, #D94A1F)'
+          : '0 1px 2px rgba(10,14,23,0.06), 0 6px 18px -10px rgba(10,14,23,0.18)',
+        border: wantsBorder ? undefined : '1px solid rgba(10,14,23,0.06)',
       }}
     >
-      {heroImage ? (
-        <ProgressiveImage
-          src={heroImage}
-          alt={pin.address}
-          className="absolute inset-0 w-full h-full"
-          fit="contain-blur"
-          fallback={<TypeIconFallback isSold={isSold} isSpotlight={isSpotlight} />}
-        />
-      ) : (
-        // No photos AND no content — show the type-icon fallback
-        // (For Sale → Home, Sold → Key, Spotlight → Compass)
-        // on the same gradient instead of an empty colored card.
-        <TypeIconFallback isSold={isSold} isSpotlight={isSpotlight} />
-      )}
+      {/* Thumbnail — full card width, native aspect. */}
+      <div className="relative w-full" style={{ aspectRatio: thumbAspect }}>
+        {thumbSrc ? (
+          <ProgressiveImage
+            src={thumbSrc}
+            alt={pin.address}
+            className="absolute inset-0 w-full h-full"
+            fit="cover"
+            fallback={<TypeIconFallback isSold={isSold} isSpotlight={isSpotlight} />}
+          />
+        ) : (
+          <TypeIconFallback isSold={isSold} isSpotlight={isSpotlight} />
+        )}
 
-      {/* Bottom gradient — for legibility of address/price text */}
-      <div
-        className="absolute inset-x-0 bottom-0 h-2/3 pointer-events-none"
-        style={{
-          background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.65) 100%)',
-        }}
-      />
-
-      {/* Top-left: status pill (For Sale / Sold / Spotlight / Open House) */}
-      <div className="absolute top-2 left-2">
-        <span
-          className="inline-flex items-center px-1.5 py-0.5 rounded-[6px] bg-warm-white/95"
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '8.5px',
-            fontWeight: 600,
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-            color: statusColor,
-          }}
-        >
-          {statusLabel}
-        </span>
-      </div>
-
-      {/* Top-right: open-house badge + content-type icon. Both appear
-          in a flex row so they sit side-by-side without overlapping.
-          OpenHouseBadge uses the same rainbow gradient as the open-
-          house map pin, so the iconography stays consistent across
-          card / map / sheet surfaces. */}
-      {(hasOpenHouse || hasMultiplePhotos || hasReel) && (
-        <div className="absolute top-2 right-2 flex items-center gap-1.5">
-          {hasOpenHouse && <OpenHouseBadge size={22} />}
-          {(hasMultiplePhotos || hasReel) && (
-            <div
-              className="text-white"
-              style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.65))' }}
-            >
-              {hasReel
-                ? <Play weight="fill" size={16} />
-                : <CarouselGlyph size={16} />}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Bottom block: address · price · bd/bt — compact for grid */}
-      <div className="absolute inset-x-0 bottom-0 p-2 text-white">
-        <p
-          className="truncate"
-          style={{
-            fontFamily: 'var(--font-humanist)',
-            fontSize: '11px',
-            fontWeight: 500,
-            letterSpacing: '-0.005em',
-            textShadow: '0 1px 2px rgba(0,0,0,0.4)',
-          }}
-        >
-          {displayAddressWithUnit(pin.address, pin.unit).split(',')[0]}
-        </p>
-        {price != null && (
-          <p
+        {/* Top-left: status pill (For Sale / Sold / Spotlight / Open House) */}
+        <div className="absolute top-2 left-2">
+          <span
+            className="inline-flex items-center px-2 py-1 rounded-[8px] bg-warm-white/95"
             style={{
               fontFamily: 'var(--font-mono)',
-              fontSize: '12.5px',
-              fontWeight: 700,
-              letterSpacing: '-0.01em',
-              textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+              fontSize: '9px',
+              fontWeight: 600,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: statusColor,
             }}
           >
-            {formatPrice(price)}
-          </p>
+            {statusLabel}
+          </span>
+        </div>
+
+        {/* Top-right: open-house badge + content-type icon. */}
+        {(hasOpenHouse || hasMultiplePhotos || hasReel) && (
+          <div className="absolute top-2 right-2 flex items-center gap-1.5">
+            {hasOpenHouse && <OpenHouseBadge size={22} />}
+            {(hasMultiplePhotos || hasReel) && (
+              <div
+                className="text-white"
+                style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.65))' }}
+              >
+                {hasReel
+                  ? <Play weight="fill" size={16} />
+                  : <CarouselGlyph size={16} />}
+              </div>
+            )}
+          </div>
         )}
-        {beds != null && baths != null && (
-          <p
-            className="flex items-center gap-1.5"
-            style={{
-              fontFamily: 'var(--font-humanist)',
-              fontSize: '9.5px',
-              fontWeight: 500,
-              opacity: 0.92,
-              textShadow: '0 1px 2px rgba(0,0,0,0.4)',
-            }}
-          >
-            <span className="inline-flex items-center gap-0.5"><Bed size={9} /> {beds}</span>
-            <span className="inline-flex items-center gap-0.5"><Bath size={9} /> {baths}</span>
-          </p>
+      </div>
+
+      {/* Body — text content below the thumbnail. Bg + font follow
+          the agent's palette + chosen font; ink is computed for
+          contrast against cardBg (always black or white, intentionally
+          ignoring the agent's customFontColor here so the body stays
+          maximally legible). Spotlight pins use a name + description
+          layout; for_sale/sold use Zillow's price → bds | ba | sqft
+          → type → address stack. */}
+      <div
+        className="px-3 pt-2.5 pb-3"
+        style={{
+          background: bodyBg,
+          color: bodyInk,
+          fontFamily: font.body,
+        }}
+      >
+        {isSpotlight ? (
+          <>
+            <p
+              className="truncate"
+              style={{ fontSize: '15px', fontWeight: 700, letterSpacing: '-0.018em', lineHeight: 1.2 }}
+            >
+              {sp?.name || displayAddressWithUnit(pin.address, pin.unit).split(',')[0]}
+            </p>
+            {sp?.description && (
+              <p
+                className="mt-1"
+                style={{
+                  color: bodyMuted,
+                  fontSize: '12.5px',
+                  fontWeight: 400,
+                  lineHeight: 1.4,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}
+              >
+                {sp.description}
+              </p>
+            )}
+          </>
+        ) : (
+          <>
+            {price != null && (
+              <p
+                style={{
+                  fontSize: '18px',
+                  fontWeight: 700,
+                  letterSpacing: '-0.012em',
+                  lineHeight: 1.1,
+                }}
+              >
+                {formatPrice(price)}
+              </p>
+            )}
+            <p
+              className="mt-1 truncate"
+              style={{ color: bodyMuted, fontSize: '12.5px', fontWeight: 400, lineHeight: 1.4 }}
+            >
+              {beds != null && <><strong style={{ fontWeight: 600, color: bodyInk }}>{beds}</strong> bds </>}
+              {beds != null && baths != null && <span style={{ color: bodySubtle }}> | </span>}
+              {baths != null && <><strong style={{ fontWeight: 600, color: bodyInk }}>{baths}</strong> ba </>}
+              {baths != null && sqft != null && <span style={{ color: bodySubtle }}> | </span>}
+              {sqft != null && <><strong style={{ fontWeight: 600, color: bodyInk }}>{sqft.toLocaleString()}</strong> sqft </>}
+              {(beds != null || baths != null || sqft != null) && <span style={{ color: bodySubtle }}> | </span>}
+              <span>{contextLabel}</span>
+            </p>
+            <p
+              className="mt-1 truncate"
+              style={{ color: bodyMuted, fontSize: '12.5px', fontWeight: 500 }}
+            >
+              {displayAddressWithUnit(pin.address, pin.unit)}
+            </p>
+          </>
         )}
       </div>
     </button>

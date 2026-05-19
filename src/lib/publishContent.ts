@@ -24,7 +24,7 @@ export type PublishPhase =
 
 export interface PublishInput {
   pinId: string
-  pinType: 'for_sale' | 'sold' | 'spotlight' | 'video' | 'live'
+  pinType: 'for_sale' | 'sold' | 'spotlight'
   photos: File[]
   contentDrafts: ContentDraft[]
   /** Pre-generated stable IDs for each draft so the rendered items

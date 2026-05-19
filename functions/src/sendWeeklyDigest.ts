@@ -398,6 +398,13 @@ function pinToNewUpdate(pin: any, agentUsername: string): DigestUpdate | null {
 }
 
 function openHouseToUpdate(pin: any, agentUsername: string): DigestUpdate | null {
+  // Defensive: sold/spotlight pins never carry an open house, but the
+  // openHouseUpdatedAt timestamp lives on PinBase and isn't cleared
+  // by updatePinType on a for_sale→sold transition. If a pin ever
+  // changes type via a path that bypasses updatePinType (raw
+  // Firestore Console edit, a future code path, etc.) the orphaned
+  // openHouse data could otherwise leak into the digest. Bail early.
+  if (pin.type !== 'for_sale') return null
   const sessions: { date: string; startTime: string; endTime: string }[] =
     pin.openHouse?.sessions || []
   if (sessions.length === 0) return null

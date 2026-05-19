@@ -131,7 +131,11 @@ export function ContentLibrary({ pins, agentId, onAssignContent, onArchiveConten
 
   const filtered = useMemo(() => {
     if (filter === 'all') return allContent
-    if (filter === 'reel') return allContent.filter((i) => i.content.type === 'reel' || i.content.type === 'live' || i.content.type === 'video_note')
+    // Legacy 'live' + 'video_note' content kinds are no longer
+    // produced (livestreams cut from the product, video_note never
+    // shipped) but old docs may still exist — include them under
+    // the reel filter so they remain managable.
+    if (filter === 'reel') return allContent.filter((i) => i.content.type === 'reel' || (i.content.type as string) === 'live' || i.content.type === 'video_note')
     if (filter === 'photo') return allContent.filter((i) => i.content.type === 'photo')
     if (filter === 'no_listing') return allContent.filter((i) => i.pin === null)
     return allContent
@@ -368,7 +372,7 @@ function ContentCard({ content, pin, pins, isDesktop, isPro, onUpgradeClick, isP
   menuOpen: boolean; onMenuToggle: () => void; onMenuClose: () => void
   onAssign: (toPinId: string) => void; onArchive: () => void; onEditCaption: () => void; onEditContent?: () => void
 }) {
-  const isVideo = content.type === 'reel' || content.type === 'live' || content.type === 'video_note'
+  const isVideo = content.type === 'reel' || (content.type as string) === 'live' || content.type === 'video_note'
   const isProcessing = isVideo && (!content.mediaUrl || content.status === 'preparing')
   const thumb = content.thumbnailUrl || content.mediaUrl || ''
   const mediaUrls = content.mediaUrls || (thumb ? [thumb] : [])

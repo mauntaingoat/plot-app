@@ -110,7 +110,7 @@ export function PinBreakdown({ pins }: PinBreakdownProps) {
         >
           <p className="text-[11px] font-bold truncate max-w-[220px]">{sorted[hoverIdx].address}</p>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <span className="text-[10px] opacity-70">{(sorted[hoverIdx].views || 0).toLocaleString()} visits</span>
+            <span className="text-[10px] opacity-70">{(sorted[hoverIdx].views || 0).toLocaleString()} views</span>
             <span className="text-[10px] opacity-70">·</span>
             <span className="text-[10px] opacity-70">{sorted[hoverIdx].taps.toLocaleString()} taps</span>
             <span className="text-[10px] opacity-70">·</span>
@@ -137,7 +137,7 @@ interface ContentConversionProps {
   pins: Pin[]
 }
 
-type ContentBucket = { count: number; visits: number; taps: number; saves: number; waves: number }
+type ContentBucket = { count: number; views: number; taps: number; saves: number; waves: number }
 
 export function ContentConversion({ pins }: ContentConversionProps) {
   const [metric, setMetric] = useState<ContentMetric>('taps')
@@ -149,8 +149,8 @@ export function ContentConversion({ pins }: ContentConversionProps) {
     // Aggregate per-content metrics by type.
     //
     // Per-content fields (read directly):
-    //   - visits  ← c.views   (set by trackView on viewport intersection)
-    //   - saves   ← c.saves   (set by trackEngagement when content is saved)
+    //   - views  ← c.views  (set by trackView on viewport intersection)
+    //   - saves  ← c.saves  (set by trackEngagement when content is saved)
     //
     // Pin-level fields (attributed evenly across content slots):
     //   - taps    ← pin.taps   (a pin tap opens the modal — we don't know
@@ -164,15 +164,15 @@ export function ContentConversion({ pins }: ContentConversionProps) {
     // All four categories are seeded with zeros so the row list stays
     // visually stable as the agent adds/removes content.
     const byType: Record<string, ContentBucket> = {
-      reel:       { count: 0, visits: 0, taps: 0, saves: 0, waves: 0 },
-      photo:      { count: 0, visits: 0, taps: 0, saves: 0, waves: 0 },
-      open_house: { count: 0, visits: 0, taps: 0, saves: 0, waves: 0 },
+      reel:       { count: 0, views: 0, taps: 0, saves: 0, waves: 0 },
+      photo:      { count: 0, views: 0, taps: 0, saves: 0, waves: 0 },
+      open_house: { count: 0, views: 0, taps: 0, saves: 0, waves: 0 },
     }
 
     for (const pin of pins) {
       if (pin.type === 'for_sale' && 'openHouse' in pin && pin.openHouse) {
         byType.open_house.count += 1
-        byType.open_house.visits += pin.views
+        byType.open_house.views += pin.views
         byType.open_house.taps   += pin.taps
         byType.open_house.saves  += pin.saves
         byType.open_house.waves  += pin.waves || 0
@@ -182,13 +182,14 @@ export function ContentConversion({ pins }: ContentConversionProps) {
       const wavesPerSlot = slots > 0 ? Math.round((pin.waves || 0) / slots) : 0
       for (const c of pin.content) {
         // Skip legacy types (video_note, live) — Reelst no longer
-        // surfaces livestream content, and video_note was an unused
-        // experimental kind. Existing docs still load but don't
-        // contribute to the Content Performance breakdown.
-        if (c.type === 'video_note' || c.type === 'live') continue
-        const t = byType[c.type] || (byType[c.type] = { count: 0, visits: 0, taps: 0, saves: 0, waves: 0 })
+        // video_note was an unused experimental kind; livestreams were
+        // removed from the product entirely (2026-05-17). Existing
+        // docs of either kind still load but don't contribute to the
+        // Content Performance breakdown.
+        if (c.type === 'video_note' || (c.type as string) === 'live') continue
+        const t = byType[c.type] || (byType[c.type] = { count: 0, views: 0, taps: 0, saves: 0, waves: 0 })
         t.count += 1
-        t.visits += c.views || 0
+        t.views += c.views || 0
         t.taps   += tapsPerSlot
         t.saves  += c.saves || 0
         t.waves  += wavesPerSlot
@@ -263,7 +264,7 @@ export function ContentConversion({ pins }: ContentConversionProps) {
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <span className="text-[10px] opacity-70">{stats[hoverIdx].count} items</span>
             <span className="text-[10px] opacity-70">·</span>
-            <span className="text-[10px] opacity-70">{stats[hoverIdx].visits.toLocaleString()} visits</span>
+            <span className="text-[10px] opacity-70">{stats[hoverIdx].views.toLocaleString()} views</span>
             <span className="text-[10px] opacity-70">·</span>
             <span className="text-[10px] opacity-70">{stats[hoverIdx].taps.toLocaleString()} taps</span>
             <span className="text-[10px] opacity-70">·</span>

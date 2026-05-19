@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bed, Bathtub as Bath, ArrowsOut as Maximize, MapPin, Heart, ShareNetwork as Share2, Phone, CaretLeft as ChevronLeft, CaretRight as ChevronRight, CalendarCheck, Calendar, Clock, Envelope as Mail, ChatCenteredText as MessageSquare, User as UserIcon, Check } from '@phosphor-icons/react'
+import { Bed, Bathtub as Bath, ArrowsOut as Maximize, MapPin, Heart, ShareNetwork as Share2, Phone, CaretLeft as ChevronLeft, CaretRight as ChevronRight, CalendarCheck, Calendar, Clock, Envelope as Mail, ChatCenteredText as MessageSquare, User as UserIcon, Check, Flag } from '@phosphor-icons/react'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -8,6 +8,7 @@ import { formatPrice } from '@/lib/firestore'
 import { displayAddressWithUnit } from '@/lib/format'
 import { OpenHouseBlock } from '@/components/listing/OpenHouseBlock'
 import { ShareModal } from '@/components/agent-profile/ShareModal'
+import { ReportSheet } from '@/components/moderation/ReportSheet'
 import { pinUrl } from '@/lib/shareUrl'
 import type { Pin, ForSalePin, SoldPin, UserDoc } from '@/lib/types'
 
@@ -30,6 +31,7 @@ export function ListingOnlySheet({ pin, agent, onClose, isPreview, embedded, isS
   const [photoIndex, setPhotoIndex] = useState(0)
   const [showRequestForm, setShowRequestForm] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
+  const [showReport, setShowReport] = useState(false)
 
   if (pin.type === 'spotlight') return null
 
@@ -86,7 +88,6 @@ export function ListingOnlySheet({ pin, agent, onClose, isPreview, embedded, isS
           <Row label="Price / sqft" value={`$${lp.pricePerSqft.toLocaleString()}`} />
           <Row label="Home type" value={lp.homeType.replace('_', ' ')} />
           {'yearBuilt' in lp && lp.yearBuilt && <Row label="Year built" value={String(lp.yearBuilt)} />}
-          <Row label="Days on market" value={String(lp.daysOnMarket)} />
           {'mlsNumber' in lp && lp.mlsNumber && <Row label="MLS #" value={lp.mlsNumber} />}
           {'lotSize' in lp && lp.lotSize && <Row label="Lot size" value={lp.lotSize} />}
           {pin.type === 'sold' && 'soldDate' in lp && <Row label="Sold date" value={new Date(lp.soldDate.toMillis()).toLocaleDateString()} />}
@@ -116,6 +117,15 @@ export function ListingOnlySheet({ pin, agent, onClose, isPreview, embedded, isS
           <InlineShowingForm pin={lp} agent={agent} onBack={() => setShowRequestForm(false)} />
         )}
 
+        {/* Report link — mirrors the placement at the bottom of
+            ListingModal so for_sale + sold pins have parity. */}
+        <button
+          onClick={() => setShowReport(true)}
+          className="flex items-center gap-1.5 text-[12px] text-ghost hover:text-mist cursor-pointer transition-colors mx-auto"
+        >
+          <Flag size={11} /> Report this listing
+        </button>
+
         <div className="h-8" />
       </div>
       <ShareModal
@@ -124,6 +134,13 @@ export function ListingOnlySheet({ pin, agent, onClose, isPreview, embedded, isS
         url={pinUrl(agent.username, pin.id)}
         title={displayAddressWithUnit(pin.address, pin.unit).split(',')[0]}
         message={`${formatPrice(('price' in lp ? lp.price : (lp as SoldPin).soldPrice) || 0)} · ${lp.beds} bd · ${lp.baths} ba · ${lp.sqft.toLocaleString()} sqft`}
+      />
+      <ReportSheet
+        isOpen={showReport}
+        onClose={() => setShowReport(false)}
+        targetType="pin"
+        targetId={pin.id}
+        targetOwnerId={pin.agentId}
       />
     </>
   )

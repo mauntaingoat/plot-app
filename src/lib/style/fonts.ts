@@ -1,10 +1,13 @@
 /* ════════════════════════════════════════════════════════════════
-   FONTS — 6 named pairings
+   FONTS — named pairings, ordered Free first
    ────────────────────────────────────────────────────────────────
    Each pairing defines a display font (name, headers) plus a body
    font. Fonts are loaded on-demand via Google Fonts <link> tags
-   injected only when the active palette needs them — so we don't
-   ship 6 font families to every visitor.
+   injected only when the active palette needs them — so visitors
+   only download the family the agent's profile actually uses.
+
+   Order matters: FREE_FONT_COUNT (defaults.ts) gates everything
+   past that index behind Pro.
    ──────────────────────────────────────────────────────────────── */
 
 export interface FontPairing {
@@ -104,6 +107,38 @@ export const FONTS: FontPairing[] = [
     display: '"Roboto Slab", "Rockwell", serif',
     body: '"Roboto", system-ui, sans-serif',
     googleFamilies: 'Roboto+Slab:wght@500;700&family=Roboto:wght@400;500;600',
+  },
+  {
+    id: 'bricolage',
+    name: 'Bricolage',
+    vibe: 'Gritty, modern, character',
+    display: '"Bricolage Grotesque", "Inter", system-ui, sans-serif',
+    body: '"Bricolage Grotesque", "Inter", system-ui, sans-serif',
+    googleFamilies: 'Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700',
+  },
+  {
+    id: 'funnel',
+    name: 'Funnel',
+    vibe: 'Punchy, hand-cut, distinctive',
+    display: '"Funnel Display", system-ui, sans-serif',
+    body: '"Funnel Sans", system-ui, sans-serif',
+    googleFamilies: 'Funnel+Display:wght@500;700&family=Funnel+Sans:wght@400;500;600',
+  },
+  {
+    id: 'caprasimo',
+    name: 'Caprasimo',
+    vibe: 'Retro warmth, rounded display',
+    display: '"Caprasimo", Georgia, serif',
+    body: '"Outfit", system-ui, sans-serif',
+    googleFamilies: 'Caprasimo&family=Outfit:wght@400;500;600',
+  },
+  {
+    id: 'journal',
+    name: 'Journal',
+    vibe: 'Modern editorial, op-ed serif',
+    display: '"Newsreader", "Times New Roman", serif',
+    body: '"Plus Jakarta Sans", system-ui, sans-serif',
+    googleFamilies: 'Newsreader:opsz,wght@6..72,500;6..72,700&family=Plus+Jakarta+Sans:wght@400;500;600',
   },
 ]
 

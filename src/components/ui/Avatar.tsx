@@ -6,7 +6,7 @@ interface AvatarProps {
   src?: string | null
   name?: string
   size?: number
-  ring?: 'story' | 'live' | 'none'
+  ring?: 'story' | 'none'
   className?: string
   onClick?: () => void
 }
@@ -22,7 +22,6 @@ function getInitials(name: string) {
 
 const ringStyles = {
   story: 'bg-gradient-to-br from-tangerine via-ember to-[#FF3B7A] p-[2.5px]',
-  live: 'bg-live-red p-[2.5px] animate-pulse-glow',
   none: '',
 }
 

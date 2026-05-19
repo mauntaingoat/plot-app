@@ -1758,7 +1758,14 @@ input:focus, textarea:focus {
   top: 0;
   left: 0;
   right: 0;
-  height: 100dvh;
+  /* Floored at 720px so the shape always covers the map-peek slot
+     (header ~300px + peek 320px = ~620px from card top, with a
+     safety buffer). Without the floor, a short viewport (resized
+     desktop window, landscape phone) leaves the shape only
+     viewport-tall while the peek extends below it — clip-path
+     then renders nothing past the shape's bottom edge and the
+     map silhouette gets cropped horizontally at viewport bottom. */
+  height: max(100dvh, 720px);
   z-index: 40;
   overflow: hidden;
   background: #0A0E17;

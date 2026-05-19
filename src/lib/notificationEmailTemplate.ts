@@ -10,8 +10,8 @@
  *      fineprint, Manage notifications + Privacy + Terms links, Reelst
  *      DBA tag, reply-to address
  *
- * IMPORTANT: This file is mirrored at src/lib/notificationEmailTemplate.ts.
- * The frontend copy powers the /dev/email-preview page; this copy is
+ * IMPORTANT: This file is mirrored at functions/src/email/notificationEmail.ts.
+ * The frontend copy powers the /dev/email-preview page; the functions copy is
  * what actually ships in sent emails. Keep them in sync — change one,
  * change the other.
  */

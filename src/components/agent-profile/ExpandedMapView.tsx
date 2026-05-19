@@ -107,6 +107,13 @@ export function ExpandedMapView({
   const peekScale = shapeDef.peekScale
   const expandScale = shapeDef.expandScale
   const expandAnchorOffset = shapeDef.expandAnchorOffset
+  // Width/height ratio of the silhouette inside its unit-square
+  // bbox (1 for geometric shapes, varies for states). Used to
+  // size the shape against the peek's actual dimensions instead
+  // of just `min(w, h)` — without this, narrow states (NJ ~0.43)
+  // collapse into a tiny silhouette whenever the peek itself is
+  // narrowed to match the shape aspect.
+  const shapeAspect = shapeDef.aspect
 
   // Fraction of the shape's bbox that's actually visible (used to
   // size the inscribed pin-fit rectangle). Heart fills less than its
@@ -135,18 +142,25 @@ export function ExpandedMapView({
     if (shapeBox.width <= 0 || shapeBox.height <= 0) return undefined
     const peekCenterX = peek.left - shapeBox.left + peek.width / 2
     const peekCenterY = peek.top - shapeBox.top + peek.height / 2
-    const peekMin = Math.min(peek.width, peek.height)
-    const shapeSize = peekMin * peekScale
+    // Shape size fits the silhouette to the peek's actual aspect.
+    // Silhouette dims = (size * shapeAspect) wide × (size * 1) tall,
+    // so we cap size by whichever dimension binds first.
+    const shapeSize = Math.min(peek.width / shapeAspect, peek.height) * peekScale
     const inscribed = SHAPE_INSCRIBED[shapeId || 'rectangle'] ?? 0.7
-    const rectSize = shapeSize * inscribed
+    // Inscribed rect tracks the silhouette's aspect — for narrow
+    // states the rect is tall+narrow, not square. Pins fit inside
+    // the actual silhouette, not a square that would spill into
+    // the empty corners of the bbox.
+    const inscribedW = shapeSize * shapeAspect * inscribed
+    const inscribedH = shapeSize * inscribed
     return {
-      top: Math.max(40, peekCenterY - rectSize / 2),
-      bottom: Math.max(40, shapeBox.height - (peekCenterY + rectSize / 2)),
-      left: Math.max(20, peekCenterX - rectSize / 2),
-      right: Math.max(20, shapeBox.width - (peekCenterX + rectSize / 2)),
+      top: Math.max(40, peekCenterY - inscribedH / 2),
+      bottom: Math.max(40, shapeBox.height - (peekCenterY + inscribedH / 2)),
+      left: Math.max(20, peekCenterX - inscribedW / 2),
+      right: Math.max(20, shapeBox.width - (peekCenterX + inscribedW / 2)),
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shapeId, peekScale, peekEl, originRect])
+  }, [shapeId, peekScale, shapeAspect, peekEl, originRect])
   const buildClip = (cx: number, cy: number, size: number): string => shapePath(cx, cy, size)
 
   // When the viewport flips breakpoints (desktop ↔ mobile, rotation,
@@ -229,11 +243,17 @@ export function ExpandedMapView({
     const left = peek.left - shape.left
     const w = peek.width
     const h = peek.height
-    // Shape sized off the peek's smaller dimension. Each shape has
-    // its own peekScale: heart > 1 (sparse bbox needs to scale up to
-    // read substantial), circle/squircle/blobs ≤ 1 (they fill their
-    // bbox so any oversize spills into the listings grid below).
-    const size = Math.min(w, h) * peekScale
+    // Aspect-aware shape sizing — silhouette dims = (size * shapeAspect)
+    // wide × size tall. Cap by whichever peek dimension binds first so
+    // the silhouette fills the peek tightly without overflowing. For
+    // narrow states (NJ ~0.43) in a narrow peek, this picks
+    // size = peek.height (height binds), keeping the silhouette as
+    // tall as the peek instead of collapsing to peek.width
+    // (which would shrink it to a tiny sliver). For square shapes
+    // (aspect 1) the formula reduces to min(w, h) — same behavior
+    // as before. Each shape's peekScale modulates the fit: heart
+    // > 1 (sparse bbox needs to scale up), circle/squircle/blobs ≤ 1.
+    const size = Math.min(w / shapeAspect, h) * peekScale
     const cx = left + w / 2
     const cy = top + h / 2
     return buildClip(cx, cy, size)

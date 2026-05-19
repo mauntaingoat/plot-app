@@ -17,12 +17,21 @@ export interface TierLimits {
   advancedAnalytics: boolean
   /** Pro only — open house scheduling on for_sale pins. */
   openHouses: boolean
-  /** Pro only — agent receives FCM/email pings for new buyer
-   *  email signups + waves. */
+  /** Available on every tier — agent receives FCM push + per-event
+   *  email pings for new buyer signups, waves, showings, and saves
+   *  (gated only by the per-event toggle in notification settings, not
+   *  by tier). Kept in TierLimits for legacy compatibility with the
+   *  hasFeature() helper but always returns true. */
   emailNotifications: boolean
   /** Pro only — expanded customization (custom ticker items, custom
    *  CTA labels, brand color override, profile layout choices, etc.). */
   expandedCustomization: boolean
+  /** Pro only — daily RentCast auto-sync of existing for_sale + sold
+   *  pins (price changes, status flips, days-on-market). Free agents
+   *  still get a one-time RentCast lookup at pin-create time via
+   *  the propertyLookup callable — they just don't get the daily
+   *  re-pull thereafter. Enforced server-side in syncPropertyData. */
+  propertyAutoSync: boolean
 }
 
 export const TIERS: Record<Tier, TierLimits> = {
@@ -36,8 +45,9 @@ export const TIERS: Record<Tier, TierLimits> = {
     maxVideoSeconds: 180,
     advancedAnalytics: false,
     openHouses: false,
-    emailNotifications: false,
+    emailNotifications: true,
     expandedCustomization: false,
+    propertyAutoSync: false,
   },
   pro: {
     id: 'pro',
@@ -56,6 +66,7 @@ export const TIERS: Record<Tier, TierLimits> = {
     openHouses: true,
     emailNotifications: true,
     expandedCustomization: true,
+    propertyAutoSync: true,
   },
 }
 
@@ -136,7 +147,7 @@ export function canUploadVideo(user: UserDoc | null, durationSeconds: number): G
 
 export function hasFeature(
   user: UserDoc | null,
-  feature: keyof Pick<TierLimits, 'advancedAnalytics' | 'openHouses' | 'emailNotifications' | 'expandedCustomization'>,
+  feature: keyof Pick<TierLimits, 'advancedAnalytics' | 'openHouses' | 'emailNotifications' | 'expandedCustomization' | 'propertyAutoSync'>,
 ): boolean {
   return getTierLimits(user)[feature]
 }

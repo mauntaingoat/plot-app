@@ -261,7 +261,7 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
                   onClick={!isPreview ? () => setShareOpen(true) : undefined}
                   className={`w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white cursor-pointer ${isPreview ? 'opacity-40' : ''} hover:bg-black/55 transition-colors`}
                 >
-                  <Share2 size={15} />
+                  <Share2 weight="fill" size={15} />
                 </button>
               </>
             )}
@@ -333,7 +333,15 @@ export function ListingModal({ pin, agent, onClose, isPreview, embedded, isSigne
         isOpen={waveModalOpen}
         onClose={() => setWaveModalOpen(false)}
         pinId={pin.id}
-        pinAddress={pin.address || ''}
+        // Spotlights use their name as the wave subject so the
+        // placeholder + the agent's inbox/email read as
+        // "asked about Wynwood spotlight" rather than the spotlight's
+        // underlying centroid address.
+        pinAddress={
+          pin.type === 'spotlight' && 'name' in pin
+            ? `${pin.name} spotlight`
+            : (pin.address || '')
+        }
         agentId={agent.uid}
         agentName={agent.displayName || agent.username || 'agent'}
       />
@@ -409,7 +417,7 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isOwnProfile, o
   }, [content.mediaUrls])
 
   const thumbnailUrl = content.thumbnailUrl || ('heroPhotoUrl' in pin ? pin.heroPhotoUrl : '') || ''
-  const isVideo = content.type === 'reel' || content.type === 'live'
+  const isVideo = content.type === 'reel'
   const isCarousel = content.type === 'photo' && content.mediaUrls && content.mediaUrls.length > 1
   const isProcessing = isVideo && (!content.mediaUrl || content.status === 'preparing')
   const videoSrc = content.mediaUrl || ''
@@ -537,14 +545,14 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isOwnProfile, o
           </motion.button>
         )}
 
-        {!isOwnProfile && onWave && pin.type !== 'spotlight' && (
+        {!isOwnProfile && onWave && (
           <motion.button
             whileTap={!isPreview ? { scale: 0.78 } : undefined}
             onClick={!isPreview ? onWave : undefined}
             aria-label={`Wave at ${agent.displayName || 'agent'}`}
             className={`flex items-center justify-center ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}
           >
-            <Hand weight="bold" size={24} className="text-white" />
+            <Hand weight="fill" size={24} className="text-white" />
           </motion.button>
         )}
 
@@ -554,7 +562,7 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isOwnProfile, o
           aria-label="Share"
           className={`flex items-center justify-center ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}
         >
-          <Share2 size={22} className="text-white" />
+          <Share2 weight="fill" size={22} className="text-white" />
         </motion.button>
 
         {hasListingTab && onShowListing && pin.type !== 'spotlight' && (
@@ -564,7 +572,7 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isOwnProfile, o
             aria-label="View listing"
             className="flex items-center justify-center cursor-pointer"
           >
-            <Home weight="bold" size={24} className="text-white" />
+            <Home weight="fill" size={24} className="text-white" />
           </motion.button>
         )}
       </div>
@@ -654,7 +662,6 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isFullScreen, 
           <Row label="Price / sqft" value={`$${pin.pricePerSqft.toLocaleString()}`} />
           <Row label="Home type" value={pin.homeType.replace('_', ' ')} />
           {'yearBuilt' in pin && pin.yearBuilt && <Row label="Year built" value={String(pin.yearBuilt)} />}
-          <Row label="Days on market" value={String(pin.daysOnMarket)} />
           {'mlsNumber' in pin && pin.mlsNumber && <Row label="MLS #" value={pin.mlsNumber} />}
           {'lotSize' in pin && pin.lotSize && <Row label="Lot size" value={pin.lotSize} />}
           {pin.type === 'sold' && 'soldDate' in pin && <Row label="Sold date" value={new Date(pin.soldDate.toMillis()).toLocaleDateString()} />}

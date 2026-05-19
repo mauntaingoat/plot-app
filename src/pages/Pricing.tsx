@@ -31,7 +31,7 @@ const PLANS = [
       { text: 'Your own reel.st link', included: true },
       { text: 'MLS data auto-fill', included: true },
       { text: 'Showing request inbox', included: true },
-      { text: 'Email subscribers', included: true },
+      { text: 'Email your saves', included: true },
       { text: 'Basic customization', included: true },
     ],
   },
@@ -61,7 +61,7 @@ const FAQS = [
   },
   {
     q: 'What\'s the difference between Free and Pro?',
-    a: 'Free covers the basics: up to 3 active pins, full content per pin (reels, photo carousels, photos), and core stats, visits, taps, saves, and waves. Pro at $19/mo unlocks unlimited pins, the full insights dashboard (peak hours, save growth, audience crossover, content conversion), open-house scheduling, email digests to your subscribers, and the expanded customization library, extra palettes, fonts, and map shapes.',
+    a: 'Free covers the basics: up to 3 active pins, full content per pin (reels, photo carousels, photos), and core stats, visits, taps, saves, and waves. Pro at $19/mo unlocks unlimited pins, the full insights dashboard (peak hours, save growth, audience crossover, content conversion), open-house scheduling, email digests to everyone who saved you, and the expanded customization library, extra palettes, fonts, and map shapes.',
   },
   {
     q: 'Can I import my existing listings?',
@@ -77,7 +77,7 @@ const FAQS = [
   },
   {
     q: 'Do I keep my leads, or does Reelst?',
-    a: 'You keep them. Showing requests, email subscribers, and waves all land in your inbox under your account, your contacts, your relationship. Reelst never resells leads or routes them to a competing agent.',
+    a: 'You keep them. Showing requests, saves, and waves all land in your inbox under your account, your contacts, your relationship. Reelst never resells leads or routes them to a competing agent.',
   },
   {
     q: 'What happens when a listing sells?',
@@ -85,7 +85,7 @@ const FAQS = [
   },
   {
     q: 'Can I cancel or downgrade anytime?',
-    a: 'Yes. Cancel from your dashboard, you keep Pro through the end of the billing period, then drop to Free. Your pins, content, and subscribers stay with you.',
+    a: 'Yes. Cancel from your dashboard, you keep Pro through the end of the billing period, then drop to Free. Your pins, content, and saves stay with you.',
   },
   {
     q: 'Is there a team or brokerage plan?',

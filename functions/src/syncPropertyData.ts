@@ -243,9 +243,31 @@ export const syncPropertyData = onSchedule(
 
     const db = admin.firestore()
 
-    // Walk for_sale and sold pins separately so we can rely on the
-    // existing (agentId, status) indexes; we don't need 'type' queries
-    // here — we only fetch enabled, non-archived pins.
+    // Pre-fetch every Pro agent's UID into a Set. RentCast auto-sync
+    // is a Pro-tier feature: free agents get one RentCast lookup at
+    // pin-create time (via the propertyLookup callable) but their
+    // listings are NOT re-pulled daily by this cron. Bounds RentCast
+    // spend to the paying user base. tier='pro' is the source of
+    // truth — Stripe webhook (when shipped) and grant-admin.mjs both
+    // write it onto the user doc. Gifted-tier users (giftTier='pro'
+    // with a live giftExpiry) are intentionally excluded here for
+    // query simplicity; the gap is small and shrinks to zero once
+    // gifts are converted to real tier='pro' subscriptions.
+    const proUsersSnap = await db
+      .collection('users')
+      .where('tier', '==', 'pro')
+      .select() // empty select = doc IDs only, no field data over the wire
+      .get()
+    const proUids = new Set(proUsersSnap.docs.map((d) => d.id))
+    logger.info('[syncPropertyData] pro agents eligible for auto-sync', { count: proUids.size })
+
+    if (proUids.size === 0) {
+      logger.info('[syncPropertyData] no pro agents, nothing to sync')
+      return
+    }
+
+    // Walk for_sale and sold pins. We don't need 'type' queries here —
+    // we only fetch enabled, non-archived pins, then filter in code.
     const pinsSnap = await db
       .collection('pins')
       .where('enabled', '==', true)
@@ -255,15 +277,17 @@ export const syncPropertyData = onSchedule(
 
     const eligible = pinsSnap.docs.filter((d) => {
       const pin = d.data() as PinDoc
-      return pin.type === 'for_sale' || pin.type === 'sold'
+      if (pin.type !== 'for_sale' && pin.type !== 'sold') return false
+      if (!pin.agentId || !proUids.has(pin.agentId)) return false
+      return true
     })
 
     if (eligible.length === 0) {
-      logger.info('[syncPropertyData] no eligible pins')
+      logger.info('[syncPropertyData] no eligible pins for pro agents')
       return
     }
 
-    logger.info('[syncPropertyData] starting', { count: eligible.length })
+    logger.info('[syncPropertyData] starting', { count: eligible.length, proAgents: proUids.size })
     const stats = await processBatch(eligible, apiKey)
     logger.info('[syncPropertyData] done', stats)
   },

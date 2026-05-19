@@ -61,9 +61,9 @@ function PinEditContent({ pin, onAddContent, onArchiveContent, onReorderContent,
         updates.originalPrice = (pin as any).price || priceNum
       }
       // When the type changes, route through updatePinType so stale
-      // type-specific fields (openHouse, listingStatus, isLive on a
-      // sold pin; soldPrice on a for_sale pin; etc.) get explicitly
-      // deleted instead of lingering as orphan data.
+      // type-specific fields (openHouse, listingStatus on a sold pin;
+      // soldPrice on a for_sale pin; etc.) get explicitly deleted
+      // instead of lingering as orphan data.
       if (editType !== pin.type) {
         await updatePinType(pin.id, pin.type, editType, updates)
       } else {

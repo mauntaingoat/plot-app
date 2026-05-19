@@ -113,7 +113,7 @@ export function AgentProfileHeader({
   // display name + body headings.
   const wavedLabel = `${style.ctaLabels.wave || 'Wave'} ${agent.displayName || ''}`.trim()
   const saveLabel = saved
-    ? 'Subscribed'
+    ? 'Saved'
     : `${style.ctaLabels.save || 'Save'} ${agent.displayName || ''}`.trim()
 
   return (
@@ -134,14 +134,14 @@ export function AgentProfileHeader({
           color: palette.accent,
         }}
       >
-        <Hand weight="bold" size={18} />
+        <Hand weight="fill" size={18} />
       </button>
 
-      {/* Top-right: Save / Subscribe action — replaces the bottom pill. */}
+      {/* Top-right: Save action — replaces the bottom pill. */}
       <button
         onClick={onSaveClick}
         aria-label={saveLabel}
-        title={saved ? 'Subscribed' : style.ctaLabels.save || 'Save'}
+        title={saved ? 'Saved' : style.ctaLabels.save || 'Save'}
         className="absolute top-4 right-4 md:top-5 md:right-5 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
         style={{
           background: saved ? (palette.savedBg || palette.accent) : `${palette.accent}1A`,
@@ -151,7 +151,7 @@ export function AgentProfileHeader({
       >
         {saved
           ? <Check weight="bold" size={18} />
-          : <Heart weight="bold" size={18} />}
+          : <Heart weight="fill" size={18} />}
       </button>
 
       {/* Center-stacked identity */}

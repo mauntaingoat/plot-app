@@ -155,8 +155,15 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
             onSaveAgent={onSaveAgent}
             isSignedIn={isSignedIn} onAuthRequired={onAuthRequired}
             isOwnProfile={isOwnProfile}
+            // Listing tap stays gated to non-spotlight pins (spotlight
+            // pins don't have a listing detail sheet). Wave is now
+            // available on every pin type — buyers may want to ask
+            // about a neighborhood spotlight just like a specific
+            // listing ("schools? parking? family-friendly?"). The
+            // wave's notification text is contextualized per pin
+            // type by the wavePin → pinAddress mapping below.
             onListingTap={() => pin.type !== 'spotlight' && setListingSheet(pin)}
-            onWaveTap={() => pin.type !== 'spotlight' && setWavePin(pin)}
+            onWaveTap={() => setWavePin(pin)}
             onShareTap={() => setSharePayload({ pin, content })}
             onClose={onClose}
             signedUrl={content.muxPlaybackId ? signedUrls[content.muxPlaybackId]?.hls : undefined} />
@@ -210,7 +217,18 @@ export function ContentFeed({ pins, agent, onPinTap, isPreview, isSignedIn, onAu
         isOpen={!!wavePin}
         onClose={() => setWavePin(null)}
         pinId={wavePin?.id ?? ''}
-        pinAddress={wavePin?.address ?? ''}
+        pinAddress={
+          // Spotlights use their name as the wave subject so the
+          // placeholder + the agent's inbox/email read as
+          // "asked about Wynwood spotlight" rather than the
+          // spotlight's underlying address (which is the centroid
+          // of the highlighted area, not a meaningful label).
+          wavePin
+            ? (wavePin.type === 'spotlight' && 'name' in wavePin
+                ? `${wavePin.name} spotlight`
+                : wavePin.address)
+            : ''
+        }
         agentId={wavePin?.agentId ?? agent.uid}
         agentName={agent.displayName}
       />
@@ -245,7 +263,7 @@ function FeedCard({ content, pin, agent, isPreview, hideRailExtras, immersive, a
   }, [content.mediaUrls])
 
   const thumbnailUrl = content.thumbnailUrl || ('heroPhotoUrl' in pin ? pin.heroPhotoUrl : '') || ''
-  const isVideo = content.type === 'reel' || content.type === 'live'
+  const isVideo = content.type === 'reel'
   const isCarousel = content.type === 'photo' && content.mediaUrls && content.mediaUrls.length > 1
   const isProcessing = isVideo && (!content.mediaUrl || content.status === 'preparing')
   // Use Storage URL for immediate playback (always available, no cold start).
@@ -266,12 +284,14 @@ function FeedCard({ content, pin, agent, isPreview, hideRailExtras, immersive, a
         if (videoRef.current) videoRef.current.play().catch(() => {})
         if (!viewTracked.current && !isPreview) {
           viewTracked.current = true
-          import('firebase/functions').then(({ getFunctions, httpsCallable }) => {
-            import('@/config/firebase').then(({ app }) => {
-              const fn = httpsCallable(getFunctions(app ?? undefined), 'trackView')
-              fn({ pinId: pin.id, contentId: content.id, localHour: new Date().getHours() }).catch(() => {})
-            })
-          })
+          Promise.all([
+            import('firebase/functions'),
+            import('@/config/firebase'),
+            import('@/lib/visitorId'),
+          ]).then(([{ getFunctions, httpsCallable }, { app }, { getVisitorId }]) => {
+            const fn = httpsCallable(getFunctions(app ?? undefined), 'trackView')
+            fn({ pinId: pin.id, contentId: content.id, localHour: new Date().getHours(), visitorId: getVisitorId() }).catch(() => {})
+          }).catch(() => {})
         }
       } else {
         if (videoRef.current) videoRef.current.pause()
@@ -416,18 +436,19 @@ function FeedCard({ content, pin, agent, isPreview, hideRailExtras, immersive, a
           </motion.button>
         )}
 
-        {/* Wave — buyer's question on this listing. Replaces the
-            public comment system in the immersive viewer (waves are
-            scoped to listings, not content). Hand icon mirrors the
-            "Wave at agent" CTA in ListingModal. */}
-        {immersive && pin.type !== 'spotlight' && (
+        {/* Wave — buyer's question on this pin. Available on every
+            pin type including spotlights (a neighborhood reel can
+            spark real questions — "schools? parking? family-friendly?").
+            For spotlights the wave is contextualized with the
+            spotlight name in the parent's WaveModal mount. */}
+        {immersive && (
           <motion.button
             whileTap={{ scale: 0.75 }}
             onClick={() => onWaveTap?.()}
             className="flex flex-col items-center gap-0.5 cursor-pointer"
             aria-label={`Wave at ${agent.displayName || 'agent'}`}
           >
-            <Hand weight="bold" size={24} className="text-white" />
+            <Hand weight="fill" size={24} className="text-white" />
           </motion.button>
         )}
 
@@ -435,7 +456,7 @@ function FeedCard({ content, pin, agent, isPreview, hideRailExtras, immersive, a
           onClick={!isPreview ? () => onShareTap?.() : undefined}
           aria-label="Share"
           className={`flex flex-col items-center gap-0.5 ${isPreview ? 'opacity-40' : 'cursor-pointer'}`}>
-          <Share2 size={22} className="text-white" />
+          <Share2 weight="fill" size={22} className="text-white" />
         </motion.button>
 
         {/* House icon — listing only (no content tab). Bare icon (no
@@ -446,7 +467,7 @@ function FeedCard({ content, pin, agent, isPreview, hideRailExtras, immersive, a
         {pin.type !== 'spotlight' && (
           <motion.button whileTap={{ scale: 0.75 }} onClick={onListingTap}
             className="flex flex-col items-center gap-0.5 cursor-pointer">
-            <Home weight="bold" size={24} className="text-white" />
+            <Home weight="fill" size={24} className="text-white" />
             {!immersive && <span className="text-[9px] text-white/60">Listing</span>}
           </motion.button>
         )}
@@ -454,20 +475,44 @@ function FeedCard({ content, pin, agent, isPreview, hideRailExtras, immersive, a
       </div>
 
 
-      {/* Bottom overlay — TikTok-style in immersive mode (just
-          @name + caption), richer in standalone mode (location +
-          type + open-house chip + view count). */}
+      {/* Bottom overlay — TikTok-style in immersive mode (listing
+          identity + status chip + caption), richer in standalone
+          mode (location + type + open-house chip + view count). */}
       {immersive ? (
         <div
           className="absolute bottom-0 left-0 right-20 z-10 pb-[calc(env(safe-area-inset-bottom,8px)+20px)] px-4"
           style={{ fontFamily: 'var(--font-humanist)' }}
         >
+          {/* Listing identity — address for for_sale/sold, name for
+              spotlight. Was the @username handle; replaced so the
+              viewer immediately sees WHAT they're looking at (a
+              specific listing or neighborhood) rather than WHO. */}
           <p
-            className="text-white mb-1.5"
+            className="text-white mb-1 truncate"
             style={{ fontSize: '15px', fontWeight: 600, letterSpacing: '-0.005em', textShadow: '0 1px 3px rgba(0,0,0,0.45)' }}
           >
-            @{agent.username || (agent.displayName || 'agent').toLowerCase().replace(/\s+/g, '')}
+            {pin.type === 'spotlight' && 'name' in pin
+              ? (pin.name || 'Spotlight')
+              : (pin.address?.split(',')[0] || agent.displayName || 'Listing')}
           </p>
+          {/* Status chip — FOR SALE / SOLD / SPOTLIGHT. Mono caps to
+              echo the Zillow-style pill on the listing card. */}
+          <div className="mb-1.5">
+            <span
+              className="inline-flex items-center px-2 py-0.5 rounded-full bg-white/15 backdrop-blur-sm"
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '9px',
+                fontWeight: 700,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+                color: pin.type === 'sold' ? '#7BE495' : pin.type === 'spotlight' ? '#FFD089' : '#9BC4FF',
+                textShadow: '0 1px 2px rgba(0,0,0,0.45)',
+              }}
+            >
+              {pin.type === 'sold' ? 'Sold' : pin.type === 'spotlight' ? 'Spotlight' : 'For Sale'}
+            </span>
+          </div>
           {content.caption && (
             <p
               className="text-white/95 line-clamp-3"

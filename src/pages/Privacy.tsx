@@ -50,7 +50,7 @@ export default function Privacy() {
               <p>When an Agent creates an account we collect: name, email, profile photo, username, brokerage affiliation, license number and state, bio, and any social links you choose to connect (Instagram, TikTok, YouTube, LinkedIn, website, MLS profile).</p>
 
               <h3>Visitor information</h3>
-              <p>Visitors can browse Agent profiles, save listings, and subscribe to an Agent's email digest. If a Visitor submits a Showing Request, we collect the name, email, phone number, preferred date/time, and any note they provide so we can route the request to the Agent. If a Visitor submits an email address to subscribe to an Agent's digest, we store that email along with the originating Agent.</p>
+              <p>Visitors can browse Agent profiles and save Agents to receive an email digest. If a Visitor submits a Showing Request, we collect the name, email, phone number, preferred date/time, and any note they provide so we can route the request to the Agent. If a Visitor saves an Agent, we store the email along with the originating Agent so we can deliver the digest.</p>
 
               <h3>Content & listing data</h3>
               <p>We store the content you publish: reels, photos, video walkthroughs, captions, Spotlight descriptions, listing details (price, beds, baths, sqft, MLS-derived fields, days on market), open-house schedules, and the geographic coordinates associated with each pin.</p>

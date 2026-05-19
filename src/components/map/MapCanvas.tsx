@@ -639,7 +639,7 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
     },
   }), [defaultCenter, shapeId])
 
-  const animatedPinIds = useRef<{ openHouse: string[]; live: string[] }>({ openHouse: [], live: [] })
+  const animatedPinIds = useRef<{ openHouse: string[] }>({ openHouse: [] })
   const pinFrames = useRef<Map<string, number>>(new Map()) // per-pin frame counter
   const prevVisibleIds = useRef<Set<string>>(new Set()) // track which pins were visible last tick
   // Signature cache for the per-pin static images. Keyed by image id
@@ -731,7 +731,7 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
       }
     }
 
-    animatedPinIds.current = { openHouse: newOpenHouse, live: [] }
+    animatedPinIds.current = { openHouse: newOpenHouse }
 
     // Pre-render cluster badge pills
     for (let i = 1; i <= 20; i++) {
@@ -948,28 +948,27 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
         if (timestamp - lastFrameTime < FRAME_INTERVAL) return
         lastFrameTime = timestamp
 
-        const { openHouse, live } = animatedPinIds.current
+        const { openHouse } = animatedPinIds.current
         // Bail BEFORE the queryRenderedFeatures call when there's
         // nothing to animate. Previously the query ran every 160ms
         // regardless — cheap individually, but it traverses tile
         // data and over a long session adds up enough to keep the
         // GPU warm and pressure the texture cache.
-        if (openHouse.length === 0 && live.length === 0) return
+        if (openHouse.length === 0) return
 
         // Check which animated pins are actually visible in the viewport
         const visibleFeatures = map.queryRenderedFeatures(undefined as any, { layers: ['pin-icons'] })
         const visibleIds = new Set(visibleFeatures.map((f) => f.properties?.id))
 
         const visibleOH = openHouse.filter((id) => visibleIds.has(id))
-        const visibleLive = live.filter((id) => visibleIds.has(id))
         // Reset icon to static for any pin that just left the viewport
         if (prevVisibleIds.current.size > 0) {
-          const allVisible = new Set([...visibleOH, ...visibleLive])
+          const allVisible = new Set(visibleOH)
           let needsReset = false
           for (const id of prevVisibleIds.current) {
             if (!allVisible.has(id)) { pinFrames.current.delete(id); needsReset = true }
           }
-          if (needsReset && visibleOH.length === 0 && visibleLive.length === 0) {
+          if (needsReset && visibleOH.length === 0) {
             // All gone — reset layer to default static icons
             try { map.setLayoutProperty('pin-icons', 'icon-image', ['concat', 'pin-img-', ['get', 'id']]) } catch {}
             prevVisibleIds.current.clear()
@@ -977,7 +976,7 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
           }
         }
 
-        if (visibleOH.length === 0 && visibleLive.length === 0) {
+        if (visibleOH.length === 0) {
           prevVisibleIds.current.clear()
           return
         }
@@ -991,15 +990,9 @@ export const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(function Ma
           pinIconExpr.push(['==', ['get', 'id'], id], `pin-oh-${id}-${frame}`)
           pinFrames.current.set(id, (frame + 1) % ANIM_FRAMES)
         }
-        for (const id of visibleLive) {
-          if (!prevVisibleIds.current.has(id)) pinFrames.current.set(id, 0)
-          const frame = pinFrames.current.get(id) || 0
-          pinIconExpr.push(['==', ['get', 'id'], id], `pin-live-${id}-${frame}`)
-          pinFrames.current.set(id, (frame + 1) % ANIM_FRAMES)
-        }
 
         // Update previous visible set
-        prevVisibleIds.current = new Set([...visibleOH, ...visibleLive])
+        prevVisibleIds.current = new Set(visibleOH)
 
         pinIconExpr.push(['concat', 'pin-img-', ['get', 'id']])
 

@@ -203,7 +203,7 @@ export function SaveAgentModal({
                   >
                     Drop your email and get a weekly digest of new listings,
                     reels, and updates from {agentName}. No account needed.
-                    Unsubscribe anytime.
+                    Unsave anytime.
                   </p>
 
                   <form onSubmit={handleSubmit} className="space-y-3">
@@ -255,7 +255,7 @@ export function SaveAgentModal({
                     className="mt-4 text-center"
                     style={{ color: 'var(--text-muted)', fontSize: '11.5px', fontWeight: 400 }}
                   >
-                    By subscribing, you agree to receive emails about {agentName} via Reelst.
+                    By saving, you agree to receive emails about {agentName} via Reelst.
                   </p>
                 </motion.div>
               ) : (
@@ -289,14 +289,14 @@ export function SaveAgentModal({
                     className="mb-2"
                     style={{ color: 'var(--text-primary)', fontSize: '22px', fontWeight: 600, letterSpacing: '-0.025em' }}
                   >
-                    {alreadySubscribed ? "You're already subscribed." : "You're on the list."}
+                    {alreadySubscribed ? "You've already saved this agent." : "You're on the list."}
                   </h2>
                   <p
                     className="mb-6"
                     style={{ color: 'var(--text-secondary)', fontSize: '14.5px', fontWeight: 400, lineHeight: 1.55 }}
                   >
                     {alreadySubscribed
-                      ? <>This email is already on {agentName}'s digest list. You'll get the next update when it goes out.</>
+                      ? <>This email already follows {agentName}. You'll get the next update when it goes out.</>
                       : <>We'll email you when {agentName} has fresh listings or reels. Look out for the first digest soon.</>}
                   </p>
 

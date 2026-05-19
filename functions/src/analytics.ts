@@ -12,6 +12,7 @@ async function logEvent(data: {
   pinId?: string
   contentId?: string
   actorUid?: string
+  visitorId?: string
   dedupeId?: string
   localHour?: number
 }) {
@@ -117,10 +118,10 @@ async function allowTrackerCall(ipKey: string): Promise<boolean> {
 }
 
 // ── Track View ──
-export const trackView = onCall<{ pinId: string; contentId?: string; localHour?: number }>(
+export const trackView = onCall<{ pinId: string; contentId?: string; localHour?: number; visitorId?: string }>(
   { cors: true, maxInstances: 20 },
   async (request) => {
-    const { pinId, contentId } = request.data
+    const { pinId, contentId, visitorId } = request.data
     if (!pinId) return
 
     const ipRaw = getClientIp(request)
@@ -135,7 +136,11 @@ export const trackView = onCall<{ pinId: string; contentId?: string; localHour?:
 
     if (request.auth?.uid === agentId) return
 
-    const viewerId = request.auth?.uid || 'anon'
+    // Prefer a stable per-device visitorId for dedup so two anonymous
+    // visitors on the same network don't collapse to one "anon" key.
+    // Falls back to auth uid (signed-in) then 'anon' for legacy clients
+    // that don't yet send a visitorId.
+    const viewerId = visitorId || request.auth?.uid || 'anon'
     const dedupeId = contentId ? `${viewerId}_${pinId}_${contentId}` : `${viewerId}_${pinId}`
     let isUnique = true
     try {
@@ -175,6 +180,7 @@ export const trackView = onCall<{ pinId: string; contentId?: string; localHour?:
       pinId,
       contentId,
       actorUid: request.auth?.uid,
+      visitorId,
       dedupeId,
       localHour: request.data.localHour,
     })
@@ -182,10 +188,10 @@ export const trackView = onCall<{ pinId: string; contentId?: string; localHour?:
 )
 
 // ── Track Engagement (tap, save, unsave) ──
-export const trackEngagement = onCall<{ pinId: string; action: 'tap' | 'save' | 'unsave'; contentId?: string; localHour?: number }>(
+export const trackEngagement = onCall<{ pinId: string; action: 'tap' | 'save' | 'unsave'; contentId?: string; localHour?: number; visitorId?: string }>(
   { cors: true, maxInstances: 20 },
   async (request) => {
-    const { pinId, action, contentId } = request.data
+    const { pinId, action, contentId, visitorId } = request.data
     if (!pinId || !action) return
 
     const ipKey = getClientIp(request).replace(/[^a-zA-Z0-9.:_-]/g, '_')
@@ -242,6 +248,7 @@ export const trackEngagement = onCall<{ pinId: string; action: 'tap' | 'save' | 
       pinId,
       contentId,
       actorUid: request.auth?.uid,
+      visitorId,
       localHour: request.data.localHour,
     })
   },
@@ -253,10 +260,10 @@ export const trackEngagement = onCall<{ pinId: string; action: 'tap' | 'save' | 
 // doesn't double-count. `localHour` is the visitor's local hour
 // (0–23) so the dashboard's "When viewers are active" chart buckets
 // by visitor wall-clock time, not server UTC.
-export const trackProfileVisit = onCall<{ agentId: string; localHour?: number }>(
+export const trackProfileVisit = onCall<{ agentId: string; localHour?: number; visitorId?: string }>(
   { cors: true, maxInstances: 20 },
   async (request) => {
-    const { agentId, localHour } = request.data
+    const { agentId, localHour, visitorId } = request.data
     if (!agentId) return
 
     // Skip self-views — agents previewing their own profile shouldn't
@@ -272,6 +279,7 @@ export const trackProfileVisit = onCall<{ agentId: string; localHour?: number }>
         type: 'profile_visit',
         agentId,
         actorUid: request.auth?.uid,
+        visitorId,
         localHour,
       }),
       // Lifetime counter on the user doc — drives the dashboard's

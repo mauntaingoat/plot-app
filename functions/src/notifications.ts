@@ -3,12 +3,18 @@
  * notification docs on key Firestore events.
  *
  * Triggers:
- *   - onNewShowingRequest    : a showing request doc is created → notify the agent
- *   - onPinSaved             : a save doc is created → notify the listing's agent
- *   - onNewDigestSubscription: a digest subscription doc is created → notify the agent
- *   - onNewWave              : a wave doc is created → notify the agent
+ *   - onNewShowingRequest        : showing request created → notify agent
+ *   - onNewDigestSubscription    : buyer hit "Save Agent" (= digest sub
+ *                                  doc created) → notify agent
+ *   - onDigestSubscriptionUpdated: buyer unsubscribed → notify agent
+ *   - onNewWave                  : buyer waved at a listing → notify agent
  *
  * Each respects the user's notificationPrefs in their `users` doc.
+ * "Save" and "Subscribe" are the same event in the data layer — when a
+ * buyer hits "Save Agent" on a public profile they enter their email,
+ * which writes a digestSubscriptions doc. The toggle in agent
+ * settings is labeled "Profile Saves" since that's how agents think
+ * of it; internally the pref key is `newSubscriber`.
  * Tokens that fail to deliver (unregistered, invalid) are pruned.
  */
 
@@ -37,7 +43,6 @@ const PUBLIC_BASE_URL = 'https://plot-fe990.web.app'
 // (snake_case in the email layer, camelCase in the prefs schema).
 const KIND_BY_PREF: Record<string, NotificationKind> = {
   showingRequest: 'showing_request',
-  pinSaved: 'pin_saved',
   newSubscriber: 'new_subscriber',
   newWave: 'new_wave',
 }
@@ -45,7 +50,15 @@ const KIND_BY_PREF: Record<string, NotificationKind> = {
 interface NotifPayload {
   title: string
   body: string
+  /** In-app deep link used for FCM push + inbox doc. Always relative
+   *  (e.g. '/dashboard?tab=inbox'); prepended with PUBLIC_BASE_URL
+   *  when used in the email CTA. */
   url?: string
+  /** OVERRIDE the email CTA destination (full URL, no base prepend).
+   *  Used for wave + showing-request emails to swap the dashboard
+   *  deep link for a `mailto:` link with the visitor's email
+   *  pre-populated so the agent can reply with one tap. */
+  emailActionUrl?: string
   tag?: string
   /** Extras surfaced inline in the email (visitor contact, question). */
   emailExtras?: {
@@ -53,6 +66,15 @@ interface NotifPayload {
     visitorPhone?: string | null
     question?: string | null
   }
+}
+
+/** Builds a `mailto:` URL with subject + greeting prefilled. Used for
+ *  wave + showing-request emails so the agent's "Reply now" CTA opens
+ *  their default mail app with the conversation half-started. */
+function buildReplyMailto(toEmail: string, visitorName: string, subject: string): string {
+  const enc = encodeURIComponent
+  const greeting = visitorName ? `Hi ${visitorName.split(' ')[0]},` : 'Hi,'
+  return `mailto:${toEmail}?subject=${enc(subject)}&body=${enc(greeting + '\n\n')}`
 }
 
 async function sendNotificationEmail(
@@ -77,8 +99,11 @@ async function sendNotificationEmail(
       recipientName,
       title: payload.title,
       body: payload.body,
-      actionUrl: `${PUBLIC_BASE_URL}${payload.url || '/dashboard'}`,
+      // emailActionUrl overrides the in-app URL when present (e.g.
+      // mailto: links for wave + showing-request replies).
+      actionUrl: payload.emailActionUrl ?? `${PUBLIC_BASE_URL}${payload.url || '/dashboard'}`,
       baseUrl: PUBLIC_BASE_URL,
+      fromAddress,
       extras: payload.emailExtras,
     })
 
@@ -102,7 +127,7 @@ async function sendNotificationEmail(
   }
 }
 
-async function notifyUser(uid: string, prefKey: 'showingRequest' | 'pinSaved' | 'newSubscriber' | 'newWave', payload: NotifPayload) {
+async function notifyUser(uid: string, prefKey: 'showingRequest' | 'newSubscriber' | 'newWave', payload: NotifPayload) {
   const db = admin.firestore()
   const userSnap = await db.collection('users').doc(uid).get()
   if (!userSnap.exists) return
@@ -117,7 +142,6 @@ async function notifyUser(uid: string, prefKey: 'showingRequest' | 'pinSaved' | 
   const prefs = user.notificationPrefs || {}
   const defaultsOn: Record<string, boolean> = {
     showingRequest: true,
-    pinSaved: true,
     newSubscriber: true,
     newWave: true,
   }
@@ -235,49 +259,28 @@ export const onNewShowingRequest = onDocumentCreated(
     const data = event.data?.data()
     if (!data?.agentId) return
 
+    const visitor = (data.visitorName as string) || 'Someone'
+    const visitorEmail = (data.visitorEmail as string) || ''
+    const addressShort = ((data.pinAddress as string) || 'a listing').split(',')[0]
+    const replyMailto = visitorEmail
+      ? buildReplyMailto(visitorEmail, visitor, `Re: Showing request for ${addressShort}`)
+      : undefined
+
     await notifyUser(data.agentId, 'showingRequest', {
       title: 'New showing request',
-      body: `${data.visitorName || 'Someone'} wants to tour ${data.pinAddress || 'a listing'}.`,
+      body: `${visitor} wants to tour ${addressShort}.`,
       url: '/dashboard?tab=inbox',
+      emailActionUrl: replyMailto,
       tag: `req_${event.params.reqId}`,
+      emailExtras: {
+        visitorEmail: visitorEmail || null,
+        visitorPhone: (data.visitorPhone as string | undefined) ?? null,
+      },
     })
   },
 )
 
-// ── Trigger: pin saved ──
-export const onPinSaved = onDocumentCreated(
-  { document: 'saves/{saveId}', region: 'us-central1', secrets: [GMAIL_USER, GMAIL_APP_PASSWORD] },
-  async (event) => {
-    const data = event.data?.data()
-    if (!data?.pinId) return
-
-    const db = admin.firestore()
-    const pinSnap = await db.collection('pins').doc(data.pinId).get()
-    if (!pinSnap.exists) return
-    const pin = pinSnap.data() as { agentId?: string; address?: string }
-    if (!pin.agentId) return
-    if (data.userId === pin.agentId) return
-
-    await notifyUser(pin.agentId, 'pinSaved', {
-      title: 'Listing saved',
-      body: `Someone saved ${pin.address || 'one of your listings'}.`,
-      url: '/dashboard?tab=inbox',
-      tag: `save_${data.pinId}`,
-    })
-
-    await writeNotification({
-      agentId: pin.agentId,
-      type: 'save',
-      title: 'Listing saved',
-      body: `Someone saved ${pin.address || 'one of your listings'}.`,
-      actorUid: data.userId,
-      pinId: data.pinId,
-      pinAddress: pin.address,
-    })
-  },
-)
-
-// ── Trigger: new digest subscription (Save Maya) ──
+// ── Trigger: new digest subscription (Save Agent) ──
 // Fires when a buyer captures their email via the public agent
 // profile's "Save Maya" CTA. Inbox notif + FCM push to the agent.
 // Re-subscriptions (status flipping back to 'active') do NOT retrigger
@@ -355,13 +358,19 @@ export const onNewWave = onDocumentCreated(
     const visitor = (data.visitorName as string) || 'Someone'
     const addressShort = ((data.pinAddress as string) || '').split(',')[0] || 'a listing'
 
+    const visitorEmail = (data.visitorEmail as string) || ''
+    const replyMailto = visitorEmail
+      ? buildReplyMailto(visitorEmail, visitor, `Re: Your question about ${addressShort}`)
+      : undefined
+
     await notifyUser(data.agentId, 'newWave', {
       title: 'New wave 👋',
       body: `${visitor} has a question about ${addressShort}`,
       url: '/dashboard?tab=inbox',
+      emailActionUrl: replyMailto,
       tag: `wave_${event.params.waveId}`,
       emailExtras: {
-        visitorEmail: (data.visitorEmail as string | undefined) ?? null,
+        visitorEmail: visitorEmail || null,
         visitorPhone: (data.visitorPhone as string | undefined) ?? null,
         question: (data.question as string | undefined) ?? null,
       },

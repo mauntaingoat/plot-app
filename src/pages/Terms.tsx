@@ -45,7 +45,7 @@ export default function Terms() {
 
             <section>
               <h2>2. What Reelst Is</h2>
-              <p>Reelst is a map-based profile platform built for licensed real estate agents ("Agents"). Agents pin listings, sold properties, and neighborhood "Spotlights" to real addresses, attach reels, photos, and video walkthroughs to those pins, and share a single public profile link with prospective buyers ("Visitors"). Visitors can browse a map, watch content, save listings, subscribe to an Agent's email digest, and request showings without creating an account.</p>
+              <p>Reelst is a map-based profile platform built for licensed real estate agents ("Agents"). Agents pin listings, sold properties, and neighborhood "Spotlights" to real addresses, attach reels, photos, and video walkthroughs to those pins, and share a single public profile link with prospective buyers ("Visitors"). Visitors can browse a map, watch content, save Agents to receive email digests, and request showings without creating an account.</p>
             </section>
 
             <section>
@@ -61,7 +61,7 @@ export default function Terms() {
 
             <section>
               <h2>5. Visitor Conduct</h2>
-              <p>Visitors may browse public Agent profiles, save listings, subscribe to an Agent's email digest, submit Showing Requests, and Wave at Agents with questions about a listing. Visitors must provide truthful contact information when submitting a Showing Request, digest signup, or Wave, and may only do so for legitimate property-touring purposes. Spam, harassment, and fraudulent inquiries will result in IP-level blocks.</p>
+              <p>Visitors may browse public Agent profiles, save Agents to receive email digests, submit Showing Requests, and Wave at Agents with questions about a listing. Visitors must provide truthful contact information when submitting a Showing Request, save action, or Wave, and may only do so for legitimate property-touring purposes. Spam, harassment, and fraudulent inquiries will result in IP-level blocks.</p>
             </section>
 
             <section>

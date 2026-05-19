@@ -322,7 +322,7 @@ export function ShowingInbox({ agentId, onError }: ShowingInboxProps) {
                         {items.map((n) => (
                           <div key={n.id} className="flex items-center gap-2.5 py-1.5 text-[12px] text-graphite">
                             <Mail size={11} className="text-ash shrink-0" />
-                            <span className="truncate">{n.body || n.actorName || 'Unsubscribed'}</span>
+                            <span className="truncate">{n.body || n.actorName || 'Unsaved'}</span>
                           </div>
                         ))}
                       </div>

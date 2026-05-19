@@ -8,10 +8,12 @@ interface ProgressiveImageProps {
   style?: React.CSSProperties
   placeholder?: string
   priority?: boolean
-  /** Rendered when the image fails to load (offline, 404, broken
-   *  Storage URL, etc). Defaults to the shimmer skeleton — pass a
-   *  type-specific icon for richer fallbacks (e.g., a Home/BadgeCheck
-   *  icon on listing cards). */
+  /** Rendered while the image is loading AND when it fails to load
+   *  (offline, 404, broken Storage URL, etc). Pass a type-specific
+   *  block — like the gradient + Home/Key/Compass icon used on
+   *  listing cards — so the loading state stays on-brand instead of
+   *  flashing a transparent shimmer. When omitted, falls back to a
+   *  neutral shimmer skeleton. */
   fallback?: ReactNode
   /** Visual fit mode.
    *   - `cover` (default): fills the frame with `object-cover`,
@@ -40,18 +42,23 @@ export function ProgressiveImage({ src, alt = '', className = '', style, fallbac
 
   return (
     <div className={`relative overflow-hidden ${className}`} style={style}>
-      {/* Shimmer skeleton — visible while loading. Hidden once the
-          image arrives or if it errors (fallback takes over). */}
-      {!loaded && !errored && (
-        <div className="absolute inset-0 progressive-image-skeleton" aria-hidden />
-      )}
-
-      {/* Fallback — visible when the image errors. If no fallback is
-          provided, the skeleton stays as a quiet stand-in. */}
-      {errored && fallback && (
+      {/* Fallback (when provided) — renders unconditionally as the
+          base layer behind the image. During load the image fades
+          in over it; once fully opaque the image masks it. On error
+          the image is unmounted and the fallback stays visible.
+          Gating only on `!loaded` would unmount the fallback the
+          instant loaded flips true, leaving a transparent flash
+          during the image's 180ms fade-in. */}
+      {fallback && (
         <div className="absolute inset-0 flex items-center justify-center">
           {fallback}
         </div>
+      )}
+
+      {/* Shimmer skeleton — fallback for callers that don't pass
+          their own. Only renders while loading; image fades over. */}
+      {!fallback && !loaded && !errored && (
+        <div className="absolute inset-0 progressive-image-skeleton" aria-hidden />
       )}
 
       {/* Real image — hidden via display:none when errored so the

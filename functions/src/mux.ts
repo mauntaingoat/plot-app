@@ -318,13 +318,14 @@ export const createMuxAsset = onCall<CreateMuxAssetRequest, Promise<CreateMuxAss
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         inputs: [{ url: finalUrl }] as any,
         playback_policy: ['signed'],
+        // `video_quality: 'basic'` already caps the HLS encoding ladder
+        // at 1080p implicitly. We tried adding `max_resolution_tier:
+        // '1080p'` as a defensive belt-and-suspenders cap (2026-05-17)
+        // but Mux rejects the parameter on the free/basic tier with a
+        // 400 invalid_parameters error ("Free tier does not support
+        // ..."). Don't re-add it — if Reelst ever moves off basic
+        // tier, set the cap then.
         video_quality: 'basic',
-        // Cap the HLS encoding ladder at 1080p. Basic tier defaults here
-        // today, but stating it explicitly prevents a future tier change
-        // (or an accidental quality bump) from auto-enabling 4K
-        // encoding/storage/delivery costs on vertical reels nobody
-        // watches at 4K.
-        max_resolution_tier: '1080p',
         mp4_support: 'capped-1080p',
         passthrough: JSON.stringify({ pinId, contentId, caption: caption ?? '' }),
       })

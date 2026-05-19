@@ -5,7 +5,6 @@ import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { FooterContent } from '@/components/marketing/Footer'
 import { SEOHead } from '@/components/marketing/SEOHead'
 import { LayeredCTA } from '@/components/marketing/LayeredCTA'
-import { useAuthStore } from '@/stores/authStore'
 import { useScrollReveal } from '@/hooks/useScrollReveal'
 import { useAuthedDestination } from '@/hooks/useAuthedDestination'
 
@@ -17,13 +16,14 @@ const HERO_CREAM = '#F0E8D0'
 
 export default function Home() {
   const navigate = useNavigate()
-  const { userDoc } = useAuthStore()
   useScrollReveal()
-  useEffect(() => {
-    if (userDoc?.role === 'agent' && userDoc.onboardingComplete) {
-      navigate('/dashboard', { replace: true })
-    }
-  }, [userDoc, navigate])
+  // Signed-in users still see the marketing homepage when they visit
+  // reel.st or plot-fe990.web.app directly. The navbar shows their
+  // Dashboard CTA, and every Sign in / Sign up / Claim username link
+  // throughout the site routes them to /dashboard (via the
+  // useAuthedDestination hook) — but the URL `/` itself is a public
+  // marketing surface that anyone (signed in or not) can land on
+  // without being bounced away.
 
   return (
     <MarketingLayout noFooter>
@@ -533,7 +533,7 @@ const FEATURES: Feature[] = [
     key: 'open-houses',
     label: 'Open Houses',
     title: 'Schedule. Share. Fill the room.',
-    desc: 'Create an open house from a pin in two taps. Auto-post to your map and email your subscribers. RSVPs land in your inbox, not on a clipboard.',
+    desc: 'Create an open house from a pin in two taps. Auto-post to your map and email your saves. RSVPs land in your inbox, not on a clipboard.',
     video: '/marketing/openhouse.mp4',
   },
   {
@@ -1064,7 +1064,7 @@ function PinAnalytics() {
               lineHeight: 1.55,
             }}
           >
-            Visits, taps, save rate, subscriber growth, when your visitors
+            Visits, taps, save rate, save growth, when your visitors
             are active, and which neighborhoods buyers save yours alongside,
             every signal in one place.
           </p>
@@ -1127,7 +1127,7 @@ function PinAnalytics() {
               bg="#FF8552"
               fg="white"
               icon={<Users size={16} />}
-              label="Subscribers"
+              label="Saves"
               value="1,842"
               caption="+184 this month"
               graphic={<Sparkline color="rgba(255,255,255,0.92)" />}
@@ -1254,7 +1254,7 @@ function StatCard({
         {caption}
       </div>
       {graphic && (
-        <div className="mt-auto pt-1 sm:pt-1.5 -mx-0.5 sm:-mx-1 flex items-end overflow-hidden min-h-0 flex-shrink scale-[0.78] origin-bottom-left sm:scale-100">
+        <div className="mt-auto pt-2 sm:pt-3 -mx-0.5 sm:-mx-1 flex items-end overflow-hidden min-h-0 flex-shrink scale-[0.78] origin-bottom-left sm:scale-100">
           {graphic}
         </div>
       )}
@@ -1347,19 +1347,26 @@ function HourBars({ color, highlight }: { color: string; highlight: string }) {
   )
 }
 
-/* CrosslistChips, small wrapped chip cluster representing the
-   "kinds" of listings co-saved alongside the agent's: a feature
-   (pool), a neighborhood (Brickell), a price band ($1.2M+). The
-   chip styles inherit the card's ink/peach palette so they read
-   in both light- and dark-card variants. */
+/* CrosslistChips, single-row chip cluster representing the "kinds"
+   of listings co-saved alongside the agent's. Was a 3-chip wrapping
+   layout, but even 2 chips wrapped onto a second row at certain
+   bento card widths and visually collided with the caption above
+   (the parent's overflow:hidden was clipping the overlap into the
+   caption text). `flex-nowrap` + per-chip `shrink-0` + container
+   `overflow-hidden` keeps them on one line forever — anything that
+   doesn't fit clips off the right edge gracefully instead of
+   wrapping into the caption. */
 function CrosslistChips() {
-  const chips = ['Pools', 'Brickell', '$1.2M+']
+  // Single chip on purpose — at narrow bento widths even 2 chips
+  // sometimes wrap or visually overlap the caption above. One
+  // chip is unambiguous and always fits.
+  const chips = ['Brickell · $1.2M+']
   return (
-    <div className="flex flex-wrap gap-1 w-full">
+    <div className="flex flex-nowrap gap-1 w-full overflow-hidden">
       {chips.map((c) => (
         <span
           key={c}
-          className="inline-block px-1.5 py-[3px] rounded-full whitespace-nowrap"
+          className="inline-block px-1.5 py-[3px] rounded-full whitespace-nowrap shrink-0"
           style={{
             background: 'rgba(217,74,31,0.12)',
             color: '#7A2A12',

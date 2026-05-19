@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Flag, Check, Warning as AlertTriangle, Prohibit as Ban, Copyright, ChatCenteredText as MessageSquare, ShieldWarning as ShieldAlert } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
-import { createReport } from '@/lib/firestore'
-import { useAuthStore } from '@/stores/authStore'
+import { getFunctions, httpsCallable } from 'firebase/functions'
+import { app } from '@/config/firebase'
 import type { ReportReason } from '@/lib/types'
 
 interface ReportSheetProps {
@@ -24,16 +24,17 @@ const REASONS: { id: ReportReason; label: string; icon: typeof Flag }[] = [
 ]
 
 export function ReportSheet({ isOpen, onClose, targetType, targetId, targetOwnerId }: ReportSheetProps) {
-  const { userDoc } = useAuthStore()
   const [selectedReason, setSelectedReason] = useState<ReportReason | null>(null)
   const [detail, setDetail] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const reset = () => {
     setSelectedReason(null)
     setDetail('')
     setSubmitted(false)
+    setError(null)
   }
 
   const handleClose = () => {
@@ -42,11 +43,16 @@ export function ReportSheet({ isOpen, onClose, targetType, targetId, targetOwner
   }
 
   const handleSubmit = async () => {
-    if (!selectedReason || !userDoc) return
+    if (!selectedReason) return
     setSubmitting(true)
+    setError(null)
     try {
-      await createReport({
-        reporterUid: userDoc.uid,
+      // Sign-in NOT required. The submitReport callable accepts
+      // anonymous reports (most buyers reporting fraud won't have a
+      // Reelst account). When signed in, the function logs the UID
+      // on the report doc.
+      const fn = httpsCallable(getFunctions(app ?? undefined), 'submitReport')
+      await fn({
         targetType,
         targetId,
         targetOwnerId,
@@ -54,8 +60,13 @@ export function ReportSheet({ isOpen, onClose, targetType, targetId, targetOwner
         detail: detail.trim(),
       })
       setSubmitted(true)
-    } catch {
-      // silently fail — don't block the user
+    } catch (err: any) {
+      const code = err?.code || ''
+      setError(
+        code === 'functions/resource-exhausted'
+          ? "You've already reported this. Our team will review it."
+          : 'Could not submit. Try again in a moment.',
+      )
     } finally {
       setSubmitting(false)
     }
@@ -143,6 +154,10 @@ export function ReportSheet({ isOpen, onClose, targetType, targetId, targetOwner
                       className="w-full bg-slate text-white text-[13px] font-medium rounded-[10px] px-3 py-2.5 border border-border-dark outline-none focus:border-tangerine transition-colors resize-none placeholder:text-ghost mt-2"
                     />
                   </motion.div>
+                )}
+
+                {error && (
+                  <p className="text-[12.5px] text-live-red px-1">{error}</p>
                 )}
 
                 <div className="pt-2 pb-[env(safe-area-inset-bottom,8px)]">

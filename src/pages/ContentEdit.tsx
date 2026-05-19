@@ -42,7 +42,7 @@ export default function ContentEdit() {
   const editorReset = useEditorStore((s) => s.reset)
   const editorClips = useEditorStore((s) => s.clips)
 
-  const isReel = content?.type === 'reel' || content?.type === 'video_note' || content?.type === 'live'
+  const isReel = content?.type === 'reel' || content?.type === 'video_note' || (content?.type as string) === 'live'
   const isPhoto = content?.type === 'photo'
   const title = isReel ? 'Edit Reel' : 'Edit Carousel'
 

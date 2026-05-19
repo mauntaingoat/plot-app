@@ -15,7 +15,7 @@ const DEFAULT_PREFS: NotificationPrefs = {
 
 const PREF_ROWS: { id: keyof NotificationPrefs; label: string; desc: string; icon: typeof Heart; color: string }[] = [
   { id: 'showingRequest', label: 'Showing requests', desc: 'A visitor wants to tour one of your listings.', icon: CalendarCheck, color: '#FF6B3D' },
-  { id: 'newSubscriber', label: 'Profile Saves', desc: 'Someone subscribed to get updates from you.', icon: Heart, color: '#A855F7' },
+  { id: 'newSubscriber', label: 'Profile Saves', desc: 'Someone saved you to get updates.', icon: Heart, color: '#A855F7' },
   { id: 'newWave', label: 'Waves', desc: 'A buyer asked a question about a listing.', icon: Hand, color: '#34C759' },
 ]
 

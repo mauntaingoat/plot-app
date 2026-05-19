@@ -38,6 +38,15 @@ export interface MapShape {
    *  interior point sits over the visible viewport. Peek stays
    *  bbox-centered (silhouette stays inside the slot). */
   expandAnchorOffset?: { x: number; y: number }
+  /** Width/height ratio of the shape's own silhouette inside its
+   *  unit-square bbox. Geometric shapes (heart, circle, hex, etc.)
+   *  fill the unit box, so aspect = 1. State shapes inherit from
+   *  STATE_SHAPES (NJ ~0.43, TX ~1.1, WY ~1.43). The map-peek slot
+   *  in ListingsTab sizes its OWN bbox to match this aspect so the
+   *  silhouette tightly fills the peek — without that, narrow
+   *  states like NJ render as a tiny sliver in a wide rectangle
+   *  surrounded by empty cardbg topography. */
+  aspect: number
 }
 
 /* ── Helpers ── */
@@ -211,6 +220,85 @@ export const house: ShapePath = (cx, cy, size) => {
 }
 
 
+/* ── Quatrefoil (clover) ──
+   Four lobes meeting at a central disc. Single continuous curved
+   path so the expand morph reads as a smooth blob breathing out
+   to fill the container. Bbox-centered (filled at 0.5, 0.5) so
+   no anchor offset needed. */
+export const quatrefoil: ShapePath = (cx, cy, size) => {
+  const { X, Y } = withFrame(cx, cy, size)
+  return [
+    `path('M ${X(0.5)} ${Y(0)}`,
+    `C ${X(0.5769)} ${Y(0)}, ${X(0.6408)} ${Y(0.0555)}, ${X(0.6538)} ${Y(0.1286)}`,
+    `C ${X(0.7148)} ${Y(0.0861)}, ${X(0.7992)} ${Y(0.0921)}, ${X(0.8536)} ${Y(0.1465)}`,
+    `C ${X(0.9079)} ${Y(0.2008)}, ${X(0.9138)} ${Y(0.2853)}, ${X(0.8713)} ${Y(0.3462)}`,
+    `C ${X(0.9445)} ${Y(0.3592)}, ${X(1)} ${Y(0.4231)}, ${X(1)} ${Y(0.5)}`,
+    `C ${X(1)} ${Y(0.5769)}, ${X(0.9445)} ${Y(0.6408)}, ${X(0.8713)} ${Y(0.6538)}`,
+    `C ${X(0.9138)} ${Y(0.7148)}, ${X(0.9079)} ${Y(0.7992)}, ${X(0.8536)} ${Y(0.8536)}`,
+    `C ${X(0.7992)} ${Y(0.9079)}, ${X(0.7148)} ${Y(0.9138)}, ${X(0.6538)} ${Y(0.8713)}`,
+    `C ${X(0.6408)} ${Y(0.9445)}, ${X(0.5769)} ${Y(1)}, ${X(0.5)} ${Y(1)}`,
+    `C ${X(0.4231)} ${Y(1)}, ${X(0.3592)} ${Y(0.9445)}, ${X(0.3462)} ${Y(0.8713)}`,
+    `C ${X(0.2852)} ${Y(0.9138)}, ${X(0.2008)} ${Y(0.9079)}, ${X(0.1465)} ${Y(0.8536)}`,
+    `C ${X(0.0921)} ${Y(0.7992)}, ${X(0.0862)} ${Y(0.7148)}, ${X(0.1287)} ${Y(0.6538)}`,
+    `C ${X(0.0555)} ${Y(0.6408)}, ${X(0)} ${Y(0.5769)}, ${X(0)} ${Y(0.5)}`,
+    `C ${X(0)} ${Y(0.4231)}, ${X(0.0555)} ${Y(0.3592)}, ${X(0.1287)} ${Y(0.3462)}`,
+    `C ${X(0.0862)} ${Y(0.2853)}, ${X(0.0921)} ${Y(0.2008)}, ${X(0.1465)} ${Y(0.1465)}`,
+    `C ${X(0.2008)} ${Y(0.0921)}, ${X(0.2852)} ${Y(0.0862)}, ${X(0.3462)} ${Y(0.1287)}`,
+    `C ${X(0.3592)} ${Y(0.0555)}, ${X(0.4231)} ${Y(0)}, ${X(0.5)} ${Y(0)} Z')`,
+  ].join(' ')
+}
+
+/* ── Bloom (cushion with concave sides) ──
+   Sharp 90° corners stay at the bbox corners; each of the four
+   side midpoints gets a curved bite going inward (depth ≈ 20% of
+   bbox). The remaining silhouette reads as four cornered blooms
+   linked by a solid center cross. Single contiguous path so the
+   expand morph stays smooth. Center is filled — no anchor offset
+   needed. */
+export const bloom: ShapePath = (cx, cy, size) => {
+  const { X, Y } = withFrame(cx, cy, size)
+  return [
+    `path('M ${X(0.3047)} ${Y(0)}`,
+    `C ${X(0.4126)} ${Y(0)}, ${X(0.5)} ${Y(0.0874)}, ${X(0.5)} ${Y(0.1953)}`,
+    `C ${X(0.5)} ${Y(0.0874)}, ${X(0.5874)} ${Y(0)}, ${X(0.6953)} ${Y(0)}`,
+    `L ${X(1)} ${Y(0)}`,
+    `L ${X(1)} ${Y(0.3047)}`,
+    `C ${X(1)} ${Y(0.4126)}, ${X(0.9126)} ${Y(0.5)}, ${X(0.8047)} ${Y(0.5)}`,
+    `C ${X(0.9126)} ${Y(0.5)}, ${X(1)} ${Y(0.5874)}, ${X(1)} ${Y(0.6953)}`,
+    `L ${X(1)} ${Y(1)}`,
+    `L ${X(0.6953)} ${Y(1)}`,
+    `C ${X(0.5874)} ${Y(1)}, ${X(0.5)} ${Y(0.9126)}, ${X(0.5)} ${Y(0.8047)}`,
+    `C ${X(0.5)} ${Y(0.9126)}, ${X(0.4126)} ${Y(1)}, ${X(0.3047)} ${Y(1)}`,
+    `L ${X(0)} ${Y(1)}`,
+    `L ${X(0)} ${Y(0.6953)}`,
+    `C ${X(0)} ${Y(0.5874)}, ${X(0.0874)} ${Y(0.5)}, ${X(0.1953)} ${Y(0.5)}`,
+    `C ${X(0.0874)} ${Y(0.5)}, ${X(0)} ${Y(0.4126)}, ${X(0)} ${Y(0.3047)}`,
+    `L ${X(0)} ${Y(0)} Z')`,
+  ].join(' ')
+}
+
+/* ── Beads (pinched vertical column) ──
+   Top and bottom edges straight; left and right edges scallop
+   inward at two pinch points each (y ≈ 0.25 and y ≈ 0.75) with
+   matching outward bulges between — three stacked bead-like
+   lobes. Single contiguous path. Center is filled, no offset. */
+export const beads: ShapePath = (cx, cy, size) => {
+  const { X, Y } = withFrame(cx, cy, size)
+  return [
+    `path('M ${X(1)} ${Y(0)}`,
+    `C ${X(1)} ${Y(0.1381)}, ${X(0.8881)} ${Y(0.25)}, ${X(0.75)} ${Y(0.25)}`,
+    `C ${X(0.8881)} ${Y(0.25)}, ${X(1)} ${Y(0.3619)}, ${X(1)} ${Y(0.5)}`,
+    `C ${X(1)} ${Y(0.6381)}, ${X(0.8881)} ${Y(0.75)}, ${X(0.75)} ${Y(0.75)}`,
+    `C ${X(0.8881)} ${Y(0.75)}, ${X(1)} ${Y(0.8619)}, ${X(1)} ${Y(1)}`,
+    `L ${X(0)} ${Y(1)}`,
+    `C ${X(0)} ${Y(0.8619)}, ${X(0.1119)} ${Y(0.75)}, ${X(0.25)} ${Y(0.75)}`,
+    `C ${X(0.1119)} ${Y(0.75)}, ${X(0)} ${Y(0.6381)}, ${X(0)} ${Y(0.5)}`,
+    `C ${X(0)} ${Y(0.3619)}, ${X(0.1119)} ${Y(0.25)}, ${X(0.25)} ${Y(0.25)}`,
+    `C ${X(0.1119)} ${Y(0.25)}, ${X(0)} ${Y(0.1381)}, ${X(0)} ${Y(0)} Z')`,
+  ].join(' ')
+}
+
+
 /* ── State shapes ──────────────────────────────────────────────
    Each US state's outline as a clip-path. Source data is auto-
    generated by `scripts/extract-state-shapes.mjs` and lives in
@@ -274,18 +362,22 @@ function buildStateShape(s: StateShapeData): MapShape {
     peekScale: 0.96,
     expandScale,
     expandAnchorOffset,
+    aspect: s.aspect,
   }
 }
 
 const STATE_SHAPE_ENTRIES: MapShape[] = STATE_SHAPES.map(buildStateShape)
 
 export const SHAPES: MapShape[] = [
-  { id: 'rectangle', name: 'Rectangle', vibe: 'Hard-edged, editorial',  path: rectangle, peekScale: 0.95, expandScale: 2.6 },
-  { id: 'squircle',  name: 'Squircle',  vibe: 'Soft, premium',          path: squircle,  peekScale: 0.92, expandScale: 2.8 },
-  { id: 'circle',    name: 'Circle',    vibe: 'Clean',                  path: circle,    peekScale: 0.90, expandScale: 2.8 },
-  { id: 'hex',       name: 'Hex',       vibe: 'Architectural',          path: hex,       peekScale: 0.95, expandScale: 2.8 },
-  { id: 'heart',     name: 'Heart',     vibe: 'Signature',              path: heart,     peekScale: 1.15, expandScale: 3.0 },
-  { id: 'house',     name: 'House',     vibe: 'Literal, playful',       path: house,     peekScale: 1.0,  expandScale: 3.0 },
+  { id: 'rectangle', name: 'Rectangle', vibe: 'Hard-edged, editorial',  path: rectangle, peekScale: 0.95, expandScale: 2.6, aspect: 1 },
+  { id: 'squircle',  name: 'Squircle',  vibe: 'Soft, premium',          path: squircle,  peekScale: 0.92, expandScale: 2.8, aspect: 1 },
+  { id: 'circle',    name: 'Circle',    vibe: 'Clean',                  path: circle,    peekScale: 0.90, expandScale: 2.8, aspect: 1 },
+  { id: 'hex',       name: 'Hex',       vibe: 'Architectural',          path: hex,       peekScale: 0.95, expandScale: 2.8, aspect: 1 },
+  { id: 'heart',     name: 'Heart',     vibe: 'Signature',              path: heart,     peekScale: 1.15, expandScale: 3.0, aspect: 1 },
+  { id: 'house',     name: 'House',     vibe: 'Literal, playful',       path: house,     peekScale: 1.0,  expandScale: 3.0, aspect: 1 },
+  { id: 'quatrefoil', name: 'Quatrefoil', vibe: 'Floral, decorative',     path: quatrefoil, peekScale: 1.0, expandScale: 3.0, aspect: 1 },
+  { id: 'bloom',     name: 'Bloom',     vibe: 'Cushion, four-cornered',   path: bloom,     peekScale: 1.0, expandScale: 3.0, aspect: 1 },
+  { id: 'beads',     name: 'Beads',     vibe: 'Pinched, stacked column',  path: beads,     peekScale: 1.0, expandScale: 3.0, aspect: 1 },
   ...STATE_SHAPE_ENTRIES,
 ]
 

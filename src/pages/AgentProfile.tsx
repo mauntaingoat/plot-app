@@ -15,9 +15,10 @@ import { AgentProfileHeader } from '@/components/agent-profile/AgentProfileHeade
 import { SaveAgentModal } from '@/components/agent-profile/SaveAgentModal'
 import { ShareModal } from '@/components/agent-profile/ShareModal'
 import { WaveModal } from '@/components/agent-profile/WaveModal'
+import { ReportSheet } from '@/components/moderation/ReportSheet'
 import { ListingsTab } from '@/components/agent-profile/ListingsTab'
 import { ExpandedMapView } from '@/components/agent-profile/ExpandedMapView'
-import { resolveStyle, getPalette, getFont, ensureFontLoaded, paletteShadowColor, readableInkOnHex, darkenHex } from '@/lib/style'
+import { resolveStyle, getPalette, getFont, getShape, ensureFontLoaded, paletteShadowColor, readableInkOnHex, darkenHex } from '@/lib/style'
 import { auditProUsage } from '@/lib/proAudit'
 import { hasWebGL } from '@/lib/webgl'
 import { SEOHead } from '@/components/marketing/SEOHead'
@@ -67,6 +68,22 @@ function useIsDesktop() {
   return d
 }
 
+/** Landscape phone — wider than tall + short height. Used to
+ *  narrow the agent-profile-card so the layout reads as
+ *  desktop-style (compact card centered against the canvas)
+ *  instead of stretching across an 800+ px viewport with the
+ *  map-peek dwindling into a sliver. */
+function useIsLandscapePhone() {
+  const [v, setV] = useState(typeof window !== 'undefined' && window.matchMedia('(max-height: 500px) and (orientation: landscape)').matches)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-height: 500px) and (orientation: landscape)')
+    const h = (e: MediaQueryListEvent) => setV(e.matches)
+    mq.addEventListener('change', h)
+    return () => mq.removeEventListener('change', h)
+  }, [])
+  return v
+}
+
 export default function AgentProfile() {
   const { username } = useParams<{ username: string }>()
   const [searchParams] = useSearchParams()
@@ -82,6 +99,7 @@ export default function AgentProfile() {
   // rubber-band cleanly on every browser.
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const isDesktop = useIsDesktop()
+  const isLandscapePhone = useIsLandscapePhone()
 
   // Data fetching via React Query (cached across navigations)
   const { data: agent = null, isLoading: agentLoading } = useAgent(username)
@@ -230,9 +248,10 @@ export default function AgentProfile() {
     Promise.all([
       import('firebase/functions'),
       import('@/config/firebase'),
-    ]).then(([{ getFunctions, httpsCallable }, { app }]) => {
+      import('@/lib/visitorId'),
+    ]).then(([{ getFunctions, httpsCallable }, { app }, { getVisitorId }]) => {
       const fn = httpsCallable(getFunctions(app ?? undefined), 'trackProfileVisit')
-      fn({ agentId: agent.uid, localHour: new Date().getHours() }).catch(() => {})
+      fn({ agentId: agent.uid, localHour: new Date().getHours(), visitorId: getVisitorId() }).catch(() => {})
     }).catch(() => {})
   }, [agent?.uid, isOwnProfile])
 
@@ -326,6 +345,11 @@ export default function AgentProfile() {
 
   const [shareOpen, setShareOpen] = useState(false)
   const handleShare = () => setShareOpen(true)
+  // Report-this-profile dialog — opened from the public profile
+  // footer (Privacy · Terms · Report · Reelst). targetType 'agent'
+  // (vs 'pin' / 'content') so the moderator email surfaces the
+  // agent's username + profile URL, not a listing snippet.
+  const [showReportProfile, setShowReportProfile] = useState(false)
 
   // ── New 3-tab agent profile state ──
   // Replaces the legacy view-mode shell as the default rendering
@@ -683,7 +707,15 @@ export default function AgentProfile() {
         <div
           className="w-full mx-auto md:mt-6 md:rounded-t-[32px] overflow-hidden relative agent-profile-card"
           style={{
-            maxWidth: '720px',
+            // Landscape phone narrows the card so the layout reads
+            // as desktop-style (compact card centered against the
+            // canvas) instead of stretching to 720px on a viewport
+            // that's only ~390px tall — the user reported the
+            // map-peek getting "cropped" in landscape, which was
+            // really the bbox going wide-and-short. With the card
+            // narrowed, the peek's own landscape-phone media query
+            // (in ListingsTab) sizes its bbox sanely too.
+            maxWidth: isLandscapePhone ? '480px' : '720px',
             // Card surface — drives `--card-bg` (defined in
             // index.css, defaults to ivory). All overscroll/load/
             // theme-color colors derive from this, so a future
@@ -739,6 +771,9 @@ export default function AgentProfile() {
             mapFrame={style.frames.map}
             showMap={showMap}
             listingsLayout={style.listingsLayout}
+            palette={palette}
+            font={font}
+            shapeAspect={getShape(style.shapeId).aspect}
             onSelectPin={(pin) => {
               trackPinTap(pin.id)
               const firstContent = pin.content?.[0]
@@ -776,6 +811,8 @@ export default function AgentProfile() {
               <Link to="/privacy" className="hover:text-ink underline-offset-2 hover:underline">Privacy</Link>
               <span className="mx-2 opacity-50">·</span>
               <Link to="/terms" className="hover:text-ink underline-offset-2 hover:underline">Terms</Link>
+              <span className="mx-2 opacity-50">·</span>
+              <button onClick={() => setShowReportProfile(true)} className="hover:text-ink underline-offset-2 hover:underline cursor-pointer">Report</button>
               <span className="mx-2 opacity-50">·</span>
               <Link to="/" className="hover:text-ink underline-offset-2 hover:underline">Reelst</Link>
             </p>
@@ -827,6 +864,14 @@ export default function AgentProfile() {
           onClose={() => setShareOpen(false)}
           title={`${agent.displayName || firstName} on Reelst`}
           message={`Check out ${agent.displayName || firstName}'s map of listings on Reelst`}
+        />
+
+        <ReportSheet
+          isOpen={showReportProfile}
+          onClose={() => setShowReportProfile(false)}
+          targetType="agent"
+          targetId={agent.uid}
+          targetOwnerId={agent.uid}
         />
 
         {/* Agent-level Wave — fired from the top-left header icon.

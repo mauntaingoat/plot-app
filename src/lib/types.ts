@@ -80,7 +80,7 @@ export interface UserDoc {
 
 export type PinType = 'for_sale' | 'sold' | 'spotlight'
 export type ListingStatus = 'active' | 'pending' | 'contingent' | 'closed'
-export type ContentType = 'reel' | 'live' | 'video_note' | 'photo'
+export type ContentType = 'reel' | 'video_note' | 'photo'
 export type HomeType = 'single_family' | 'condo' | 'townhouse' | 'multi_family' | 'land' | 'commercial' | 'other'
 
 export interface Coordinates {
@@ -273,7 +273,6 @@ export interface ForSalePin extends PinBase {
   daysOnMarket: number
   mlsNumber?: string
   openHouse?: OpenHouse | null
-  isLive?: boolean
 }
 
 // Sold listing
@@ -376,7 +375,7 @@ export interface Wave {
  * Fields that are *specific* to a single pin type (not in PinBase).
  * Used by `updatePinType` in firestore.ts to wipe stale fields when an
  * existing pin's type changes — e.g., flipping a for_sale to sold
- * shouldn't leave behind `openHouse`, `listingStatus`, or `isLive`.
+ * shouldn't leave behind `openHouse` or `listingStatus`.
  */
 export const TYPE_SPECIFIC_FIELDS: Record<PinType, ReadonlyArray<string>> = {
   for_sale: [
@@ -395,7 +394,6 @@ export const TYPE_SPECIFIC_FIELDS: Record<PinType, ReadonlyArray<string>> = {
     'daysOnMarket',
     'mlsNumber',
     'openHouse',
-    'isLive',
   ],
   sold: [
     'soldPrice',

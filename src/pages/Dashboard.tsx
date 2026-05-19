@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, ChartBar as BarChart3, Users, Gear as Settings, Plus, Eye, CursorClick as MousePointerClick, ArrowSquareOut as ExternalLink, SignOut as LogOut, CaretRight as ChevronRight, CreditCard, User, Trash as Trash2, PencilSimple as Edit3, EyeSlash as EyeOff, LinkSimple as Link2, Shield, FilmStrip as Film, ShareNetwork as Share2, Copy, Check, X, QrCode, CalendarDots as CalendarDays, Tray as Inbox, Bell, Camera, Sun, Moon, ArrowsClockwise as RefreshCw, Warning as AlertTriangle, ArrowRight, Buildings as Building, Palette, Heart, HandWaving as Hand, Lock } from '@phosphor-icons/react'
+import { MapPin, ChartBar as BarChart3, Users, Gear as Settings, Plus, Eye, CursorClick as MousePointerClick, ArrowSquareOut as ExternalLink, SignOut as LogOut, CaretRight as ChevronRight, CreditCard, User, Trash as Trash2, PencilSimple as Edit3, EyeSlash as EyeOff, LinkSimple as Link2, Shield, FilmStrip as Film, ShareNetwork as Share2, Copy, Check, X, QrCode, CalendarDots as CalendarDays, Tray as Inbox, Bell, Camera, Sun, Moon, ArrowsClockwise as RefreshCw, Warning as AlertTriangle, ArrowRight, Buildings as Building, Palette, Heart, HandWaving as Hand, Lock, ChatCircleDots, PaperPlaneTilt } from '@phosphor-icons/react'
 import { TabBar } from '@/components/ui/TabBar'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
@@ -13,7 +13,8 @@ import { SetupChecklist } from '@/components/dashboard/SetupChecklist'
 import { InsightsChart } from '@/components/dashboard/InsightsChart'
 import { PaywallPrompt } from '@/components/dashboard/PaywallPrompt'
 import { PinBreakdown, ContentConversion, TimeOfDay, SaveGrowth } from '@/components/dashboard/AdvancedInsights'
-import { SavedMapInsights, CustomBranding } from '@/components/dashboard/StudioFeatures'
+import { CustomBranding } from '@/components/dashboard/StudioFeatures'
+import { CrossoverInsights } from '@/components/dashboard/CrossoverInsights'
 import { QRCodeModal } from '@/components/dashboard/QRCodeModal'
 import { ShareModal } from '@/components/agent-profile/ShareModal'
 import { profileUrl } from '@/lib/shareUrl'
@@ -107,19 +108,33 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const location = useLocation()
   const { userDoc, setUserDoc, firebaseUser, loading, initialized } = useAuthStore()
-  const [activeTab, setActiveTab] = useState<DashTab>(() => {
-    const t = (location.state as { tab?: DashTab } | null)?.tab
-    return t || 'reelst'
-  })
 
-  // Honor `tab` passed via location.state — used by PinCreate /
-  // ContentEdit to bounce the agent back to the Content tab after
-  // they publish/save content that originated from there.
+  // Two entry points for picking the initial tab:
+  //   1. `location.state.tab` — used internally by PinCreate /
+  //      ContentEdit to bounce back to a specific tab post-action.
+  //   2. `?tab=<id>` query param — used by EXTERNAL deep links
+  //      (notification emails, push notifications, share links).
+  //      The notification email CTAs route to /dashboard?tab=inbox.
+  const validTabs: ReadonlyArray<DashTab> = ['reelst', 'insights', 'inbox', 'content', 'style', 'settings', 'admin']
+  const resolveTabFromLocation = (loc: typeof location): DashTab | null => {
+    const stateTab = (loc.state as { tab?: DashTab } | null)?.tab
+    if (stateTab && validTabs.includes(stateTab)) return stateTab
+    const queryTab = new URLSearchParams(loc.search).get('tab') as DashTab | null
+    if (queryTab && validTabs.includes(queryTab)) return queryTab
+    return null
+  }
+
+  const [activeTab, setActiveTab] = useState<DashTab>(() => resolveTabFromLocation(location) || 'reelst')
+
+  // React to navigation that changes the tab source (either state
+  // or search) — keeps deep links working after the page is already
+  // mounted (e.g. clicking a notification email while dashboard is
+  // open in another tab and that tab becomes focused).
   useEffect(() => {
-    const t = (location.state as { tab?: DashTab } | null)?.tab
-    if (t && t !== activeTab) setActiveTab(t)
+    const next = resolveTabFromLocation(location)
+    if (next && next !== activeTab) setActiveTab(next)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state])
+  }, [location.state, location.search])
   const inboxUnread = useUnreadCount(userDoc?.uid)
   const [showSetup, setShowSetup] = useState(false)
   const [showPinActions, setShowPinActions] = useState<Pin | null>(null)
@@ -759,7 +774,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-2 gap-3">
               <StatCard label="Visits" value={activeUser.profileVisits || 0} icon={<Eye size={18} />} format="compact" tooltip="Count of profile visits to your Reelst" />
               <StatCard label="Taps" value={stats.taps} icon={<MousePointerClick size={18} />} color="#3B82F6" format="compact" tooltip="Times someone tapped a map pin or content card to open it" />
-              <StatCard label="Saves" value={subscriberCount} icon={<Heart size={18} />} color="#FF6B6B" format="compact" tooltip="Buyers who subscribed to receive email updates from you on Reelst" />
+              <StatCard label="Saves" value={subscriberCount} icon={<Heart size={18} />} color="#FF6B6B" format="compact" tooltip="Buyers who saved you to receive email updates from you on Reelst" />
               <StatCard label="Waves" value={waveCount} icon={<Hand size={18} />} color="#FF8552" format="compact" tooltip="Buyers who waved with a question on a listing" />
             </div>
             <InsightsChart
@@ -782,10 +797,10 @@ export default function Dashboard() {
                 <ContentConversion pins={pins} />
                 <SaveGrowth currentSaves={subscriberCount} agentId={activeUser.uid} refreshKey={insightsRefreshKey} />
                 <TimeOfDay agentId={activeUser.uid} refreshKey={insightsRefreshKey} />
-                {/* Audience Crossover — included with Pro analytics now
-                    that Studio is gone. Anonymized competitive-set
-                    insight powered by digestSubscriptions overlap. */}
-                <SavedMapInsights pins={pins} agentId={activeUser.uid} />
+                {/* Crossover Insights — within-profile (co-tap) and
+                    cross-Reelst (overlapping agents + neighborhoods).
+                    Powered by per-event visitorId tracking. */}
+                <CrossoverInsights agentId={activeUser.uid} />
               </>
             ) : (
               <div className="relative">
@@ -989,6 +1004,9 @@ export default function Dashboard() {
               </div>
               <Badge>{getUserTier(activeUser) === 'pro' ? 'Pro' : 'Free'}</Badge>
             </motion.button>
+
+            <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Feedback</p>
+            <FeedbackForm />
 
             <div className="flex gap-3 pt-4">
               <Button variant="secondary" size="lg" fullWidth icon={<Share2 size={16} />} onClick={handleSharePlot}>
@@ -2013,6 +2031,99 @@ function SocialLinksPanel({ isOpen, onClose, existingPlatforms, onAdd, onRemove,
     <DarkBottomSheet isOpen={isOpen} onClose={onClose} title="Social Links">
       {content}
     </DarkBottomSheet>
+  )
+}
+
+/**
+ * Inline feedback form rendered under "Plan" in dashboard Settings.
+ * Textarea + Send button, no modal. On submit calls the
+ * `submitFeedback` callable Cloud Function which writes a
+ * /feedback doc + emails the moderation inbox via Workspace SMTP.
+ * Rate-limited per-uid at 5/hour server-side.
+ */
+function FeedbackForm() {
+  const [message, setMessage] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleSend = async () => {
+    const text = message.trim()
+    if (text.length < 4 || submitting) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      const { getFunctions, httpsCallable } = await import('firebase/functions')
+      const { app } = await import('@/config/firebase')
+      const fn = httpsCallable(getFunctions(app ?? undefined), 'submitFeedback')
+      await fn({ message: text })
+      setSent(true)
+      setMessage('')
+    } catch (err: any) {
+      const code = err?.code || ''
+      setError(
+        code === 'functions/resource-exhausted'
+          ? "You've already sent feedback today. Try again tomorrow."
+          : code === 'functions/unauthenticated'
+            ? 'Sign in to send feedback.'
+            : 'Could not send. Try again in a moment.',
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (sent) {
+    return (
+      <div className="bg-cream rounded-[14px] p-4 flex items-start gap-3">
+        <div className="w-10 h-10 rounded-[12px] bg-sold-green/15 flex items-center justify-center shrink-0">
+          <Check size={18} className="text-sold-green" />
+        </div>
+        <div className="flex-1">
+          <p className="text-[15px] font-medium text-ink">Got it — thanks.</p>
+          <p className="text-[12px] text-smoke mt-0.5">
+            We read every note.{' '}
+            <button onClick={() => setSent(false)} className="text-tangerine font-semibold underline-offset-2 hover:underline cursor-pointer">Send another</button>
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-cream rounded-[14px] p-4 space-y-3">
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-[12px] bg-pearl flex items-center justify-center shrink-0">
+          <ChatCircleDots size={18} className="text-graphite" />
+        </div>
+        <div className="flex-1">
+          <p className="text-[15px] font-medium text-ink leading-tight">Tell us what'd make Reelst better</p>
+          <p className="text-[12px] text-smoke mt-0.5">Bugs, ideas, anything. Goes straight to the team.</p>
+        </div>
+      </div>
+      <textarea
+        value={message}
+        onChange={(e) => { setMessage(e.target.value); if (error) setError(null) }}
+        placeholder="Type your feedback..."
+        rows={3}
+        maxLength={5000}
+        className="w-full rounded-[12px] bg-warm-white border border-border-light px-3.5 py-3 text-[14px] text-ink placeholder:text-ash outline-none focus:border-tangerine/40 transition-colors resize-none"
+      />
+      {error && <p className="text-[12px] text-live-red px-1">{error}</p>}
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[11px] text-ash">{message.length}/5000</span>
+        <Button
+          variant="primary"
+          size="md"
+          icon={<PaperPlaneTilt size={15} weight="fill" />}
+          onClick={handleSend}
+          loading={submitting}
+          disabled={message.trim().length < 4 || submitting}
+        >
+          Send
+        </Button>
+      </div>
+    </div>
   )
 }
 
