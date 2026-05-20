@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   Palette,
@@ -63,6 +63,11 @@ import { PLATFORM_LIST, PLATFORM_LOGOS_MONO } from '@/components/icons/PlatformL
 interface StyleTabProps {
   user: UserDoc
   isDesktop: boolean
+  /** True when the persistent right-side preview pane is visible
+   *  (≥1200px). When false, the Style tab surfaces an in-tab
+   *  Style / Preview switcher so the user can still see their
+   *  profile without a navigate-away. */
+  isWide: boolean
   onUpdateUser: (patch: Partial<UserDoc>) => Promise<void> | void
   onOpenEditProfile: () => void
   onOpenEditBrokerage: () => void
@@ -77,6 +82,7 @@ interface StyleTabProps {
 export function StyleTab({
   user,
   isDesktop,
+  isWide,
   onUpdateUser,
   onOpenEditProfile,
   onOpenEditBrokerage,
@@ -113,6 +119,28 @@ export function StyleTab({
 
   const reset = useCallback(() => onUpdateUser({ style: DEFAULT_STYLE }), [onUpdateUser])
 
+  // Style / Preview switcher — only surfaced when the persistent
+  // right-side preview pane isn't there to show changes live (i.e.
+  // tablet + mobile widths). Lazy-mount the iframe so we don't burn
+  // a Mapbox load until the user actually taps Preview.
+  const [activeSubTab, setActiveSubTab] = useState<'style' | 'preview'>('style')
+  const [previewMounted, setPreviewMounted] = useState(false)
+  const previewIframeRef = useRef<HTMLIFrameElement>(null)
+  const [previewReloading, setPreviewReloading] = useState(false)
+  const RELOAD_COOLDOWN_MS = 3000
+  useEffect(() => {
+    if (activeSubTab === 'preview' && !previewMounted) setPreviewMounted(true)
+  }, [activeSubTab, previewMounted])
+  const reloadPreview = useCallback(() => {
+    if (previewReloading) return
+    const iframe = previewIframeRef.current
+    if (!iframe) return
+    iframe.src = iframe.src
+    setPreviewReloading(true)
+    setTimeout(() => setPreviewReloading(false), RELOAD_COOLDOWN_MS)
+  }, [previewReloading])
+  const showSubTabs = !isWide
+
   return (
     <div className={isDesktop ? 'space-y-5' : 'px-5 py-5 space-y-5'}>
       {/* ── Header ── */}
@@ -129,6 +157,73 @@ export function StyleTab({
         </div>
       </div>
 
+      {/* ── Style / Preview switcher (only on tablet + mobile) ── */}
+      {showSubTabs && (
+        <div className="flex items-center gap-1 p-1 rounded-full bg-cream border border-border-light w-fit">
+          {([
+            { id: 'style', label: 'Style' },
+            { id: 'preview', label: 'Preview' },
+          ] as const).map((t) => {
+            const active = activeSubTab === t.id
+            return (
+              <button
+                key={t.id}
+                onClick={() => setActiveSubTab(t.id)}
+                className={`px-4 py-1.5 rounded-full text-[13px] font-semibold transition-colors cursor-pointer ${
+                  active ? 'bg-ink text-ivory' : 'text-smoke hover:text-ink'
+                }`}
+              >
+                {t.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── Preview panel (only when sub-tab=preview) ──
+          Phone frame matches the wide-desktop right pane (240×480 with
+          a 375×750 iframe scaled 0.64) so the visual reads exactly the
+          same. Once mounted, stays in DOM forever — toggling the sub-tab
+          (or leaving the Style dashboard tab entirely) doesn't unmount
+          the iframe, so the Mapbox map inside doesn't re-init. */}
+      {showSubTabs && previewMounted && (
+        <div
+          className="flex flex-col items-center pt-2 pb-6"
+          style={{ display: activeSubTab === 'preview' ? 'flex' : 'none' }}
+        >
+          {user.username ? (
+            <div className="relative">
+              <div className="w-[240px] rounded-[32px] bg-midnight shadow-2xl overflow-hidden" style={{ height: '480px' }}>
+                <iframe
+                  ref={previewIframeRef}
+                  src={`/${user.username}?preview=true`}
+                  className="border-0 origin-top-left"
+                  style={{ pointerEvents: 'none', width: '375px', height: '750px', transform: 'scale(0.64)', transformOrigin: 'top left' }}
+                  title="Profile preview"
+                />
+              </div>
+              <button
+                onClick={reloadPreview}
+                disabled={previewReloading}
+                className={`absolute bottom-2 right-2 w-7 h-7 rounded-full bg-warm-white/90 shadow border border-border-light flex items-center justify-center transition-colors ${previewReloading ? 'text-tangerine cursor-not-allowed opacity-80' : 'text-smoke hover:text-ink cursor-pointer'}`}
+                title={previewReloading ? 'Reloading…' : 'Reload preview'}
+              >
+                <RefreshCw size={14} className={previewReloading ? 'animate-spin' : ''} />
+              </button>
+            </div>
+          ) : (
+            <p className="text-[13px] text-smoke">Pick a username first to preview your profile.</p>
+          )}
+        </div>
+      )}
+
+      {/* All style sections — hidden via CSS (not unmounted) when the
+          Preview sub-tab is active, so local component state inside
+          sections (uploads, scroll, draft text) survives toggling. */}
+      <div
+        className="space-y-5"
+        style={{ display: showSubTabs && activeSubTab === 'preview' ? 'none' : undefined }}
+      >
       {/* ── 1. Profile basics ── */}
       <Section title="Profile basics" subtitle="Name, bio, photo, brokerage">
         <div className="flex items-center gap-3">
@@ -400,6 +495,7 @@ export function StyleTab({
         >
           <RefreshCw size={14} /> Reset to defaults
         </button>
+      </div>
       </div>
     </div>
   )

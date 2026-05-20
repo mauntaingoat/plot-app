@@ -183,7 +183,7 @@ export function ListingsTab({
              ExpandedMapView reads this div's bbox imperatively
              to compute the shape size. */
           .listings-map-peek {
-            height: 320px;
+            height: 280px;
             margin-left: auto;
             margin-right: auto;
             max-width: 100%;

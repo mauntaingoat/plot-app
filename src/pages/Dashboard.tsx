@@ -930,11 +930,17 @@ export default function Dashboard() {
 
         {/* ═══ STYLE ═══ — agent profile aesthetic editor.
              Live-edits the user doc; the preview iframe re-fetches
-             so changes show up the moment Firestore acks. */}
-        {activeTab === 'style' && (
+             so changes show up the moment Firestore acks.
+             Always-mounted (just CSS-hidden on other dashboard tabs)
+             so the lazy-mounted in-tab preview iframe doesn't get
+             unmounted + re-init Mapbox every time the user leaves
+             and returns to the Style tab. Mirrors the same pattern
+             the wide-desktop right pane uses. */}
+        <div style={{ display: activeTab === 'style' ? 'block' : 'none' }}>
           <StyleTab
             user={activeUser}
             isDesktop={isDesktop}
+            isWide={isWide}
             onUpdateUser={async (patch) => {
               if (!activeUser?.uid) return
               setUserDoc({ ...activeUser, ...patch })
@@ -954,7 +960,7 @@ export default function Dashboard() {
             isFree={getUserTier(activeUser) === 'free'}
             onPaywall={(reason) => setPaywall({ open: true, reason, upgradeTo: 'pro' })}
           />
-        )}
+        </div>
 
         {/* ═══ SETTINGS ═══ */}
         {activeTab === 'settings' && (
