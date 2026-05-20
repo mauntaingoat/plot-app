@@ -34,13 +34,13 @@ export default function Terms() {
               textTransform: 'uppercase',
             }}
           >
-            Effective April 1, 2026 · Last updated April 1, 2026
+            Effective May 19, 2026 · Last updated May 19, 2026
           </p>
 
           <div className="prose-reeltor space-y-9">
             <section>
               <h2>1. Agreement to Terms</h2>
-              <p>By accessing or using Reelst (the "Service"), operated by Avigage LLC DBA Reelst ("we," "us," "our"), you agree to be bound by these Terms of Use. If you do not agree, do not use the Service.</p>
+              <p>By accessing or using Reelst (the "Service"), operated by Avigage LLC ("we," "us," "our"), you agree to be bound by these Terms of Use. If you do not agree, do not use the Service.</p>
             </section>
 
             <section>
@@ -71,43 +71,63 @@ export default function Terms() {
             </section>
 
             <section>
-              <h2>7. Prohibited Conduct</h2>
+              <h2>7. Copyright Complaints (DMCA)</h2>
+              <p>Reelst respects intellectual property rights and complies with the Digital Millennium Copyright Act. If you believe content posted on Reelst infringes a copyright you own or control, send a written notice to our designated agent that includes:</p>
+              <ul>
+                <li>Your physical or electronic signature</li>
+                <li>Identification of the copyrighted work claimed to have been infringed</li>
+                <li>Identification of the material claimed to be infringing and its location on Reelst (e.g., the specific profile or pin URL)</li>
+                <li>Your contact information (address, phone, email)</li>
+                <li>A statement that you have a good-faith belief that the use is not authorized by the copyright owner, its agent, or the law</li>
+                <li>A statement, made under penalty of perjury, that the information in your notice is accurate and that you are the copyright owner or authorized to act on the owner's behalf</li>
+              </ul>
+              <p>Send notices to <a href="mailto:dmca@reelst.co">dmca@reelst.co</a>. We will respond to valid notices in accordance with 17 U.S.C. §512. Accounts that are subject to repeat infringement notices may be terminated.</p>
+            </section>
+
+            <section>
+              <h2>8. Prohibited Conduct</h2>
               <p>You may not: post false or misleading listing information; post listings you are not authorized to represent; harass, threaten, or impersonate other users; upload malicious code or spam; scrape, data-mine, or attempt to reverse-engineer the Service; circumvent paywalls or tier gates; use the Service in violation of fair-housing or anti-discrimination laws; or otherwise use the Service for any unlawful purpose.</p>
             </section>
 
             <section>
-              <h2>8. Subscriptions, Tiers & Billing</h2>
+              <h2>9. Subscriptions, Tiers & Billing</h2>
               <p>Reelst offers a free tier and a paid <strong>Pro</strong> tier. Paid subscriptions are billed monthly in advance. You can cancel from your dashboard at any time; cancellation takes effect at the end of the current billing period and your account drops to the Free tier. Tier-gated features (e.g., advanced analytics, unlimited active Pins, expanded customization) are available only while a qualifying subscription is active. We reserve the right to change pricing or tier composition with 30 days' notice. Refunds are handled on a case-by-case basis.</p>
             </section>
 
             <section>
-              <h2>9. Showing Requests & Lead Capture</h2>
-              <p>When a Visitor submits a Showing Request through the Service, we route the Visitor's contact information and message to the relevant Agent's inbox. Reelst does not act as a real estate brokerage, agency, or transaction intermediary, any subsequent showing, communication, or transaction occurs directly between the Visitor and the Agent.</p>
+              <h2>10. Showing Requests & Lead Capture</h2>
+              <p>When a Visitor submits a Showing Request through the Service, we route the Visitor's contact information and message to the relevant Agent's inbox. Reelst does not act as a real estate brokerage, agency, or transaction intermediary; any subsequent showing, communication, or transaction occurs directly between the Visitor and the Agent.</p>
             </section>
 
             <section>
-              <h2>10. Termination</h2>
+              <h2>11. Termination</h2>
               <p>We may suspend or terminate any account at any time for violation of these Terms or for any other reason at our discretion. Upon termination, your right to use the Service ceases immediately. Public-facing content tied to a terminated account will be removed. We may retain certain data as required by law or to resolve disputes.</p>
             </section>
 
             <section>
-              <h2>11. Disclaimer of Warranties</h2>
+              <h2>12. Disclaimer of Warranties</h2>
               <p>The Service is provided "as is" without warranties of any kind, express or implied. We do not guarantee the accuracy of MLS-sourced listing data, the availability of the Service, or any specific business, marketing, or lead-generation results obtained from using the Service.</p>
             </section>
 
             <section>
-              <h2>12. Limitation of Liability</h2>
-              <p>To the maximum extent permitted by law, Avigage LLC DBA Reelst shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Service.</p>
+              <h2>13. Limitation of Liability</h2>
+              <p>To the maximum extent permitted by law, Avigage LLC shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Service.</p>
             </section>
 
             <section>
-              <h2>13. Changes to Terms</h2>
+              <h2>14. Governing Law & Dispute Resolution</h2>
+              <p>These Terms are governed by the laws of the State of Florida, without regard to its conflict-of-laws principles. Any dispute arising out of or relating to these Terms or the Service will be resolved exclusively in the state or federal courts located in Miami-Dade County, Florida, and you consent to the personal jurisdiction and venue of those courts.</p>
+              <p>You and Reelst each waive the right to a jury trial and the right to participate in any class, collective, or representative action, to the maximum extent permitted by law. Disputes must be brought in your individual capacity.</p>
+            </section>
+
+            <section>
+              <h2>15. Changes to Terms</h2>
               <p>We may update these Terms at any time. We'll notify users of material changes via email or in-app notice. Continued use of the Service after changes take effect constitutes acceptance.</p>
             </section>
 
             <section>
-              <h2>14. Contact</h2>
-              <p>Questions about these Terms? Email us at <a href="mailto:hello@reelst.co">hello@reelst.co</a>.</p>
+              <h2>16. Contact</h2>
+              <p>Questions about these Terms? Email us at <a href="mailto:hello@reelst.co">hello@reelst.co</a>. Copyright notices: <a href="mailto:dmca@reelst.co">dmca@reelst.co</a>.</p>
             </section>
           </div>
         </div>

@@ -154,6 +154,23 @@ html.dark-dashboard body {
 :root {
   --card-bg: #FAFAF8;
   --surround-bg: #E5DFD3;
+
+  /* Public-profile palette vars — defaults applied when AgentProfile
+     isn't mounted (e.g., the ShareModal opens from the dashboard's
+     settings page). AgentProfile's useLayoutEffect overrides these
+     with the active agent's palette while the profile is mounted,
+     and restores them on unmount. Without these defaults, callers
+     like ShareModal got `background: var(--text-primary)` resolving
+     to nothing → buttons had no bg → text inherited the dashboard's
+     dark-mode ink color → light-on-cream invisible. */
+  --text-primary: #0A0E17;
+  --text-secondary: #3A3F4A;
+  --text-muted: #6B6F7A;
+  --surface-2: rgba(10, 14, 23, 0.05);
+  --accent: #D94A1F;
+  --accent-ink: #FFFFFF;
+  --frame-border: rgba(10, 14, 23, 0.10);
+  --shadow-color: rgba(10, 14, 23, 0.18);
 }
 
 /* Page canvas — what fills overscroll fringe / loading splash /

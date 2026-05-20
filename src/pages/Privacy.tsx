@@ -34,13 +34,13 @@ export default function Privacy() {
               textTransform: 'uppercase',
             }}
           >
-            Effective April 1, 2026 · Last updated April 1, 2026
+            Effective May 19, 2026 · Last updated May 19, 2026
           </p>
 
           <div className="prose-reeltor space-y-9">
             <section>
               <h2>1. Introduction</h2>
-              <p>Avigage LLC DBA Reelst ("we," "us," "our") respects your privacy. This Privacy Policy explains what we collect, how we use it, who we share it with, and the controls you have over your data.</p>
+              <p>Avigage LLC ("we," "us," "our"), the operator of Reelst, respects your privacy. This Privacy Policy explains what we collect, how we use it, who we share it with, and the controls you have over your data.</p>
             </section>
 
             <section>
@@ -59,7 +59,7 @@ export default function Privacy() {
               <p>We record interactions with your profile and pins, visits, taps, saves, waves, content plays, so Agents can see how their territory is performing in their Insights dashboard.</p>
 
               <h3>Usage & device data</h3>
-              <p>We automatically collect general usage information including pages visited, device type, browser, IP address, approximate location (from IP), and referring URLs.</p>
+              <p>We automatically collect general usage information including pages visited, device type, browser, IP address, and referring URLs.</p>
 
               <h3>Precise location</h3>
               <p>With your permission, we may use your device's precise location to surface nearby Agents and content. You can revoke this permission in your device or browser settings at any time.</p>
@@ -82,7 +82,7 @@ export default function Privacy() {
               <ul>
                 <li><strong>Firebase (Google)</strong>, authentication, real-time database, file storage, analytics</li>
                 <li><strong>Mapbox</strong>, map rendering, address geocoding</li>
-                <li><strong>Mux</strong>, video upload, transcoding, and adaptive playback for reels and livestreams</li>
+                <li><strong>Mux</strong>, video upload, transcoding, and adaptive playback for reels and walkthrough video</li>
                 <li><strong>Stripe</strong>, payment processing for paid subscription tiers</li>
                 <li><strong>Email and notification providers</strong>, transactional email delivery for Showing Request alerts and account notifications</li>
               </ul>
@@ -131,7 +131,7 @@ export default function Privacy() {
             <section>
               <h2>14. Contact</h2>
               <p>For privacy inquiries, email <a href="mailto:hello@reelst.co">hello@reelst.co</a>.</p>
-              <p className="mt-2">Avigage LLC DBA Reelst<br />Miami, FL</p>
+              <p className="mt-2">Avigage LLC<br />Miami, FL</p>
             </section>
           </div>
         </div>

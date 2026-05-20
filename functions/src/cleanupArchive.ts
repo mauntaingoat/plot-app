@@ -35,6 +35,50 @@ const BATCH_LIMIT = 200
 interface MinimalContentItem {
   id?: string
   muxAssetId?: string
+  // Storage URL fields — gathered for file-level cleanup when a
+  // standalone content doc archives. These URLs are Firebase Storage
+  // download URLs (https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{encoded-path}?alt=media&token=...).
+  mediaUrl?: string
+  mediaUrls?: string[]
+  sourceUrl?: string
+  sourceUrls?: string[]
+  thumbnailUrl?: string
+}
+
+/** Extract the Storage object path from a Firebase Storage download
+ *  URL. Returns null for anything that doesn't look like a Storage
+ *  URL (e.g., Mux playback URLs, external CDN links). Format:
+ *    https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{ENCODED_PATH}?alt=media&token=...
+ *  The path is URL-encoded after `/o/` and before `?` — so `pins/XYZ/photo.jpg`
+ *  appears as `pins%2FXYZ%2Fphoto.jpg`. */
+function storagePathFromUrl(url: string | undefined | null): string | null {
+  if (!url || typeof url !== 'string') return null
+  if (!url.includes('firebasestorage.googleapis.com')) return null
+  const match = url.match(/\/o\/([^?]+)/)
+  if (!match) return null
+  try {
+    return decodeURIComponent(match[1])
+  } catch {
+    return null
+  }
+}
+
+/** Walk a content item's URL fields and return every unique Storage
+ *  path it references. Lets the cleanup function surgically remove
+ *  just the files for this one content item without touching the
+ *  rest of the pin's prefix. */
+function collectStoragePaths(item: MinimalContentItem): string[] {
+  const paths = new Set<string>()
+  const add = (u: string | undefined | null) => {
+    const p = storagePathFromUrl(u)
+    if (p) paths.add(p)
+  }
+  add(item.mediaUrl)
+  add(item.sourceUrl)
+  add(item.thumbnailUrl)
+  for (const u of item.mediaUrls || []) add(u)
+  for (const u of item.sourceUrls || []) add(u)
+  return [...paths]
 }
 
 interface MinimalPinDoc {
@@ -145,12 +189,22 @@ export const cleanupArchivedAssets = onSchedule(
         }
       }
 
-      // Standalone content's storage objects sit under pins/{pinId}/ if
-      // it was ever attached. We can't safely sweep that whole prefix
-      // (other content items still live there), so we trust Mux as the
-      // primary asset store and leave Storage cleanup to the pin-level
-      // sweep above. Standalone-unlinked content's source files are
-      // already in Mux's "delete asset" path.
+      // File-level Storage cleanup. The content doc references specific
+      // files under `pins/{originalPinId}/` (or `pins/unlinked-{ts}/`
+      // for never-attached standalone content). We can't sweep the
+      // whole folder — sibling files belong to the still-live parent
+      // pin or other content items — but we CAN delete just the URLs
+      // this content doc owned. Without this surgical cleanup, files
+      // orphan in Storage until their parent pin is eventually
+      // archived (or forever, if it stays active).
+      for (const path of collectStoragePaths(content)) {
+        try {
+          await bucket.file(path).delete({ ignoreNotFound: true })
+          storageFilesDeleted++
+        } catch (err: any) {
+          errors.push(`content ${contentId} storage ${path}: ${err?.message || err}`)
+        }
+      }
 
       try {
         await cDocSnap.ref.delete()
