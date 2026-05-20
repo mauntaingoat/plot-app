@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MapPin, ChartBar as BarChart3, Users, Gear as Settings, Plus, Eye, CursorClick as MousePointerClick, ArrowSquareOut as ExternalLink, SignOut as LogOut, CaretRight as ChevronRight, CreditCard, User, Trash as Trash2, PencilSimple as Edit3, EyeSlash as EyeOff, LinkSimple as Link2, Shield, FilmStrip as Film, ShareNetwork as Share2, Copy, Check, X, QrCode, CalendarDots as CalendarDays, Tray as Inbox, Bell, Camera, Sun, Moon, ArrowsClockwise as RefreshCw, Warning as AlertTriangle, ArrowRight, Buildings as Building, Palette, Heart, HandWaving as Hand, Lock, ChatCircleDots, PaperPlaneTilt } from '@phosphor-icons/react'
 import { TabBar } from '@/components/ui/TabBar'
@@ -1026,9 +1026,9 @@ export default function Dashboard() {
               Delete my account
             </button>
             <div className="flex items-center justify-center gap-3 pt-4">
-              <button className="text-[12px] text-ash">Privacy</button>
+              <Link to="/privacy" target="_blank" rel="noopener noreferrer" className="text-[12px] text-ash hover:text-text-primary transition-colors">Privacy</Link>
               <span className="text-ash text-[10px]">&middot;</span>
-              <button className="text-[12px] text-ash">Terms</button>
+              <Link to="/terms" target="_blank" rel="noopener noreferrer" className="text-[12px] text-ash hover:text-text-primary transition-colors">Terms</Link>
               <span className="text-ash text-[10px]">&middot;</span>
               <span className="text-[12px] text-ash">Reelst v1.0.0</span>
             </div>
