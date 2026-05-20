@@ -57,7 +57,7 @@ export function renderReportEmail(input: ReportEmailInput): { subject: string; h
 
   const firestoreConsoleUrl = `https://console.firebase.google.com/project/plot-fe990/firestore/data/~2Freports~2F${encodeURIComponent(reportId)}`
   const targetProfileUrl = targetOwnerUsername
-    ? `https://plot-fe990.web.app/${targetOwnerUsername}${targetType === 'pin' ? `?pin=${encodeURIComponent(targetId)}` : ''}`
+    ? `https://reel.st/${targetOwnerUsername}${targetType === 'pin' ? `?pin=${encodeURIComponent(targetId)}` : ''}`
     : null
 
   const detailRow = detail

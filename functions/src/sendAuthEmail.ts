@@ -159,7 +159,7 @@ export const sendAuthEmail = onCall(
     // domain. When you swap to reel.st, callers automatically use it.
     const baseUrl = (() => {
       try { const u = new URL(continueUrl); return `${u.protocol}//${u.host}` }
-      catch { return 'https://plot-fe990.web.app' }
+      catch { return 'https://reel.st' }
     })()
 
     const { subject, html, text } = renderAuthEmail({

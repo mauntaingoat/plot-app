@@ -86,7 +86,7 @@ async function main() {
     updatedAt: FieldValue.serverTimestamp(),
   })
   console.log(`Post /posts/${POST_ID} published`)
-  console.log('\nVerify at: https://plot-fe990.web.app/blog/south-florida-real-estate-content')
+  console.log('\nVerify at: https://reel.st/blog/south-florida-real-estate-content')
 }
 
 main()

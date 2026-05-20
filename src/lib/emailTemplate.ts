@@ -52,6 +52,7 @@ const COPY: Record<AuthEmailKind, {
   body: string
   cta: string
   altLinkLabel: string
+  altLinkText: string
   fineprint: string
   /** filename inside /marketing — no domain, no leading slash */
   heroImage: string
@@ -63,7 +64,8 @@ const COPY: Record<AuthEmailKind, {
     greeting: (name) => `Hey${name ? ` ${name}` : ' there'},`,
     body: "Welcome to Reelst — really glad you're here. One quick thing before your map goes live: tap below to verify your email and we'll get your dashboard set up.",
     cta: 'Verify email',
-    altLinkLabel: 'Button not working? Paste this link in your browser:',
+    altLinkLabel: "Button not working? Try this link:",
+    altLinkText: 'Verify my email',
     fineprint: "If you didn't sign up for Reelst, you can ignore this email — no harm done.",
     heroImage: 'marketing/customize-line-cropped.png',
     heroAlt: 'A Reelst agent holding a map pin',
@@ -74,7 +76,8 @@ const COPY: Record<AuthEmailKind, {
     greeting: (name) => `Hey${name ? ` ${name}` : ' there'},`,
     body: "Locked yourself out? It happens. Tap below to set a new password — the link stays good for an hour, after that you'll need to ask for a fresh one.",
     cta: 'Reset password',
-    altLinkLabel: 'Button not working? Paste this link in your browser:',
+    altLinkLabel: "Button not working? Try this link:",
+    altLinkText: 'Reset my password',
     fineprint: "If you didn't ask to reset your password, you can ignore this email — your account stays exactly as it is.",
     heroImage: 'marketing/customize-line-cropped.png',
     heroAlt: 'A Reelst agent holding a map pin',
@@ -193,7 +196,7 @@ export function renderAuthEmail({ kind, actionUrl, recipientName, fromAddress, b
                       ${escapeHtml(c.altLinkLabel)}
                     </p>
                     <p style="margin:0;text-align:center;">
-                      <a href="${escapeAttr(actionUrl)}" style="font-size:12px;color:${BRAND.tangerine};word-break:break-all;text-decoration:underline;">${escapeHtml(actionUrl)}</a>
+                      <a href="${escapeAttr(actionUrl)}" style="font-size:13px;color:${BRAND.tangerine};text-decoration:underline;font-weight:500;">${escapeHtml(c.altLinkText)}</a>
                     </p>
                   </td>
                 </tr>

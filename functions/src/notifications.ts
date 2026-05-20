@@ -34,9 +34,8 @@ const GMAIL_USER = defineSecret('GMAIL_USER')
 const GMAIL_APP_PASSWORD = defineSecret('GMAIL_APP_PASSWORD')
 
 // Origin for the dashboard CTA + image refs inside notification
-// emails. Hardcoded until reel.st DNS flips, mirroring the constant
-// in functions/src/og.ts. Update both in one go when DNS swaps.
-const PUBLIC_BASE_URL = 'https://plot-fe990.web.app'
+// emails. Canonical site URL post-DNS-flip.
+const PUBLIC_BASE_URL = 'https://reel.st'
 
 // Map the FCM/inbox preference key to the email template's kind enum.
 // kinds are 1:1 with notificationPrefs buckets, but the strings differ

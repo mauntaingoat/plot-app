@@ -55,8 +55,16 @@ const RESERVED_PATHS = new Set([
 // Where to fetch the SPA shell from. Always the Firebase Hosting
 // origin — stable, CDN-backed, and serves /index.html as a static file
 // regardless of which custom domain (reel.st, plot-fe990.web.app, etc.)
-// the request actually came in on.
-const HOSTING_ORIGIN = 'https://plot-fe990.web.app'
+// the request actually came in on. Keep this on the .web.app domain
+// even though reel.st is canonical — Firebase serves /index.html
+// directly from this host without DNS/cert hops.
+const SHELL_ORIGIN = 'https://plot-fe990.web.app'
+
+// Canonical site URL used in og:url and other meta when we can't
+// derive the request's host from headers (function hit via run.app,
+// crawler hits without x-forwarded-host, etc.). Was the .web.app
+// host until reel.st went live.
+const CANONICAL_ORIGIN = 'https://reel.st'
 
 // Default OG image when an agent has no photo. Points to the branded
 // 1024×1024 app icon that ships in public/icons. Width/height are
@@ -85,7 +93,7 @@ function publicOrigin(req: { get(name: string): string | undefined }): string {
   const host = forwardedHost || req.get('host')
   const proto = req.get('x-forwarded-proto') || 'https'
   if (host && !host.includes('run.app')) return `${proto}://${host}`
-  return HOSTING_ORIGIN
+  return CANONICAL_ORIGIN
 }
 
 // Fetch the SPA shell fresh on every request. Vite stamps content-
@@ -97,7 +105,7 @@ function publicOrigin(req: { get(name: string): string | undefined }): string {
 // fires for the exact path /index.html because the static file wins),
 // so this is a fast, CDN-backed fetch — no recursive function call.
 async function getIndexHtml(): Promise<string> {
-  const resp = await fetch(`${HOSTING_ORIGIN}/index.html`, {
+  const resp = await fetch(`${SHELL_ORIGIN}/index.html`, {
     headers: { 'Cache-Control': 'no-cache' },
   })
   if (!resp.ok) throw new Error(`index.html fetch ${resp.status}`)
@@ -198,6 +206,7 @@ function buildPinHTML(
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${escapeHtml(title)}</title>
   <meta name="description" content="${escapeHtml(desc)}" />
+  <link rel="canonical" href="${escapeHtml(url)}" />
 
   <!-- Open Graph -->
   <meta property="og:type" content="article" />
@@ -239,6 +248,7 @@ function buildAgentHTML(agent: any, url: string, origin: string): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${escapeHtml(title)}</title>
   <meta name="description" content="${escapeHtml(desc)}" />
+  <link rel="canonical" href="${escapeHtml(url)}" />
 
   <!-- Open Graph -->
   <meta property="og:type" content="profile" />
@@ -318,7 +328,10 @@ export const og = functions.https.onRequest(async (req, res) => {
     }
 
     const agent = userDoc.data()
-    const origin = publicOrigin(req)
+    // Always emit canonical (reel.st) URLs in OG meta — even when the
+    // crawler hit us via plot-fe990.web.app or another alias. Prevents
+    // Google from indexing duplicate URLs per hostname.
+    const origin = CANONICAL_ORIGIN
 
     // Deep-link branch: `?pin=<id>` (optionally with `?content=<id>`)
     // points the share at a specific listing instead of the agent

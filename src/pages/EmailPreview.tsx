@@ -27,8 +27,8 @@ import {
 type Surface = 'auth' | 'digest' | 'notification'
 type DigestScenario = 'all-updates' | 'some-updates' | 'no-updates-with-blog' | 'no-updates-no-blog' | 'one-agent-one-update'
 
-const SAMPLE_ACTION_URL = 'https://plot-fe990.web.app/auth/action?mode=verifyEmail&oobCode=SAMPLE_OOB_CODE_REPLACE_ME&apiKey=SAMPLE_KEY&continueUrl=https%3A%2F%2Fplot-fe990.web.app%2Fdashboard&lang=en'
-const SAMPLE_UNSUB_URL = 'https://plot-fe990.web.app/u/sample-unsub-token-replace-me'
+const SAMPLE_ACTION_URL = 'https://reel.st/auth/action?mode=verifyEmail&oobCode=SAMPLE_OOB_CODE_REPLACE_ME&apiKey=SAMPLE_KEY&continueUrl=https%3A%2F%2Freel.st%2Fdashboard&lang=en'
+const SAMPLE_UNSUB_URL = 'https://reel.st/u/sample-unsub-token-replace-me'
 
 /* ─────────────── Mock digest data ─────────────── */
 
@@ -51,14 +51,14 @@ const MOCK_AGENTS: DigestAgent[] = [
         primary: '142 Mango Grove Dr',
         secondary: '$1.45M · 4 bd · 3 ba · Coral Gables',
         thumbnail: SAMPLE_HOUSE,
-        href: 'https://plot-fe990.web.app/mayalopez',
+        href: 'https://reel.st/mayalopez',
       },
       {
         kind: 'new_open_house',
         primary: '88 Oak Hill Ln',
         secondary: 'Sat May 11 · 1–4pm',
         thumbnail: SAMPLE_INTERIOR,
-        href: 'https://plot-fe990.web.app/mayalopez',
+        href: 'https://reel.st/mayalopez',
       },
     ],
   },
@@ -72,7 +72,7 @@ const MOCK_AGENTS: DigestAgent[] = [
         primary: '2204 Sunset Ridge',
         secondary: 'Sold $980K',
         thumbnail: null,
-        href: 'https://plot-fe990.web.app/davidchen',
+        href: 'https://reel.st/davidchen',
       },
     ],
   },
@@ -86,21 +86,21 @@ const MOCK_AGENTS: DigestAgent[] = [
         primary: '301 Bayview Ter',
         secondary: 'New reel',
         thumbnail: SAMPLE_KITCHEN,
-        href: 'https://plot-fe990.web.app/sarahkim',
+        href: 'https://reel.st/sarahkim',
       },
       {
         kind: 'new_content',
         primary: '142 Mango Grove Dr',
         secondary: '4 new photos',
         thumbnail: null,
-        href: 'https://plot-fe990.web.app/sarahkim',
+        href: 'https://reel.st/sarahkim',
       },
       {
         kind: 'new_spotlight',
         primary: 'Wynwood',
         secondary: 'New spotlight pin',
         thumbnail: null,
-        href: 'https://plot-fe990.web.app/sarahkim',
+        href: 'https://reel.st/sarahkim',
       },
     ],
   },
@@ -163,7 +163,7 @@ const NOTIFICATION_MOCK: Record<NotificationKind, { title: string; body: string;
   new_subscriber: {
     title: 'New save',
     body: 'anna.martinez@example.com just saved you on Reelst.',
-    actionUrl: 'https://plot-fe990.web.app/dashboard?tab=inbox',
+    actionUrl: 'https://reel.st/dashboard?tab=inbox',
   },
   new_wave: {
     title: 'New wave 👋',
@@ -189,7 +189,7 @@ export default function EmailPreview() {
   const [iframeHeight, setIframeHeight] = useState(800)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://plot-fe990.web.app'
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://reel.st'
 
   const rendered = useMemo(() => {
     if (surface === 'auth') {

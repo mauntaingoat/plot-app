@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Flag, Check, Warning as AlertTriangle, Prohibit as Ban, Copyright, ChatCenteredText as MessageSquare, ShieldWarning as ShieldAlert } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/Button'
 import { getFunctions, httpsCallable } from 'firebase/functions'
 import { app } from '@/config/firebase'
+import { useSwipeToDismiss } from '@/hooks/useSwipeToDismiss'
 import type { ReportReason } from '@/lib/types'
 
 interface ReportSheetProps {
@@ -29,6 +30,20 @@ export function ReportSheet({ isOpen, onClose, targetType, targetId, targetOwner
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const sheetRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  // Swipe-to-dismiss only on mobile — desktop layout is a centered
+  // modal (md: classes), where vertical drag-down would feel wrong.
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : true,
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const onChange = () => setIsMobile(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  useSwipeToDismiss(sheetRef, scrollRef, isOpen && isMobile, () => handleClose())
 
   const reset = () => {
     setSelectedReason(null)
@@ -84,12 +99,17 @@ export function ReportSheet({ isOpen, onClose, targetType, targetId, targetOwner
             onClick={handleClose}
           />
           <motion.div
+            ref={sheetRef}
             initial={{ opacity: 0, y: 60 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 60 }}
             transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
             className="fixed bottom-0 left-0 right-0 z-[310] md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[calc(100vw-48px)] md:max-w-[400px] bg-obsidian rounded-t-[22px] md:rounded-[22px] shadow-2xl overflow-hidden border-t md:border border-border-dark"
           >
+            {/* Drag handle — mobile only, matches other sheets */}
+            <div className="flex justify-center pt-2.5 pb-1 md:hidden">
+              <div className="w-9 h-[5px] rounded-full bg-slate" />
+            </div>
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-border-dark">
               <div className="flex items-center gap-2">
@@ -116,7 +136,7 @@ export function ReportSheet({ isOpen, onClose, targetType, targetId, targetOwner
                 </button>
               </div>
             ) : (
-              <div className="px-5 py-4 space-y-3 max-h-[60vh] overflow-y-auto">
+              <div ref={scrollRef} className="px-5 py-4 space-y-3 max-h-[60vh] overflow-y-auto">
                 <p className="text-[13px] text-mist">Why are you reporting this?</p>
 
                 {REASONS.map((reason) => {

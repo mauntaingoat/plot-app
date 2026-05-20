@@ -51,8 +51,7 @@ const GMAIL_USER = defineSecret('GMAIL_USER')
 const GMAIL_APP_PASSWORD = defineSecret('GMAIL_APP_PASSWORD')
 
 const FROM_DISPLAY = 'Reelst'
-// Swap to 'https://reel.st' once the custom domain is live.
-const SITE_BASE_URL = 'https://plot-fe990.web.app'
+const SITE_BASE_URL = 'https://reel.st'
 const FALLBACK_DIFF_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 
 // Volume caps. Without these a recipient who follows 50 agents OR

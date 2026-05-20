@@ -9,6 +9,7 @@ import { AuthSheet } from '@/components/sheets/AuthSheet'
 import { useAuthModalStore } from '@/stores/authModalStore'
 import { OfflineBanner } from '@/components/ui/OfflineBanner'
 import { resetFirestore } from '@/config/firebase'
+import { isAdmin } from '@/lib/admin'
 
 // Marketing + auth + lightweight pages are eagerly imported so they
 // land in the main bundle — no Suspense fallback, no dark-flash
@@ -126,6 +127,17 @@ function RequireVerified({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
+/** Gates dev/internal routes (email preview etc) behind the admin
+ *  custom claim. Renders NotFound rather than redirecting so the
+ *  route appears not to exist for non-admins. */
+function RequireAdmin({ children }: { children: ReactNode }) {
+  const initialized = useAuthStore((s) => s.initialized)
+  const firebaseUser = useAuthStore((s) => s.firebaseUser)
+  if (!initialized) return <SimpleLoadingScreen />
+  if (!firebaseUser || !isAdmin()) return <NotFound />
+  return <>{children}</>
+}
+
 function AppRoutes() {
   useAuthListener()
 
@@ -147,7 +159,7 @@ function AppRoutes() {
         <Route path="/sign-in" element={<SignIn />} />
         <Route path="/verify" element={<Verify />} />
         <Route path="/auth/action" element={<AuthAction />} />
-        <Route path="/dev/email-preview" element={<EmailPreview />} />
+        <Route path="/dev/email-preview" element={<RequireAdmin><EmailPreview /></RequireAdmin>} />
         <Route path="/u/:token" element={<UnsubManage />} />
         <Route path="/dashboard" element={<RequireVerified><Dashboard /></RequireVerified>} />
         <Route path="/dashboard/pin/new" element={<RequireVerified><PinCreate /></RequireVerified>} />

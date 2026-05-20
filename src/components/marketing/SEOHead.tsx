@@ -32,6 +32,18 @@ export function SEOHead({ title, description, ogImage, path = '' }: SEOHeadProps
       el.setAttribute('content', content)
     }
 
+    // Tell search engines that reel.st is the canonical host even when
+    // the page is served from plot-fe990.web.app, plot-fe990.firebaseapp.com,
+    // or www.reel.st — otherwise Google indexes each hostname separately
+    // and splits link equity.
+    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null
+    if (!canonical) {
+      canonical = document.createElement('link')
+      canonical.setAttribute('rel', 'canonical')
+      document.head.appendChild(canonical)
+    }
+    canonical.setAttribute('href', url)
+
     setMeta('description', desc)
     setMeta('og:title', fullTitle, true)
     setMeta('og:description', desc, true)

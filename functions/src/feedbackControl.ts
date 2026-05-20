@@ -141,7 +141,7 @@ export const submitFeedback = onCall<SubmitFeedbackData>(
             ? `@${senderUsername}`
             : `uid:${uid}`
         const subject = `[Reelst Feedback] ${senderLabel}`
-        const profileUrl = senderUsername ? `https://plot-fe990.web.app/${senderUsername}` : null
+        const profileUrl = senderUsername ? `https://reel.st/${senderUsername}` : null
 
         const profileRow = profileUrl
           ? `<tr><td style="padding:8px 0;width:110px;color:#666;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;">Profile</td><td style="padding:8px 0;font-size:14px;"><a href="${profileUrl}" style="color:#D94A1F;">${profileUrl}</a></td></tr>`
