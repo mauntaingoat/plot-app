@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Eye, CursorClick as MousePointerClick, BookmarkSimple as Bookmark, Users, Clock, MapTrifold as MapIcon, SealCheck as BadgeCheck, Heart, House as HomeIcon, Compass, HandWaving, Key } from '@phosphor-icons/react'
+import { ArrowRight, Eye, CursorClick as MousePointerClick, BookmarkSimple as Bookmark, Users, Clock, MapTrifold as MapIcon, SealCheck as BadgeCheck, Heart, House as HomeIcon, Compass, HandWaving, Key, FilmStrip as Film } from '@phosphor-icons/react'
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { FooterContent } from '@/components/marketing/Footer'
 import { SEOHead } from '@/components/marketing/SEOHead'
@@ -427,9 +427,8 @@ function Hero() {
                 fontWeight: 400,
               }}
             >
-              A live map of your listings married to the reels, walkthroughs,
-              and neighborhood spotlights you already make, every part of
-              your agent brand on one shareable link.
+              A live map of your listings, paired with the content you already
+              make. Your full agent brand on one shareable link.
             </p>
 
             <div className="w-full flex justify-center">
@@ -505,13 +504,57 @@ function Hero() {
 type Feature = {
   key: string
   label: string
-  title: string
-  desc: string
+  /** Rich text — allows inline `<DefinedTerm>` for brand vocabulary
+   *  (Save, Wave, Spotlight) that needs a hover/tap definition. */
+  title: ReactNode
+  /** Rich text — same rules as title. */
+  desc: ReactNode
   /** Still image or transparent PNG. Rendered as <img>. */
   img?: string
   /** Video path (.mov / .mp4 / .webm). Autoplay, loop, muted, inline.
    *  Takes precedence over `img` when both are set. */
   video?: string
+  /** Optional early cutoff (seconds). When set, the video pauses at
+   *  this timestamp instead of playing to its natural end. Used to
+   *  clip the analytics clip before the removed Top Visitor Cities
+   *  frame appears. */
+  endTime?: number
+}
+
+/** Inline brand-vocabulary term with a hover (desktop) / tap (mobile)
+ *  tooltip. Use sparingly — only for product names that don't define
+ *  themselves (Save, Wave, Spotlight). */
+function DefinedTerm({ term, def }: { term: string; def: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <span
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}
+      className="relative inline-block cursor-help"
+      style={{
+        // currentColor so the underline inherits the surrounding
+        // copy (dark on the hero, white-on-dark in the feature
+        // section). textDecorationThickness keeps the dots crisp.
+        textDecoration: 'underline dotted',
+        textUnderlineOffset: '4px',
+        textDecorationThickness: '1.5px',
+        textDecorationColor: 'currentColor',
+        opacity: 0.92,
+      }}
+    >
+      {term}
+      {open && (
+        <span
+          role="tooltip"
+          className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-30 w-[240px] rounded-[10px] bg-ivory text-ink text-[12.5px] leading-[1.45] font-normal px-3 py-2 shadow-xl pointer-events-none"
+          style={{ fontFamily: 'var(--font-humanist)' }}
+        >
+          {def}
+        </span>
+      )}
+    </span>
+  )
 }
 
 const FEATURES: Feature[] = [
@@ -519,7 +562,13 @@ const FEATURES: Feature[] = [
     key: 'pins',
     label: 'Map Pins',
     title: 'Your listings, and your neighborhoods, on a real map.',
-    desc: 'Drop a pin for a property and MLS auto-fills beds, baths, sqft, price, days on market, and more. Or drop a neighborhood pin to sell the area itself, the streets, the parks, the block that makes the zip code feel like home.',
+    desc: (
+      <>
+        Drop a listing pin and MLS auto-fills beds, baths, sqft, price, and days on market. Or drop a{' '}
+        <DefinedTerm term="Spotlight" def="A neighborhood-level pin. Walks buyers through the streets, parks, and block-level feel of an area, not a specific home." />
+        {' '}pin to sell the area itself.
+      </>
+    ),
     video: '/marketing/mappins.mp4',
   },
   {
@@ -532,22 +581,51 @@ const FEATURES: Feature[] = [
   {
     key: 'open-houses',
     label: 'Open Houses',
-    title: 'Schedule. Share. Fill the room.',
-    desc: 'Create an open house from a pin in two taps. Auto-post to your map and email your saves. RSVPs land in your inbox, not on a clipboard.',
+    title: 'Open houses that broadcast themselves.',
+    desc: (
+      <>
+        Add a date and time to any for-sale pin. It shows up on your map, on the listing, and in the weekly digest your{' '}
+        <DefinedTerm term="Saves" def="Buyers who subscribed to your weekly listings digest with one tap. Their email is in your inbox; they get every new listing, sold flip, and open house you post." />
+        {' '}receive. Recurring weekly schedules supported.
+      </>
+    ),
     video: '/marketing/openhouse.mp4',
   },
   {
     key: 'inbox',
     label: 'Inbox',
     title: 'Every signal in one feed.',
-    desc: 'Showing requests, new saves, and waves all land in one inbox, sorted by recency, grouped by day, marked unread until you act on them. The back-and-forth ends here.',
+    desc: (
+      <>
+        Showing requests, new{' '}
+        <DefinedTerm term="Saves" def="Buyers who subscribed to your weekly listings digest with one tap. Their email is in your inbox; they get every new listing, sold flip, and open house you post." />
+        , and{' '}
+        <DefinedTerm term="Waves" def="Private questions a buyer sent about a specific listing. Tied to the pin so you know exactly what they're asking about. Like a DM, straight to your inbox." />
+        {' '}all land in one inbox, sorted by recency, grouped by day, marked unread until you act on them.
+      </>
+    ),
     video: '/marketing/inbox.mp4',
   },
   {
     key: 'connect',
     label: 'Connect',
-    title: 'Saves bring them back. Waves bring them in.',
-    desc: 'Buyers save you to get your weekly digest and wave at any listing to ask questions, two opt-in channels, both private, both straight to your inbox. No public comments to police.',
+    title: (
+      <>
+        <DefinedTerm term="Save" def="A one-tap email signup. The buyer joins your weekly listings digest, no account required. Their email lands in your inbox; they get every new listing, sold flip, and open house you post." />
+        {' '}for the list.{' '}
+        <DefinedTerm term="Wave" def="A private question a buyer sends about a specific listing. Like a DM tied to the pin, straight to your inbox." />
+        {' '}for a question.
+      </>
+    ),
+    desc: (
+      <>
+        Buyers can{' '}
+        <DefinedTerm term="Save" def="A one-tap email signup. The buyer joins your weekly listings digest, no account required. Their email lands in your inbox; they get every new listing, sold flip, and open house you post." />
+        {' '}you to get your weekly digest, or{' '}
+        <DefinedTerm term="Wave" def="A private question a buyer sends about a specific listing. Like a DM tied to the pin, straight to your inbox." />
+        {' '}at any listing to ask a question. Both private. Both opt-in. No public comment thread to manage.
+      </>
+    ),
     video: '/marketing/Connect.mp4',
   },
   {
@@ -556,6 +634,11 @@ const FEATURES: Feature[] = [
     title: "Know what's actually working.",
     desc: 'Visits per reel and photo. Taps and saves per pin. Save growth, peak hours, and audience crossover, every signal in one place.',
     video: '/marketing/analytics.mp4',
+    // Tunable: dial in the exact second the Top Visitor Cities frame
+    // appears in the source clip and set this slightly before it.
+    // Set higher than the previous 6s — that was cutting before the
+    // main analytics views finished playing.
+    endTime: 14,
   },
   {
     key: 'customization',
@@ -686,6 +769,14 @@ function FeatureShowcase() {
                     disablePictureInPicture
                     disableRemotePlayback
                     onContextMenu={(e) => e.preventDefault()}
+                    onTimeUpdate={(e) => {
+                      if (f.endTime && e.currentTarget.currentTime >= f.endTime) {
+                        e.currentTarget.pause()
+                        // Hold the last visible frame at endTime so a chip
+                        // re-click can replay from 0 via the useEffect above.
+                        try { e.currentTarget.currentTime = f.endTime } catch { /* not ready */ }
+                      }
+                    }}
                     className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none transition-opacity duration-150"
                     style={{ opacity: f.key === activeKey ? 1 : 0 }}
                   />
@@ -824,10 +915,9 @@ function OneLinkCard() {
                   lineHeight: 1.55,
                 }}
               >
-                Your sold, for-sale, and spotlight pins. Your reels and
-                walkthroughs. Your socials, your broker, your verified badge
-               , every piece of your agent presence on a single shareable
-                link.
+                Your sold, for-sale, and{' '}
+                <DefinedTerm term="Spotlight" def="A neighborhood-level pin. Walks buyers through the streets, parks, and block-level feel of an area, not a specific home." />
+                {' '}pins. Your reels and walkthroughs. Your socials, your broker, your verified badge, every piece of your agent presence on a single shareable link.
               </p>
             </div>
 
@@ -912,10 +1002,9 @@ function CloserLook() {
                   lineHeight: 1.55,
                 }}
               >
-                Agents whose reels, walkthroughs, and neighborhood
-                spotlights live inside their listings, not scattered
-                across feeds and profiles, report 3× the inbound
-                inquiries of agents using a static link-in-bio.
+                Content lives inside the listing, not in a separate feed.
+                Agents on Reelst report 3× the inbound inquiries of a
+                static link in bio.
               </p>
             </div>
 
@@ -976,7 +1065,7 @@ function PinAnalytics() {
   const explosions = [
     { ox: -14, oy: -10 }, // 0 Visits     , top-left
     { ox:  16, oy: -12 }, // 1 Taps       , top-right
-    { ox: -18, oy:   0 }, // 2 Save rate  , left
+    { ox: -18, oy:   0 }, // 2 Content views, left
     { ox:  14, oy:   0 }, // 3 Subscribers, right
     { ox: -10, oy:  14 }, // 4 Active   , bottom-left
     { ox:  20, oy:  10 }, // 5 Co-saves , bottom-right
@@ -1064,9 +1153,9 @@ function PinAnalytics() {
               lineHeight: 1.55,
             }}
           >
-            Visits, taps, save rate, save growth, when your visitors
-            are active, and which neighborhoods buyers save yours alongside,
-            every signal in one place.
+            See what's getting taps, when buyers are around, and
+            where else they're shopping, every signal that matters,
+            in one place.
           </p>
           <LayeredCTA onClick={() => navigate(signUpDest)} size="md">
             Become a Reelst agent <ArrowRight weight="bold" size={15} />
@@ -1104,18 +1193,21 @@ function PinAnalytics() {
               caption="taps to open your pins"
             />
 
-            {/* Save rate, ember, donut */}
+            {/* Content views, ember, frame-strip visual. Replaces the
+                legacy Save rate tile — Save rate isn't a real Insights
+                metric. FrameStrip reads as a row of reel frames, which
+                lines up with the "reels + walkthroughs" caption. */}
             <StatCard
               cardRef={(el) => { cardRefs.current[2] = el }}
               initialStyle={initialStyle(2)}
               aspect="1 / 1"
               bg="#D94A1F"
               fg="white"
-              icon={<Heart weight="fill" size={16} />}
-              label="Save rate"
-              value="27.4%"
-              caption="of visitors save"
-              graphic={<Donut color="rgba(255,255,255,0.92)" track="rgba(255,255,255,0.18)" />}
+              icon={<Film size={16} />}
+              label="Content views"
+              value="9,624"
+              caption="reels + walkthroughs"
+              graphic={<FrameStrip color="rgba(255,255,255,0.92)" />}
             />
 
             {/* Subscribers, col-span 2, mid tangerine */}
@@ -1279,7 +1371,31 @@ function Sparkline({ color }: { color: string }) {
   )
 }
 
-/* Donut, single arc representing save rate. */
+/* FrameStrip, 5 small rounded rectangles in a row, opacity stepping
+   up left → right. Reads like a strip of reel frames. Used by the
+   Content views tile. */
+function FrameStrip({ color }: { color: string }) {
+  return (
+    <svg viewBox="0 0 120 24" className="w-full h-6" preserveAspectRatio="none">
+      {[0, 1, 2, 3, 4].map((i) => (
+        <rect
+          key={i}
+          x={i * 24 + 1}
+          y={2}
+          width={22}
+          height={20}
+          rx={3}
+          fill={color}
+          opacity={0.35 + i * 0.16}
+        />
+      ))}
+    </svg>
+  )
+}
+
+/* Donut, single arc representing a percentage-shaped stat. Currently
+   unused after the Save rate tile was replaced with Content views —
+   keep for future percentage-shaped cards. */
 function Donut({ color, track }: { color: string; track: string }) {
   const r = 14
   const c = 2 * Math.PI * r
@@ -1611,7 +1727,7 @@ function Ready() {
           }}
           data-delay="1"
         >
-          Claim your link in 2 minutes. Build your portfolio the same day.
+          Claim your link in 2 minutes. Build your portfolio the same day.{' '}
           <br className="hidden md:block" />
           No card. No contract. Always free to start.
         </p>
