@@ -14,22 +14,21 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import type { AuthStackParamList } from '../navigation/RootNavigator'
-import { signInWithEmailAndPassword, authErrorMessage } from '../lib/firebaseAuth'
-import { lightTap, errorTap } from '../lib/haptics'
+import { createUserWithEmailAndPassword, sendEmailVerification, authErrorMessage } from '../lib/firebaseAuth'
+import { lightTap, success, errorTap } from '../lib/haptics'
 
 /**
- * SignIn screen — mirrors `src/pages/SignIn.tsx` from the web app.
+ * Welcome / Signup screen — slimmed-down v1 (email + password only).
  *
- * Visual parity with the mobile-browser version; iOS flair via:
- *  - `Pressable`'s native iOS opacity feedback on tap
- *  - `KeyboardAvoidingView` for native keyboard handling
- *  - Haptic feedback on Sign in tap + error
- *  - System-native `ScrollView` momentum behaviour
+ * The full web Welcome.tsx also collects username + license up-front
+ * via a multi-step flow; for the v1 of the iOS app we collect just
+ * email/password here, fire a verification email, then send the user
+ * to Verify. Username + license collection lands in the next
+ * milestone as a multi-step onboarding stack.
  */
 
 const COLORS = {
   ivory: '#FFF8F1',
-  cream: '#FCEFE1',
   pearl: '#F2E5D5',
   ink: '#0A0E17',
   smoke: '#5C6373',
@@ -40,36 +39,30 @@ const COLORS = {
   liveRed: '#DC2626',
 }
 
-type Nav = NativeStackNavigationProp<AuthStackParamList, 'SignIn'>
+type Nav = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>
 
-export function SignInScreen() {
+export function WelcomeScreen() {
   const navigation = useNavigation<Nav>()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const handleSignIn = async () => {
+  const handleSignup = async () => {
     const cleanEmail = email.trim().toLowerCase()
-    if (!cleanEmail) {
-      setError('Enter an email')
-      errorTap()
-      return
-    }
-    if (!password) {
-      setError('Enter your password')
-      errorTap()
-      return
-    }
+    if (!cleanEmail) { setError('Enter an email'); errorTap(); return }
+    if (password.length < 6) { setError('Password must be at least 6 characters'); errorTap(); return }
     setLoading(true)
     setError('')
     lightTap()
     try {
-      await signInWithEmailAndPassword(cleanEmail, password)
-      // Auth-state listener in RootNavigator switches stacks automatically.
+      await createUserWithEmailAndPassword(cleanEmail, password)
+      await sendEmailVerification()
+      success()
+      // Auth listener takes us into the App stack → Verify screen.
     } catch (e: unknown) {
       const err = e as { code?: string; message?: string }
-      setError(authErrorMessage(err.code, `Sign-in failed (${err.code || 'unknown'})`))
+      setError(authErrorMessage(err.code, `Sign-up failed (${err.code || 'unknown'})`))
       errorTap()
     } finally {
       setLoading(false)
@@ -92,8 +85,8 @@ export function SignInScreen() {
             <Text style={styles.logoText}>Reelst</Text>
           </View>
 
-          <Text style={styles.h1}>Welcome back</Text>
-          <Text style={styles.subtitle}>Sign in to your Reelst account</Text>
+          <Text style={styles.h1}>Claim your Reelst</Text>
+          <Text style={styles.subtitle}>The link in bio for real estate agents</Text>
 
           <Pressable
             style={({ pressed }) => [styles.googleBtn, pressed && styles.pressed]}
@@ -123,7 +116,7 @@ export function SignInScreen() {
               editable={!loading}
             />
             <TextInput
-              placeholder="Password"
+              placeholder="Password (6+ characters)"
               placeholderTextColor={COLORS.ash}
               value={password}
               onChangeText={setPassword}
@@ -131,36 +124,31 @@ export function SignInScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               spellCheck={false}
-              autoComplete="current-password"
+              autoComplete="new-password"
               style={styles.input}
               editable={!loading}
-              onSubmitEditing={handleSignIn}
+              onSubmitEditing={handleSignup}
               returnKeyType="go"
             />
-            <View style={styles.forgotRow}>
-              <Pressable disabled={loading}>
-                <Text style={styles.forgotText}>Forgot password?</Text>
-              </Pressable>
-            </View>
             {error ? <Text style={styles.error}>{error}</Text> : null}
           </View>
 
           <Pressable
-            style={({ pressed }) => [styles.signInBtn, pressed && styles.pressed, loading && styles.disabled]}
-            onPress={handleSignIn}
+            style={({ pressed }) => [styles.signupBtn, pressed && styles.pressed, loading && styles.disabled]}
+            onPress={handleSignup}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color={COLORS.white} />
             ) : (
-              <Text style={styles.signInBtnText}>Sign in</Text>
+              <Text style={styles.signupBtnText}>Create account</Text>
             )}
           </Pressable>
 
           <View style={styles.bottomRow}>
-            <Text style={styles.bottomText}>Don't have an account?</Text>
-            <Pressable onPress={() => navigation.navigate('Welcome')} disabled={loading}>
-              <Text style={styles.bottomLink}> Get started</Text>
+            <Text style={styles.bottomText}>Already have an account?</Text>
+            <Pressable onPress={() => navigation.goBack()} disabled={loading}>
+              <Text style={styles.bottomLink}> Sign in</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -204,10 +192,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: COLORS.ink,
   },
-  forgotRow: { alignItems: 'flex-end' },
-  forgotText: { fontSize: 13, fontWeight: '600', color: COLORS.tangerine },
   error: { fontSize: 12, color: COLORS.liveRed, marginTop: 4 },
-  signInBtn: {
+  signupBtn: {
     height: 56,
     borderRadius: 12,
     backgroundColor: COLORS.tangerine,
@@ -215,7 +201,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  signInBtnText: { fontSize: 15, fontWeight: '600', color: COLORS.white },
+  signupBtnText: { fontSize: 15, fontWeight: '600', color: COLORS.white },
   pressed: { opacity: 0.85 },
   disabled: { opacity: 0.6 },
   bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 24 },

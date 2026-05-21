@@ -52,3 +52,5 @@ mobile/.env
 mobile/.env.local
 mobile/web-build/
 mobile/expo-env.d.ts
+mobile/GoogleService-Info.plist
+mobile/google-services.json
