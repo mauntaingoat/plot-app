@@ -306,12 +306,15 @@ export default function PinCreate() {
       return
     }
 
-    // Gate: video length
+    // Gate: video length (not tier-related — both Free and Pro share
+    // the 3-minute cap, so don't route through the paywall modal).
     if (newFile && newContentType === 'reel') {
       const duration = await getVideoDuration(newFile).catch(() => 0)
       const gate = canUploadVideo(userDoc, duration)
       if (!gate.allowed) {
-        setPaywall({ open: true, reason: gate.reason || '', upgradeTo: gate.upgradeTo })
+        const mins = Math.floor(duration / 60)
+        const secs = Math.round(duration % 60)
+        alert(`Reels must be under 3 minutes. Your file is ${mins}m ${secs}s. Trim it and try again.`)
         return
       }
     }

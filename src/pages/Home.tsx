@@ -5,6 +5,7 @@ import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { FooterContent } from '@/components/marketing/Footer'
 import { SEOHead } from '@/components/marketing/SEOHead'
 import { LayeredCTA } from '@/components/marketing/LayeredCTA'
+import { DefinedTerm } from '@/components/marketing/DefinedTerm'
 import { useScrollReveal } from '@/hooks/useScrollReveal'
 import { useAuthedDestination } from '@/hooks/useAuthedDestination'
 
@@ -350,10 +351,16 @@ function ClaimInput({
           ? undefined
           : { boxShadow: '0 8px 20px -12px rgba(10,14,23,0.10), 0 1px 0 rgba(255,255,255,0.8) inset' }
       }
-      onClick={() => inputRef.current?.focus()}
+      // Parent click-to-focus is desktop-only. iOS Safari was
+      // synthesizing a click during page-restoration touches which
+      // popped the keyboard on first load. Mobile users tap the
+      // input directly (the flex-1 input fills the pill width).
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) inputRef.current?.focus()
+      }}
     >
       <span
-        className={`pl-5 text-[14px] md:text-[15px] select-none shrink-0 ${
+        className={`pl-5 text-[14px] md:text-[15px] select-none shrink-0 pointer-events-none ${
           isDark ? 'text-white/55' : 'text-smoke'
         }`}
         style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
@@ -367,6 +374,11 @@ function ClaimInput({
         onChange={(e) => setUsername(e.target.value.replace(/[^a-z0-9._-]/gi, '').toLowerCase())}
         onKeyDown={(e) => e.key === 'Enter' && handleClaim()}
         placeholder="yourname"
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
+        inputMode="text"
         className={`flex-1 bg-transparent py-3 px-1 outline-none min-w-0 text-[14px] md:text-[15px] ${
           isDark ? 'text-tangerine placeholder:text-white/25' : 'text-tangerine placeholder:text-smoke/45'
         }`}
@@ -521,42 +533,6 @@ type Feature = {
   endTime?: number
 }
 
-/** Inline brand-vocabulary term with a hover (desktop) / tap (mobile)
- *  tooltip. Use sparingly — only for product names that don't define
- *  themselves (Save, Wave, Spotlight). */
-function DefinedTerm({ term, def }: { term: string; def: string }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <span
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}
-      className="relative inline-block cursor-help"
-      style={{
-        // currentColor so the underline inherits the surrounding
-        // copy (dark on the hero, white-on-dark in the feature
-        // section). textDecorationThickness keeps the dots crisp.
-        textDecoration: 'underline dotted',
-        textUnderlineOffset: '4px',
-        textDecorationThickness: '1.5px',
-        textDecorationColor: 'currentColor',
-        opacity: 0.92,
-      }}
-    >
-      {term}
-      {open && (
-        <span
-          role="tooltip"
-          className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-30 w-[240px] rounded-[10px] bg-ivory text-ink text-[12.5px] leading-[1.45] font-normal px-3 py-2 shadow-xl pointer-events-none"
-          style={{ fontFamily: 'var(--font-humanist)' }}
-        >
-          {def}
-        </span>
-      )}
-    </span>
-  )
-}
-
 const FEATURES: Feature[] = [
   {
     key: 'pins',
@@ -585,7 +561,7 @@ const FEATURES: Feature[] = [
     desc: (
       <>
         Add a date and time to any for-sale pin. It shows up on your map, on the listing, and in the weekly digest your{' '}
-        <DefinedTerm term="Saves" def="Buyers who subscribed to your weekly listings digest with one tap. Their email is in your inbox; they get every new listing, sold flip, and open house you post." />
+        <DefinedTerm term="Saves" def="Buyers subscribed to your weekly digest. You get their email; they get every listing and open house you post." />
         {' '}receive. Recurring weekly schedules supported.
       </>
     ),
@@ -598,7 +574,7 @@ const FEATURES: Feature[] = [
     desc: (
       <>
         Showing requests, new{' '}
-        <DefinedTerm term="Saves" def="Buyers who subscribed to your weekly listings digest with one tap. Their email is in your inbox; they get every new listing, sold flip, and open house you post." />
+        <DefinedTerm term="Saves" def="Buyers subscribed to your weekly digest. You get their email; they get every listing and open house you post." />
         , and{' '}
         <DefinedTerm term="Waves" def="Private questions a buyer sent about a specific listing. Tied to the pin so you know exactly what they're asking about. Like a DM, straight to your inbox." />
         {' '}all land in one inbox, sorted by recency, grouped by day, marked unread until you act on them.
@@ -611,7 +587,7 @@ const FEATURES: Feature[] = [
     label: 'Connect',
     title: (
       <>
-        <DefinedTerm term="Save" def="A one-tap email signup. The buyer joins your weekly listings digest, no account required. Their email lands in your inbox; they get every new listing, sold flip, and open house you post." />
+        <DefinedTerm term="Save" def="A one-tap email signup, no account required. You get the buyer's email; they get every listing and open house you post." />
         {' '}for the list.{' '}
         <DefinedTerm term="Wave" def="A private question a buyer sends about a specific listing. Like a DM tied to the pin, straight to your inbox." />
         {' '}for a question.
@@ -620,7 +596,7 @@ const FEATURES: Feature[] = [
     desc: (
       <>
         Buyers can{' '}
-        <DefinedTerm term="Save" def="A one-tap email signup. The buyer joins your weekly listings digest, no account required. Their email lands in your inbox; they get every new listing, sold flip, and open house you post." />
+        <DefinedTerm term="Save" def="A one-tap email signup, no account required. You get the buyer's email; they get every listing and open house you post." />
         {' '}you to get your weekly digest, or{' '}
         <DefinedTerm term="Wave" def="A private question a buyer sends about a specific listing. Like a DM tied to the pin, straight to your inbox." />
         {' '}at any listing to ask a question. Both private. Both opt-in. No public comment thread to manage.

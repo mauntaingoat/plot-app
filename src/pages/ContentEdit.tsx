@@ -46,6 +46,13 @@ export default function ContentEdit() {
   const isPhoto = content?.type === 'photo'
   const title = isReel ? 'Edit Reel' : 'Edit Carousel'
 
+  // Reel composed duration — mirrors PinCreate's per-reel 3-minute cap
+  // so Edit Reel can't push a video past the same limit. Not a tier
+  // gate (both Free and Pro share the cap), just a hard platform rule.
+  const editorTotalDuration = useEditorStore((s) => s.totalDuration())
+  const REEL_MAX_SECONDS = 180
+  const reelOverLimit = isReel && editorTotalDuration > REEL_MAX_SECONDS
+
   const [loading, setLoading] = useState(true)
   const [carouselDraft, setCarouselDraft] = useState<CarouselDraft | null>(null)
 
@@ -136,6 +143,9 @@ export default function ContentEdit() {
   // progress so the user can navigate freely while the work runs.
   const handleSave = () => {
     if (!content) return
+    // Hard gate — the button is also disabled when this is true, but
+    // belt-and-suspenders in case of an Enter-key path or future caller.
+    if (reelOverLimit) return
     const contentId = content.id
     const pinId = pin?.id || `unlinked-${content.id}`
     const pinIdNullable = pin?.id || null
@@ -307,11 +317,19 @@ export default function ContentEdit() {
         ) : isReel ? (
           <EditorStep direction={1} simpleMode footer={
             <div className="flex flex-col gap-2 mt-4">
+              {reelOverLimit && (
+                <p className="text-[11px] text-live-red text-center font-medium px-2">
+                  Reels must be under 3 minutes — currently{' '}
+                  {Math.floor(editorTotalDuration / 60)}m{' '}
+                  {Math.round(editorTotalDuration % 60)}s. Trim clips or
+                  remove one to save.
+                </p>
+              )}
               <Button
                 variant="primary"
                 size="xl"
                 fullWidth
-                disabled={editorClips.length === 0}
+                disabled={editorClips.length === 0 || reelOverLimit}
                 onClick={handleSave}
               >
                 Save

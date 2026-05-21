@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { Check, X, ArrowRight, Plus } from '@phosphor-icons/react'
 import { MarketingLayout } from '@/components/marketing/MarketingLayout'
 import { SEOHead } from '@/components/marketing/SEOHead'
 import { LayeredCTA } from '@/components/marketing/LayeredCTA'
+import { DefinedTerm } from '@/components/marketing/DefinedTerm'
 import { useAuthedDestination } from '@/hooks/useAuthedDestination'
 
 /* ════════════════════════════════════════════════════════════════
@@ -31,7 +32,7 @@ const PLANS = [
       { text: 'Your own reel.st link', included: true },
       { text: 'MLS data auto-fill', included: true },
       { text: 'Showing request inbox', included: true },
-      { text: 'Email your saves', included: true },
+      { text: (<>Email your <DefinedTerm term="Saves" def="Buyers subscribed to your weekly digest. You get their email; they get every listing and open house you post." /></>), key: 'email-saves', included: true },
       { text: 'Basic customization', included: true },
     ],
   },
@@ -225,12 +226,13 @@ export default function Pricing() {
                 </LayeredCTA>
 
                 <ul className="mt-6 space-y-2.5">
-                  {plan.features.map((f) => {
+                  {plan.features.map((f, i) => {
                     const isHeader = (f as { header?: boolean }).header
+                    const fkey = (f as { key?: string }).key ?? (typeof f.text === 'string' ? f.text : `f-${i}`)
                     if (isHeader) {
                       return (
                         <li
-                          key={f.text}
+                          key={fkey}
                           className={`text-[12px] uppercase tracking-[0.14em] pt-0.5 pb-1 ${plan.featured ? 'text-white/55' : 'text-smoke'}`}
                           style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
                         >
@@ -239,7 +241,7 @@ export default function Pricing() {
                       )
                     }
                     return (
-                      <li key={f.text} className="flex items-start gap-2.5">
+                      <li key={fkey} className="flex items-start gap-2.5">
                         {f.included ? (
                           <Check weight="bold"
                             size={15}
