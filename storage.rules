@@ -16,8 +16,11 @@ service firebase.storage {
     }
 
     function reasonableSize() {
-      // 100 MB max — covers most reels + photos
-      return request.resource.size < 100 * 1024 * 1024;
+      // 500 MB max — matches VIDEO_MAX_BYTES client cap in src/lib/storage.ts.
+      // iPhone records 4K HEVC by default (~5 MB/sec), so a 60-second reel can
+      // hit 250-300 MB before any client-side compression. The client cap is
+      // the real ceiling; this just makes the rule layer agree.
+      return request.resource.size < 500 * 1024 * 1024;
     }
 
     function isImageOrVideo() {
