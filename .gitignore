@@ -41,3 +41,14 @@ mockups/
 
 # Firebase CLI local cache
 .firebase/
+
+# React Native / Expo (in mobile/)
+# Expo prebuild regenerates ios/ and android/ from app.json + plugins,
+# so we don't track them — keeps the repo lean and the source of truth in JS config.
+mobile/.expo/
+mobile/ios/
+mobile/android/
+mobile/.env
+mobile/.env.local
+mobile/web-build/
+mobile/expo-env.d.ts
