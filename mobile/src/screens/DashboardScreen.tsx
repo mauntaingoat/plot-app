@@ -3,11 +3,12 @@ import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { Gear, MapPin as MapPinIcon, FilmStrip, Palette, Tray, ChartBar } from 'phosphor-react-native'
+import { Gear, FilmStrip, Palette, Tray, ChartBar } from 'phosphor-react-native'
 import { lightTap } from '../lib/haptics'
 import { COLORS, FONTS } from '../lib/tokens'
 import { ReelstLogo } from '../components/ReelstLogo'
 import { BottomTabBar, type DashTab } from '../components/BottomTabBar'
+import { MyPinsTab } from './tabs/MyPinsTab'
 import type { AppStackParamList } from '../navigation/RootNavigator'
 
 type Nav = NativeStackNavigationProp<AppStackParamList, 'Dashboard'>
@@ -41,7 +42,7 @@ export function DashboardScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {activeTab === 'reelst'   && <TabPlaceholder Icon={MapPinIcon} title="My Pins"   subtitle="Your listings on the map. Add and edit pins here." />}
+        {activeTab === 'reelst'   && <MyPinsTab onAddPin={() => lightTap()} />}
         {activeTab === 'content'  && <TabPlaceholder Icon={FilmStrip}  title="Content"   subtitle="Reels, photos, and listing media." />}
         {activeTab === 'style'    && <TabPlaceholder Icon={Palette}    title="Style"     subtitle="The signature element of your Reelst." />}
         {activeTab === 'inbox'    && <TabPlaceholder Icon={Tray}       title="Inbox"     subtitle="Waves, showings, and questions from buyers." />}
