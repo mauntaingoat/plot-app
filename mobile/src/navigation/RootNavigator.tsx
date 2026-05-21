@@ -2,7 +2,7 @@
  * Root navigator — auth-state-aware routing. Mirrors the gates in the
  * web app's `App.tsx` (RequireVerified): signed out → SignIn/Welcome
  * stack; signed in but unverified → Verify; signed in + verified →
- * Dashboard.
+ * Dashboard + Settings stack.
  */
 import { useEffect, useState } from 'react'
 import { ActivityIndicator, View } from 'react-native'
@@ -12,7 +12,9 @@ import { SignInScreen } from '../screens/SignInScreen'
 import { WelcomeScreen } from '../screens/WelcomeScreen'
 import { VerifyScreen } from '../screens/VerifyScreen'
 import { DashboardScreen } from '../screens/DashboardScreen'
+import { SettingsScreen } from '../screens/SettingsScreen'
 import { onAuthStateChanged, type FirebaseUser } from '../lib/firebaseAuth'
+import { COLORS } from '../lib/tokens'
 
 export type AuthStackParamList = {
   SignIn: undefined
@@ -22,6 +24,7 @@ export type AuthStackParamList = {
 export type AppStackParamList = {
   Verify: undefined
   Dashboard: undefined
+  Settings: undefined
 }
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>()
@@ -41,8 +44,8 @@ export function RootNavigator() {
 
   if (!initialized) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#FFF8F1', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#D94A1F" />
+      <View style={{ flex: 1, backgroundColor: COLORS.ivory, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={COLORS.tangerine} />
       </View>
     )
   }
@@ -59,8 +62,9 @@ export function RootNavigator() {
           <AppStack.Screen name="Verify" component={VerifyScreen} />
         </AppStack.Navigator>
       ) : (
-        <AppStack.Navigator screenOptions={{ headerShown: false }}>
+        <AppStack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
           <AppStack.Screen name="Dashboard" component={DashboardScreen} />
+          <AppStack.Screen name="Settings" component={SettingsScreen} />
         </AppStack.Navigator>
       )}
     </NavigationContainer>

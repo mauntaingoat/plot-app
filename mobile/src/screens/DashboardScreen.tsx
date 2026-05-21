@@ -1,12 +1,16 @@
 import { useState } from 'react'
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useNavigation } from '@react-navigation/native'
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Gear, MapPin as MapPinIcon, FilmStrip, Palette, Tray, ChartBar } from 'phosphor-react-native'
-import { currentUser, signOut } from '../lib/firebaseAuth'
 import { lightTap } from '../lib/haptics'
 import { COLORS, FONTS } from '../lib/tokens'
 import { ReelstLogo } from '../components/ReelstLogo'
 import { BottomTabBar, type DashTab } from '../components/BottomTabBar'
+import type { AppStackParamList } from '../navigation/RootNavigator'
+
+type Nav = NativeStackNavigationProp<AppStackParamList, 'Dashboard'>
 
 /**
  * Dashboard shell — mirrors `src/pages/Dashboard.tsx` mobile layout:
@@ -20,20 +24,18 @@ import { BottomTabBar, type DashTab } from '../components/BottomTabBar'
  * time, to keep changes reviewable.
  */
 export function DashboardScreen() {
-  const user = currentUser()
+  const navigation = useNavigation<Nav>()
   const [activeTab, setActiveTab] = useState<DashTab>('reelst')
-
-  const handleSignOut = async () => {
-    lightTap()
-    await signOut()
-  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Sticky header */}
       <View style={styles.header}>
         <ReelstLogo size="sm" />
-        <Pressable onPress={() => lightTap()} style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}>
+        <Pressable
+          onPress={() => { lightTap(); navigation.navigate('Settings') }}
+          style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
+        >
           <Gear size={20} color={COLORS.ink} />
         </Pressable>
       </View>
@@ -44,16 +46,6 @@ export function DashboardScreen() {
         {activeTab === 'style'    && <TabPlaceholder Icon={Palette}    title="Style"     subtitle="The signature element of your Reelst." />}
         {activeTab === 'inbox'    && <TabPlaceholder Icon={Tray}       title="Inbox"     subtitle="Waves, showings, and questions from buyers." />}
         {activeTab === 'insights' && <TabPlaceholder Icon={ChartBar}   title="Insights"  subtitle="How your Reelst is performing." />}
-
-        {/* Auth state proof card — temporary, will be removed when
-            settings sheet exists with sign-out + profile actions. */}
-        <View style={styles.proofCard}>
-          <Text style={styles.proofLabel}>Signed in</Text>
-          <Text style={styles.proofValue}>{user?.email}</Text>
-          <Pressable onPress={handleSignOut} style={({ pressed }) => [styles.signOutBtn, pressed && styles.pressed]}>
-            <Text style={styles.signOutText}>Sign out</Text>
-          </Pressable>
-        </View>
       </ScrollView>
 
       <BottomTabBar active={activeTab} onChange={setActiveTab} />
@@ -140,27 +132,5 @@ const styles = StyleSheet.create({
   },
   placeholderTitle: { fontFamily: FONTS.humanistBold, fontSize: 15, color: COLORS.ink, marginBottom: 6 },
   placeholderBody: { fontFamily: FONTS.humanist, fontSize: 14, color: COLORS.smoke, lineHeight: 21 },
-
-  proofCard: {
-    backgroundColor: COLORS.warmWhite,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-    borderRadius: 16,
-    padding: 16,
-    gap: 10,
-  },
-  proofLabel: { fontFamily: FONTS.humanistMedium, fontSize: 11, color: COLORS.smoke, textTransform: 'uppercase', letterSpacing: 0.8 },
-  proofValue: { fontFamily: FONTS.humanistSemibold, fontSize: 14, color: COLORS.ink },
-  signOutBtn: {
-    height: 40,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-    backgroundColor: COLORS.cream,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 4,
-  },
-  signOutText: { fontFamily: FONTS.humanistSemibold, fontSize: 13, color: COLORS.ink },
   pressed: { opacity: 0.9 },
 })
