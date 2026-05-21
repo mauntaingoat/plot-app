@@ -8,6 +8,7 @@
 import {
   getFirestore,
   collection,
+  doc,
   query,
   where,
   orderBy,
@@ -16,7 +17,44 @@ import {
 } from '@react-native-firebase/firestore'
 import type { Pin } from '../types'
 
+export interface UserDocLite {
+  uid: string
+  email?: string
+  username?: string | null
+  displayName?: string | null
+  photoURL?: string | null
+  bio?: string | null
+  tier?: 'free' | 'pro'
+  profileVisits?: number
+  pinTaps?: number
+  subscriberCount?: number
+}
+
 type Unsub = () => void
+
+/**
+ * Subscribe to the user doc at `users/{uid}`. Mirrors the web app's
+ * snapshot subscription in useAuth.ts. Returns unsubscribe.
+ */
+export function subscribeUserDoc(
+  uid: string,
+  onUpdate: (doc: UserDocLite | null) => void,
+  onError?: (err: unknown) => void,
+): Unsub {
+  const db = getFirestore()
+  const ref = doc(db, 'users', uid)
+  return onSnapshot(
+    ref,
+    (snap: FirebaseFirestoreTypes.DocumentSnapshot) => {
+      if (!snap.exists()) {
+        onUpdate(null)
+        return
+      }
+      onUpdate({ uid: snap.id, ...(snap.data() as Omit<UserDocLite, 'uid'>) })
+    },
+    onError,
+  )
+}
 
 /**
  * Subscribe to all pins for `agentId`. Mirrors the web `useAgentPins`
