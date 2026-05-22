@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { StyleSheet } from 'react-native'
+import { StyleSheet, View, Text } from 'react-native'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { House, Compass, Key } from 'phosphor-react-native'
@@ -68,7 +68,18 @@ export function PinHeroImage({ url, type }: Props) {
 
   // No URL at all → just the typed gradient (same as fallback)
   if (!source || failed) {
-    return <TypedGradient type={type} />
+    return (
+      <>
+        <TypedGradient type={type} />
+        {__DEV__ && url ? (
+          <View style={dbg.box} pointerEvents="none">
+            <Text style={dbg.text} numberOfLines={3}>
+              FAIL: {url.slice(-80)}
+            </Text>
+          </View>
+        ) : null}
+      </>
+    )
   }
 
   return (
@@ -99,6 +110,11 @@ export function PinHeroImage({ url, type }: Props) {
     />
   )
 }
+
+const dbg = StyleSheet.create({
+  box: { position: 'absolute', top: 8, left: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.7)', padding: 4, borderRadius: 4 },
+  text: { color: 'white', fontSize: 9, fontFamily: 'Menlo' },
+})
 
 function TypedGradient({ type }: { type: PinType }) {
   const Icon = TYPE_ICON[type]
