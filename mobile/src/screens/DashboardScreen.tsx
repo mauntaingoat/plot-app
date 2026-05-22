@@ -57,7 +57,15 @@ export function DashboardScreen() {
             onAddPin={() => lightTap()}
             onPinPress={(pin) => setPinActions(pin)}
             onToggleEnabled={(pin, next) => {
-              togglePinEnabled(pin.id, next).catch(() => {})
+              togglePinEnabled(pin.id, next).catch((e) => {
+                console.warn('[togglePinEnabled] failed:', e?.code, e?.message)
+                if (next) {
+                  Alert.alert(
+                    'Can\'t enable pin',
+                    e?.message || 'You may be at your tier\'s active-pin cap. Upgrade to Pro to enable more pins.',
+                  )
+                }
+              })
             }}
           />
         )}

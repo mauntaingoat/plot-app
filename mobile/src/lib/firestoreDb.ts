@@ -41,9 +41,24 @@ export async function updatePin(pinId: string, patch: Record<string, unknown>) {
   await updateDoc(doc(db, 'pins', pinId), patch)
 }
 
-/** Toggle the `enabled` flag on a pin. Mirrors web `handleTogglePin`. */
+/**
+ * Toggle the `enabled` flag on a pin.
+ *
+ * Firestore rules permit DISABLING via direct write but DENY enabling
+ * (rules: `enabled == false || enabled unchanged`). Enabling has to
+ * go through the `setPinEnabled` callable Cloud Function so the
+ * per-tier active-pin cap is enforced server-side. Mirrors the web
+ * `setPinEnabled` wrapper in src/lib/firestore.ts.
+ */
 export async function togglePinEnabled(pinId: string, enabled: boolean) {
-  await updatePin(pinId, { enabled })
+  if (enabled) {
+    const { getFunctions, httpsCallable } = await import('@react-native-firebase/functions')
+    const fn = httpsCallable(getFunctions(), 'setPinEnabled')
+    await fn({ pinId, enabled })
+  } else {
+    // Disabling: direct Firestore write — rules permit, no cap check.
+    await updatePin(pinId, { enabled })
+  }
 }
 
 /** Archive a pin — sets archivedAt so the client-side filter hides it. */

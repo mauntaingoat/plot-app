@@ -44,11 +44,15 @@ const TYPE_GRADIENT: Record<Pin['type'], [string, string]> = {
 export function PinCard({ pin, isPro = false, onPress, onToggleEnabled, onUpgradePress }: Props) {
   const config = PIN_CONFIG[pin.type]
   const Icon = TYPE_ICON[pin.type]
+  // Hero image priority: explicit heroPhotoUrl → first listing photo
+  // → first content thumbnail → first content mediaUrl → null
+  // (gradient fallback). Pins on Reelst can have any combination of
+  // listing photos + content (reels/photos), so we walk both arrays.
   const heroImage = pin.heroPhotoUrl
-    ?? pin.photos?.[0]
-    ?? pin.content?.[0]?.thumbnailUrl
-    ?? pin.content?.[0]?.mediaUrl
-    ?? null
+    || pin.photos?.[0]
+    || pin.content?.[0]?.thumbnailUrl
+    || pin.content?.[0]?.mediaUrl
+    || null
   const price = formatPrice(pin.price ?? pin.soldPrice)
   const specs = pin.beds != null
     ? `${pin.beds ?? 0} bd · ${pin.baths ?? 0} ba · ${(pin.sqft ?? 0).toLocaleString()} sqft`
@@ -68,7 +72,11 @@ export function PinCard({ pin, isPro = false, onPress, onToggleEnabled, onUpgrad
         <View style={styles.hero}>
           {heroImage ? (
             <>
-              <Image source={{ uri: heroImage }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              <Image
+                source={{ uri: heroImage }}
+                style={StyleSheet.absoluteFill}
+                resizeMode="cover"
+              />
               <LinearGradient
                 colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.6)']}
                 locations={[0, 0.55, 1]}
