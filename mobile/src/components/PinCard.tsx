@@ -61,6 +61,12 @@ export function PinCard({ pin, isPro = false, onPress, onToggleEnabled, onUpgrad
     : null
   const isDisabled = pin.enabled === false
   const taps = pin.taps ?? 0
+  // Track image load failure so we render the typed gradient fallback
+  // instead of the pearl background showing through an invisible Image.
+  const [imageFailed, setImageFailed] = useState(false)
+  // Reset failure state when the URL itself changes (snapshot update).
+  useEffect(() => { setImageFailed(false) }, [heroImage])
+  const renderImage = heroImage && !imageFailed
 
   return (
     <View style={[styles.card, isDisabled && styles.disabled]}>
@@ -72,14 +78,18 @@ export function PinCard({ pin, isPro = false, onPress, onToggleEnabled, onUpgrad
       >
         {/* Hero */}
         <View style={styles.hero}>
-          {heroImage ? (
+          {renderImage ? (
             <>
               <Image
-                source={{ uri: heroImage }}
+                key={heroImage ?? 'no-image'}
+                source={{ uri: heroImage as string }}
                 style={StyleSheet.absoluteFill}
                 resizeMode="cover"
-                onLoad={() => console.warn('[Img OK]', pin.address, heroImage.slice(-40))}
-                onError={(e) => console.warn('[Img ERR]', pin.address, e.nativeEvent?.error, heroImage)}
+                onLoad={() => console.warn('[Img OK]', pin.address, heroImage?.slice(-40))}
+                onError={(e) => {
+                  console.warn('[Img ERR]', pin.address, e.nativeEvent?.error, heroImage)
+                  setImageFailed(true)
+                }}
               />
               <LinearGradient
                 colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.6)']}
