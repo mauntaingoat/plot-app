@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { View, StyleSheet } from 'react-native'
+import { StyleSheet } from 'react-native'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { House, Compass, Key } from 'phosphor-react-native'
 import type { PinType } from '../types'
+import { resolveStorageUrl } from '../lib/firebaseStorageUrl'
 
 /**
  * Hero image with retry-on-error + typed-gradient fallback.
@@ -43,14 +44,27 @@ interface Props {
 export function PinHeroImage({ url, type }: Props) {
   const [attempt, setAttempt] = useState(0)
   const [failed, setFailed] = useState(false)
+  // Direct-GCS URLs get resolved through @react-native-firebase/storage's
+  // getDownloadURL() which returns a properly tokenized wrapper URL that
+  // iOS loads reliably. Already-tokenized URLs pass through unchanged.
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(url ?? null)
 
   // Reset state when URL itself changes (e.g. snapshot updates the pin).
   useEffect(() => {
     setAttempt(0)
     setFailed(false)
+    setResolvedUrl(url ?? null)
+    if (url) {
+      resolveStorageUrl(url).then((resolved) => {
+        if (resolved) setResolvedUrl(resolved)
+      })
+    }
   }, [url])
 
-  const source = useMemo(() => (url ? { uri: url } : null), [url])
+  const source = useMemo(
+    () => (resolvedUrl ? { uri: resolvedUrl } : null),
+    [resolvedUrl],
+  )
 
   // No URL at all → just the typed gradient (same as fallback)
   if (!source || failed) {
@@ -62,12 +76,12 @@ export function PinHeroImage({ url, type }: Props) {
       source={source}
       // Re-keying on the attempt number forces expo-image to throw away
       // any cached failure and re-fetch from scratch.
-      key={`${url}-${attempt}`}
+      key={`${resolvedUrl}-${attempt}`}
       style={StyleSheet.absoluteFill}
       contentFit="cover"
       transition={150}
       cachePolicy="memory-disk"
-      recyclingKey={url ?? undefined}
+      recyclingKey={resolvedUrl ?? undefined}
       onError={(e) => {
         const err = (e as { error?: string } | undefined)?.error ?? 'unknown'
         if (attempt + 1 < MAX_ATTEMPTS) {
@@ -78,7 +92,7 @@ export function PinHeroImage({ url, type }: Props) {
           setTimeout(() => setAttempt(next), backoff)
         } else {
           // eslint-disable-next-line no-console
-          console.warn(`[PinHero] giving up after ${MAX_ATTEMPTS} attempts — ${err}`, url)
+          console.warn(`[PinHero] giving up after ${MAX_ATTEMPTS} attempts — ${err}`, resolvedUrl)
           setFailed(true)
         }
       }}
