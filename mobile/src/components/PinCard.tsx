@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
-import { View, Text, Image, Pressable, StyleSheet } from 'react-native'
+import { useEffect, useMemo, useState } from 'react'
+import { View, Text, Pressable, StyleSheet } from 'react-native'
+import { Image } from 'expo-image'
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { House, Compass, Key, Sparkle, CursorClick, MapPin as MapPinIcon } from 'phosphor-react-native'
@@ -61,6 +62,12 @@ export function PinCard({ pin, isPro = false, onPress, onToggleEnabled, onUpgrad
     : null
   const isDisabled = pin.enabled === false
   const taps = pin.taps ?? 0
+  // Memoize the source object so it's stable across re-renders when
+  // the URL string hasn't actually changed. Without this, every parent
+  // re-render (snapshot, toggle, etc.) creates a fresh {uri:...} object
+  // and the image restarts loading — leading to "image never appears"
+  // because the fetch is canceled mid-flight on each render cycle.
+  const imageSource = useMemo(() => (heroImage ? { uri: heroImage } : null), [heroImage])
 
   return (
     <View style={[styles.card, isDisabled && styles.disabled]}>
@@ -72,14 +79,17 @@ export function PinCard({ pin, isPro = false, onPress, onToggleEnabled, onUpgrad
       >
         {/* Hero */}
         <View style={styles.hero}>
-          {heroImage ? (
+          {imageSource ? (
             <>
               <Image
-                source={{ uri: heroImage }}
+                source={imageSource}
                 style={StyleSheet.absoluteFill}
-                resizeMode="cover"
-                onLoad={() => console.warn('[Img OK]', pin.address, heroImage.slice(-40))}
-                onError={(e) => console.warn('[Img ERR]', pin.address, e.nativeEvent?.error, heroImage)}
+                contentFit="cover"
+                transition={150}
+                cachePolicy="memory-disk"
+                recyclingKey={heroImage ?? undefined}
+                onLoad={() => console.warn('[Img OK]', pin.address)}
+                onError={(e) => console.warn('[Img ERR]', pin.address, e?.error, heroImage)}
               />
               <LinearGradient
                 colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.6)']}
