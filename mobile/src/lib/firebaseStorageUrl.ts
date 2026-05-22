@@ -45,7 +45,14 @@ export async function resolveStorageUrl(url: string | null | undefined): Promise
 
   const promise = (async () => {
     try {
-      const ref = storage().refFromURL(url)
+      // RNFB Storage's refFromURL doesn't accept the
+      // `https://storage.googleapis.com/<bucket>/<path>` (direct-GCS)
+      // format — only `gs://<bucket>/<path>` and
+      // `https://firebasestorage.googleapis.com/v0/b/<bucket>/o/<path>`.
+      // Convert direct-GCS URLs to gs:// first so the SDK accepts them.
+      const gcsMatch = url.match(/^https:\/\/storage\.googleapis\.com\/([^/]+)\/(.+?)(?:\?.*)?$/)
+      const refUrl = gcsMatch ? `gs://${gcsMatch[1]}/${gcsMatch[2]}` : url
+      const ref = storage().refFromURL(refUrl)
       const resolved = await ref.getDownloadURL()
       cache.set(url, resolved)
       return resolved
