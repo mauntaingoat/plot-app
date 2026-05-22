@@ -1,9 +1,13 @@
 import { useMemo, useState } from 'react'
-import { View, Text, Pressable, StyleSheet, Image } from 'react-native'
-import { FilmStrip, UploadSimple, Plus, Camera } from 'phosphor-react-native'
+import { View, Text, Pressable, StyleSheet, Alert } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
+import { FilmStrip, UploadSimple, Plus } from 'phosphor-react-native'
 import { BrandIconChip } from '../../components/BrandIconChip'
+import { ContentCard, type ContentRow } from '../../components/ContentCard'
+import { ContentActionsSheet } from '../../components/ContentActionsSheet'
 import { COLORS, FONTS } from '../../lib/tokens'
 import { usePins } from '../../lib/usePins'
+import { useUserDoc } from '../../lib/useUserDoc'
 import { lightTap, selection } from '../../lib/haptics'
 import type { Pin, PinContentItem } from '../../types'
 
@@ -13,35 +17,30 @@ import type { Pin, PinContentItem } from '../../types'
  * single library view, filterable by type.
  *
  * Filter pills (active = ink bg / warm-white text; inactive = cream
- * bg / smoke text):
- *   All / Videos / Photos / No Listing
+ * bg / smoke text): All / Videos / Photos / No Listing
  *
- * Upload + Edit flows (caption editing, archive, carousel/reel
- * editing) are deferred to the next milestone — the content upload /
- * content edit / PinCreate work. This tab is read-only thumbnails
- * for now.
+ * Each ContentCard shows a linked-pin chip, caption, Pro-gated stats,
+ * and a three-dots actions menu. Tap card OR three-dots opens the
+ * ContentActionsSheet (Edit Caption / Edit Media / Archive). Edit
+ * flows themselves drop in next milestone.
  */
 
 type Filter = 'all' | 'reel' | 'photo' | 'no_listing'
 
-interface ContentRow {
-  contentId: string
-  pinId: string | null
-  pinAddress: string | null
-  item: PinContentItem
-  isLinked: boolean
-}
-
 export function ContentTab({ onUpload }: { onUpload?: () => void }) {
   const { pins, loading } = usePins()
+  const { userDoc } = useUserDoc()
   const [filter, setFilter] = useState<Filter>('all')
+  const [actions, setActions] = useState<ContentRow | null>(null)
+
+  const isPro = userDoc?.tier === 'pro'
 
   const allContent: ContentRow[] = useMemo(() => {
     const rows: ContentRow[] = []
     pins.forEach((pin: Pin) => {
-      (pin.content || []).forEach((c) => {
+      (pin.content || []).forEach((c: PinContentItem) => {
         rows.push({
-          contentId: c.id ?? `${pin.id}-${Math.random()}`,
+          contentId: c.id ?? `${pin.id}-${Math.random().toString(36).slice(2, 8)}`,
           pinId: pin.id,
           pinAddress: pin.address,
           item: c,
@@ -77,13 +76,17 @@ export function ContentTab({ onUpload }: { onUpload?: () => void }) {
 
       {/* Filter pills + Upload */}
       <View style={styles.filterRow}>
-        {(['all', 'reel', 'photo', 'no_listing'] as const).map((id) => {
-          const label = id === 'all' ? 'All' : id === 'reel' ? 'Videos' : id === 'photo' ? 'Photos' : 'No Listing'
-          const isActive = filter === id
+        {([
+          { id: 'all', label: 'All' },
+          { id: 'reel', label: 'Videos' },
+          { id: 'photo', label: 'Photos' },
+          { id: 'no_listing', label: 'No Listing' },
+        ] as const).map((f) => {
+          const isActive = filter === f.id
           return (
             <Pressable
-              key={id}
-              onPress={() => { if (filter !== id) { selection(); setFilter(id) } }}
+              key={f.id}
+              onPress={() => { if (!isActive) { selection(); setFilter(f.id) } }}
               style={({ pressed }) => [
                 styles.pill,
                 isActive ? styles.pillActive : styles.pillInactive,
@@ -91,7 +94,7 @@ export function ContentTab({ onUpload }: { onUpload?: () => void }) {
               ]}
             >
               <Text style={[styles.pillText, { color: isActive ? COLORS.warmWhite : COLORS.smoke }]}>
-                {label}
+                {f.label}
               </Text>
             </Pressable>
           )
@@ -99,8 +102,15 @@ export function ContentTab({ onUpload }: { onUpload?: () => void }) {
         <View style={{ flex: 1 }} />
         <Pressable
           onPress={() => { lightTap(); onUpload?.() }}
-          style={({ pressed }) => [styles.uploadBtn, pressed && { opacity: 0.9 }]}
+          style={({ pressed }) => [styles.uploadBtn, pressed && { transform: [{ scale: 0.98 }] }]}
         >
+          <LinearGradient
+            colors={[...COLORS.brandGradient]}
+            locations={[...COLORS.brandGradientLocations]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
           <Plus size={14} color={COLORS.warmWhite} weight="bold" />
           <Text style={styles.uploadBtnText}>Upload</Text>
         </Pressable>
@@ -115,8 +125,6 @@ export function ContentTab({ onUpload }: { onUpload?: () => void }) {
         <View style={styles.grid}>
           <SkeletonContent />
           <SkeletonContent />
-          <SkeletonContent />
-          <SkeletonContent />
         </View>
       ) : filtered.length === 0 ? (
         <EmptyState onUpload={onUpload} />
@@ -124,43 +132,26 @@ export function ContentTab({ onUpload }: { onUpload?: () => void }) {
         <View style={styles.grid}>
           {filtered.map((row) => (
             <View key={row.contentId} style={styles.col}>
-              <ContentCard row={row} />
+              <ContentCard
+                row={row}
+                isPro={isPro}
+                onPress={() => setActions(row)}
+                onMorePress={() => setActions(row)}
+                onPickPin={() => Alert.alert('Reassign pin', 'Pin picker lands next milestone.')}
+              />
             </View>
           ))}
         </View>
       )}
-    </View>
-  )
-}
 
-function ContentCard({ row }: { row: ContentRow }) {
-  const thumb = row.item.thumbnailUrl ?? row.item.mediaUrl ?? null
-  const isVideo = row.item.type === 'reel'
-  return (
-    <Pressable
-      onPress={() => lightTap()}
-      style={({ pressed }) => [
-        styles.contentCard,
-        row.isLinked && styles.contentCardLinked,
-        pressed && { transform: [{ scale: 0.98 }] },
-      ]}
-    >
-      <View style={styles.contentThumb}>
-        {thumb ? (
-          <Image source={{ uri: thumb }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-        ) : (
-          <View style={[StyleSheet.absoluteFill, styles.thumbFallback]}>
-            <Camera size={28} color={COLORS.ash} />
-          </View>
-        )}
-        {isVideo ? (
-          <View style={styles.videoChip}>
-            <FilmStrip size={11} color={COLORS.warmWhite} weight="fill" />
-            <Text style={styles.videoChipText}>Reel</Text>
-          </View>
-        ) : null}
-      </View>
-    </Pressable>
+      <ContentActionsSheet
+        row={actions}
+        onClose={() => setActions(null)}
+        onEditCaption={() => { setActions(null); Alert.alert('Edit Caption', 'Caption editing lands next milestone.') }}
+        onEditMedia={() => { setActions(null); Alert.alert('Edit Media', 'Content editor lands next milestone.') }}
+        onArchive={() => { setActions(null); Alert.alert('Archive', 'Archive flow lands next milestone.') }}
+      />
+    </View>
   )
 }
 
@@ -175,8 +166,15 @@ function EmptyState({ onUpload }: { onUpload?: () => void }) {
       {onUpload ? (
         <Pressable
           onPress={() => { lightTap(); onUpload() }}
-          style={({ pressed }) => [styles.emptyCta, pressed && { opacity: 0.9 }]}
+          style={({ pressed }) => [styles.emptyCta, pressed && { transform: [{ scale: 0.98 }] }]}
         >
+          <LinearGradient
+            colors={[...COLORS.brandGradient]}
+            locations={[...COLORS.brandGradientLocations]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
           <Plus size={16} color={COLORS.warmWhite} weight="bold" />
           <Text style={styles.emptyCtaText}>Upload Content</Text>
         </Pressable>
@@ -188,18 +186,13 @@ function EmptyState({ onUpload }: { onUpload?: () => void }) {
 function SkeletonContent() {
   return (
     <View style={styles.col}>
-      <View style={[styles.contentThumb, { backgroundColor: COLORS.pearl }]} />
+      <View style={[styles.skeleton]} />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   tabHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  iconChip: {
-    width: 40, height: 40, borderRadius: 12, backgroundColor: COLORS.tangerine,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#D94A1F', shadowOpacity: 0.4, shadowOffset: { width: 0, height: 4 }, shadowRadius: 10,
-  },
   tabTitle: { fontFamily: FONTS.humanistBold, fontSize: 22, color: COLORS.ink, letterSpacing: -0.3 },
   tabSubtitle: { fontFamily: FONTS.humanist, fontSize: 13, color: COLORS.smoke, marginTop: 2 },
 
@@ -209,41 +202,45 @@ const styles = StyleSheet.create({
   pillInactive: { backgroundColor: COLORS.cream },
   pillText: { fontFamily: FONTS.humanistBold, fontSize: 12 },
   uploadBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    height: 32, paddingHorizontal: 12, borderRadius: 999, backgroundColor: COLORS.tangerine,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 32,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    overflow: 'hidden',
+    shadowColor: '#D94A1F',
+    shadowOpacity: 0.45,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 14,
+    elevation: 6,
   },
   uploadBtnText: { fontFamily: FONTS.humanistBold, fontSize: 12, color: COLORS.warmWhite },
+
   countText: { fontFamily: FONTS.humanist, fontSize: 11, color: COLORS.ash, marginBottom: 12, marginTop: 4 },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6 },
   col: { width: '50%', paddingHorizontal: 6, marginBottom: 12 },
 
-  contentCard: {
-    borderRadius: 18,
-    overflow: 'hidden',
-    backgroundColor: COLORS.warmWhite,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  contentCardLinked: { borderWidth: 2, borderColor: 'rgba(255,107,61,0.25)' },
-  contentThumb: { aspectRatio: 9 / 11, backgroundColor: COLORS.pearl, position: 'relative' },
-  thumbFallback: { alignItems: 'center', justifyContent: 'center' },
-  videoChip: {
-    position: 'absolute', top: 10, left: 10,
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999,
-  },
-  videoChipText: { fontFamily: FONTS.humanistBold, fontSize: 9, color: COLORS.warmWhite, letterSpacing: 0.3 },
+  skeleton: { aspectRatio: 9 / 11, backgroundColor: COLORS.pearl, borderRadius: 18 },
 
   empty: { backgroundColor: COLORS.cream, borderRadius: 18, paddingVertical: 32, paddingHorizontal: 24, alignItems: 'center' },
   emptyIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: COLORS.pearl, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   emptyTitle: { fontFamily: FONTS.humanistBold, fontSize: 15, color: COLORS.ink, marginBottom: 4 },
   emptyBody: { fontFamily: FONTS.humanist, fontSize: 12, color: COLORS.smoke, marginBottom: 16, textAlign: 'center' },
   emptyCta: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    height: 40, paddingHorizontal: 18, borderRadius: 8, backgroundColor: COLORS.tangerine,
-    shadowColor: '#D94A1F', shadowOpacity: 0.35, shadowOffset: { width: 0, height: 4 }, shadowRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 40,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    overflow: 'hidden',
+    shadowColor: '#D94A1F',
+    shadowOpacity: 0.45,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 14,
+    elevation: 6,
   },
   emptyCtaText: { fontFamily: FONTS.humanistBold, fontSize: 13, color: COLORS.warmWhite },
 })
