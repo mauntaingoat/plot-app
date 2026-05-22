@@ -159,11 +159,14 @@ export function PinCard({ pin, isPro = false, onPress, onToggleEnabled, onUpgrad
  * Spring matches the web ToggleSwitch: damping 20 / stiffness 400.
  */
 function VisibilityToggle({ enabled, onChange }: { enabled: boolean; onChange: (next: boolean) => void }) {
-  // 52w toggle with 3px padding + 24w knob → travel = 52 - 6 - 24 = 22px
-  const x = useSharedValue(enabled ? 22 : 0)
+  // Exact mirror of web ToggleSwitch (Dashboard.tsx:2136):
+  //   44×24 track, 16×16 ball, ball positioned at top:4 left:2,
+  //   animates translateX 0 → 18 (so left edge goes 2 → 20).
+  // Spring matches: damping 20, stiffness 400.
+  const x = useSharedValue(enabled ? 18 : 0)
 
   useEffect(() => {
-    x.value = withSpring(enabled ? 22 : 0, { damping: 20, stiffness: 400 })
+    x.value = withSpring(enabled ? 18 : 0, { damping: 20, stiffness: 400 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled])
 
@@ -173,29 +176,42 @@ function VisibilityToggle({ enabled, onChange }: { enabled: boolean; onChange: (
     <Pressable
       onPress={() => { selection(); onChange(!enabled) }}
       hitSlop={8}
-      style={[
-        {
-          marginLeft: 'auto',
-          width: 52,
-          height: 30,
-          borderRadius: 15,
-          padding: 3,
-          justifyContent: 'center',
-        },
-        { backgroundColor: enabled ? COLORS.tangerine : COLORS.pearl },
-      ]}
+      style={{
+        marginLeft: 'auto',
+        width: 44,
+        height: 24,
+        borderRadius: 12,
+        position: 'relative',
+        overflow: 'hidden',
+        backgroundColor: enabled ? 'transparent' : COLORS.pearl,
+      }}
     >
+      {enabled ? (
+        // Brand gradient when ON — matches the gradient used on header
+        // tab icon chips and the Add Pin button.
+        <LinearGradient
+          colors={[...COLORS.brandGradient]}
+          locations={[...COLORS.brandGradientLocations]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      ) : null}
       <Animated.View
         style={[
           {
-            width: 24,
-            height: 24,
-            borderRadius: 12,
+            position: 'absolute',
+            top: 4,
+            left: 2,
+            width: 16,
+            height: 16,
+            borderRadius: 8,
             backgroundColor: COLORS.warmWhite,
             shadowColor: '#000',
             shadowOpacity: 0.18,
             shadowOffset: { width: 0, height: 1 },
-            shadowRadius: 3,
+            shadowRadius: 2,
           },
           knobStyle,
         ]}
@@ -211,10 +227,13 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.warmWhite,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
+    // Slightly elevated shadow to match the lifted feel of web pin
+    // cards (which have shadow-sm + a soft glow from the ivory bg).
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 4,
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    elevation: 3,
   },
   disabled: { opacity: 0.55 },
   pressed: { opacity: 0.85 },

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { View, Text, Pressable, StyleSheet, Image } from 'react-native'
 import { FilmStrip, UploadSimple, Plus, Camera } from 'phosphor-react-native'
+import { BrandIconChip } from '../../components/BrandIconChip'
 import { COLORS, FONTS } from '../../lib/tokens'
 import { usePins } from '../../lib/usePins'
 import { lightTap, selection } from '../../lib/haptics'
@@ -65,9 +66,9 @@ export function ContentTab({ onUpload }: { onUpload?: () => void }) {
     <View>
       {/* TabHeader */}
       <View style={styles.tabHeader}>
-        <View style={styles.iconChip}>
+        <BrandIconChip>
           <FilmStrip size={20} color={COLORS.warmWhite} weight="regular" />
-        </View>
+        </BrandIconChip>
         <View style={{ flex: 1 }}>
           <Text style={styles.tabTitle}>Content</Text>
           <Text style={styles.tabSubtitle}>Reels, photos, and listing media</Text>

@@ -1,5 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { Palette, Eye, TextAa, MapPin, Layout, ImageSquare, Lock } from 'phosphor-react-native'
+import { BrandIconChip } from '../../components/BrandIconChip'
 import { COLORS, FONTS } from '../../lib/tokens'
 import { lightTap } from '../../lib/haptics'
 
@@ -33,9 +34,9 @@ export function StyleTab() {
     <View>
       {/* TabHeader */}
       <View style={styles.tabHeader}>
-        <View style={styles.iconChip}>
+        <BrandIconChip>
           <Palette size={20} color={COLORS.warmWhite} weight="regular" />
-        </View>
+        </BrandIconChip>
         <View style={{ flex: 1 }}>
           <Text style={styles.tabTitle}>Style your Reelst</Text>
           <Text style={styles.tabSubtitle}>The signature element of your Reelst</Text>

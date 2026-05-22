@@ -1,6 +1,8 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { MapPin, Plus } from 'phosphor-react-native'
 import { PinCard } from '../../components/PinCard'
+import { BrandIconChip } from '../../components/BrandIconChip'
 import { COLORS, FONTS } from '../../lib/tokens'
 import { usePins } from '../../lib/usePins'
 import { lightTap } from '../../lib/haptics'
@@ -32,9 +34,9 @@ export function MyPinsTab({ isPro, onAddPin, onPinPress, onToggleEnabled, onUpgr
     <View>
       {/* TabHeader */}
       <View style={styles.tabHeader}>
-        <View style={styles.iconChip}>
+        <BrandIconChip>
           <MapPin size={20} color={COLORS.warmWhite} weight="regular" />
-        </View>
+        </BrandIconChip>
         <View style={{ flex: 1 }}>
           <Text style={styles.tabTitle}>My Pins</Text>
           <Text style={styles.tabSubtitle}>Listings, sold homes, and spotlights on your map</Text>
@@ -46,9 +48,16 @@ export function MyPinsTab({ isPro, onAddPin, onPinPress, onToggleEnabled, onUpgr
         <Text style={styles.sectionTitle}>Your Pins</Text>
         <Pressable
           onPress={() => { lightTap(); onAddPin?.() }}
-          style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.85 }]}
+          style={({ pressed }) => [styles.addBtn, pressed && { transform: [{ scale: 0.98 }] }]}
         >
-          <Plus size={14} color={COLORS.warmWhite} weight="bold" />
+          <LinearGradient
+            colors={[...COLORS.brandGradient]}
+            locations={[...COLORS.brandGradientLocations]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <Plus size={15} color={COLORS.warmWhite} weight="bold" />
           <Text style={styles.addBtnText}>Add Pin</Text>
         </Pressable>
       </View>
@@ -104,8 +113,15 @@ function EmptyState({ onCreate }: { onCreate?: () => void }) {
       <Text style={styles.emptyBody}>Add a listing, spotlight, or open house to your map.</Text>
       <Pressable
         onPress={() => { lightTap(); onCreate?.() }}
-        style={({ pressed }) => [styles.emptyCta, pressed && { opacity: 0.9 }]}
+        style={({ pressed }) => [styles.emptyCta, pressed && { transform: [{ scale: 0.98 }] }]}
       >
+        <LinearGradient
+          colors={[...COLORS.brandGradient]}
+          locations={[...COLORS.brandGradientLocations]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         <Plus size={18} color={COLORS.warmWhite} weight="bold" />
         <Text style={styles.emptyCtaText}>Create Pin</Text>
       </Pressable>
@@ -115,18 +131,6 @@ function EmptyState({ onCreate }: { onCreate?: () => void }) {
 
 const styles = StyleSheet.create({
   tabHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  iconChip: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: COLORS.tangerine,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#D94A1F',
-    shadowOpacity: 0.4,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 10,
-  },
   tabTitle: { fontFamily: FONTS.humanistBold, fontSize: 22, color: COLORS.ink, letterSpacing: -0.3 },
   tabSubtitle: { fontFamily: FONTS.humanist, fontSize: 13, color: COLORS.smoke, marginTop: 2 },
 
@@ -142,12 +146,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    height: 32,
-    paddingHorizontal: 12,
+    height: 34,
+    paddingHorizontal: 14,
     borderRadius: 999,
-    backgroundColor: COLORS.tangerine,
+    overflow: 'hidden',
+    // Tangerine glow under the pill — matches the brand-btn-flat box-shadow
+    shadowColor: '#D94A1F',
+    shadowOpacity: 0.45,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 14,
+    elevation: 6,
   },
-  addBtnText: { fontFamily: FONTS.humanistBold, fontSize: 12, color: COLORS.warmWhite },
+  addBtnText: { fontFamily: FONTS.humanistBold, fontSize: 13, color: COLORS.warmWhite },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6 },
   col: { width: '50%', paddingHorizontal: 6, marginBottom: 12 },
@@ -185,12 +195,13 @@ const styles = StyleSheet.create({
     gap: 8,
     height: 48,
     paddingHorizontal: 24,
-    borderRadius: 8,
-    backgroundColor: COLORS.tangerine,
+    borderRadius: 999,
+    overflow: 'hidden',
     shadowColor: '#D94A1F',
-    shadowOpacity: 0.4,
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 16,
+    shadowOpacity: 0.48,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 22,
+    elevation: 8,
   },
   emptyCtaText: { fontFamily: FONTS.humanistBold, fontSize: 15, color: COLORS.warmWhite },
 })

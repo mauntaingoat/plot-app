@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native'
 import { ChartBar, Eye, CursorClick, Heart } from 'phosphor-react-native'
+import { BrandIconChip } from '../../components/BrandIconChip'
 import { COLORS, FONTS } from '../../lib/tokens'
 import { useUserDoc, formatCompact } from '../../lib/useUserDoc'
 
@@ -23,9 +24,9 @@ export function InsightsTab() {
     <View>
       {/* TabHeader */}
       <View style={styles.tabHeader}>
-        <View style={styles.iconChip}>
+        <BrandIconChip>
           <ChartBar size={20} color={COLORS.warmWhite} weight="regular" />
-        </View>
+        </BrandIconChip>
         <View style={{ flex: 1 }}>
           <Text style={styles.tabTitle}>Insights</Text>
           <Text style={styles.tabSubtitle}>How your Reelst is performing</Text>

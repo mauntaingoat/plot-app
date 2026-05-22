@@ -1,5 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { Tray, Heart, HandWaving, Calendar, ChatCircle } from 'phosphor-react-native'
+import { BrandIconChip } from '../../components/BrandIconChip'
 import { COLORS, FONTS } from '../../lib/tokens'
 import { selection } from '../../lib/haptics'
 import { useState } from 'react'
@@ -30,9 +31,9 @@ export function InboxTab() {
     <View>
       {/* TabHeader */}
       <View style={styles.tabHeader}>
-        <View style={styles.iconChip}>
+        <BrandIconChip>
           <Tray size={20} color={COLORS.warmWhite} weight="regular" />
-        </View>
+        </BrandIconChip>
         <View style={{ flex: 1 }}>
           <Text style={styles.tabTitle}>Inbox</Text>
           <Text style={styles.tabSubtitle}>Waves, showings, and questions from buyers</Text>
