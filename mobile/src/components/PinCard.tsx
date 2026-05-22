@@ -1,12 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { View, Text, Pressable, StyleSheet } from 'react-native'
-import { Image } from 'expo-image'
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
-import { House, Compass, Key, Sparkle, CursorClick, MapPin as MapPinIcon } from 'phosphor-react-native'
+import { Sparkle, CursorClick, MapPin as MapPinIcon } from 'phosphor-react-native'
 import { COLORS, FONTS } from '../lib/tokens'
 import { PIN_CONFIG, formatPrice, displayAddressWithUnit, type Pin } from '../types'
 import { lightTap, selection } from '../lib/haptics'
+import { PinHeroImage } from './PinHeroImage'
+// TYPE_GRADIENT + TYPE_ICON now live in PinHeroImage — they're only
+// needed for the typed fallback that's rendered when the photo URL
+// fails to load. PinCard delegates the entire image area to that
+// component which handles success/failure/fallback uniformly.
 
 /**
  * RN port of `src/components/dashboard/PinCard.tsx` (manage variant).
@@ -32,21 +36,8 @@ interface Props {
   onUpgradePress?: () => void
 }
 
-const TYPE_ICON: Record<Pin['type'], React.ComponentType<{ size?: number; color?: string; weight?: 'light' | 'regular' | 'fill' }>> = {
-  for_sale: House,
-  sold: Key,
-  spotlight: Compass,
-}
-
-const TYPE_GRADIENT: Record<Pin['type'], [string, string]> = {
-  for_sale: ['#3B82F6', '#2563EB'],
-  sold: ['#34C759', '#22A34B'],
-  spotlight: ['#FF6B3D', '#E8522A'],
-}
-
 export function PinCard({ pin, isPro = false, onPress, onToggleEnabled, onUpgradePress }: Props) {
   const config = PIN_CONFIG[pin.type]
-  const Icon = TYPE_ICON[pin.type]
   // Hero image priority: explicit heroPhotoUrl → first listing photo
   // → first content thumbnail → first content mediaUrl → null
   // (gradient fallback). Pins on Reelst can have any combination of
@@ -62,12 +53,6 @@ export function PinCard({ pin, isPro = false, onPress, onToggleEnabled, onUpgrad
     : null
   const isDisabled = pin.enabled === false
   const taps = pin.taps ?? 0
-  // Memoize the source object so it's stable across re-renders when
-  // the URL string hasn't actually changed. Without this, every parent
-  // re-render (snapshot, toggle, etc.) creates a fresh {uri:...} object
-  // and the image restarts loading — leading to "image never appears"
-  // because the fetch is canceled mid-flight on each render cycle.
-  const imageSource = useMemo(() => (heroImage ? { uri: heroImage } : null), [heroImage])
 
   return (
     <View style={[styles.card, isDisabled && styles.disabled]}>
@@ -79,34 +64,15 @@ export function PinCard({ pin, isPro = false, onPress, onToggleEnabled, onUpgrad
       >
         {/* Hero */}
         <View style={styles.hero}>
-          {imageSource ? (
-            <>
-              <Image
-                source={imageSource}
-                style={StyleSheet.absoluteFill}
-                contentFit="cover"
-                transition={150}
-                cachePolicy="memory-disk"
-                recyclingKey={heroImage ?? undefined}
-                onLoad={() => console.warn('[Img OK]', pin.address)}
-                onError={(e) => console.warn('[Img ERR]', pin.address, e?.error, heroImage)}
-              />
-              <LinearGradient
-                colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.6)']}
-                locations={[0, 0.55, 1]}
-                style={StyleSheet.absoluteFill}
-              />
-            </>
-          ) : (
-            <LinearGradient
-              colors={TYPE_GRADIENT[pin.type]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[StyleSheet.absoluteFill, styles.fallback]}
-            >
-              <Icon size={40} color="rgba(255,255,255,0.3)" weight="light" />
-            </LinearGradient>
-          )}
+          <PinHeroImage url={heroImage} type={pin.type} />
+          {/* Subtle bottom darkening so the price stays legible on
+              both photo + typed-gradient backgrounds. */}
+          <LinearGradient
+            colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.6)']}
+            locations={[0, 0.55, 1]}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
 
           {/* Type pill */}
           <View style={styles.typePill}>
@@ -255,7 +221,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: COLORS.pearl,
   },
-  fallback: { alignItems: 'center', justifyContent: 'center' },
   typePill: {
     position: 'absolute',
     top: 12,
