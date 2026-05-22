@@ -76,6 +76,8 @@ export function PinCard({ pin, isPro = false, onPress, onToggleEnabled, onUpgrad
                 source={{ uri: heroImage }}
                 style={StyleSheet.absoluteFill}
                 resizeMode="cover"
+                onLoad={() => console.warn('[Img OK]', pin.address, heroImage.slice(-40))}
+                onError={(e) => console.warn('[Img ERR]', pin.address, e.nativeEvent?.error, heroImage)}
               />
               <LinearGradient
                 colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.6)']}

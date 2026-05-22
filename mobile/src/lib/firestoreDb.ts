@@ -52,8 +52,11 @@ export async function updatePin(pinId: string, patch: Record<string, unknown>) {
  */
 export async function togglePinEnabled(pinId: string, enabled: boolean) {
   if (enabled) {
-    const { getFunctions, httpsCallable } = await import('@react-native-firebase/functions')
-    const fn = httpsCallable(getFunctions(), 'setPinEnabled')
+    // @react-native-firebase/functions v22 only ships the namespaced API.
+    // `functions()` returns the default region instance; `.httpsCallable`
+    // gets a callable function reference.
+    const functionsModule = await import('@react-native-firebase/functions')
+    const fn = functionsModule.default().httpsCallable('setPinEnabled')
     await fn({ pinId, enabled })
   } else {
     // Disabling: direct Firestore write — rules permit, no cap check.
