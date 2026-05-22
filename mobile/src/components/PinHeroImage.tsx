@@ -48,16 +48,34 @@ export function PinHeroImage({ url, type }: Props) {
   // getDownloadURL() which returns a properly tokenized wrapper URL that
   // iOS loads reliably. Already-tokenized URLs pass through unchanged.
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(url ?? null)
+  const [debugStatus, setDebugStatus] = useState<string>('init')
+  const [lastError, setLastError] = useState<string>('')
 
   // Reset state when URL itself changes (e.g. snapshot updates the pin).
   useEffect(() => {
     setAttempt(0)
     setFailed(false)
     setResolvedUrl(url ?? null)
+    setLastError('')
     if (url) {
-      resolveStorageUrl(url).then((resolved) => {
-        if (resolved) setResolvedUrl(resolved)
-      })
+      setDebugStatus('resolving')
+      resolveStorageUrl(url)
+        .then((resolved) => {
+          if (resolved && resolved !== url) {
+            setResolvedUrl(resolved)
+            setDebugStatus('resolved')
+          } else if (resolved === url) {
+            setDebugStatus('passthrough')
+          } else {
+            setDebugStatus('resolve→null')
+          }
+        })
+        .catch((e) => {
+          setDebugStatus('resolve threw')
+          setLastError((e as Error)?.message ?? 'unknown')
+        })
+    } else {
+      setDebugStatus('no-url')
     }
   }, [url])
 
@@ -73,8 +91,9 @@ export function PinHeroImage({ url, type }: Props) {
         <TypedGradient type={type} />
         {__DEV__ && url ? (
           <View style={dbg.box} pointerEvents="none">
-            <Text style={dbg.text} numberOfLines={3}>
-              FAIL: {url.slice(-80)}
+            <Text style={dbg.text} numberOfLines={6}>
+              [{debugStatus}] err={lastError || 'none'}{'\n'}
+              src={(resolvedUrl ?? url).slice(-90)}
             </Text>
           </View>
         ) : null}
@@ -95,6 +114,7 @@ export function PinHeroImage({ url, type }: Props) {
       recyclingKey={resolvedUrl ?? undefined}
       onError={(e) => {
         const err = (e as { error?: string } | undefined)?.error ?? 'unknown'
+        setLastError(err)
         if (attempt + 1 < MAX_ATTEMPTS) {
           const next = attempt + 1
           const backoff = 300 * 2 ** attempt
