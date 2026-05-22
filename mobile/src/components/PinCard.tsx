@@ -159,10 +159,11 @@ export function PinCard({ pin, isPro = false, onPress, onToggleEnabled, onUpgrad
  * Spring matches the web ToggleSwitch: damping 20 / stiffness 400.
  */
 function VisibilityToggle({ enabled, onChange }: { enabled: boolean; onChange: (next: boolean) => void }) {
-  const x = useSharedValue(enabled ? 20 : 0)
+  // 52w toggle with 3px padding + 24w knob → travel = 52 - 6 - 24 = 22px
+  const x = useSharedValue(enabled ? 22 : 0)
 
   useEffect(() => {
-    x.value = withSpring(enabled ? 20 : 0, { damping: 20, stiffness: 400 })
+    x.value = withSpring(enabled ? 22 : 0, { damping: 20, stiffness: 400 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled])
 
@@ -175,10 +176,10 @@ function VisibilityToggle({ enabled, onChange }: { enabled: boolean; onChange: (
       style={[
         {
           marginLeft: 'auto',
-          width: 44,
-          height: 24,
-          borderRadius: 12,
-          padding: 2,
+          width: 52,
+          height: 30,
+          borderRadius: 15,
+          padding: 3,
           justifyContent: 'center',
         },
         { backgroundColor: enabled ? COLORS.tangerine : COLORS.pearl },
@@ -187,14 +188,14 @@ function VisibilityToggle({ enabled, onChange }: { enabled: boolean; onChange: (
       <Animated.View
         style={[
           {
-            width: 20,
-            height: 20,
-            borderRadius: 10,
+            width: 24,
+            height: 24,
+            borderRadius: 12,
             backgroundColor: COLORS.warmWhite,
             shadowColor: '#000',
-            shadowOpacity: 0.15,
+            shadowOpacity: 0.18,
             shadowOffset: { width: 0, height: 1 },
-            shadowRadius: 2,
+            shadowRadius: 3,
           },
           knobStyle,
         ]}

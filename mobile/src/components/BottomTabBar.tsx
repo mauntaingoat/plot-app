@@ -45,7 +45,7 @@ const TABS: TabDef[] = [
   { id: 'insights', label: 'Insights', Icon: ChartBar },
 ]
 
-const INDICATOR_WIDTH = 20
+const INDICATOR_WIDTH = 32
 const INDICATOR_HEIGHT = 3
 
 export function BottomTabBar({ active, onChange, inboxUnread = 0 }: Props) {
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   badgeText: { color: COLORS.warmWhite, fontFamily: FONTS.humanistBold, fontSize: 8 },
-  label: { fontFamily: FONTS.humanistSemibold, fontSize: 10 },
+  label: { fontFamily: FONTS.humanistSemibold, fontSize: 11 },
   indicator: {
     position: 'absolute',
     left: 0,
