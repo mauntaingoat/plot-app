@@ -1,13 +1,11 @@
 /**
- * Thin wrapper around @react-native-firebase/auth (modular API, v22+) —
- * native iOS Firebase Auth SDK. No WebView, no CORS, no JS SDK quirks.
- * Auth state is read via `onAuthStateChanged(getAuth(), …)`, identical
- * pattern to the web app's JS SDK call.
+ * Thin wrapper around @react-native-firebase/auth (modular API, v22+).
+ * Native iOS Firebase Auth SDK — bundle ID auto-validated, no JS SDK
+ * API-key referrer headaches.
  *
- * All operations hit the same Firebase project (plot-fe990) as the
- * web app via the bundled GoogleService-Info.plist. A user signed up
- * here is the same UID as one signed up via reel.st on desktop — same
- * Firestore /users/{uid} doc, same dashboard data.
+ * Same Firebase project (plot-fe990) as the web app via the bundled
+ * GoogleService-Info.plist. A user signed up here is the same UID as
+ * one signed up via reel.st on desktop.
  */
 import {
   getAuth,
@@ -22,14 +20,12 @@ import {
 
 export type FirebaseUser = FirebaseAuthTypes.User
 
-/** Subscribe to auth state changes. Returns unsubscribe. */
 export function onAuthStateChanged(
   callback: (user: FirebaseUser | null) => void,
 ): () => void {
   return onAuthStateChangedNative(getAuth(), callback)
 }
 
-/** Current user, or null. */
 export function currentUser(): FirebaseUser | null {
   return getAuth().currentUser
 }
@@ -65,7 +61,6 @@ export async function reloadCurrentUser() {
   return getAuth().currentUser
 }
 
-/** Map a Firebase auth error code to a short, user-readable string. */
 export function authErrorMessage(code: string | undefined, fallback: string): string {
   switch (code) {
     case 'auth/user-not-found':

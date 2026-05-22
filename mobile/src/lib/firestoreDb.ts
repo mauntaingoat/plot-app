@@ -1,9 +1,7 @@
 /**
- * Native Firestore wrapper using @react-native-firebase/firestore.
- * Mirrors the web app's `src/lib/firestore.ts` query patterns for the
- * surfaces the iOS app needs (pins, content, users). Same collection
- * names and document shapes — the iOS app reads the same data the
- * web dashboard does.
+ * Native Firestore wrapper using @react-native-firebase/firestore
+ * (modular API, v22+). Mirrors the web app's `src/lib/firestore.ts`
+ * query patterns. Same Firestore collections + shapes as web.
  */
 import {
   getFirestore,
@@ -16,6 +14,8 @@ import {
   type FirebaseFirestoreTypes,
 } from '@react-native-firebase/firestore'
 import type { Pin } from '../types'
+
+type Unsub = () => void
 
 export interface UserDocLite {
   uid: string
@@ -30,12 +30,6 @@ export interface UserDocLite {
   subscriberCount?: number
 }
 
-type Unsub = () => void
-
-/**
- * Subscribe to the user doc at `users/{uid}`. Mirrors the web app's
- * snapshot subscription in useAuth.ts. Returns unsubscribe.
- */
 export function subscribeUserDoc(
   uid: string,
   onUpdate: (doc: UserDocLite | null) => void,
@@ -56,11 +50,6 @@ export function subscribeUserDoc(
   )
 }
 
-/**
- * Subscribe to all pins for `agentId`. Mirrors the web `useAgentPins`
- * filter: live pins (not archived) returned first. Calls back with
- * the latest snapshot. Returns unsubscribe.
- */
 export function subscribeAgentPins(
   agentId: string,
   onUpdate: (pins: Pin[]) => void,
@@ -76,13 +65,10 @@ export function subscribeAgentPins(
     q,
     (snap: FirebaseFirestoreTypes.QuerySnapshot) => {
       const pins: Pin[] = []
-      snap.forEach((doc) => {
-        const data = doc.data() as Omit<Pin, 'id'>
-        // Filter out archived pins client-side; the web dashboard does
-        // the same. Server-side query stays simple to avoid an extra
-        // composite index for the {archivedAt == null} case.
+      snap.forEach((d) => {
+        const data = d.data() as Omit<Pin, 'id'>
         if (data.archivedAt == null) {
-          pins.push({ id: doc.id, ...data })
+          pins.push({ id: d.id, ...data })
         }
       })
       onUpdate(pins)

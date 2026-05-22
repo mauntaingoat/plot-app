@@ -7,7 +7,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "bundleIdentifier": "co.reelst.app",
       "supportsTablet": false,
@@ -38,12 +38,13 @@
         {
           "ios": {
             "useFrameworks": "static",
-            "deploymentTarget": "16.4"
+            "deploymentTarget": "15.1"
           }
         }
       ],
       "./plugins/withModularHeadersFix",
-      "expo-font"
+      "expo-font",
+      "expo-asset"
     ]
   }
 }
