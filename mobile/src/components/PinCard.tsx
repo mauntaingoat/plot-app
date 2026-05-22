@@ -51,7 +51,13 @@ export function PinCard({ pin, isPro = false, onPress, onToggleEnabled, onUpgrad
   const specs = pin.beds != null
     ? `${pin.beds ?? 0} bd · ${pin.baths ?? 0} ba · ${(pin.sqft ?? 0).toLocaleString()} sqft`
     : null
-  const isDisabled = pin.enabled === false
+  // Optimistic visibility — flip immediately on toggle tap so both the
+  // knob AND the card opacity transition instantly, before Firestore /
+  // the setPinEnabled callable round-trip completes. Sync from prop
+  // when the snapshot arrives.
+  const [visualEnabled, setVisualEnabled] = useState(pin.enabled !== false)
+  useEffect(() => { setVisualEnabled(pin.enabled !== false) }, [pin.enabled])
+  const isDisabled = !visualEnabled
   const taps = pin.taps ?? 0
 
   return (
@@ -124,8 +130,11 @@ export function PinCard({ pin, isPro = false, onPress, onToggleEnabled, onUpgrad
         )}
         {onToggleEnabled ? (
           <VisibilityToggle
-            enabled={pin.enabled !== false}
-            onChange={onToggleEnabled}
+            enabled={visualEnabled}
+            onChange={(next) => {
+              setVisualEnabled(next)  // instant — drives card opacity + knob
+              onToggleEnabled(next)   // Firestore / callable in background
+            }}
           />
         ) : null}
       </View>
@@ -144,31 +153,24 @@ export function PinCard({ pin, isPro = false, onPress, onToggleEnabled, onUpgrad
  * prop never updates, the optimistic flip is reconciled by the next
  * snapshot (which will reflect the unchanged true value).
  */
+/**
+ * Controlled toggle. PinCard owns the optimistic state; this component
+ * just renders the spring-animated knob driven by the `enabled` prop.
+ * Spring matches the web ToggleSwitch: damping 20 / stiffness 400.
+ */
 function VisibilityToggle({ enabled, onChange }: { enabled: boolean; onChange: (next: boolean) => void }) {
-  const [visual, setVisual] = useState(enabled)
   const x = useSharedValue(enabled ? 20 : 0)
 
-  // Sync visual state when the Firestore snapshot returns new enabled.
   useEffect(() => {
-    setVisual(enabled)
-  }, [enabled])
-
-  // Spring the knob when visual flips.
-  useEffect(() => {
-    x.value = withSpring(visual ? 20 : 0, { damping: 20, stiffness: 400 })
+    x.value = withSpring(enabled ? 20 : 0, { damping: 20, stiffness: 400 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visual])
+  }, [enabled])
 
   const knobStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }))
 
   return (
     <Pressable
-      onPress={() => {
-        const next = !visual
-        selection()
-        setVisual(next)        // optimistic — knob slides immediately
-        onChange(next)         // background Firestore / callable write
-      }}
+      onPress={() => { selection(); onChange(!enabled) }}
       hitSlop={8}
       style={[
         {
@@ -179,7 +181,7 @@ function VisibilityToggle({ enabled, onChange }: { enabled: boolean; onChange: (
           padding: 2,
           justifyContent: 'center',
         },
-        { backgroundColor: visual ? COLORS.tangerine : COLORS.pearl },
+        { backgroundColor: enabled ? COLORS.tangerine : COLORS.pearl },
       ]}
     >
       <Animated.View
