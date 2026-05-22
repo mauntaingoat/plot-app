@@ -67,7 +67,10 @@ export function BottomTabBar({ active, onChange, inboxUnread = 0 }: Props) {
       indicatorX.value = target
       measured.current = true
     } else {
-      indicatorX.value = withSpring(target, { damping: 25, stiffness: 350, mass: 0.6 })
+      // Bouncier spring than web (lower damping + softer stiffness) so
+      // the indicator visibly overshoots + settles, matching the
+      // mobile-browser feel the user asked for.
+      indicatorX.value = withSpring(target, { damping: 13, stiffness: 220, mass: 0.7 })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active])
@@ -90,29 +93,21 @@ export function BottomTabBar({ active, onChange, inboxUnread = 0 }: Props) {
     <View style={[styles.outer, { paddingBottom: Math.max(insets.bottom, 8) }]}>
       {/* Tabs row */}
       <View style={styles.row}>
-        {TABS.map((tab) => {
-          const isActive = active === tab.id
-          const color = isActive ? COLORS.tangerine : COLORS.ash
-          const badge = tab.id === 'inbox' && inboxUnread > 0 ? inboxUnread : 0
-          return (
-            <Pressable
-              key={tab.id}
-              onLayout={onTabLayout(tab.id)}
-              onPress={() => { if (!isActive) { selection(); onChange(tab.id) } }}
-              style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
-            >
-              <View style={styles.iconSlot}>
-                <tab.Icon size={22} color={color} weight={isActive ? 'fill' : 'regular'} />
-                {badge > 0 ? (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{badge > 99 ? '99+' : badge}</Text>
-                  </View>
-                ) : null}
-              </View>
-              <Text style={[styles.label, { color }]}>{tab.label}</Text>
-            </Pressable>
-          )
-        })}
+        {TABS.map((tab) => (
+          <TabItem
+            key={tab.id}
+            tab={tab}
+            isActive={active === tab.id}
+            inboxUnread={inboxUnread}
+            onLayout={onTabLayout(tab.id)}
+            onPress={() => {
+              if (active !== tab.id) {
+                selection()
+                onChange(tab.id)
+              }
+            }}
+          />
+        ))}
       </View>
 
       {/* Sliding indicator — absolutely positioned, translates X with
@@ -126,6 +121,57 @@ export function BottomTabBar({ active, onChange, inboxUnread = 0 }: Props) {
         ]}
       />
     </View>
+  )
+}
+
+/**
+ * Single tab item. Owns its own `lift` shared value so the icon
+ * springs up by 2px when becoming active and back when becoming
+ * inactive. Icons are always outline (weight="regular") — only the
+ * color changes between ash and tangerine on activation.
+ */
+function TabItem({
+  tab,
+  isActive,
+  inboxUnread,
+  onPress,
+  onLayout,
+}: {
+  tab: TabDef
+  isActive: boolean
+  inboxUnread: number
+  onPress: () => void
+  onLayout: (e: LayoutChangeEvent) => void
+}) {
+  const lift = useSharedValue(isActive ? -2 : 0)
+  useEffect(() => {
+    lift.value = withSpring(isActive ? -2 : 0, { damping: 13, stiffness: 220, mass: 0.7 })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive])
+
+  const liftStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: lift.value }],
+  }))
+
+  const color = isActive ? COLORS.tangerine : COLORS.ash
+  const badge = tab.id === 'inbox' && inboxUnread > 0 ? inboxUnread : 0
+
+  return (
+    <Pressable
+      onLayout={onLayout}
+      onPress={onPress}
+      style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
+    >
+      <Animated.View style={[styles.iconSlot, liftStyle]}>
+        <tab.Icon size={22} color={color} weight="regular" />
+        {badge > 0 ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{badge > 99 ? '99+' : badge}</Text>
+          </View>
+        ) : null}
+      </Animated.View>
+      <Animated.Text style={[styles.label, { color }, liftStyle]}>{tab.label}</Animated.Text>
+    </Pressable>
   )
 }
 

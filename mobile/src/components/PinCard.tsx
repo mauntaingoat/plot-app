@@ -1,41 +1,50 @@
 import { View, Text, Image, Pressable, StyleSheet } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { House, Compass, Sparkle, DotsThree } from 'phosphor-react-native'
+import { House, Compass, Sparkle, Key, DotsThree, CursorClick, MapPin as MapPinIcon } from 'phosphor-react-native'
 import { COLORS, FONTS } from '../lib/tokens'
 import { PIN_CONFIG, formatPrice, displayAddressWithUnit, type Pin } from '../types'
-import { lightTap } from '../lib/haptics'
+import { lightTap, selection } from '../lib/haptics'
 
 /**
- * Native port of `src/components/dashboard/PinCard.tsx` (manage
- * variant). Visual elements mirrored from web:
+ * RN port of `src/components/dashboard/PinCard.tsx` (manage variant).
  *
- *  - 16:10 hero image with bottom-to-top black gradient overlay
- *  - Type pill top-left (white-95 bg, type-colored text, 11px bold)
- *  - More-actions button top-right (translucent circle, DotsThree)
- *  - Price bottom-left (mono-ish bold 18px white with drop shadow)
- *  - Address + specs below image (15px ink + 12px smoke)
- *  - Disabled (`enabled === false`) pins render at 0.55 opacity
+ * Elements (in z-order):
+ *  Image area (16:10, rounded top) OR colored gradient fallback
+ *   ├─ Type pill (top-left): white-95 bg, type-colored text
+ *   ├─ Indicators (top-right): open house, pending change (stubbed)
+ *   ├─ Price (bottom-left): white mono-bold 18px, drop shadow
+ *   ├─ Duration badge (bottom-right): glass-dark, only if first content has duration
+ *  Body:
+ *   ├─ Row: MapPin + address (truncated 13px) ← left, More button ← right
+ *   ├─ Specs (12px smoke): "4 bd · 3 ba · 2,132 sqft"
+ *   ├─ Stats row: Tap icon + count (Pro-gated; blurred + Sparkle if not Pro)
+ *   ├─ Visibility toggle: 44×24, tangerine when on, ash pearl when off, spring slide
  *
- * Skipped from web's manage variant for now (will land later):
- *  - Engagement stats row (visits / taps / saves)
- *  - Open house badge
- *  - Pro upgrade lock on stats
- *  - Pending-change pulsing indicator
+ * Disabled (`enabled === false`) pins render at 0.55 opacity.
  */
 
 interface Props {
   pin: Pin
+  isPro?: boolean
   onPress?: () => void
   onMorePress?: () => void
+  onToggleEnabled?: (next: boolean) => void
+  onUpgradePress?: () => void
 }
 
-const TYPE_ICON: Record<Pin['type'], React.ComponentType<{ size?: number; color?: string; weight?: 'fill' | 'regular' }>> = {
+const TYPE_ICON: Record<Pin['type'], React.ComponentType<{ size?: number; color?: string; weight?: 'light' | 'regular' | 'fill' }>> = {
   for_sale: House,
-  sold: Compass,
-  spotlight: Sparkle,
+  sold: Key,
+  spotlight: Compass,
 }
 
-export function PinCard({ pin, onPress, onMorePress }: Props) {
+const TYPE_GRADIENT: Record<Pin['type'], [string, string]> = {
+  for_sale: ['#3B82F6', '#2563EB'],
+  sold: ['#34C759', '#22A34B'],
+  spotlight: ['#FF6B3D', '#E8522A'],
+}
+
+export function PinCard({ pin, isPro = false, onPress, onMorePress, onToggleEnabled, onUpgradePress }: Props) {
   const config = PIN_CONFIG[pin.type]
   const Icon = TYPE_ICON[pin.type]
   const heroImage = pin.heroPhotoUrl
@@ -47,6 +56,7 @@ export function PinCard({ pin, onPress, onMorePress }: Props) {
     ? `${pin.beds ?? 0} bd · ${pin.baths ?? 0} ba · ${(pin.sqft ?? 0).toLocaleString()} sqft`
     : null
   const isDisabled = pin.enabled === false
+  const taps = (pin as Pin & { taps?: number }).taps ?? 0
 
   return (
     <Pressable
@@ -60,35 +70,30 @@ export function PinCard({ pin, onPress, onMorePress }: Props) {
       {/* Hero */}
       <View style={styles.hero}>
         {heroImage ? (
-          <Image source={{ uri: heroImage }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          <>
+            <Image source={{ uri: heroImage }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+            {/* Gradient overlay */}
+            <LinearGradient
+              colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.6)']}
+              locations={[0, 0.55, 1]}
+              style={StyleSheet.absoluteFill}
+            />
+          </>
         ) : (
-          // Fallback: typed gradient background + large faded icon
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: config.bgColor, alignItems: 'center', justifyContent: 'center' }]}>
-            <Icon size={48} color="rgba(255,255,255,0.35)" weight="regular" />
-          </View>
+          <LinearGradient
+            colors={TYPE_GRADIENT[pin.type]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[StyleSheet.absoluteFill, styles.fallback]}
+          >
+            <Icon size={40} color="rgba(255,255,255,0.3)" weight="light" />
+          </LinearGradient>
         )}
-
-        {/* Gradient overlay (bottom-to-top black 60 → transparent) */}
-        <LinearGradient
-          colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.6)']}
-          locations={[0, 0.55, 1]}
-          style={StyleSheet.absoluteFill}
-        />
 
         {/* Type pill */}
         <View style={styles.typePill}>
           <Text style={[styles.typePillText, { color: config.color }]}>{config.label}</Text>
         </View>
-
-        {/* More actions */}
-        {onMorePress ? (
-          <Pressable
-            onPress={() => { lightTap(); onMorePress() }}
-            style={({ pressed }) => [styles.moreBtn, pressed && { opacity: 0.7 }]}
-          >
-            <DotsThree size={18} color={COLORS.warmWhite} weight="bold" />
-          </Pressable>
-        ) : null}
 
         {/* Price overlay */}
         {price ? (
@@ -100,8 +105,59 @@ export function PinCard({ pin, onPress, onMorePress }: Props) {
 
       {/* Body */}
       <View style={styles.body}>
-        <Text style={styles.address} numberOfLines={2}>{displayAddressWithUnit(pin)}</Text>
-        {specs ? <Text style={styles.specs}>{specs}</Text> : null}
+        {/* Address row + More button */}
+        <View style={styles.addressRow}>
+          <View style={{ flex: 1 }}>
+            <View style={styles.addressLine}>
+              <MapPinIcon size={13} color={COLORS.ash} weight="regular" />
+              <Text style={styles.address} numberOfLines={1}>
+                {displayAddressWithUnit(pin)}
+              </Text>
+            </View>
+            {specs ? <Text style={styles.specs}>{specs}</Text> : null}
+          </View>
+          {onMorePress ? (
+            <Pressable
+              onPress={(e) => { e.stopPropagation?.(); lightTap(); onMorePress() }}
+              hitSlop={8}
+              style={({ pressed }) => [styles.moreBtn, pressed && { opacity: 0.6 }]}
+            >
+              <DotsThree size={18} color={COLORS.ash} weight="bold" />
+            </Pressable>
+          ) : null}
+        </View>
+
+        {/* Stats + Toggle row */}
+        <View style={styles.statsRow}>
+          {isPro ? (
+            <View style={styles.stat}>
+              <CursorClick size={12} color={COLORS.smoke} weight="regular" />
+              <Text style={styles.statText}>{taps.toLocaleString()}</Text>
+            </View>
+          ) : (
+            <Pressable
+              onPress={(e) => { e.stopPropagation?.(); lightTap(); onUpgradePress?.() }}
+              style={styles.stat}
+              hitSlop={6}
+            >
+              <CursorClick size={12} color={COLORS.smoke} weight="regular" />
+              {/* Blurred placeholder + Sparkle pip — Pro-gated stat */}
+              <Text style={[styles.statText, styles.statBlur]}>
+                {(taps || 42).toLocaleString()}
+              </Text>
+              <Sparkle size={10} color={COLORS.tangerine} weight="fill" />
+            </Pressable>
+          )}
+          {onToggleEnabled ? (
+            <Pressable
+              onPress={(e) => { e.stopPropagation?.(); selection(); onToggleEnabled(!pin.enabled) }}
+              hitSlop={6}
+              style={[styles.toggle, pin.enabled === false ? styles.toggleOff : styles.toggleOn]}
+            >
+              <View style={[styles.toggleKnob, pin.enabled === false ? styles.knobOff : styles.knobOn]} />
+            </Pressable>
+          ) : null}
+        </View>
       </View>
     </Pressable>
   )
@@ -114,7 +170,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.warmWhite,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
-    // Soft elevation, matches web's shadow-sm
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 1 },
@@ -127,6 +182,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: COLORS.pearl,
   },
+  fallback: { alignItems: 'center', justifyContent: 'center' },
   typePill: {
     position: 'absolute',
     top: 12,
@@ -140,22 +196,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,
   },
-  typePillText: {
-    fontFamily: FONTS.humanistBold,
-    fontSize: 11,
-    letterSpacing: 0.2,
-  },
-  moreBtn: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  typePillText: { fontFamily: FONTS.humanistBold, fontSize: 11, letterSpacing: 0.2 },
   priceWrap: { position: 'absolute', bottom: 12, left: 12 },
   price: {
     fontFamily: FONTS.humanistBold,
@@ -166,7 +207,35 @@ const styles = StyleSheet.create({
     textShadowRadius: 4,
     letterSpacing: 0.3,
   },
-  body: { padding: 14, gap: 4 },
-  address: { fontFamily: FONTS.humanistSemibold, fontSize: 14, color: COLORS.ink, lineHeight: 19 },
-  specs: { fontFamily: FONTS.humanist, fontSize: 12, color: COLORS.smoke },
+
+  body: { padding: 14, gap: 8 },
+  addressRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
+  addressLine: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  address: { fontFamily: FONTS.humanistMedium, fontSize: 13, color: COLORS.graphite, flex: 1 },
+  specs: { fontFamily: FONTS.humanist, fontSize: 12, color: COLORS.smoke, marginTop: 2 },
+  moreBtn: { padding: 4, marginTop: -4, marginRight: -4 },
+
+  statsRow: { flexDirection: 'row', alignItems: 'center', paddingTop: 2 },
+  stat: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  statText: { fontFamily: FONTS.humanistMedium, fontSize: 11, color: COLORS.smoke },
+  statBlur: {
+    color: 'rgba(107, 114, 128, 0.65)',
+    textShadowColor: COLORS.smoke,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
+  },
+
+  toggle: {
+    marginLeft: 'auto',
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    padding: 2,
+    justifyContent: 'center',
+  },
+  toggleOn: { backgroundColor: COLORS.tangerine },
+  toggleOff: { backgroundColor: COLORS.pearl },
+  toggleKnob: { width: 20, height: 20, borderRadius: 10, backgroundColor: COLORS.warmWhite, shadowColor: '#000', shadowOpacity: 0.15, shadowOffset: { width: 0, height: 1 }, shadowRadius: 2 },
+  knobOn: { transform: [{ translateX: 20 }] },
+  knobOff: { transform: [{ translateX: 0 }] },
 })

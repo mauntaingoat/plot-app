@@ -11,6 +11,8 @@ import {
   where,
   orderBy,
   onSnapshot,
+  updateDoc,
+  serverTimestamp,
   type FirebaseFirestoreTypes,
 } from '@react-native-firebase/firestore'
 import type { Pin } from '../types'
@@ -24,10 +26,29 @@ export interface UserDocLite {
   displayName?: string | null
   photoURL?: string | null
   bio?: string | null
+  brokerage?: string | null
+  licenseNumber?: string | null
+  platforms?: { id: string; username: string }[]
   tier?: 'free' | 'pro'
   profileVisits?: number
   pinTaps?: number
   subscriberCount?: number
+}
+
+/** Update a pin doc — used by the visibility toggle, archive action, etc. */
+export async function updatePin(pinId: string, patch: Record<string, unknown>) {
+  const db = getFirestore()
+  await updateDoc(doc(db, 'pins', pinId), patch)
+}
+
+/** Toggle the `enabled` flag on a pin. Mirrors web `handleTogglePin`. */
+export async function togglePinEnabled(pinId: string, enabled: boolean) {
+  await updatePin(pinId, { enabled })
+}
+
+/** Archive a pin — sets archivedAt so the client-side filter hides it. */
+export async function archivePin(pinId: string) {
+  await updatePin(pinId, { archivedAt: serverTimestamp() })
 }
 
 export function subscribeUserDoc(

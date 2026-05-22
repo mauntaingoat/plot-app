@@ -1,9 +1,10 @@
-import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
+import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { MapPin, Plus } from 'phosphor-react-native'
 import { PinCard } from '../../components/PinCard'
 import { COLORS, FONTS } from '../../lib/tokens'
 import { usePins } from '../../lib/usePins'
 import { lightTap } from '../../lib/haptics'
+import type { Pin } from '../../types'
 
 /**
  * My Pins tab — mirrors `src/pages/Dashboard.tsx` reelst section
@@ -16,7 +17,16 @@ import { lightTap } from '../../lib/haptics'
  *    pin" + Create Pin button
  *  - Populated state: 2-column grid of PinCard components
  */
-export function MyPinsTab({ onAddPin }: { onAddPin?: () => void }) {
+interface Props {
+  isPro?: boolean
+  onAddPin?: () => void
+  onPinPress?: (pin: Pin) => void
+  onPinMore?: (pin: Pin) => void
+  onToggleEnabled?: (pin: Pin, next: boolean) => void
+  onUpgrade?: () => void
+}
+
+export function MyPinsTab({ isPro, onAddPin, onPinPress, onPinMore, onToggleEnabled, onUpgrade }: Props) {
   const { pins, loading } = usePins()
 
   return (
@@ -56,7 +66,14 @@ export function MyPinsTab({ onAddPin }: { onAddPin?: () => void }) {
         <View style={styles.grid}>
           {pins.map((pin) => (
             <View key={pin.id} style={styles.col}>
-              <PinCard pin={pin} />
+              <PinCard
+                pin={pin}
+                isPro={isPro}
+                onPress={() => onPinPress?.(pin)}
+                onMorePress={() => onPinMore?.(pin)}
+                onToggleEnabled={(next) => onToggleEnabled?.(pin, next)}
+                onUpgradePress={onUpgrade}
+              />
             </View>
           ))}
         </View>
