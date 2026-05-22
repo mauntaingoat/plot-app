@@ -21,12 +21,11 @@ interface Props {
   isPro?: boolean
   onAddPin?: () => void
   onPinPress?: (pin: Pin) => void
-  onPinMore?: (pin: Pin) => void
   onToggleEnabled?: (pin: Pin, next: boolean) => void
   onUpgrade?: () => void
 }
 
-export function MyPinsTab({ isPro, onAddPin, onPinPress, onPinMore, onToggleEnabled, onUpgrade }: Props) {
+export function MyPinsTab({ isPro, onAddPin, onPinPress, onToggleEnabled, onUpgrade }: Props) {
   const { pins, loading } = usePins()
 
   return (
@@ -34,7 +33,7 @@ export function MyPinsTab({ isPro, onAddPin, onPinPress, onPinMore, onToggleEnab
       {/* TabHeader */}
       <View style={styles.tabHeader}>
         <View style={styles.iconChip}>
-          <MapPin size={20} color={COLORS.warmWhite} weight="fill" />
+          <MapPin size={20} color={COLORS.warmWhite} weight="regular" />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.tabTitle}>My Pins</Text>
@@ -70,7 +69,6 @@ export function MyPinsTab({ isPro, onAddPin, onPinPress, onPinMore, onToggleEnab
                 pin={pin}
                 isPro={isPro}
                 onPress={() => onPinPress?.(pin)}
-                onMorePress={() => onPinMore?.(pin)}
                 onToggleEnabled={(next) => onToggleEnabled?.(pin, next)}
                 onUpgradePress={onUpgrade}
               />

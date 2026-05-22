@@ -23,6 +23,9 @@ export interface Pin {
   state?: string
   zip?: string
   heroPhotoUrl?: string | null
+  /** Listing photos uploaded to the pin (carousel). Used as hero
+   *  fallback when heroPhotoUrl isn't set. */
+  photos?: string[]
   // for_sale / sold pins
   price?: number
   soldPrice?: number
@@ -33,6 +36,8 @@ export interface Pin {
   enabled?: boolean
   archivedAt?: unknown | null
   content?: PinContentItem[]
+  taps?: number
+  views?: number
 }
 
 export const PIN_CONFIG: Record<PinType, {

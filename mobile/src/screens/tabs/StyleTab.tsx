@@ -34,7 +34,7 @@ export function StyleTab() {
       {/* TabHeader */}
       <View style={styles.tabHeader}>
         <View style={styles.iconChip}>
-          <Palette size={20} color={COLORS.warmWhite} weight="fill" />
+          <Palette size={20} color={COLORS.warmWhite} weight="regular" />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.tabTitle}>Style your Reelst</Text>

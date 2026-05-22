@@ -7,6 +7,7 @@ import { COLORS } from '../lib/tokens'
 import { BottomTabBar, type DashTab } from '../components/BottomTabBar'
 import { DashboardHeader } from '../components/DashboardHeader'
 import { PinActionsSheet } from '../components/PinActionsSheet'
+import { SetupChecklistSheet } from '../components/SetupChecklistSheet'
 import { MyPinsTab } from './tabs/MyPinsTab'
 import { ContentTab } from './tabs/ContentTab'
 import { StyleTab } from './tabs/StyleTab'
@@ -32,6 +33,7 @@ export function DashboardScreen() {
   const navigation = useNavigation<Nav>()
   const [activeTab, setActiveTab] = useState<DashTab>('reelst')
   const [pinActions, setPinActions] = useState<Pin | null>(null)
+  const [setupOpen, setSetupOpen] = useState(false)
 
   const { userDoc } = useUserDoc()
   const { pins } = usePins()
@@ -45,6 +47,7 @@ export function DashboardScreen() {
         activeTab={activeTab}
         setupPercent={setupPercent}
         onSettingsPress={() => navigation.navigate('Settings')}
+        onSetupPress={() => setSetupOpen(true)}
       />
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -52,12 +55,7 @@ export function DashboardScreen() {
           <MyPinsTab
             isPro={isPro}
             onAddPin={() => lightTap()}
-            onPinPress={(pin) => {
-              lightTap()
-              // Edit Pin sheet lands in a later milestone — placeholder
-              Alert.alert('Edit Pin', `Editing ${pin.address}\n\n(Edit flow coming soon — wired in the PinCreate / Edit milestone.)`)
-            }}
-            onPinMore={(pin) => setPinActions(pin)}
+            onPinPress={(pin) => setPinActions(pin)}
             onToggleEnabled={(pin, next) => {
               togglePinEnabled(pin.id, next).catch(() => {})
             }}
@@ -70,6 +68,13 @@ export function DashboardScreen() {
       </ScrollView>
 
       <BottomTabBar active={activeTab} onChange={setActiveTab} />
+
+      <SetupChecklistSheet
+        visible={setupOpen}
+        onClose={() => setSetupOpen(false)}
+        user={userDoc}
+        pins={pins}
+      />
 
       <PinActionsSheet
         pin={pinActions}

@@ -70,7 +70,7 @@ export function BottomTabBar({ active, onChange, inboxUnread = 0 }: Props) {
       // Bouncier spring than web (lower damping + softer stiffness) so
       // the indicator visibly overshoots + settles, matching the
       // mobile-browser feel the user asked for.
-      indicatorX.value = withSpring(target, { damping: 13, stiffness: 220, mass: 0.7 })
+      indicatorX.value = withSpring(target, { damping: 22, stiffness: 280, mass: 0.5 })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active])
@@ -145,7 +145,7 @@ function TabItem({
 }) {
   const lift = useSharedValue(isActive ? -2 : 0)
   useEffect(() => {
-    lift.value = withSpring(isActive ? -2 : 0, { damping: 13, stiffness: 220, mass: 0.7 })
+    lift.value = withSpring(isActive ? -2 : 0, { damping: 22, stiffness: 280, mass: 0.5 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive])
 

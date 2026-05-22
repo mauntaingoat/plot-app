@@ -66,7 +66,7 @@ export function ContentTab({ onUpload }: { onUpload?: () => void }) {
       {/* TabHeader */}
       <View style={styles.tabHeader}>
         <View style={styles.iconChip}>
-          <FilmStrip size={20} color={COLORS.warmWhite} weight="fill" />
+          <FilmStrip size={20} color={COLORS.warmWhite} weight="regular" />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.tabTitle}>Content</Text>

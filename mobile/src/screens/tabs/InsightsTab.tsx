@@ -24,7 +24,7 @@ export function InsightsTab() {
       {/* TabHeader */}
       <View style={styles.tabHeader}>
         <View style={styles.iconChip}>
-          <ChartBar size={20} color={COLORS.warmWhite} weight="fill" />
+          <ChartBar size={20} color={COLORS.warmWhite} weight="regular" />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.tabTitle}>Insights</Text>

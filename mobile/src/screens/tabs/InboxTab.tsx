@@ -31,7 +31,7 @@ export function InboxTab() {
       {/* TabHeader */}
       <View style={styles.tabHeader}>
         <View style={styles.iconChip}>
-          <Tray size={20} color={COLORS.warmWhite} weight="fill" />
+          <Tray size={20} color={COLORS.warmWhite} weight="regular" />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.tabTitle}>Inbox</Text>

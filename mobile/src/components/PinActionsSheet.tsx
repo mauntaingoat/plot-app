@@ -1,5 +1,4 @@
-import { Modal, View, Text, Pressable, StyleSheet } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { View, Text, Pressable, StyleSheet } from 'react-native'
 import {
   PencilSimple,
   FilmStrip,
@@ -11,16 +10,17 @@ import {
 } from 'phosphor-react-native'
 import { COLORS, FONTS } from '../lib/tokens'
 import { lightTap, warning } from '../lib/haptics'
+import { BottomSheet } from './BottomSheet'
 import type { Pin } from '../types'
 
 /**
- * Pin actions bottom sheet — mirrors the web pin-actions popover in
- * `src/pages/Dashboard.tsx:726-757` (Edit Details / Add Content /
- * Get QR Code / Open House [for_sale only] / Hide-Show / Archive).
+ * Pin actions bottom sheet. Mirrors the web pin-actions popover in
+ * `src/pages/Dashboard.tsx:726-757`.
  *
- * Renders as a bottom-anchored Modal with a scrim. On iOS this gives
- * a native-feeling action sheet without bringing in a heavy bottom-
- * sheet dependency.
+ * Renders via the reusable `BottomSheet` component so it gets:
+ *  - Tap-scrim to dismiss
+ *  - Swipe-down-to-dismiss with native-feel pan gesture + spring back
+ *  - Slide-up animation on open
  */
 
 interface Props {
@@ -44,11 +44,10 @@ export function PinActionsSheet({
   onToggleVisibility,
   onArchive,
 }: Props) {
-  if (!pin) return null
-  const isForSale = pin.type === 'for_sale'
-  const isHidden = pin.enabled === false
+  const isForSale = pin?.type === 'for_sale'
+  const isHidden = pin?.enabled === false
 
-  const rows = [
+  const rows = pin ? [
     { Icon: PencilSimple, label: 'Edit Details', color: COLORS.ink, onPress: onEditDetails },
     { Icon: FilmStrip,    label: 'Add Content',  color: COLORS.tangerine, onPress: onAddContent },
     { Icon: QrCode,       label: 'Get QR Code',  color: COLORS.tangerine, onPress: onGetQR },
@@ -60,57 +59,33 @@ export function PinActionsSheet({
       onPress: onToggleVisibility,
     },
     { Icon: Trash, label: 'Archive', color: COLORS.liveRed, onPress: onArchive, danger: true },
-  ]
+  ] : []
 
   return (
-    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={styles.scrim} onPress={onClose} />
-      <SafeAreaView style={styles.sheetWrap} edges={['bottom']}>
-        <View style={styles.sheet}>
-          <View style={styles.handle} />
-          <View style={styles.titleRow}>
-            <Text style={styles.title} numberOfLines={1}>{pin.address}</Text>
-          </View>
-          {rows.map(({ Icon, label, color, onPress, danger }) => (
-            <Pressable
-              key={label}
-              onPress={() => {
-                danger ? warning() : lightTap()
-                onPress()
-              }}
-              style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
-            >
-              <Icon size={20} color={color} weight="regular" />
-              <Text style={[styles.label, { color: danger ? COLORS.liveRed : COLORS.ink }]}>
-                {label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      </SafeAreaView>
-    </Modal>
+    <BottomSheet visible={!!pin} onClose={onClose}>
+      <View style={styles.titleRow}>
+        <Text style={styles.title} numberOfLines={1}>{pin?.address}</Text>
+      </View>
+      {rows.map(({ Icon, label, color, onPress, danger }) => (
+        <Pressable
+          key={label}
+          onPress={() => {
+            danger ? warning() : lightTap()
+            onPress()
+          }}
+          style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
+        >
+          <Icon size={20} color={color} weight="regular" />
+          <Text style={[styles.label, { color: danger ? COLORS.liveRed : COLORS.ink }]}>
+            {label}
+          </Text>
+        </Pressable>
+      ))}
+    </BottomSheet>
   )
 }
 
 const styles = StyleSheet.create({
-  scrim: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)' },
-  sheetWrap: { flex: 1, justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: COLORS.warmWhite,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 12,
-    paddingBottom: 8,
-    paddingHorizontal: 8,
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: COLORS.pearl,
-    marginBottom: 12,
-  },
   titleRow: { paddingHorizontal: 12, paddingBottom: 8 },
   title: { fontFamily: FONTS.humanistBold, fontSize: 15, color: COLORS.ink },
   row: {
