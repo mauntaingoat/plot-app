@@ -411,22 +411,55 @@ export function ExpandedMapView({
   // Imperative ref so the fit-to-pins button can fly the existing map
   // instead of remounting it (which used to wipe pan/zoom state).
   const mapRef = useRef<MapCanvasHandle | null>(null)
-  // Recenter padding for the expanded view: reserves room for top
-  // chrome (safe-area + profile pill + filter row, ~160px) and
-  // bottom chrome (count badge + dismiss X, ~90px) so pins fit
-  // inside the visually unobstructed map area, not under the
-  // floating UI. Without an explicit override here, fitToPins falls
-  // back to the peek-shape padding (defined for the collapsed heart
-  // silhouette) which is meaningless in the fullscreen view.
+  // Refs to the floating chrome elements. Measured at recenter-click
+  // time so the fitBounds padding lands the pin bounding box EXACTLY
+  // between the bottom edge of the filter row and the top edge of
+  // the cycling count badge — pixel-accurate regardless of safe-area
+  // inset, breakpoint, or pill content width.
+  const filterRowRef = useRef<HTMLDivElement>(null)
+  const bottomChromeRef = useRef<HTMLDivElement>(null)
   const handleFitToPins = () => {
+    const shape = shapeRef.current
+    if (!shape) return mapRef.current?.fitToPins()
+    const shapeBox = shape.getBoundingClientRect()
+    const filterBox = filterRowRef.current?.getBoundingClientRect() ?? null
+    const bottomBox = bottomChromeRef.current?.getBoundingClientRect() ?? null
+    // Chrome offsets relative to the shape (which is the map's
+    // coord frame). Add a small breathing buffer so pins don't
+    // graze the chrome's edge, and a pin-radius buffer so the pin
+    // circles themselves (not just their lat/lng points) stay
+    // inside the visible area.
+    const breathe = 16
+    const pinRadius = 36
     const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768
-    mapRef.current?.fitToPins({
-      top: isDesktop ? 140 : 160,
-      bottom: isDesktop ? 100 : 90,
-      left: isDesktop ? 48 : 24,
-      right: isDesktop ? 48 : 24,
-    })
+    const top = filterBox
+      ? Math.max(40, filterBox.bottom - shapeBox.top + breathe + pinRadius)
+      : (isDesktop ? 140 : 160)
+    const bottom = bottomBox
+      ? Math.max(40, shapeBox.bottom - bottomBox.top + breathe + pinRadius)
+      : (isDesktop ? 100 : 90)
+    const sides = isDesktop ? 48 : 24
+    mapRef.current?.fitToPins({ top, bottom, left: sides, right: sides })
   }
+
+  // Refit the map to the peek-shape padding when the user dismisses
+  // the expanded view, so the collapsed peek lands back at the same
+  // pin-framed-in-heart view it had on first load — even if the user
+  // panned/zoomed deep into the city while expanded. Fires on the
+  // open→false transition only (initial mount has open=false too,
+  // but the prevOpenRef guard skips that case).
+  const prevOpenForRefitRef = useRef<boolean | null>(null)
+  useLayoutEffect(() => {
+    if (prevOpenForRefitRef.current === null) {
+      prevOpenForRefitRef.current = open
+      return
+    }
+    if (prevOpenForRefitRef.current === true && open === false) {
+      const padding = computePeekFitPadding()
+      if (padding) mapRef.current?.fitToPins(padding)
+    }
+    prevOpenForRefitRef.current = open
+  }, [open, computePeekFitPadding])
 
   // Map inits as soon as the agent profile mounts — visitors land on
   // the listings + map peek together, so deferring init only adds
@@ -674,6 +707,7 @@ export function ExpandedMapView({
               the scrollable content so the first pill never slams
               against the left edge. */}
           <div
+            ref={filterRowRef}
             className="absolute left-0 right-0 z-[10] flex justify-center pointer-events-none"
             style={{
               top: 'calc(max(env(safe-area-inset-top, 12px) + 8px, 16px) + 76px)',
@@ -720,7 +754,7 @@ export function ExpandedMapView({
             <X weight="bold" size={16} />
           </button>
 
-          <div style={{ pointerEvents: 'auto' }}>
+          <div ref={bottomChromeRef} style={{ pointerEvents: 'auto' }}>
             <CyclingCountBadge
               forSale={counts.forSale}
               sold={counts.sold}
