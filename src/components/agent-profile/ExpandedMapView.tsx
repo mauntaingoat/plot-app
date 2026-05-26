@@ -411,24 +411,21 @@ export function ExpandedMapView({
   // Imperative ref so the fit-to-pins button can fly the existing map
   // instead of remounting it (which used to wipe pan/zoom state).
   const mapRef = useRef<MapCanvasHandle | null>(null)
-  // Refs to the floating chrome elements. Measured at recenter-click
-  // time so the fitBounds padding lands the pin bounding box EXACTLY
-  // between the bottom edge of the filter row and the top edge of
-  // the cycling count badge — pixel-accurate regardless of safe-area
-  // inset, breakpoint, or pill content width.
+  // Ref to the filter row wrapper. Measured at recenter-click time
+  // so the fitBounds padding tracks the actual filter-row bottom
+  // edge — pixel-accurate regardless of safe-area inset, breakpoint,
+  // or pill content width. The bottom edge is read from the
+  // cycling-count-badge DOM node directly (querySelector) because
+  // its wrapping div is zero-height (the badge itself is position:
+  // absolute out of flow), so a wrapper ref's bbox is meaningless.
   const filterRowRef = useRef<HTMLDivElement>(null)
-  const bottomChromeRef = useRef<HTMLDivElement>(null)
   const handleFitToPins = () => {
     const shape = shapeRef.current
     if (!shape) return mapRef.current?.fitToPins()
     const shapeBox = shape.getBoundingClientRect()
     const filterBox = filterRowRef.current?.getBoundingClientRect() ?? null
-    const bottomBox = bottomChromeRef.current?.getBoundingClientRect() ?? null
-    // Chrome offsets relative to the shape (which is the map's
-    // coord frame). Add a small breathing buffer so pins don't
-    // graze the chrome's edge, and a pin-radius buffer so the pin
-    // circles themselves (not just their lat/lng points) stay
-    // inside the visible area.
+    const badge = shape.querySelector<HTMLElement>('.cycling-count-badge')
+    const bottomBox = badge?.getBoundingClientRect() ?? null
     const breathe = 16
     const pinRadius = 36
     const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768
@@ -754,7 +751,7 @@ export function ExpandedMapView({
             <X weight="bold" size={16} />
           </button>
 
-          <div ref={bottomChromeRef} style={{ pointerEvents: 'auto' }}>
+          <div style={{ pointerEvents: 'auto' }}>
             <CyclingCountBadge
               forSale={counts.forSale}
               sold={counts.sold}
