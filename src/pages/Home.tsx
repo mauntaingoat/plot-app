@@ -1520,31 +1520,25 @@ function PhoneMock() {
         <div className="ph-bio">Helping families call Brickell home.</div>
       </div>
 
+      {/* Highlight strip — small ringed pin circles above the map,
+          mirroring PinHighlightStrip on the real product. Ring
+          colors match the map-pin vocabulary (blue=for sale,
+          green=sold, tangerine=spotlight). Inner fill is the same
+          dark #0A0E17 the real pins use. No labels at this scale —
+          rings alone read cleaner. */}
+      <div className="ph-strip">
+        <div className="ph-pin" style={{ '--ring': '#3B82F6' } as React.CSSProperties} />
+        <div className="ph-pin" style={{ '--ring': '#3B82F6' } as React.CSSProperties} />
+        <div className="ph-pin" style={{ '--ring': '#34C759' } as React.CSSProperties} />
+        <div className="ph-pin" style={{ '--ring': '#FF6B3D' } as React.CSSProperties} />
+        <div className="ph-pin" style={{ '--ring': '#3B82F6' } as React.CSSProperties} />
+      </div>
+
       <div className="ph-map">
         <span className="ph-map-grid" />
         <span className="ph-mp" style={{ left: '22%', top: '40%', background: '#FF6B3D' }} />
         <span className="ph-mp" style={{ left: '54%', top: '28%', background: '#1A8A6B' }} />
         <span className="ph-mp" style={{ left: '76%', top: '60%', background: '#E0A547' }} />
-      </div>
-
-      {/* Highlight strip — small ringed pin circles, mirroring
-          PinHighlightStrip on the real product. Ring colors match
-          the map-pin vocabulary (blue=for sale, green=sold, tangerine=
-          spotlight). Inner fill is the same dark #0A0E17 the real
-          pins use. */}
-      <div className="ph-strip">
-        <div className="ph-pin" style={{ '--ring': '#3B82F6' } as React.CSSProperties}>
-          <span className="ph-pin-pill" style={{ background: '#3B82F6' }}>$988K</span>
-        </div>
-        <div className="ph-pin" style={{ '--ring': '#3B82F6' } as React.CSSProperties}>
-          <span className="ph-pin-pill" style={{ background: '#3B82F6' }}>$1.2M</span>
-        </div>
-        <div className="ph-pin" style={{ '--ring': '#34C759' } as React.CSSProperties}>
-          <span className="ph-pin-pill" style={{ background: '#34C759' }}>SOLD</span>
-        </div>
-        <div className="ph-pin" style={{ '--ring': '#FF6B3D' } as React.CSSProperties}>
-          <span className="ph-pin-pill" style={{ background: '#FF6B3D' }}>Wynwood</span>
-        </div>
       </div>
 
       {/* Links stack — two compact link pills, mirroring

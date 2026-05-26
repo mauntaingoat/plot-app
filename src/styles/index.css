@@ -699,14 +699,15 @@ input:focus, textarea:focus {
 }
 
 /* Highlight strip — mirrors PinHighlightStrip on the real product.
-   Ringed circle pin treatment, dark inner fill (#0A0E17), optional
-   pill underneath colored to the pin type. Ring color cascades via
-   --ring custom prop so each pin is a one-liner. */
+   Sits between the bio and the map peek. Ringed circle pin
+   treatment, dark inner fill (#0A0E17). Ring color cascades via
+   --ring custom prop so each pin is a one-liner. No labels at
+   this scale — the rings alone carry enough signal. */
 .ph-strip {
   display: flex;
   justify-content: center;
   gap: 7px;
-  padding: 4px 2px 14px;
+  padding: 2px 2px 8px;
 }
 
 .ph-pin {
@@ -728,23 +729,6 @@ input:focus, textarea:focus {
   inset: 1.5px;
   border-radius: 50%;
   background: #0A0E17;
-}
-
-.ph-pin-pill {
-  position: absolute;
-  left: 50%;
-  top: 100%;
-  transform: translate(-50%, -45%);
-  padding: 1.5px 5px;
-  border-radius: 999px;
-  font-family: 'Outfit', var(--font-humanist);
-  font-size: 6.5px;
-  font-weight: 700;
-  color: #FFFFFF;
-  white-space: nowrap;
-  letter-spacing: 0.04em;
-  box-shadow: 0 1px 3px rgba(10, 14, 23, 0.28);
-  z-index: 2;
 }
 
 /* Links stack — mirrors CustomLinksStack on the real product.
