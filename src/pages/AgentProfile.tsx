@@ -555,9 +555,18 @@ export default function AgentProfile() {
     const el = scrollContainerRef.current
     if (!el) return
     if (mapExpanded || mapClosing || immersive) {
-      const prev = el.style.overflow
+      const prevOverflow = el.style.overflow
+      const lockedScrollTop = el.scrollTop
       el.style.overflow = 'hidden'
-      return () => { el.style.overflow = prev }
+      return () => {
+        el.style.overflow = prevOverflow
+        // Some layout shifts (dvh recalcs, transient height changes
+        // during the morph) can drift the scroll position even with
+        // overflow locked. Snap it back to where the user was on
+        // unlock so closing the map leaves them at the same scroll
+        // height they expanded from.
+        if (el.scrollTop !== lockedScrollTop) el.scrollTop = lockedScrollTop
+      }
     }
   }, [mapExpanded, mapClosing, immersive])
 
@@ -786,12 +795,14 @@ export default function AgentProfile() {
             // visually equivalent. Longhand has to come AFTER the
             // shorthand `background:` since shorthand resets it.
             backgroundAttachment: isDesktop ? 'fixed' : 'scroll',
-            // When the map is expanded, the card locks to viewport
-            // height so the map can fill it without scroll bleed.
-            // Otherwise it grows naturally with content.
-            ...(mapExpanded
-              ? { height: '100dvh', minHeight: '100dvh' }
-              : { minHeight: '100dvh' }),
+            // Card always grows naturally with content. The expanded
+            // map is position-fixed/absolute and the scroll container
+            // is locked via overflow:hidden, so shrinking the card on
+            // expand isn't needed to prevent bleed — and it caused the
+            // document to become shorter than current scrollTop, which
+            // the browser then clamped to 0 (the "expand snaps me to
+            // the top" bug).
+            minHeight: '100dvh',
           }}
         >
           <AgentProfileHeader

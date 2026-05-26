@@ -55,10 +55,10 @@ export function StickyProfileNav({
       {visible && (
         <motion.div
           key="sticky-profile-nav"
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
+          initial={{ opacity: 0, y: -8, ['--nav-blur' as any]: '0px' }}
+          animate={{ opacity: 1, y: 0, ['--nav-blur' as any]: '14px' }}
+          exit={{ opacity: 0, y: -8, ['--nav-blur' as any]: '0px' }}
+          transition={{ duration: 0.28, ease: [0.25, 0.1, 0.25, 1] }}
           className="fixed top-0 left-0 right-0 z-[60] mx-auto pointer-events-none"
           style={{ maxWidth }}
         >
@@ -68,10 +68,13 @@ export function StickyProfileNav({
               // Tint the bar with the palette's card background and
               // a soft blur so the content scrolling beneath reads
               // as muted, not blocked. Border picks up the palette's
-              // own border token for cohesion.
+              // own border token for cohesion. Blur radius is driven
+              // by --nav-blur (animated by Framer above) so the blur
+              // ramps in smoothly with opacity instead of flashing
+              // to full strength at the first frame of visibility.
               background: `color-mix(in srgb, ${palette.cardBg} 88%, transparent)`,
-              backdropFilter: 'saturate(180%) blur(14px)',
-              WebkitBackdropFilter: 'saturate(180%) blur(14px)',
+              backdropFilter: 'saturate(180%) blur(var(--nav-blur, 14px))',
+              WebkitBackdropFilter: 'saturate(180%) blur(var(--nav-blur, 14px))',
               borderColor: palette.border,
               paddingTop: 'max(env(safe-area-inset-top, 0px), 8px)',
               paddingBottom: 8,
