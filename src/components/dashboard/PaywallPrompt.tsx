@@ -1,8 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Sparkle as Sparkles, Check, ArrowRight } from '@phosphor-icons/react'
-import { useNavigate } from 'react-router-dom'
 import { TIERS, type Tier } from '@/lib/tiers'
 import { useScrollLock } from '@/hooks/useScrollLock'
+import { useStripe } from '@/hooks/useStripe'
 
 interface PaywallPromptProps {
   isOpen: boolean
@@ -25,9 +25,9 @@ const TIER_PERKS: Record<Tier, string[]> = {
 
 export function PaywallPrompt({ isOpen, onClose, reason, upgradeTo = 'pro' }: PaywallPromptProps) {
   useScrollLock(isOpen)
-  const navigate = useNavigate()
   const target = TIERS[upgradeTo]
   const perks = TIER_PERKS[upgradeTo]
+  const { loading, error, upgradeToPro } = useStripe()
 
   return (
     <AnimatePresence>
@@ -71,11 +71,17 @@ export function PaywallPrompt({ isOpen, onClose, reason, upgradeTo = 'pro' }: Pa
                 </div>
               ))}
 
+              {error && (
+                <p className="text-[12px] text-live-red text-center mt-3" role="alert">
+                  {error}
+                </p>
+              )}
               <button
-                onClick={() => { onClose(); navigate('/pricing') }}
-                className="brand-btn-flat w-full mt-5 inline-flex items-center justify-center gap-2 px-6 py-3.5 font-bold text-[15px] cursor-pointer"
+                onClick={() => { upgradeToPro() }}
+                disabled={loading}
+                className="brand-btn-flat w-full mt-5 inline-flex items-center justify-center gap-2 px-6 py-3.5 font-bold text-[15px] cursor-pointer disabled:opacity-60"
               >
-                Upgrade to {target.name} <ArrowRight size={16} />
+                {loading ? 'Opening checkout…' : <>Upgrade to {target.name} <ArrowRight size={16} /></>}
               </button>
               <button onClick={onClose} className="w-full text-center text-[13px] text-smoke font-medium cursor-pointer hover:text-ink transition-colors">
                 Maybe later

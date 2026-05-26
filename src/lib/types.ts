@@ -78,6 +78,16 @@ export interface UserDoc {
    *  'brand', 'listings'). Used for product analytics + cohorting.
    *  Not surfaced in the public profile. */
   onboardingGoals?: string[]
+  /** Stripe billing — populated by createCheckoutSession +
+   *  stripeWebhook in functions/src/stripe.ts. Source of truth for
+   *  tier sync; do NOT write these client-side. */
+  stripeCustomerId?: string
+  stripeSubscriptionId?: string
+  /** Mirrors Stripe's subscription.status enum exactly. The webhook
+   *  flips tier='pro' on 'active' / 'trialing' and tier='free' on
+   *  'canceled' / 'unpaid' / 'incomplete_expired'. 'past_due' and
+   *  'incomplete' are grace states — tier stays whatever it was. */
+  subscriptionStatus?: 'active' | 'trialing' | 'past_due' | 'canceled' | 'unpaid' | 'incomplete' | 'incomplete_expired'
 }
 
 // ── Pin types — 2 listing types + spotlight ──

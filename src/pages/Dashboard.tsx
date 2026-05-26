@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MapPin, ChartBar as BarChart3, Users, Gear as Settings, Plus, Eye, CursorClick as MousePointerClick, ArrowSquareOut as ExternalLink, SignOut as LogOut, CaretRight as ChevronRight, CreditCard, User, Trash as Trash2, PencilSimple as Edit3, EyeSlash as EyeOff, LinkSimple as Link2, Shield, FilmStrip as Film, ShareNetwork as Share2, Copy, Check, X, QrCode, CalendarDots as CalendarDays, Tray as Inbox, Bell, Camera, Sun, Moon, ArrowsClockwise as RefreshCw, Warning as AlertTriangle, ArrowRight, Buildings as Building, Palette, Heart, HandWaving as Hand, Lock, ChatCircleDots, PaperPlaneTilt } from '@phosphor-icons/react'
 import { TabBar } from '@/components/ui/TabBar'
@@ -22,6 +22,7 @@ import { OpenHouseEditor } from '@/components/dashboard/OpenHouseEditor'
 import { PinEditModal } from '@/components/dashboard/PinEditModal'
 import { ShowingInbox } from '@/components/dashboard/ShowingInbox'
 import { NotificationSettings } from '@/components/dashboard/NotificationSettings'
+import { useStripe } from '@/hooks/useStripe'
 import { ContentLibrary } from '@/components/dashboard/ContentLibrary'
 import { StyleTab } from '@/components/dashboard/StyleTab'
 import { UploadBar } from '@/components/dashboard/UploadBar'
@@ -104,6 +105,7 @@ function useIsWide() {
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const location = useLocation()
   const { userDoc, setUserDoc, firebaseUser, loading, initialized } = useAuthStore()
 
@@ -964,18 +966,21 @@ export default function Dashboard() {
             />
 
             <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Plan</p>
-            <motion.button
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate('/pricing')}
-              className="w-full flex items-center gap-3.5 bg-cream rounded-[14px] p-4 text-left cursor-pointer"
-            >
-              <div className="w-10 h-10 rounded-[12px] bg-pearl flex items-center justify-center"><CreditCard size={18} className="text-graphite" /></div>
-              <div className="flex-1">
-                <span className="text-[15px] font-medium text-ink block">Subscription</span>
-                <span className="text-[12px] text-smoke">{getUserTier(activeUser) === 'pro' ? 'Pro plan · $29.99/mo' : 'Free plan'}</span>
+            <SubscriptionRow user={activeUser} />
+            {/* checkout=success returned from Stripe — show a small
+                confirmation banner. Webhook usually flips tier within
+                a few seconds; if it lags, the user just sees Free
+                here for a beat. */}
+            {searchParams?.get('checkout') === 'success' && (
+              <div
+                className="rounded-[14px] px-4 py-3 mt-2"
+                style={{ background: 'rgba(52,199,89,0.08)', border: '1px solid rgba(52,199,89,0.2)' }}
+              >
+                <p className="text-[13px] text-graphite leading-snug">
+                  <strong className="text-ink">Pro activated.</strong> Welcome to Reelst Pro — refresh if your account still shows Free.
+                </p>
               </div>
-              <Badge>{getUserTier(activeUser) === 'pro' ? 'Pro' : 'Free'}</Badge>
-            </motion.button>
+            )}
 
             <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Feedback</p>
             <FeedbackForm />
@@ -1945,6 +1950,68 @@ function SocialLinksPanel({ isOpen, onClose, existingPlatforms, onAdd, onRemove,
     <DarkBottomSheet isOpen={isOpen} onClose={onClose} title="Social Links">
       {content}
     </DarkBottomSheet>
+  )
+}
+
+/**
+ * Subscription row in Settings → Plan. Behavior depends on tier:
+ *   - Pro + has Stripe customer → opens Stripe Billing Portal
+ *     (manage card, cancel, view invoices)
+ *   - Pro without Stripe customer (admin/manual) → no-op (admin-
+ *     granted Pro doesn't have a Stripe sub to manage)
+ *   - Free → opens the paywall prompt which mints a Stripe Checkout
+ *     session via the same useStripe hook.
+ */
+function SubscriptionRow({ user }: { user: UserDoc | null }) {
+  const { loading, error, openBillingPortal, upgradeToPro } = useStripe()
+  const navigate = useNavigate()
+  if (!user) return null
+  const tier = getUserTier(user)
+  const isPro = tier === 'pro'
+  const hasStripeSub = !!(user as UserDoc).stripeCustomerId
+  const handleClick = () => {
+    if (loading) return
+    if (isPro && hasStripeSub) {
+      openBillingPortal()
+    } else if (isPro && !hasStripeSub) {
+      // Admin / gift Pro — no Stripe sub to manage. Send them to the
+      // pricing page in case they want to compare or contact support.
+      navigate('/pricing')
+    } else {
+      upgradeToPro()
+    }
+  }
+  return (
+    <>
+      <motion.button
+        whileTap={{ scale: 0.98 }}
+        onClick={handleClick}
+        disabled={loading}
+        className="w-full flex items-center gap-3.5 bg-cream rounded-[14px] p-4 text-left cursor-pointer disabled:opacity-60"
+      >
+        <div className="w-10 h-10 rounded-[12px] bg-pearl flex items-center justify-center">
+          <CreditCard size={18} className="text-graphite" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="text-[15px] font-medium text-ink block">
+            {isPro ? 'Manage subscription' : 'Subscription'}
+          </span>
+          <span className="text-[12px] text-smoke">
+            {loading
+              ? 'Opening…'
+              : isPro
+              ? `Pro plan · $29.99/mo${hasStripeSub ? '' : ' (admin)'}`
+              : 'Free plan — upgrade to Pro'}
+          </span>
+        </div>
+        <Badge>{isPro ? 'Pro' : 'Free'}</Badge>
+      </motion.button>
+      {error && (
+        <p className="text-[12px] text-live-red px-2 mt-1" role="alert">
+          {error}
+        </p>
+      )}
+    </>
   )
 }
 
