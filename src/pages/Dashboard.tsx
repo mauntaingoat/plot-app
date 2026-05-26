@@ -22,7 +22,6 @@ import { OpenHouseEditor } from '@/components/dashboard/OpenHouseEditor'
 import { PinEditModal } from '@/components/dashboard/PinEditModal'
 import { ShowingInbox } from '@/components/dashboard/ShowingInbox'
 import { NotificationSettings } from '@/components/dashboard/NotificationSettings'
-import { TeamSettings } from '@/components/dashboard/TeamSettings'
 import { ContentLibrary } from '@/components/dashboard/ContentLibrary'
 import { StyleTab } from '@/components/dashboard/StyleTab'
 import { UploadBar } from '@/components/dashboard/UploadBar'
@@ -977,11 +976,6 @@ export default function Dashboard() {
               </div>
               <Badge>{getUserTier(activeUser) === 'pro' ? 'Pro' : 'Free'}</Badge>
             </motion.button>
-
-            {/* Team membership — only renders when the user belongs to
-                an organization (TeamSettings returns null otherwise).
-                Admin sees full roster + invite UI; members see leave. */}
-            <TeamSettings />
 
             <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Feedback</p>
             <FeedbackForm />

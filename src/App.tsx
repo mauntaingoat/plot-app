@@ -38,7 +38,6 @@ import NotFound from '@/pages/NotFound'
 // EmailPreview is admin-only; UnsubManage is once per email recipient.
 const EmailPreview = lazy(() => import('@/pages/EmailPreview'))
 const UnsubManage = lazy(() => import('@/pages/UnsubManage'))
-const AcceptInvite = lazy(() => import('@/pages/AcceptInvite'))
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -189,7 +188,6 @@ function AppRoutes() {
         <Route path="/auth/action" element={<AuthAction />} />
         <Route path="/dev/email-preview" element={<RequireAdmin><EmailPreview /></RequireAdmin>} />
         <Route path="/u/:token" element={<UnsubManage />} />
-        <Route path="/invite/:token" element={<AcceptInvite />} />
         <Route path="/dashboard" element={<RequireVerified><Dashboard /></RequireVerified>} />
         <Route path="/dashboard/pin/new" element={<RequireVerified><PinCreate /></RequireVerified>} />
         <Route path="/dashboard/pin/:id/edit" element={<RequireVerified><PinCreate /></RequireVerified>} />
