@@ -68,14 +68,6 @@
       ]
     },
     {
-      "collectionGroup": "follows",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "followedUid", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "saves",
       "queryScope": "COLLECTION",
       "fields": [
@@ -100,11 +92,11 @@
       ]
     },
     {
-      "collectionGroup": "follower_snapshots",
+      "collectionGroup": "reports",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "agentId", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "ASCENDING" }
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
     {
@@ -146,15 +138,6 @@
       "fields": [
         { "fieldPath": "visitorId", "order": "ASCENDING" },
         { "fieldPath": "date", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "comments",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "pinId", "order": "ASCENDING" },
-        { "fieldPath": "contentId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
     {

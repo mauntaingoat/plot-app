@@ -268,7 +268,7 @@ export default function EmailPreview() {
                 surface === s ? 'bg-ink text-warm-white' : 'text-graphite hover:bg-pearl'
               }`}
             >
-              {s === 'auth' ? 'Auth' : s === 'digest' ? 'Digest' : 'Notification'}
+              {s === 'auth' ? 'Auth' : s === 'digest' ? 'Weekly updates' : 'Notification'}
             </button>
           ))}
         </div>

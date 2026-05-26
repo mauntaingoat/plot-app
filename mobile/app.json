@@ -19,7 +19,8 @@
         "NSPhotoLibraryUsageDescription": "Reelst needs access to your photo library so you can upload listing photos and reels.",
         "NSPhotoLibraryAddUsageDescription": "Reelst saves rendered reels to your photo library.",
         "NSLocationWhenInUseUsageDescription": "Reelst uses your location to drop pins for your listings on the map."
-      }
+      },
+      "appleTeamId": "7NCQQR898A"
     },
     "android": {
       "package": "co.reelst.app",
@@ -44,7 +45,8 @@
       ],
       "./plugins/withModularHeadersFix",
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      "@react-native-google-signin/google-signin"
     ]
   }
 }

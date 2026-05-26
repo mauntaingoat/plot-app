@@ -10,7 +10,14 @@ export interface PinContentItem {
   id?: string
   type?: 'reel' | 'photo' | string
   mediaUrl?: string | null
+  /** Carousel photos: the full set of image URLs. */
+  mediaUrls?: string[] | null
   thumbnailUrl?: string | null
+  caption?: string | null
+  views?: number
+  saves?: number
+  aspect?: string
+  status?: 'preparing' | 'ready' | 'errored'
 }
 
 export interface Pin {
@@ -37,7 +44,10 @@ export interface Pin {
   archivedAt?: unknown | null
   content?: PinContentItem[]
   taps?: number
+  saves?: number
+  waves?: number
   views?: number
+  openHouse?: unknown
 }
 
 export const PIN_CONFIG: Record<PinType, {

@@ -5,7 +5,7 @@ import {
   type DocumentData, type Unsubscribe,
 } from 'firebase/firestore'
 import { db, firebaseConfigured } from '@/config/firebase'
-import type { UserDoc, Pin, ForSalePin, SoldPin, SpotlightPin, ContentItem, ContentDoc, Coordinates, PinType, ShowingRequest, ContentReport, ReportReason, DmcaRequest, PendingPinChange, DigestSubscription, Wave } from '@/lib/types'
+import type { UserDoc, Pin, ForSalePin, SoldPin, SpotlightPin, ContentItem, ContentDoc, Coordinates, PinType, ShowingRequest, ContentReport, ReportReason, DmcaRequest, DigestSubscription, Wave } from '@/lib/types'
 import { TYPE_SPECIFIC_FIELDS } from '@/lib/types'
 
 // ══════════════════════════════════════════
@@ -132,102 +132,6 @@ export async function setPinEnabled(pinId: string, enabled: boolean): Promise<vo
   const functions = getFunctions(app ?? undefined)
   const fn = httpsCallable<{ pinId: string; enabled: boolean }, { ok: boolean }>(functions, 'setPinEnabled')
   await fn({ pinId, enabled })
-}
-
-// ══════════════════════════════════════════
-// PENDING PIN CHANGES (Rentcast sync diffs)
-// ══════════════════════════════════════════
-
-/**
- * Subscribe to all pending property-data changes for an agent. Pushes
- * an empty array if the agent has nothing pending. The Cloud Function
- * (syncPropertyData) is the only producer; only the agent can delete.
- */
-export function subscribeToAgentPendingChanges(
-  agentId: string,
-  cb: (changes: PendingPinChange[]) => void,
-): Unsubscribe | null {
-  if (!db) return null
-  try {
-    const q = query(
-      collectionGroup(db, 'pendingChanges'),
-      where('agentId', '==', agentId),
-    )
-    return onSnapshot(q, (snap) => {
-      cb(snap.docs.map((d) => d.data() as PendingPinChange))
-    }, (err) => {
-      console.warn('[firestore] pendingChanges subscription error:', err.message)
-      cb([])
-    })
-  } catch {
-    return null
-  }
-}
-
-/**
- * Approve a pending change — apply the diff to the pin doc and delete
- * the pendingChanges record. Type transitions route through
- * updatePinType so type-specific fields get cleaned up.
- */
-export async function approvePendingChange(change: PendingPinChange): Promise<void> {
-  if (!db) return
-  const pinRef = doc(db, 'pins', change.pinId)
-  const pendingRef = doc(db, 'pins', change.pinId, 'pendingChanges', 'latest')
-
-  if (change.typeChange) {
-    // Type transition — for_sale ↔ sold. Build the new-shape data and
-    // route through updatePinType so old-type-only fields disappear.
-    const newType = change.typeChange.to
-    const newData: Record<string, unknown> = {}
-    if (change.priceChange) {
-      newData[newType === 'sold' ? 'soldPrice' : 'price'] = change.priceChange.to
-      if (newType === 'sold') {
-        newData.originalPrice = change.priceChange.from
-      }
-    }
-    if (newType === 'sold' && change.soldDate) {
-      // Firestore is strict about timestamps; the date string from
-      // Rentcast is ISO so we store it as-is — UI parses on read.
-      newData.soldDate = change.soldDate
-    }
-    if (change.mlsNumber !== undefined) newData.mlsNumber = change.mlsNumber
-    await updatePinType(change.pinId, change.typeChange.from, newType, newData)
-  } else if (change.priceChange) {
-    // Price-only change. Apply to the field corresponding to the pin's
-    // current type — the diff was computed against that field.
-    const pinSnap = await getDoc(pinRef)
-    const currentType = (pinSnap.data() as { type?: PinType } | undefined)?.type
-    const priceField = currentType === 'sold' ? 'soldPrice' : 'price'
-    const updates: Record<string, unknown> = {
-      [priceField]: change.priceChange.to,
-      updatedAt: serverTimestamp(),
-    }
-    if (change.mlsNumber !== undefined) updates.mlsNumber = change.mlsNumber
-    await updateDoc(pinRef, updates as DocumentData)
-  }
-
-  await deleteDoc(pendingRef)
-}
-
-/**
- * Reject a pending change — write the rejected values to the pin's
- * `rejectedSnapshot` field so the next sync skips re-suggesting the
- * same change, and delete the pendingChanges record.
- */
-export async function rejectPendingChange(change: PendingPinChange): Promise<void> {
-  if (!db) return
-  const pinRef = doc(db, 'pins', change.pinId)
-  const pendingRef = doc(db, 'pins', change.pinId, 'pendingChanges', 'latest')
-
-  const rejected: Record<string, unknown> = {}
-  if (change.priceChange) rejected.price = change.priceChange.to
-  if (change.typeChange) rejected.type = change.typeChange.to
-
-  await updateDoc(pinRef, {
-    rejectedSnapshot: rejected,
-    updatedAt: serverTimestamp(),
-  } as DocumentData)
-  await deleteDoc(pendingRef)
 }
 
 /** Accepts any partial pin fields — including subtype-specific ones
@@ -766,6 +670,22 @@ export async function incrementPinTap(pinId: string) {
   const { getVisitorId } = await import('@/lib/visitorId')
   const fn = httpsCallable(getFunctions(app ?? undefined), 'trackEngagement')
   fn({ pinId, action: 'tap', localHour: new Date().getHours(), visitorId: getVisitorId() }).catch(() => {})
+}
+
+/** Public-profile custom link tap. Calls the `trackLinkTap` callable
+ *  which writes a single `events` row with `type: 'link_tap'`, keyed
+ *  on agentId + linkId. Fire-and-forget — never await; we don't want
+ *  the external nav to wait on a Firestore round-trip.
+ *
+ *  Note: the matching server callable lands with the editor batch.
+ *  Until then this silently no-ops via the .catch — link clicks
+ *  still work, they just don't show up in analytics yet. */
+export async function trackLinkTap(agentId: string, linkId: string) {
+  const { getFunctions, httpsCallable } = await import('firebase/functions')
+  const { app } = await import('@/config/firebase')
+  const { getVisitorId } = await import('@/lib/visitorId')
+  const fn = httpsCallable(getFunctions(app ?? undefined), 'trackLinkTap')
+  fn({ agentId, linkId, localHour: new Date().getHours(), visitorId: getVisitorId() }).catch(() => {})
 }
 
 // ══════════════════════════════════════════

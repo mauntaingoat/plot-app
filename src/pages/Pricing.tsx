@@ -30,9 +30,9 @@ const PLANS = [
       { text: '3 active pins on your map', included: true },
       { text: '3-min reels & carousels', included: true },
       { text: 'Your own reel.st link', included: true },
-      { text: 'MLS data auto-fill', included: true },
+      { text: 'Address search + interactive map', included: true },
       { text: 'Showing request inbox', included: true },
-      { text: (<>Email your <DefinedTerm term="Saves" def="Buyers subscribed to your weekly digest. You get their email; they get every listing and open house you post." /></>), key: 'email-saves', included: true },
+      { text: (<>Email your <DefinedTerm term="Subscribers" def="People subscribed to your weekly updates. You get their email; they get every listing and open house you post." /></>), key: 'email-subscribers', included: true },
       { text: 'Basic customization', included: true },
     ],
   },
@@ -45,7 +45,7 @@ const PLANS = [
     featured: true,
     features: [
       { text: 'Everything in Free, plus:', included: true, header: true },
-      { text: 'Unlimited pins', included: true },
+      { text: '50 active pins', included: true },
       { text: 'Open house scheduling', included: true },
       { text: 'Full analytics dashboard', included: true },
       { text: 'Audience Crossover insights', included: true },
@@ -62,15 +62,15 @@ const FAQS = [
   },
   {
     q: 'What\'s the difference between Free and Pro?',
-    a: 'Free covers the basics: up to 3 active pins, full content per pin (reels, photo carousels, photos), and core stats, visits, taps, saves, and waves. Pro at $19/mo unlocks unlimited pins, the full insights dashboard (peak hours, save growth, audience crossover, content conversion), open-house scheduling, email digests to everyone who saved you, and the expanded customization library, extra palettes, fonts, and map shapes.',
+    a: 'Free covers the basics: up to 3 active pins, full content per pin (reels, photo carousels, photos), and core stats, visits, taps, subscribers, and waves. Pro at $19/mo unlocks 50 active pins (enough for a full working inventory), the full insights dashboard (peak hours, subscriber growth, audience crossover, content conversion), open-house scheduling, weekly updates to everyone who subscribed to you, and the expanded customization library, extra palettes, fonts, and map shapes.',
   },
   {
     q: 'Can I import my existing listings?',
-    a: 'Just type the address. Reelst auto-fills beds, baths, sqft, home type, year built, list price, days on market, and MLS # from public records. Drop your reels and walkthroughs on top.',
+    a: 'Type the address — Reelst snaps it to a real map location and lets you fill in your beds, baths, sqft, and price. Drop your reels, photo carousels, and walkthroughs on top.',
   },
   {
     q: 'What can visitors do on my profile?',
-    a: 'Visitors don\'t need an account to interact. They can save your profile (drops their email so we send a digest when you post new listings or content), wave on a listing (sends you their name, email, phone, and an optional question), or request a showing. Everything lands in your inbox.',
+    a: 'Visitors don\'t need an account to interact. They can subscribe to your profile (drops their email so we send a weekly update when you post new listings or content), wave on a listing (sends you their name, email, phone, and an optional question), or request a showing. Everything lands in your inbox.',
   },
   {
     q: 'What can I post on a pin?',
@@ -105,7 +105,7 @@ export default function Pricing() {
     <MarketingLayout>
       <SEOHead
         title="Pricing"
-        description="Reelst is free to start. Go Pro at $19/mo for unlimited pins, full analytics, and expanded customization."
+        description="Reelst is free to start. Go Pro at $19/mo for 50 active pins, full analytics, and expanded customization."
         path="/pricing"
       />
 

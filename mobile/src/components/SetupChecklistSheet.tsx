@@ -36,7 +36,6 @@ function buildItems(user: UserDocLite | null, pins: Pin[]): Item[] {
     { label: 'Add your display name',       weight: 10, done: !!user.displayName },
     { label: 'Write a short bio',           weight: 10, done: !!user.bio },
     { label: 'Connect a social platform',   weight: 15, done: (user.platforms?.length ?? 0) > 0 },
-    { label: 'Add your license number',     weight: 10, done: !!user.licenseNumber },
     { label: 'Drop your first pin',         weight: 20, done: pins.length >= 1 },
     { label: 'Have at least 3 pins',        weight: 10, done: pins.length >= 3 },
   ]

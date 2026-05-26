@@ -1789,25 +1789,33 @@ input:focus, textarea:focus {
   transition: clip-path 0.6s cubic-bezier(0.32, 0.72, 0, 1);
 }
 .expanded-map-shape.is-expanded {
+  /* Height MUST match the collapsed state (max(100dvh, 720px)) — if
+     it doesn't, Mapbox's canvas resizes between states and the
+     geographic center, pinned at canvas-pixel-center, lands at a
+     different viewport pixel y. That reads as the map "jumping
+     down on collapse, up on expand." Keeping the canvas size
+     identical in both states means clip-path is the ONLY thing
+     that changes — no camera shift. */
   position: fixed;
-  inset: 0;
-  height: auto;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: auto;
+  height: max(100dvh, 720px);
   z-index: 120;
 }
 @media (min-width: 768px) {
-  /* Desktop peek inherits the base 100dvh height — earlier we used
-     `inset: 0; height: auto` which made peek shape match the card's
-     full content height. That caused a canvas resize when the card
-     flipped to `height: 100dvh` on expand (peek tall → expanded
-     short), reading as a "map reload" on every transition. With
-     both states pinned at 100dvh, the canvas stays the same size,
-     so expand/collapse is a clean clip-path morph with no resize. */
+  /* Desktop expanded mirrors mobile — same height floor as
+     collapsed so canvas size is invariant across the morph. */
   .expanded-map-shape.is-expanded {
-    /* Card-bound expand on desktop (matches what already worked) — */
-    /*  position: absolute keeps it inside the centered card frame. */
+    /* Card-bound on desktop (centered frame) — position: absolute
+       so it stays inside the card, not the viewport. */
     position: absolute;
-    inset: 0;
-    height: 100dvh;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: auto;
+    height: max(100dvh, 720px);
     z-index: 40;
   }
 }
@@ -1824,6 +1832,24 @@ input:focus, textarea:focus {
 @media (min-width: 768px) {
   :root {
     --map-bottom-inset: 56px;
+  }
+}
+/* When the shape is expanded and the 720px height floor exceeds
+   100dvh, the shape extends below the viewport. Bottom-anchored
+   chrome (X dismiss, cycling count badge) is positioned relative
+   to the shape, so it ends up cropped under the viewport edge.
+   Add the overflow back to the inset so the chrome rises into
+   the visible viewport. max(0, 720 - 100dvh) is 0 on tall
+   viewports (no adjustment), positive on short ones. */
+.expanded-map-shape.is-expanded {
+  --map-bottom-inset: calc(
+    max(env(safe-area-inset-bottom, 12px) + 12px, 24px)
+    + max(0px, 720px - 100dvh)
+  );
+}
+@media (min-width: 768px) {
+  .expanded-map-shape.is-expanded {
+    --map-bottom-inset: calc(56px + max(0px, 720px - 100dvh));
   }
 }
 

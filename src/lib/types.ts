@@ -60,6 +60,10 @@ export interface UserDoc {
   setupPercent: number
   fcmTokens?: string[] // device tokens for web push
   notificationPrefs?: NotificationPrefs
+  /** Independent email channel — same prefKeys as notificationPrefs
+   *  but gates email delivery instead of push. Added 2026-05-22 so
+   *  agents can opt out of email without losing push (or vice versa). */
+  emailPrefs?: NotificationPrefs
   suspended?: boolean // admin can suspend an agent
   suspendedReason?: string
   giftTier?: UserTier
@@ -220,13 +224,6 @@ export interface PinBase {
    *  function deletes Storage + Mux assets and hard-deletes the doc
    *  7 days after this timestamp. Null/undefined while pin is active. */
   archivedAt?: Timestamp | null
-  /** Records the most recent diff the agent rejected via the property
-   *  sync review modal. The next syncPropertyData run skips diffs that
-   *  match this snapshot so a rejected change isn't re-suggested. */
-  rejectedSnapshot?: {
-    price?: number
-    type?: 'for_sale' | 'sold'
-  } | null
   createdAt: Timestamp
   updatedAt: Timestamp
   views: number
@@ -303,28 +300,6 @@ export interface SpotlightPin extends PinBase {
 }
 
 export type Pin = ForSalePin | SoldPin | SpotlightPin
-
-/**
- * Property-data diff produced by the syncPropertyData scheduled
- * Cloud Function and stored at /pins/{pinId}/pendingChanges/latest.
- * The dashboard reads these on load to surface a review modal/sheet.
- * Mutations on the diff (approve/reject) are done via firestore.ts
- * helpers — never directly written by the client.
- */
-export interface PendingPinChange {
-  /** Same as the parent pin id — denormalized for easier client use. */
-  pinId: string
-  agentId: string
-  syncedAt: Timestamp
-  /** Set when Rentcast reports a different price than what we store. */
-  priceChange?: { from: number; to: number }
-  /** Set on for_sale ↔ sold transitions. */
-  typeChange?: { from: 'for_sale' | 'sold'; to: 'for_sale' | 'sold' }
-  /** Populated alongside typeChange when transitioning to sold. ISO date. */
-  soldDate?: string
-  /** Latest MLS# from Rentcast — applied silently on approve. */
-  mlsNumber?: string | null
-}
 
 /**
  * Email-based subscription to an agent's weekly digest. Replaces the

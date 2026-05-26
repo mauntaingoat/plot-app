@@ -26,9 +26,7 @@ import { ContentLibrary } from '@/components/dashboard/ContentLibrary'
 import { StyleTab } from '@/components/dashboard/StyleTab'
 import { UploadBar } from '@/components/dashboard/UploadBar'
 import { useUnreadCount } from '@/components/dashboard/ShowingInbox'
-import { PendingChangesModal, PendingChangeCard } from '@/components/dashboard/PendingChangesModal'
-import { subscribeToAgentPendingChanges, subscribeToAgentSubscriberCount } from '@/lib/firestore'
-import type { PendingPinChange } from '@/lib/types'
+import { subscribeToAgentSubscriberCount } from '@/lib/firestore'
 import { preloadImages } from '@/lib/imageCache'
 import { canActivatePin, hasFeature, getUserTier, type Tier } from '@/lib/tiers'
 import { auditProUsage } from '@/lib/proAudit'
@@ -150,9 +148,6 @@ export default function Dashboard() {
   const [shareOpen, setShareOpen] = useState(false)
   const [errorBanner, setErrorBanner] = useState<string | null>(null)
   const errorTimerRef = useRef<number | null>(null)
-  const [pendingChanges, setPendingChanges] = useState<PendingPinChange[]>([])
-  const [pendingModalOpen, setPendingModalOpen] = useState(false)
-  const [singlePendingPinId, setSinglePendingPinId] = useState<string | null>(null)
   const [subscriberCount, setSubscriberCount] = useState<number>(0)
   const [waveCount, setWaveCount] = useState<number>(0)
   const [showEditBrokerage, setShowEditBrokerage] = useState(false)
@@ -557,16 +552,6 @@ export default function Dashboard() {
 
   // ── Property-data pending changes (Rentcast sync diffs) ──
   // Live subscription so the modal disappears immediately when a
-  // change is approved/rejected on another device. Auto-opens the
-  // modal once per session per agent — sessionStorage tracks dismiss.
-  useEffect(() => {
-    if (!activeUser?.uid) return
-    const unsub = subscribeToAgentPendingChanges(activeUser.uid, (changes) => {
-      setPendingChanges(changes)
-    })
-    return () => { unsub?.() }
-  }, [activeUser?.uid])
-
   // Live subscriber count — drives the dashboard's primary growth stat.
   useEffect(() => {
     if (!activeUser?.uid) return
@@ -583,23 +568,6 @@ export default function Dashboard() {
     })
     return () => { unsubWaves?.() }
   }, [activeUser?.uid])
-
-  useEffect(() => {
-    if (!activeUser?.uid || pendingChanges.length === 0) return
-    const dismissKey = `reelst_pending_dismissed_${activeUser.uid}`
-    if (sessionStorage.getItem(dismissKey) === '1') return
-    setPendingModalOpen(true)
-  }, [activeUser?.uid, pendingChanges.length])
-
-  const closePendingModal = useCallback(() => {
-    if (activeUser?.uid) {
-      sessionStorage.setItem(`reelst_pending_dismissed_${activeUser.uid}`, '1')
-    }
-    setPendingModalOpen(false)
-  }, [activeUser?.uid])
-
-  const closeSinglePending = useCallback(() => setSinglePendingPinId(null), [])
-  const openSinglePending = useCallback((pinId: string) => setSinglePendingPinId(pinId), [])
 
   // Compute real setup percent to match checklist (fix mismatch)
   const computedSetupPercent = useMemo(() => {
@@ -706,8 +674,6 @@ export default function Dashboard() {
                       onToggle={(enabled) => handleTogglePin(pin.id, enabled)}
                       onMore={() => setShowPinActions(showPinActions?.id === pin.id ? null : pin)}
                       onClick={() => setEditPin(pin)}
-                      hasPendingChange={pendingChanges.some((c) => c.pinId === pin.id)}
-                      onPendingChangeClick={() => openSinglePending(pin.id)}
                       isPro={hasFeature(activeUser, 'advancedAnalytics')}
                       onUpgradeClick={() => setPaywall({ open: true, reason: 'Pin engagement stats are a Pro feature.', upgradeTo: 'pro' })}
                     />
@@ -774,8 +740,8 @@ export default function Dashboard() {
             <div className="grid grid-cols-2 gap-3">
               <StatCard label="Visits" value={activeUser.profileVisits || 0} icon={<Eye size={18} />} format="compact" tooltip="Count of profile visits to your Reelst" />
               <StatCard label="Taps" value={stats.taps} icon={<MousePointerClick size={18} />} color="#3B82F6" format="compact" tooltip="Times someone tapped a map pin or content card to open it" />
-              <StatCard label="Saves" value={subscriberCount} icon={<Heart size={18} />} color="#FF6B6B" format="compact" tooltip="Buyers who saved you to receive email updates from you on Reelst" />
-              <StatCard label="Waves" value={waveCount} icon={<Hand size={18} />} color="#FF8552" format="compact" tooltip="Buyers who waved with a question on a listing" />
+              <StatCard label="Subscribers" value={subscriberCount} icon={<Heart size={18} />} color="#FF6B6B" format="compact" tooltip="People subscribed to your weekly updates" />
+              <StatCard label="Waves" value={waveCount} icon={<Hand size={18} />} color="#FF8552" format="compact" tooltip="People who waved with a question on a listing" />
             </div>
             <InsightsChart
               data={chartData}
@@ -1183,64 +1149,6 @@ export default function Dashboard() {
         )
       })()}
 
-      {/* Bulk pending-changes modal — auto-opens on first dashboard
-          load when there are diffs to review, dismissable per session. */}
-      <PendingChangesModal
-        isOpen={pendingModalOpen}
-        onClose={closePendingModal}
-        changes={pendingChanges}
-        pins={pins}
-        isDesktop={isDesktop}
-      />
-
-      {/* Single-pin re-opener — used when the agent taps a pin's
-          pending-change badge after dismissing the bulk modal. */}
-      <AnimatePresence>
-        {singlePendingPinId && (() => {
-          const change = pendingChanges.find((c) => c.pinId === singlePendingPinId)
-          if (!change) return null
-          const pin = pins.find((p) => p.id === singlePendingPinId)
-          return (
-            <motion.div
-              key="single-pending"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.18 }}
-              className="fixed inset-0 z-[150] flex items-center justify-center px-4"
-              style={{ background: 'rgba(10,14,23,0.55)' }}
-              onClick={closeSinglePending}
-            >
-              <motion.div
-                initial={{ opacity: 0, scale: 0.96, y: 12 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.96, y: 8 }}
-                transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
-                onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-[440px]"
-                style={{ fontFamily: 'var(--font-humanist)' }}
-              >
-                <PendingChangeCard
-                  change={change}
-                  pin={pin}
-                  busy={false}
-                  onApprove={async () => {
-                    const { approvePendingChange } = await import('@/lib/firestore')
-                    await approvePendingChange(change).catch(() => {})
-                    closeSinglePending()
-                  }}
-                  onReject={async () => {
-                    const { rejectPendingChange } = await import('@/lib/firestore')
-                    await rejectPendingChange(change).catch(() => {})
-                    closeSinglePending()
-                  }}
-                />
-              </motion.div>
-            </motion.div>
-          )
-        })()}
-      </AnimatePresence>
-
       {/* Pin actions — mobile only (desktop uses inline popover) */}
       <DarkBottomSheet isOpen={!isDesktop && !!showPinActions} onClose={() => setShowPinActions(null)} title={showPinActions?.address}>
         <div className="px-5 pb-8 space-y-2">
@@ -1300,7 +1208,7 @@ export default function Dashboard() {
                 className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[210] w-[calc(100vw-48px)] max-w-[380px] bg-obsidian rounded-[22px] shadow-2xl border border-border-dark p-6 space-y-4"
               >
                 <h2 className="text-[16px] text-white" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>Archive this pin?</h2>
-                <p className="text-[14px] text-mist">This will remove the pin from your map. The data is kept and can be restored later.</p>
+                <p className="text-[14px] text-mist">This will permanently remove this pin.</p>
                 <div className="flex gap-3">
                   <Button variant="glass" size="lg" fullWidth onClick={() => setShowDeleteConfirm(null)}>Cancel</Button>
                   <Button variant="danger" size="lg" fullWidth onClick={() => showDeleteConfirm && handleDeletePin(showDeleteConfirm.id)}>Archive</Button>
@@ -1312,7 +1220,7 @@ export default function Dashboard() {
       ) : (
         <DarkBottomSheet isOpen={!!showDeleteConfirm} onClose={() => setShowDeleteConfirm(null)} title="Archive this pin?">
           <div className="px-5 pb-8 space-y-4">
-            <p className="text-[14px] text-mist">This will remove the pin from your map. The data is kept and can be restored later.</p>
+            <p className="text-[14px] text-mist">This will permanently remove this pin.</p>
             <div className="flex gap-3">
               <Button variant="glass" size="lg" fullWidth onClick={() => setShowDeleteConfirm(null)}>Cancel</Button>
               <Button variant="danger" size="lg" fullWidth onClick={() => showDeleteConfirm && handleDeletePin(showDeleteConfirm.id)}>Archive</Button>

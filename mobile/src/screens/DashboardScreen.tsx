@@ -4,10 +4,15 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { COLORS } from '../lib/tokens'
+import { useColors } from '../lib/theme'
 import { BottomTabBar, type DashTab } from '../components/BottomTabBar'
 import { DashboardHeader } from '../components/DashboardHeader'
 import { PinActionsSheet } from '../components/PinActionsSheet'
+import { QRCodeSheet } from '../components/QRCodeSheet'
+import { OpenHouseSheet } from '../components/OpenHouseSheet'
+import { EditPinSheet } from '../components/EditPinSheet'
 import { SetupChecklistSheet } from '../components/SetupChecklistSheet'
+import { ConfirmSheet } from '../components/ConfirmSheet'
 import { MyPinsTab } from './tabs/MyPinsTab'
 import { ContentTab } from './tabs/ContentTab'
 import { StyleTab } from './tabs/StyleTab'
@@ -33,15 +38,20 @@ export function DashboardScreen() {
   const navigation = useNavigation<Nav>()
   const [activeTab, setActiveTab] = useState<DashTab>('reelst')
   const [pinActions, setPinActions] = useState<Pin | null>(null)
+  const [qrPin, setQrPin] = useState<Pin | null>(null)
+  const [openHousePin, setOpenHousePin] = useState<Pin | null>(null)
+  const [editPin, setEditPin] = useState<Pin | null>(null)
   const [setupOpen, setSetupOpen] = useState(false)
+  const [archivePinTarget, setArchivePinTarget] = useState<Pin | null>(null)
 
   const { userDoc } = useUserDoc()
   const { pins } = usePins()
   const setupPercent = computeSetupPercent(userDoc, pins)
   const isPro = userDoc?.tier === 'pro'
+  const colors = useColors()
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.pageBg }]} edges={['top']}>
       <DashboardHeader
         user={userDoc}
         activeTab={activeTab}
@@ -54,7 +64,7 @@ export function DashboardScreen() {
         {activeTab === 'reelst' && (
           <MyPinsTab
             isPro={isPro}
-            onAddPin={() => lightTap()}
+            onAddPin={() => { lightTap(); navigation.navigate('PinCreate') }}
             onPinPress={(pin) => setPinActions(pin)}
             onToggleEnabled={(pin, next) => {
               togglePinEnabled(pin.id, next).catch((e) => {
@@ -69,7 +79,9 @@ export function DashboardScreen() {
             }}
           />
         )}
-        {activeTab === 'content'  && <ContentTab onUpload={() => lightTap()} />}
+        {activeTab === 'content'  && (
+          <ContentTab onUpload={() => { lightTap(); navigation.navigate('ContentCreate', {}) }} />
+        )}
         {activeTab === 'style'    && <StyleTab />}
         {activeTab === 'inbox'    && <InboxTab />}
         {activeTab === 'insights' && <InsightsTab />}
@@ -88,20 +100,24 @@ export function DashboardScreen() {
         pin={pinActions}
         onClose={() => setPinActions(null)}
         onEditDetails={() => {
+          const pin = pinActions
           setPinActions(null)
-          Alert.alert('Edit Details', 'Edit-details sheet drops in next milestone.')
+          if (pin) setEditPin(pin)
         }}
         onAddContent={() => {
+          const pin = pinActions
           setPinActions(null)
-          Alert.alert('Add Content', 'Content upload flow drops in next milestone.')
+          if (pin) navigation.navigate('ContentCreate', { pinId: pin.id })
         }}
         onGetQR={() => {
+          const pin = pinActions
           setPinActions(null)
-          Alert.alert('QR Code', 'Per-pin QR generation drops in next milestone.')
+          if (pin) setQrPin(pin)
         }}
         onOpenHouse={() => {
+          const pin = pinActions
           setPinActions(null)
-          Alert.alert('Open House', 'Open house scheduling drops in next milestone.')
+          if (pin) setOpenHousePin(pin)
         }}
         onToggleVisibility={() => {
           if (!pinActions) return
@@ -111,28 +127,47 @@ export function DashboardScreen() {
         onArchive={() => {
           if (!pinActions) return
           warning()
-          Alert.alert(
-            'Archive pin',
-            `Hide ${pinActions.address} from your map? It will auto-delete after 7 days unless restored.`,
-            [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Archive',
-                style: 'destructive',
-                onPress: () => {
-                  archivePin(pinActions.id).catch(() => {})
-                  setPinActions(null)
-                },
-              },
-            ],
-          )
+          setArchivePinTarget(pinActions)
+          setPinActions(null)
         }}
       />
+
+      <ConfirmSheet
+        visible={!!archivePinTarget}
+        title="Archive this pin?"
+        message="This will remove the pin from your map and public profile. Archived pins are permanently deleted after 7 days."
+        confirmLabel="Archive"
+        destructive
+        onConfirm={() => {
+          const pin = archivePinTarget
+          setArchivePinTarget(null)
+          if (pin) archivePin(pin.id).catch(() => {})
+        }}
+        onClose={() => setArchivePinTarget(null)}
+      />
+
+      <QRCodeSheet
+        pin={qrPin}
+        username={userDoc?.username ?? null}
+        onClose={() => setQrPin(null)}
+      />
+
+      <OpenHouseSheet
+        pin={openHousePin}
+        isPro={isPro}
+        onClose={() => setOpenHousePin(null)}
+        onUpgrade={() => {
+          setOpenHousePin(null)
+          Alert.alert('Go Pro', 'Upgrade flow lands in the next milestone.')
+        }}
+      />
+
+      <EditPinSheet pin={editPin} onClose={() => setEditPin(null)} />
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.ivory },
+  safe: { flex: 1 },
   scroll: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 100 },
 })

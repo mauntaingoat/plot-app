@@ -43,7 +43,7 @@ const FROM_DISPLAY = 'Reelst'
 //      auth lookup so non-existent addresses consume quota too, denying
 //      the timing oracle.
 // 3 sends / 15min per-email AND per-IP — real resends easily fit; same
-// transactional Firestore pattern used by submitWave + propertyLookup.
+// transactional Firestore pattern used by submitWave + other callables.
 const PER_EMAIL_LIMIT = 3
 const PER_IP_LIMIT = 3
 const RATE_WINDOW_MS = 15 * 60 * 1000

@@ -13,11 +13,14 @@ import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import type { AuthStackParamList } from '../navigation/RootNavigator'
 import { signInWithEmailAndPassword, authErrorMessage } from '../lib/firebaseAuth'
-import { errorTap, lightTap } from '../lib/haptics'
+import { signInWithGoogle, GoogleSignInCancelledError } from '../lib/googleSignIn'
+import { errorTap, lightTap, success } from '../lib/haptics'
 import { COLORS, FONTS } from '../lib/tokens'
 import { ReelstLogo } from '../components/ReelstLogo'
+import { GoogleLogo } from '../components/GoogleLogo'
 import { BrandButton } from '../components/BrandButton'
 import { BrandInput } from '../components/BrandInput'
+import { LegalFooter } from './LandingScreen'
 
 /**
  * SignIn — 1:1 port of `src/pages/SignIn.tsx` mobile layout.
@@ -32,7 +35,31 @@ export function SignInScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const handleGoogle = async () => {
+    if (loading || googleLoading) return
+    lightTap()
+    setGoogleLoading(true)
+    setError('')
+    try {
+      await signInWithGoogle()
+      // RootNavigator auth listener swaps stacks on signIn.
+      success()
+    } catch (e) {
+      if (e instanceof GoogleSignInCancelledError) {
+        // Silent — user dismissed the sheet on purpose.
+        return
+      }
+      // eslint-disable-next-line no-console
+      console.warn('[SignIn] Google sign-in failed', e)
+      setError("Couldn't sign in with Google. Try again or use email.")
+      errorTap()
+    } finally {
+      setGoogleLoading(false)
+    }
+  }
 
   const handleSignIn = async () => {
     const cleanEmail = email.trim().toLowerCase()
@@ -73,11 +100,14 @@ export function SignInScreen() {
 
           {/* Google */}
           <Pressable
-            onPress={() => lightTap()}
+            onPress={handleGoogle}
             style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
-            disabled={loading}
+            disabled={loading || googleLoading}
           >
-            <Text style={styles.secondaryBtnText}>Continue with Google</Text>
+            <GoogleLogo size={18} />
+            <Text style={styles.secondaryBtnText}>
+              {googleLoading ? 'Signing in…' : 'Continue with Google'}
+            </Text>
           </Pressable>
 
           {/* Divider */}
@@ -90,6 +120,7 @@ export function SignInScreen() {
           {/* Email + password */}
           <View style={styles.fields}>
             <BrandInput
+              forceLight
               placeholder="Email address"
               value={email}
               onChangeText={setEmail}
@@ -98,9 +129,11 @@ export function SignInScreen() {
               autoCorrect={false}
               spellCheck={false}
               autoComplete="email"
+              textContentType="username"
               editable={!loading}
             />
             <BrandInput
+              forceLight
               placeholder="Password"
               value={password}
               onChangeText={setPassword}
@@ -109,12 +142,16 @@ export function SignInScreen() {
               autoCorrect={false}
               spellCheck={false}
               autoComplete="current-password"
+              textContentType="password"
               editable={!loading}
               onSubmitEditing={handleSignIn}
               returnKeyType="go"
             />
             <View style={styles.forgotRow}>
-              <Pressable disabled={loading} onPress={() => lightTap()}>
+              <Pressable
+                disabled={loading}
+                onPress={() => { lightTap(); navigation.navigate('ForgotPassword', { email }) }}
+              >
                 <Text style={styles.forgotText}>Forgot password?</Text>
               </Pressable>
             </View>
@@ -134,6 +171,10 @@ export function SignInScreen() {
             <Pressable onPress={() => { lightTap(); navigation.navigate('Welcome') }} disabled={loading}>
               <Text style={styles.bottomLink}> Get started</Text>
             </Pressable>
+          </View>
+
+          <View style={{ marginTop: 28 }}>
+            <LegalFooter />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -161,6 +202,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   secondaryBtn: {
+    flexDirection: 'row',
+    gap: 10,
     height: 48,
     borderRadius: 8,
     backgroundColor: COLORS.warmWhite,

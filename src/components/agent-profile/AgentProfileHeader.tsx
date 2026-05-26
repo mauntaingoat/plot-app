@@ -113,8 +113,8 @@ export function AgentProfileHeader({
   // display name + body headings.
   const wavedLabel = `${style.ctaLabels.wave || 'Wave'} ${agent.displayName || ''}`.trim()
   const saveLabel = saved
-    ? 'Saved'
-    : `${style.ctaLabels.save || 'Save'} ${agent.displayName || ''}`.trim()
+    ? 'Subscribed'
+    : `${style.ctaLabels.save || 'Subscribe'} ${agent.displayName || ''}`.trim()
 
   return (
     <div
@@ -141,7 +141,7 @@ export function AgentProfileHeader({
       <button
         onClick={onSaveClick}
         aria-label={saveLabel}
-        title={saved ? 'Saved' : style.ctaLabels.save || 'Save'}
+        title={saved ? 'Subscribed' : style.ctaLabels.save || 'Subscribe'}
         className="absolute top-4 right-4 md:top-5 md:right-5 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
         style={{
           background: saved ? (palette.savedBg || palette.accent) : `${palette.accent}1A`,

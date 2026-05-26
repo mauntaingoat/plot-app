@@ -91,3 +91,9 @@ export function pinMediaPath(pinId: string, filename: string) {
 export function styleBackgroundPath(uid: string) {
   return `users/${uid}/style/background.jpg`
 }
+
+/** Path for a single custom-link thumbnail. One slot per link id;
+ *  re-uploads overwrite. Cleaned up when the link is deleted. */
+export function customLinkThumbnailPath(uid: string, linkId: string) {
+  return `users/${uid}/links/${linkId}.jpg`
+}

@@ -109,16 +109,6 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.agentId == request.auth.uid;
     }
 
-    // ── FOLLOWS ──
-    // Public read (follower lists, counts)
-    // Only the follower can create/delete their own follow doc
-    match /follows/{followId} {
-      allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.followerUid == request.auth.uid;
-      allow delete: if isSignedIn() && resource.data.followerUid == request.auth.uid;
-      allow update: if false;
-    }
-
     // ── SAVES (bookmarks) ──
     // The saver can read/write their own saves. The agent who owns
     // the saved pin can also read (powers the Audience Crossover
@@ -195,12 +185,6 @@ service cloud.firestore {
       allow create, update, delete: if false; // Cloud Functions only
     }
 
-    // ── FOLLOWER SNAPSHOTS ──
-    match /follower_snapshots/{snapId} {
-      allow read: if isSignedIn();
-      allow create, update, delete: if false; // Cloud Functions only
-    }
-
     // ── SUBSCRIBER SNAPSHOTS ──
     // Daily counts written by dailySubscriberSnapshot Cloud Function.
     // Powers the dashboard "Saves over time" line chart.
@@ -216,20 +200,10 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // ── COMMENTS ──
-    match /comments/{commentId} {
-      allow read: if true;
-      allow create: if isSignedIn();
-      allow delete: if isSignedIn() && (
-        resource.data.authorUid == request.auth.uid ||
-        resource.data.pinAgentId == request.auth.uid
-      );
-      allow update: if false;
-    }
-
     // ── RATE LIMITS ──
     // Server-only — only Cloud Functions (admin SDK) write/read these.
-    // Backs the per-user rate limit on propertyLookup.
+    // Backs per-user / per-IP rate limits on Mux uploads, wave/showing
+    // submissions, digest signups, auth emails, feedback, etc.
     match /rateLimits/{key} {
       allow read, write: if false;
     }

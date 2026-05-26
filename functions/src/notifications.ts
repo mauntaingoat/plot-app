@@ -136,29 +136,39 @@ async function notifyUser(uid: string, prefKey: 'showingRequest' | 'newSubscribe
     displayName?: string
     fcmTokens?: string[]
     notificationPrefs?: Record<string, boolean>
+    emailPrefs?: Record<string, boolean>
   }
 
-  const prefs = user.notificationPrefs || {}
+  // Push (FCM) and email are independently gated as of 2026-05-22.
+  // `notificationPrefs` controls push, `emailPrefs` controls email.
+  // Both default to on so existing users keep getting both channels
+  // until they explicitly turn one off.
+  const pushPrefs = user.notificationPrefs || {}
+  const emailPrefs = user.emailPrefs || {}
   const defaultsOn: Record<string, boolean> = {
     showingRequest: true,
     newSubscriber: true,
     newWave: true,
   }
-  const enabled = prefs[prefKey] ?? defaultsOn[prefKey]
-  if (!enabled) {
-    logger.info(`notifyUser: ${prefKey} disabled for ${uid}`)
+  const pushOn = pushPrefs[prefKey] ?? defaultsOn[prefKey]
+  const emailOn = emailPrefs[prefKey] ?? defaultsOn[prefKey]
+
+  if (!pushOn && !emailOn) {
+    logger.info(`notifyUser: ${prefKey} both push+email disabled for ${uid}`)
     return
   }
 
-  // Per-event email — runs in parallel with FCM. Gated by the same
-  // toggle: when notificationPrefs[prefKey] is on, the agent gets the
-  // inbox doc (unconditional), an FCM push (if tokens), AND an email.
-  // Inbox stays the source of truth; email is the optional reach.
+  // Per-event email — runs in parallel with FCM, but only when the
+  // email channel for this prefKey is enabled.
   const emailKind = KIND_BY_PREF[prefKey]
-  if (user.email && emailKind) {
+  if (emailOn && user.email && emailKind) {
     void sendNotificationEmail(user.email, user.displayName || null, emailKind, payload)
   }
 
+  if (!pushOn) {
+    logger.info(`notifyUser: ${prefKey} push disabled for ${uid}`)
+    return
+  }
   const tokens = user.fcmTokens || []
   if (tokens.length === 0) return
 

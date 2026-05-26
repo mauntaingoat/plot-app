@@ -19,7 +19,6 @@ const ITEMS = [
   { key: 'photo', label: 'Upload a profile photo', icon: Camera, weight: 10, check: (u: UserDoc) => !!u.photoURL },
   { key: 'name', label: 'Set display name', icon: User, weight: 5, check: (u: UserDoc) => !!u.displayName && u.displayName.length > 0 },
   { key: 'bio', label: 'Write a bio', icon: FileText, weight: 10, check: (u: UserDoc) => !!u.bio && u.bio.length > 0 },
-  { key: 'license', label: 'Verify your license', icon: Award, weight: 10, check: (u: UserDoc) => !!u.licenseNumber },
   { key: 'platform', label: 'Connect a platform', icon: Link2, weight: 10, check: (u: UserDoc) => (u.platforms?.length ?? 0) > 0 },
   { key: 'brokerage', label: 'Add your brokerage', icon: Building, weight: 5, check: (u: UserDoc) => !!u.brokerage && u.brokerage.length > 0 },
   { key: 'style', label: 'Pick a style — palette, font, shape', icon: Palette, weight: 10, check: (u: UserDoc) => {

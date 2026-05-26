@@ -5,10 +5,17 @@ import { FilmStrip, UploadSimple, Plus } from 'phosphor-react-native'
 import { BrandIconChip } from '../../components/BrandIconChip'
 import { ContentCard, type ContentRow } from '../../components/ContentCard'
 import { ContentActionsSheet } from '../../components/ContentActionsSheet'
+import { EditCaptionSheet } from '../../components/content/EditCaptionSheet'
+import { ReassignPinSheet } from '../../components/content/ReassignPinSheet'
+import { ConfirmSheet } from '../../components/ConfirmSheet'
+import { updatePinContentItem, reassignContentToPin, archiveContentItem, unlinkContentFromPin } from '../../lib/firestoreDb'
+import { useEffect } from 'react'
+import { getFirestore, collection, query, where, onSnapshot, type FirebaseFirestoreTypes } from '@react-native-firebase/firestore'
 import { COLORS, FONTS } from '../../lib/tokens'
+import { useThemedStyles } from '../../lib/theme'
 import { usePins } from '../../lib/usePins'
 import { useUserDoc } from '../../lib/useUserDoc'
-import { lightTap, selection } from '../../lib/haptics'
+import { lightTap, selection, warning } from '../../lib/haptics'
 import type { Pin, PinContentItem } from '../../types'
 
 /**
@@ -28,12 +35,40 @@ import type { Pin, PinContentItem } from '../../types'
 type Filter = 'all' | 'reel' | 'photo' | 'no_listing'
 
 export function ContentTab({ onUpload }: { onUpload?: () => void }) {
+  const styles = useThemedStyles(_styles)
   const { pins, loading } = usePins()
   const { userDoc } = useUserDoc()
   const [filter, setFilter] = useState<Filter>('all')
   const [actions, setActions] = useState<ContentRow | null>(null)
+  const [editCaptionFor, setEditCaptionFor] = useState<ContentRow | null>(null)
+  const [reassignFor, setReassignFor] = useState<ContentRow | null>(null)
+  const [archiveTarget, setArchiveTarget] = useState<ContentRow | null>(null)
 
   const isPro = userDoc?.tier === 'pro'
+
+  // Standalone "no-listing" content. Subscribed live from the
+  // `content` collection where pinId is null. Web does the same —
+  // these items show up under the "No Listing" filter.
+  const [unlinked, setUnlinked] = useState<PinContentItem[]>([])
+  useEffect(() => {
+    if (!userDoc?.uid) return
+    const db = getFirestore()
+    const q = query(
+      collection(db, 'content'),
+      where('agentId', '==', userDoc.uid),
+      where('pinId', '==', null),
+    )
+    return onSnapshot(
+      q,
+      (snap: FirebaseFirestoreTypes.QuerySnapshot) => {
+        const rows = snap.docs
+          .map((d) => ({ id: d.id, ...(d.data() as Omit<PinContentItem, 'id'>) }))
+          .filter((c) => !(c as { archivedAt?: unknown }).archivedAt)
+        setUnlinked(rows)
+      },
+      () => setUnlinked([]),
+    )
+  }, [userDoc?.uid])
 
   const allContent: ContentRow[] = useMemo(() => {
     const rows: ContentRow[] = []
@@ -48,8 +83,17 @@ export function ContentTab({ onUpload }: { onUpload?: () => void }) {
         })
       })
     })
+    unlinked.forEach((c) => {
+      rows.push({
+        contentId: c.id ?? `unlinked-${Math.random().toString(36).slice(2, 8)}`,
+        pinId: null,
+        pinAddress: null,
+        item: c,
+        isLinked: false,
+      })
+    })
     return rows
-  }, [pins])
+  }, [pins, unlinked])
 
   const filtered = useMemo(() => {
     return allContent.filter((row) => {
@@ -136,8 +180,10 @@ export function ContentTab({ onUpload }: { onUpload?: () => void }) {
                 row={row}
                 isPro={isPro}
                 onPress={() => setActions(row)}
-                onMorePress={() => setActions(row)}
-                onPickPin={() => Alert.alert('Reassign pin', 'Pin picker lands next milestone.')}
+                onMediaPress={() => Alert.alert(
+                  row.item.type === 'reel' ? 'Play reel' : 'View carousel',
+                  'Media player lands next milestone.',
+                )}
               />
             </View>
           ))}
@@ -147,15 +193,115 @@ export function ContentTab({ onUpload }: { onUpload?: () => void }) {
       <ContentActionsSheet
         row={actions}
         onClose={() => setActions(null)}
-        onEditCaption={() => { setActions(null); Alert.alert('Edit Caption', 'Caption editing lands next milestone.') }}
+        onEditCaption={() => {
+          const row = actions
+          setActions(null)
+          if (row) setEditCaptionFor(row)
+        }}
         onEditMedia={() => { setActions(null); Alert.alert('Edit Media', 'Content editor lands next milestone.') }}
-        onArchive={() => { setActions(null); Alert.alert('Archive', 'Archive flow lands next milestone.') }}
+        onArchive={() => {
+          const row = actions
+          setActions(null)
+          if (!row) return
+          warning()
+          setArchiveTarget(row)
+        }}
+        onReassignPin={() => {
+          const row = actions
+          setActions(null)
+          if (row) setReassignFor(row)
+        }}
+      />
+
+      <EditCaptionSheet
+        visible={!!editCaptionFor}
+        initialCaption={editCaptionFor?.item.caption ?? null}
+        onClose={() => setEditCaptionFor(null)}
+        onSave={async (caption) => {
+          if (!editCaptionFor?.pinId || !editCaptionFor.item.id) return
+          try {
+            await updatePinContentItem(editCaptionFor.pinId, editCaptionFor.item.id, { caption })
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn('[ContentTab] caption save failed', e)
+            Alert.alert('Could not save', 'Try again in a moment.')
+          }
+        }}
+      />
+
+      <ReassignPinSheet
+        visible={!!reassignFor}
+        pins={pins}
+        currentPinId={reassignFor?.pinId ?? null}
+        onClose={() => setReassignFor(null)}
+        onPick={async (toPinId) => {
+          if (!reassignFor?.item.id) return
+          try {
+            if (reassignFor.pinId) {
+              await reassignContentToPin(reassignFor.item.id, reassignFor.pinId, toPinId)
+            } else {
+              // Re-linking an unlinked item: simulate the same shape
+              // by passing a synthetic "from" id so the helper picks
+              // up the append-to-target path. The fromPin path is a
+              // no-op for unlinked items since there's no pin array
+              // to remove from.
+              const { getFirestore: gfs, doc: docFn, getDoc: gd, updateDoc: ud } = await import('@react-native-firebase/firestore')
+              const db = gfs()
+              const toSnap = await gd(docFn(db, 'pins', toPinId))
+              const toData = toSnap.data() as { content?: unknown[] } | undefined
+              const nextTo = [...(toData?.content ?? []), reassignFor.item]
+              await ud(docFn(db, 'pins', toPinId), { content: nextTo })
+              await ud(docFn(db, 'content', reassignFor.item.id), { pinId: toPinId })
+            }
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn('[ContentTab] reassign failed', e)
+            Alert.alert('Could not reassign', 'Try again in a moment.')
+          }
+        }}
+        onUnlink={async () => {
+          if (!reassignFor?.pinId || !reassignFor.item.id || !userDoc?.uid) return
+          try {
+            await unlinkContentFromPin(
+              reassignFor.item.id,
+              reassignFor.pinId,
+              reassignFor.item as unknown as Record<string, unknown>,
+              userDoc.uid,
+            )
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn('[ContentTab] unlink failed', e)
+            Alert.alert('Could not unlink', 'Try again in a moment.')
+          }
+        }}
+      />
+
+      <ConfirmSheet
+        visible={!!archiveTarget}
+        title="Archive this content?"
+        message="It'll be removed from your library and any pin it's attached to. Archived content is permanently deleted after 7 days."
+        confirmLabel="Archive"
+        destructive
+        onConfirm={async () => {
+          const row = archiveTarget
+          setArchiveTarget(null)
+          if (!row) return
+          try {
+            await archiveContentItem(row.contentId, row.pinId)
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn('[ContentTab] archive failed', e)
+            Alert.alert('Could not archive', 'Try again in a moment.')
+          }
+        }}
+        onClose={() => setArchiveTarget(null)}
       />
     </View>
   )
 }
 
 function EmptyState({ onUpload }: { onUpload?: () => void }) {
+  const styles = useThemedStyles(_styles)
   return (
     <View style={styles.empty}>
       <View style={styles.emptyIcon}>
@@ -184,6 +330,7 @@ function EmptyState({ onUpload }: { onUpload?: () => void }) {
 }
 
 function SkeletonContent() {
+  const styles = useThemedStyles(_styles)
   return (
     <View style={styles.col}>
       <View style={[styles.skeleton]} />
@@ -191,7 +338,7 @@ function SkeletonContent() {
   )
 }
 
-const styles = StyleSheet.create({
+const _styles = StyleSheet.create({
   tabHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   tabTitle: { fontFamily: FONTS.humanistBold, fontSize: 22, color: COLORS.ink, letterSpacing: -0.3 },
   tabSubtitle: { fontFamily: FONTS.humanist, fontSize: 13, color: COLORS.smoke, marginTop: 2 },

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { List as Menu, X, ArrowRight, ArrowUpRight, CaretDown as ChevronDown, Envelope as Mail, Article, BookBookmark } from '@phosphor-icons/react'
+import { List as Menu, X, ArrowRight, ArrowUpRight, CaretDown as ChevronDown, Envelope as Mail, Article, BookBookmark, AppleLogo } from '@phosphor-icons/react'
 import { useAuthModalStore } from '@/stores/authModalStore'
 import { useAuthStore } from '@/stores/authStore'
 import { ReelstLogo } from '@/components/ui/ReelstLogo'
@@ -201,6 +201,11 @@ export function Navbar() {
 
             {/* Right cluster, desktop */}
             <div className="hidden md:flex items-center gap-2 shrink-0">
+              {/* iOS app coming-soon pill — quiet, sits to the left
+                  of auth buttons. Signals to agents that the native
+                  app is on the way without competing with the primary
+                  Get Started CTA. */}
+              <IosComingSoonPill />
               {userDoc ? (
                 <button
                   onClick={() => navigate('/dashboard')}
@@ -783,5 +788,28 @@ function NavLink({
       />
       <span className="relative">{children}</span>
     </Link>
+  )
+}
+
+/** Subtle 'iOS app coming soon' pill in the navbar. Targets agents
+ *  who'd manage their dashboard from a phone — signals the native
+ *  app is on the way so they're not surprised by the MobileBlockPage
+ *  if they hit /dashboard from mobile. Hides on the smallest desktop
+ *  widths to avoid crowding the auth buttons. */
+function IosComingSoonPill() {
+  return (
+    <div
+      className="hidden lg:inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full border border-ink/10 bg-cream text-graphite"
+      style={{
+        fontFamily: 'var(--font-humanist)',
+        fontSize: '11.5px',
+        fontWeight: 600,
+        letterSpacing: '-0.005em',
+      }}
+      title="Reelst for iOS is launching soon — manage your dashboard from your phone."
+    >
+      <AppleLogo weight="fill" size={12} className="text-ink" />
+      <span>iOS app coming soon</span>
+    </div>
   )
 }

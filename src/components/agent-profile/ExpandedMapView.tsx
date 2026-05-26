@@ -7,7 +7,7 @@ import { FilterBar } from '@/components/ui/FilterPill'
 import { FilterDropdown } from '@/components/ui/FilterDropdown'
 import { useMapStore, applyPropertyFilters } from '@/stores/mapStore'
 import type { Pin, UserDoc, PinType } from '@/lib/types'
-import { CyclingCountBadge } from './ListingsTab'
+import { CyclingCountBadge } from './CyclingCountBadge'
 import { getShape } from '@/lib/style'
 import { ShareModal } from './ShareModal'
 import { profileUrl } from '@/lib/shareUrl'
@@ -619,7 +619,7 @@ export function ExpandedMapView({
 
               <button
                 onClick={onSaveClick}
-                aria-label={saved ? 'Saved' : 'Save'}
+                aria-label={saved ? 'Subscribed' : 'Subscribe'}
                 className="rounded-full w-9 h-9 flex items-center justify-center cursor-pointer border border-black/5"
                 style={{
                   background: saved ? '#34C759' : 'rgba(255,255,255,0.96)',

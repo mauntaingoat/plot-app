@@ -10,6 +10,9 @@ export interface TierLimits {
   maxContentPerPin: number
   maxSpotlightContent: number
   maxVideoSeconds: number
+  /** Linktree-style custom external links on the public profile.
+   *  Free gets a taste; Pro unlocks a useful stack without ballooning. */
+  maxCustomLinks: number
   /** Pro only — unlocks the full analytics dashboard (visits, taps,
    *  save growth, viewer cities, peak hours, content performance,
    *  audience crossover). Free agents see the basic stat cards
@@ -26,12 +29,6 @@ export interface TierLimits {
   /** Pro only — expanded customization (custom ticker items, custom
    *  CTA labels, brand color override, profile layout choices, etc.). */
   expandedCustomization: boolean
-  /** Pro only — daily RentCast auto-sync of existing for_sale + sold
-   *  pins (price changes, status flips, days-on-market). Free agents
-   *  still get a one-time RentCast lookup at pin-create time via
-   *  the propertyLookup callable — they just don't get the daily
-   *  re-pull thereafter. Enforced server-side in syncPropertyData. */
-  propertyAutoSync: boolean
 }
 
 export const TIERS: Record<Tier, TierLimits> = {
@@ -43,30 +40,32 @@ export const TIERS: Record<Tier, TierLimits> = {
     maxContentPerPin: 999,
     maxSpotlightContent: 999,
     maxVideoSeconds: 180,
+    maxCustomLinks: 3,
     advancedAnalytics: false,
     openHouses: false,
     emailNotifications: true,
     expandedCustomization: false,
-    propertyAutoSync: false,
   },
   pro: {
     id: 'pro',
     name: 'Pro',
     price: 19,
-    // Effective safety cap — keeps marketing "unlimited" honest for
-    // any realistic agent (typical 10-30 listings) while bounding worst-
-    // case per-agent cost on RentCast sync (1 call/day/active pin) and
-    // Mux storage. Treated as "you'll never hit this" by users; only
-    // fires for runaway scripts or scraped imports.
-    maxActivePins: 500,
+    // Active pin cap — sized for a working agent's realistic inventory
+    // (typical 10-30 active listings + sold pins + spotlights). Bounds
+    // per-agent Firestore read load (every profile visit reads all
+    // pins) and Mux storage. Power users (teams, brokerages) with
+    // genuinely larger inventories get an override via direct user
+    // doc edit; mirror this number in `functions/src/pinControl.ts`'s
+    // ACTIVE_PIN_CAP if you change it.
+    maxActivePins: 50,
     maxContentPerPin: 999,
     maxSpotlightContent: 999,
     maxVideoSeconds: 180,
+    maxCustomLinks: 20,
     advancedAnalytics: true,
     openHouses: true,
     emailNotifications: true,
     expandedCustomization: true,
-    propertyAutoSync: true,
   },
 }
 
@@ -147,7 +146,7 @@ export function canUploadVideo(user: UserDoc | null, durationSeconds: number): G
 
 export function hasFeature(
   user: UserDoc | null,
-  feature: keyof Pick<TierLimits, 'advancedAnalytics' | 'openHouses' | 'emailNotifications' | 'expandedCustomization' | 'propertyAutoSync'>,
+  feature: keyof Pick<TierLimits, 'advancedAnalytics' | 'openHouses' | 'emailNotifications' | 'expandedCustomization'>,
 ): boolean {
   return getTierLimits(user)[feature]
 }

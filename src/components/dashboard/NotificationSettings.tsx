@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Bell, BellSlash as BellOff, Check, CalendarCheck, Heart, HandWaving as Hand } from '@phosphor-icons/react'
-import { Button } from '@/components/ui/Button'
+import { Bell, BellSlash as BellOff, Check, CalendarCheck, Heart, HandWaving as Hand, DeviceMobile, Envelope } from '@phosphor-icons/react'
 import { useNotifications } from '@/hooks/useNotifications'
 import { updateUserDoc } from '@/lib/firestore'
 import { useAuthStore } from '@/stores/authStore'
@@ -15,26 +14,30 @@ const DEFAULT_PREFS: NotificationPrefs = {
 
 const PREF_ROWS: { id: keyof NotificationPrefs; label: string; desc: string; icon: typeof Heart; color: string }[] = [
   { id: 'showingRequest', label: 'Showing requests', desc: 'A visitor wants to tour one of your listings.', icon: CalendarCheck, color: '#FF6B3D' },
-  { id: 'newSubscriber', label: 'Profile Saves', desc: 'Someone saved you to get updates.', icon: Heart, color: '#A855F7' },
+  { id: 'newSubscriber', label: 'New subscribers', desc: 'Someone subscribed to you for weekly updates.', icon: Heart, color: '#A855F7' },
   { id: 'newWave', label: 'Waves', desc: 'A buyer asked a question about a listing.', icon: Hand, color: '#34C759' },
 ]
 
 export function NotificationSettings() {
   const { permission, enable } = useNotifications()
   const { userDoc, setUserDoc } = useAuthStore()
-  const [prefs, setPrefs] = useState<NotificationPrefs>(userDoc?.notificationPrefs || DEFAULT_PREFS)
+  // Push lives in `notificationPrefs`; email lives in `emailPrefs`.
+  // Both default to all-on so existing users keep getting both
+  // channels until they explicitly turn one off.
+  const [pushPrefs, setPushPrefs] = useState<NotificationPrefs>(userDoc?.notificationPrefs || DEFAULT_PREFS)
+  const [emailPrefs, setEmailPrefs] = useState<NotificationPrefs>(userDoc?.emailPrefs || DEFAULT_PREFS)
   const [enabling, setEnabling] = useState(false)
   const [notificationsOn, setNotificationsOn] = useState(() => {
-    if (!userDoc?.notificationPrefs) return true
-    const p = userDoc.notificationPrefs
-    return p.showingRequest || p.newSubscriber || p.newWave
+    const p = userDoc?.notificationPrefs
+    const e = userDoc?.emailPrefs
+    if (!p && !e) return true
+    return (p?.showingRequest || p?.newSubscriber || p?.newWave || e?.showingRequest || e?.newSubscriber || e?.newWave) ?? true
   })
 
   useEffect(() => {
-    if (userDoc?.notificationPrefs) {
-      setPrefs(userDoc.notificationPrefs)
-    }
-  }, [userDoc?.notificationPrefs])
+    if (userDoc?.notificationPrefs) setPushPrefs(userDoc.notificationPrefs)
+    if (userDoc?.emailPrefs) setEmailPrefs(userDoc.emailPrefs)
+  }, [userDoc?.notificationPrefs, userDoc?.emailPrefs])
 
   const handleEnable = async () => {
     setEnabling(true)
@@ -42,31 +45,42 @@ export function NotificationSettings() {
     setEnabling(false)
   }
 
-  const togglePref = (key: keyof NotificationPrefs) => {
-    const next: NotificationPrefs = { ...prefs, [key]: !prefs[key] }
-    setPrefs(next)
-    if (userDoc) {
-      setUserDoc({ ...userDoc, notificationPrefs: next })
-      updateUserDoc(userDoc.uid, { notificationPrefs: next }).catch(() => {})
+  const togglePref = (channel: 'push' | 'email', key: keyof NotificationPrefs) => {
+    if (channel === 'push') {
+      const next: NotificationPrefs = { ...pushPrefs, [key]: !pushPrefs[key] }
+      setPushPrefs(next)
+      if (userDoc) {
+        setUserDoc({ ...userDoc, notificationPrefs: next })
+        updateUserDoc(userDoc.uid, { notificationPrefs: next }).catch(() => {})
+      }
+    } else {
+      const next: NotificationPrefs = { ...emailPrefs, [key]: !emailPrefs[key] }
+      setEmailPrefs(next)
+      if (userDoc) {
+        setUserDoc({ ...userDoc, emailPrefs: next })
+        updateUserDoc(userDoc.uid, { emailPrefs: next }).catch(() => {})
+      }
     }
   }
 
   const handleToggleAll = () => {
     if (notificationsOn) {
       const off: NotificationPrefs = { showingRequest: false, newSubscriber: false, newWave: false }
-      setPrefs(off)
+      setPushPrefs(off)
+      setEmailPrefs(off)
       setNotificationsOn(false)
       if (userDoc) {
-        setUserDoc({ ...userDoc, notificationPrefs: off })
-        updateUserDoc(userDoc.uid, { notificationPrefs: off }).catch(() => {})
+        setUserDoc({ ...userDoc, notificationPrefs: off, emailPrefs: off })
+        updateUserDoc(userDoc.uid, { notificationPrefs: off, emailPrefs: off }).catch(() => {})
       }
     } else {
       const on = DEFAULT_PREFS
-      setPrefs(on)
+      setPushPrefs(on)
+      setEmailPrefs(on)
       setNotificationsOn(true)
       if (userDoc) {
-        setUserDoc({ ...userDoc, notificationPrefs: on })
-        updateUserDoc(userDoc.uid, { notificationPrefs: on }).catch(() => {})
+        setUserDoc({ ...userDoc, notificationPrefs: on, emailPrefs: on })
+        updateUserDoc(userDoc.uid, { notificationPrefs: on, emailPrefs: on }).catch(() => {})
       }
       if (permission !== 'granted') handleEnable()
     }
@@ -110,15 +124,28 @@ export function NotificationSettings() {
         </button>
       </div>
 
-      {/* Per-category toggles */}
+      {/* Column header — Push | Email */}
+      {notificationsOn && (
+        <div className="flex items-center gap-3 px-4 pt-1">
+          <div className="flex-1" />
+          <div className="w-[58px] flex flex-col items-center gap-0.5 text-smoke">
+            <DeviceMobile size={12} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Push</span>
+          </div>
+          <div className="w-[58px] flex flex-col items-center gap-0.5 text-smoke">
+            <Envelope size={12} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Email</span>
+          </div>
+        </div>
+      )}
+
+      {/* Per-category toggles — two columns each */}
       {PREF_ROWS.map((row) => {
         const Icon = row.icon
-        const enabled = prefs[row.id]
         return (
-          <button
+          <div
             key={row.id}
-            onClick={() => notificationsOn && togglePref(row.id)}
-            className={`w-full flex items-center gap-3 bg-cream rounded-[14px] p-3.5 sm:p-4 text-left cursor-pointer hover:bg-pearl transition-colors ${!notificationsOn ? 'opacity-40' : ''}`}
+            className={`w-full flex items-center gap-3 bg-cream rounded-[14px] p-3.5 sm:p-4 ${!notificationsOn ? 'opacity-40' : ''}`}
           >
             <div className="w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0" style={{ background: `${row.color}1A` }}>
               <Icon size={17} style={{ color: row.color }} />
@@ -127,8 +154,21 @@ export function NotificationSettings() {
               <p className="text-[14px] font-semibold text-ink">{row.label}</p>
               <p className="text-[11px] text-smoke leading-snug mt-0.5">{row.desc}</p>
             </div>
-            <Toggle on={notificationsOn && enabled} />
-          </button>
+            <button
+              onClick={() => notificationsOn && togglePref('push', row.id)}
+              className="w-[58px] flex items-center justify-center cursor-pointer"
+              aria-label={`${row.label} push`}
+            >
+              <Toggle on={notificationsOn && pushPrefs[row.id]} />
+            </button>
+            <button
+              onClick={() => notificationsOn && togglePref('email', row.id)}
+              className="w-[58px] flex items-center justify-center cursor-pointer"
+              aria-label={`${row.label} email`}
+            >
+              <Toggle on={notificationsOn && emailPrefs[row.id]} />
+            </button>
+          </div>
         )
       })}
     </div>

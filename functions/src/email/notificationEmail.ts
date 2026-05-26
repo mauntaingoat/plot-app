@@ -83,11 +83,11 @@ const COPY: Record<NotificationKind, KindCopy> = {
     reason: 'Showing request',
   },
   new_subscriber: {
-    subject: 'You have a new save on Reelst',
-    preheader: 'A buyer just added you to their map.',
-    eyebrow: 'NEW SAVE',
-    cta: 'See saves',
-    reason: 'Profile saves',
+    subject: 'You have a new subscriber on Reelst',
+    preheader: 'A buyer just subscribed to your updates.',
+    eyebrow: 'NEW SUBSCRIBER',
+    cta: 'See subscribers',
+    reason: 'Profile subscriptions',
   },
   new_wave: {
     subject: 'New wave on Reelst',

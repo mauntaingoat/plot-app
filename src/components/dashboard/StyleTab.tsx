@@ -18,7 +18,7 @@ import {
   Trash,
   Spinner,
 } from '@phosphor-icons/react'
-import { uploadFile, styleBackgroundPath, FILE_TOO_LARGE } from '@/lib/storage'
+import { uploadFile, styleBackgroundPath, customLinkThumbnailPath, FILE_TOO_LARGE } from '@/lib/storage'
 import { resizeImage } from '@/lib/imageResize'
 import type { UserDoc, Platform } from '@/lib/types'
 import {
@@ -35,6 +35,9 @@ import {
   type AgentStyle,
   type FrameStyle,
   type TickerAutoKey,
+  type CustomLink,
+  type CustomLinksPosition,
+  MAX_LINK_TITLE_LEN,
   getPalette,
   getFont,
   getShape,
@@ -394,12 +397,72 @@ export function StyleTab({
         />
       </Section>
 
+      {/* ── Links — collapsible. Sits right after Map shape so visual
+            identity (palette → font → shape → links → socials) is grouped
+            before the frame/structural controls. ── */}
+      <Section
+        title="Links"
+        subtitle="Linktree-style buttons that link out from your profile"
+        collapsible
+        collapsedPreview={
+          <span className="text-[12px] font-semibold text-graphite">
+            {style.customLinks.length === 0
+              ? 'None yet'
+              : `${style.customLinks.length} link${style.customLinks.length === 1 ? '' : 's'} · ${style.customLinksPosition === 'above' ? 'Above' : 'Below'} content`}
+          </span>
+        }
+      >
+        <CustomLinksEditor
+          uid={user.uid}
+          links={style.customLinks}
+          position={style.customLinksPosition}
+          maxLinks={isFree ? 3 : 20}
+          isFree={isFree}
+          onChange={(links) => updateStyle({ customLinks: links })}
+          onPositionChange={(pos) => updateStyle({ customLinksPosition: pos })}
+          onPaywall={onPaywall}
+        />
+      </Section>
+
+      {/* ── Social & site links — collapsible, sits beside Links. ── */}
+      <Section
+        title="Social & site links"
+        subtitle="Toggle, edit, and reorder — shows below your bio"
+        collapsible
+        collapsedPreview={
+          <span className="text-[12px] font-semibold text-graphite">
+            {user.platforms && user.platforms.length > 0
+              ? `${user.platforms.length} connected`
+              : 'None'}
+          </span>
+        }
+        action={
+          <button
+            onClick={onOpenAddPlatform}
+            className="brand-btn-flat px-3 py-1.5 text-[12.5px] font-bold cursor-pointer flex items-center gap-1.5"
+          >
+            <Plus size={13} weight="bold" /> Add
+          </button>
+        }
+      >
+        {user.platforms && user.platforms.length > 0 ? (
+          <div className="space-y-2">
+            {user.platforms.map((p) => (
+              <PlatformRow key={p.id} platform={p} onRemove={() => onRemovePlatform(p.id)} onEdit={onOpenAddPlatform} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-[13px] text-smoke text-center py-2">No links added yet — tap "Add" to connect your platforms.</p>
+        )}
+      </Section>
+
       {/* ── 5. Frames ── */}
       <Section title="Frames" subtitle="Borders + shadows for each surface">
         <div className="space-y-3">
           <FrameRow label="Profile photo" icon={<Camera size={15} />} value={style.frames.avatar} onChange={(v) => updateFrames({ avatar: v })} />
           <FrameRow label="Map viewport" icon={<House size={15} />} value={style.frames.map} onChange={(v) => updateFrames({ map: v })} />
           <FrameRow label="Listings" icon={<Eye size={15} />} value={style.frames.listings} onChange={(v) => updateFrames({ listings: v })} />
+          <FrameRow label="Links" icon={<Link2 size={15} />} value={style.frames.links} onChange={(v) => updateFrames({ links: v })} />
         </div>
       </Section>
 
@@ -433,58 +496,17 @@ export function StyleTab({
         </div>
       </Section>
 
-      {/* ── Listings layout ── */}
-      <Section title="Listings layout" subtitle="How your content cards lay out below the map">
-        <div className="grid grid-cols-2 gap-2.5">
-          <LayoutCard
-            id="scroller"
-            name="Scroller"
-            vibe="Grid up to 3 · swipe sideways for more"
-            active={style.listingsLayout === 'scroller'}
-            onClick={() => updateStyle({ listingsLayout: 'scroller' })}
-          />
-          <LayoutCard
-            id="grid"
-            name="Grid"
-            vibe="Wraps onto more rows · no horizontal scroll"
-            active={style.listingsLayout === 'grid'}
-            onClick={() => updateStyle({ listingsLayout: 'grid' })}
-          />
-        </div>
-      </Section>
-
-      {/* ── 6. Section visibility ── */}
+      {/* ── 6. Section visibility ──
+          Map viewport intentionally omitted — the map IS the profile,
+          hiding it would leave nothing of substance behind. */}
       <Section title="Sections" subtitle="Show or hide parts of your profile">
         <div className="space-y-2">
-          <ToggleRow label="Bio"           value={style.sections.bio}    onChange={(v) => updateSections({ bio: v })} />
-          <ToggleRow label="Ticker stats"  value={style.sections.ticker} onChange={(v) => updateSections({ ticker: v })} />
-          <ToggleRow label="Social row"    value={style.sections.social} onChange={(v) => updateSections({ social: v })} />
-          <ToggleRow label="Map viewport"  value={style.sections.map}    onChange={(v) => updateSections({ map: v })} />
+          <ToggleRow label="Bio"           value={style.sections.bio}     onChange={(v) => updateSections({ bio: v })} />
+          <ToggleRow label="Ticker stats"  value={style.sections.ticker}  onChange={(v) => updateSections({ ticker: v })} />
+          <ToggleRow label="Social row"    value={style.sections.social}  onChange={(v) => updateSections({ social: v })} />
+          <ToggleRow label="Pin highlights" value={style.sections.content} onChange={(v) => updateSections({ content: v })} />
+          <ToggleRow label="Custom links"  value={style.sections.links}   onChange={(v) => updateSections({ links: v })} />
         </div>
-      </Section>
-
-      {/* ── 8. Social & site links ── */}
-      <Section
-        title="Social & site links"
-        subtitle="Toggle, edit, and reorder — shows below your bio"
-        action={
-          <button
-            onClick={onOpenAddPlatform}
-            className="brand-btn-flat px-3 py-1.5 text-[12.5px] font-bold cursor-pointer flex items-center gap-1.5"
-          >
-            <Plus size={13} weight="bold" /> Add
-          </button>
-        }
-      >
-        {user.platforms && user.platforms.length > 0 ? (
-          <div className="space-y-2">
-            {user.platforms.map((p) => (
-              <PlatformRow key={p.id} platform={p} onRemove={() => onRemovePlatform(p.id)} onEdit={onOpenAddPlatform} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-[13px] text-smoke text-center py-2">No links added yet — tap "Add" to connect your platforms.</p>
-        )}
       </Section>
 
       {/* ── 10. Reset ── */}
@@ -540,6 +562,13 @@ function Section({
       {collapsible ? (
         <div className="flex items-center gap-2.5 shrink-0">
           {isCollapsed && collapsedPreview}
+          {/* Render the action when expanded so collapsible sections
+              (e.g., Social & site links) still expose their "+ Add"
+              affordance. stopPropagation keeps the click from
+              bubbling up to the header toggle. */}
+          {action && !isCollapsed && (
+            <span onClick={(e) => e.stopPropagation()}>{action}</span>
+          )}
           <ChevronRight
             size={14}
             className="text-ash transition-transform"
@@ -555,14 +584,19 @@ function Section({
   return (
     <div className="bg-warm-white border border-border-light rounded-[18px] p-4 sm:p-5">
       {collapsible ? (
-        <button
-          type="button"
+        // Use a div + role="button" instead of a real <button> so the
+        // header can host a nested action button (e.g., "+ Add") —
+        // <button> inside <button> is invalid HTML.
+        <div
+          role="button"
+          tabIndex={0}
           onClick={() => setCollapsed((v) => !v)}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setCollapsed((v) => !v) } }}
           aria-expanded={!isCollapsed}
           className={`w-full flex items-start justify-between gap-3 cursor-pointer ${isCollapsed ? '' : 'mb-3'}`}
         >
           {HeaderInner}
-        </button>
+        </div>
       ) : (
         <div className="flex items-start justify-between gap-3 mb-3">{HeaderInner}</div>
       )}
@@ -1179,25 +1213,31 @@ function LayoutCard({
         outlineOffset: active ? '-2px' : '-1px',
       }}
     >
-      <div className="h-[54px] mb-2 rounded-[10px] bg-cream overflow-hidden relative">
+      {/* Tray uses bg-pearl + warm-white cells (NOT the other way
+          around) so the layout silhouette stays legible against
+          either the inactive warm-white card OR the active peach
+          card — bg-pearl on bg-cream was nearly indistinguishable
+          and the grid cells visually disappeared when the card
+          went active. */}
+      <div className="h-[64px] mb-2 rounded-[10px] bg-pearl overflow-hidden relative">
         {id === 'scroller' ? (
-          <div className="absolute inset-0 flex items-center gap-1.5 px-2">
-            <div className="w-[28%] h-[44px] rounded-[6px] bg-pearl shrink-0" />
-            <div className="w-[28%] h-[44px] rounded-[6px] bg-pearl shrink-0" />
-            <div className="w-[28%] h-[44px] rounded-[6px] bg-pearl shrink-0" />
-            <div className="w-[28%] h-[44px] rounded-[6px] bg-pearl/70 shrink-0" />
-            <div className="w-[28%] h-[44px] rounded-[6px] bg-pearl/40 shrink-0" />
+          <div className="absolute inset-0 flex items-center gap-1.5 px-2.5">
+            <div className="w-[28%] h-[48px] rounded-[6px] bg-warm-white shrink-0" />
+            <div className="w-[28%] h-[48px] rounded-[6px] bg-warm-white shrink-0" />
+            <div className="w-[28%] h-[48px] rounded-[6px] bg-warm-white shrink-0" />
+            <div className="w-[28%] h-[48px] rounded-[6px] bg-warm-white/70 shrink-0" />
+            <div className="w-[28%] h-[48px] rounded-[6px] bg-warm-white/40 shrink-0" />
           </div>
         ) : (
           // 3×2 grid — illustrates the wrapping behavior (no horizontal
           // scroll; rows stack downward as more cards are added).
-          <div className="absolute inset-0 grid grid-cols-3 gap-1 p-1.5">
-            <div className="rounded-[4px] bg-pearl" />
-            <div className="rounded-[4px] bg-pearl" />
-            <div className="rounded-[4px] bg-pearl" />
-            <div className="rounded-[4px] bg-pearl" />
-            <div className="rounded-[4px] bg-pearl" />
-            <div className="rounded-[4px] bg-pearl" />
+          <div className="absolute inset-0 grid grid-cols-3 gap-1.5 p-2">
+            <div className="rounded-[4px] bg-warm-white" />
+            <div className="rounded-[4px] bg-warm-white" />
+            <div className="rounded-[4px] bg-warm-white" />
+            <div className="rounded-[4px] bg-warm-white" />
+            <div className="rounded-[4px] bg-warm-white" />
+            <div className="rounded-[4px] bg-warm-white" />
           </div>
         )}
       </div>
@@ -1343,6 +1383,311 @@ function PlatformRow({
       >
         <X size={14} />
       </button>
+    </div>
+  )
+}
+
+/* ───────────────────────────────────────────────────────────────
+   CustomLinksEditor — agent-curated external links stack editor.
+
+   Supports add / edit (title + URL inline) / delete / drag-reorder
+   (native HTML5 DnD) / thumbnail upload (40×40 thumb resized to
+   256×256 server-side via resizeImage) / position selector
+   (above or below the content cards). Free agents see the first
+   three slots; the Add button locks behind a Pro paywall when the
+   cap is reached.
+
+   URL normalization: any URL without a scheme gets `https://`
+   prepended on blur. Empty rows are rejected from saving (the row
+   stays in local state but never flushes to Firestore).
+   ─────────────────────────────────────────────────────────────── */
+function CustomLinksEditor({
+  uid,
+  links,
+  position,
+  maxLinks,
+  isFree,
+  onChange,
+  onPositionChange,
+  onPaywall,
+}: {
+  uid: string
+  links: CustomLink[]
+  position: CustomLinksPosition
+  maxLinks: number
+  isFree: boolean
+  onChange: (next: CustomLink[]) => void
+  onPositionChange: (next: CustomLinksPosition) => void
+  onPaywall: (reason: string) => void
+}) {
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
+  const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const thumbInputRef = useRef<HTMLInputElement>(null)
+  const pendingUploadIdRef = useRef<string | null>(null)
+  const atCap = links.length >= maxLinks
+
+  const updateLink = (id: string, patch: Partial<CustomLink>) => {
+    onChange(links.map((l) => (l.id === id ? { ...l, ...patch } : l)))
+  }
+
+  const removeLink = (id: string) => {
+    onChange(links.filter((l) => l.id !== id))
+  }
+
+  const addLink = () => {
+    if (atCap) {
+      onPaywall(`The Free plan includes ${maxLinks} custom links. Upgrade to Pro for up to 20.`)
+      return
+    }
+    const id = `lnk_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+    onChange([...links, { id, title: '', url: '' }])
+  }
+
+  // Normalize URL on blur — prepend https:// if scheme missing and
+  // the field has content. Empty stays empty.
+  const normalizeUrl = (id: string, raw: string) => {
+    const trimmed = raw.trim()
+    if (!trimmed) {
+      updateLink(id, { url: '' })
+      return
+    }
+    if (/^https?:\/\//i.test(trimmed)) {
+      updateLink(id, { url: trimmed })
+      return
+    }
+    updateLink(id, { url: `https://${trimmed}` })
+  }
+
+  // Native HTML5 DnD — no extra dep, matches the rest of the codebase.
+  // We use a simple "insert before drop target" strategy.
+  const onDragStart = (e: React.DragEvent, id: string) => {
+    setDraggingId(id)
+    e.dataTransfer.effectAllowed = 'move'
+    // Firefox requires data to be set for the drag to start.
+    e.dataTransfer.setData('text/plain', id)
+  }
+  const onDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault()
+    if (draggingId && draggingId !== id) setOverId(id)
+  }
+  const onDrop = (e: React.DragEvent, dropId: string) => {
+    e.preventDefault()
+    if (!draggingId || draggingId === dropId) {
+      setDraggingId(null)
+      setOverId(null)
+      return
+    }
+    const next = [...links]
+    const fromIdx = next.findIndex((l) => l.id === draggingId)
+    const toIdx = next.findIndex((l) => l.id === dropId)
+    if (fromIdx < 0 || toIdx < 0) {
+      setDraggingId(null)
+      setOverId(null)
+      return
+    }
+    const [moved] = next.splice(fromIdx, 1)
+    next.splice(toIdx, 0, moved)
+    onChange(next)
+    setDraggingId(null)
+    setOverId(null)
+  }
+  const onDragEnd = () => {
+    setDraggingId(null)
+    setOverId(null)
+  }
+
+  // Thumbnail upload — same pattern as the background-image picker
+  // (resizeImage → uploadFile → write the download URL).
+  const openThumbPicker = (id: string) => {
+    pendingUploadIdRef.current = id
+    thumbInputRef.current?.click()
+  }
+  const handleThumbFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    const linkId = pendingUploadIdRef.current
+    e.target.value = '' // reset so picking same file re-fires
+    pendingUploadIdRef.current = null
+    if (!file || !linkId) return
+    setUploadingId(linkId)
+    try {
+      // 256px is plenty for a 48×48 thumbnail at 2× DPR. Resize to a
+      // Blob → wrap as a File (uploadFile expects File w/ a name) →
+      // upload. Same shape CustomBgImagePicker uses.
+      const blob = await resizeImage(file, { maxEdge: 256, quality: 0.85, mimeType: 'image/jpeg' })
+      const wrapped = new File([blob], `${linkId}.jpg`, { type: 'image/jpeg' })
+      const url = await uploadFile({ path: customLinkThumbnailPath(uid, linkId), file: wrapped })
+      // Cache-bust on re-upload so the same Storage path serves fresh
+      // bytes immediately (CDN won't keep the stale image).
+      updateLink(linkId, { thumbnailUrl: `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}` })
+    } catch (err) {
+      // FILE_TOO_LARGE is set on err.code by FileTooLargeError, not
+      // err.message — check the right property or we silently fall
+      // through to the generic "try again" path.
+      if ((err as { code?: string })?.code === FILE_TOO_LARGE) {
+        alert('Image is too large. Pick one under 8 MB.')
+      } else {
+        console.warn('[CustomLinksEditor] thumbnail upload failed', err)
+        alert("Couldn't upload that image. Try again.")
+      }
+    } finally {
+      setUploadingId(null)
+    }
+  }
+  const clearThumb = (id: string) => updateLink(id, { thumbnailUrl: null })
+
+  return (
+    <div className="space-y-3">
+      {/* Position selector — small inline segmented control. Display
+          position is a peripheral choice (most agents pick once and
+          forget); the editor shouldn't make it the focal point. */}
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[11px] font-semibold text-smoke uppercase tracking-wider shrink-0">Position</span>
+        <div className="inline-flex items-center rounded-full bg-cream p-0.5" role="group" aria-label="Links position">
+          <button
+            onClick={() => onPositionChange('above')}
+            className={`px-2.5 py-1 rounded-full text-[11.5px] font-semibold transition-colors cursor-pointer ${
+              position === 'above'
+                ? 'bg-warm-white text-ink shadow-sm'
+                : 'text-graphite hover:text-ink'
+            }`}
+            aria-pressed={position === 'above'}
+          >
+            Above
+          </button>
+          <button
+            onClick={() => onPositionChange('below')}
+            className={`px-2.5 py-1 rounded-full text-[11.5px] font-semibold transition-colors cursor-pointer ${
+              position === 'below'
+                ? 'bg-warm-white text-ink shadow-sm'
+                : 'text-graphite hover:text-ink'
+            }`}
+            aria-pressed={position === 'below'}
+          >
+            Below
+          </button>
+        </div>
+      </div>
+
+      {/* Existing links */}
+      {links.length > 0 && (
+        <div className="space-y-2 pt-1">
+          {links.map((link) => {
+            const isDragging = draggingId === link.id
+            const isOver = overId === link.id && draggingId !== link.id
+            return (
+              <div
+                key={link.id}
+                draggable
+                onDragStart={(e) => onDragStart(e, link.id)}
+                onDragOver={(e) => onDragOver(e, link.id)}
+                onDrop={(e) => onDrop(e, link.id)}
+                onDragEnd={onDragEnd}
+                className={`flex items-start gap-2 p-2 rounded-[12px] bg-cream transition-all ${
+                  isDragging ? 'opacity-40' : ''
+                } ${isOver ? 'ring-2 ring-tangerine/40' : ''}`}
+              >
+                {/* Drag handle */}
+                <div className="pt-2 cursor-grab active:cursor-grabbing text-ash" aria-label="Drag to reorder">
+                  <GripVertical size={14} />
+                </div>
+
+                {/* Thumbnail slot */}
+                <button
+                  onClick={() => openThumbPicker(link.id)}
+                  disabled={uploadingId === link.id}
+                  className="w-10 h-10 shrink-0 rounded-[10px] bg-warm-white border border-border-light flex items-center justify-center overflow-hidden text-graphite cursor-pointer hover:bg-pearl relative"
+                  aria-label="Upload thumbnail"
+                  title="Upload thumbnail (optional)"
+                >
+                  {uploadingId === link.id ? (
+                    <Spinner size={14} className="animate-spin" />
+                  ) : link.thumbnailUrl ? (
+                    <img src={link.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <ImageIcon size={14} />
+                  )}
+                </button>
+
+                {/* Title + URL stacked inputs */}
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <input
+                    type="text"
+                    value={link.title}
+                    onChange={(e) => updateLink(link.id, { title: e.target.value.slice(0, MAX_LINK_TITLE_LEN) })}
+                    placeholder="Title"
+                    maxLength={MAX_LINK_TITLE_LEN}
+                    aria-label="Link title"
+                    className="w-full h-9 px-3 rounded-[10px] bg-warm-white border border-border-light text-[13px] font-semibold text-ink outline-none focus:border-tangerine/50 placeholder:text-ash"
+                  />
+                  <input
+                    type="url"
+                    inputMode="url"
+                    value={link.url}
+                    onChange={(e) => updateLink(link.id, { url: e.target.value })}
+                    onBlur={(e) => normalizeUrl(link.id, e.target.value)}
+                    placeholder="https://…"
+                    aria-label="Link URL"
+                    className="w-full h-9 px-3 rounded-[10px] bg-warm-white border border-border-light text-[12.5px] text-graphite outline-none focus:border-tangerine/50 placeholder:text-ash"
+                  />
+                </div>
+
+                {/* Actions stack */}
+                <div className="flex flex-col gap-1">
+                  {link.thumbnailUrl && (
+                    <button
+                      onClick={() => clearThumb(link.id)}
+                      className="w-7 h-7 rounded-[8px] flex items-center justify-center text-graphite cursor-pointer hover:bg-pearl"
+                      aria-label="Remove thumbnail"
+                      title="Remove thumbnail"
+                    >
+                      <ImageIcon size={12} className="opacity-50" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => removeLink(link.id)}
+                    className="w-7 h-7 rounded-[8px] flex items-center justify-center text-live-red/70 cursor-pointer hover:bg-live-red/10"
+                    aria-label="Delete link"
+                  >
+                    <Trash size={12} />
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Hidden file input for thumbnail uploads */}
+      <input
+        ref={thumbInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        onChange={handleThumbFile}
+        className="hidden"
+      />
+
+      {/* Add row */}
+      <div className="flex items-center justify-between gap-2 pt-1">
+        <p className="text-[11px] text-smoke">
+          {links.length} of {maxLinks} {isFree ? '(Free)' : '(Pro)'}
+        </p>
+        <button
+          onClick={addLink}
+          disabled={false /* always clickable so the paywall hint fires */}
+          className="brand-btn-flat px-3 h-9 text-[12.5px] font-bold cursor-pointer flex items-center gap-1"
+        >
+          {atCap && isFree ? (
+            <>
+              <Lock size={12} weight="bold" /> Upgrade for more
+            </>
+          ) : (
+            <>
+              <Plus size={13} weight="bold" /> Add link
+            </>
+          )}
+        </button>
+      </div>
     </div>
   )
 }

@@ -217,7 +217,7 @@ function EmptyStatsFallback() {
           className="text-graphite mt-0.5"
           style={{ fontSize: '12.5px', fontWeight: 400 }}
         >
-          Save to be notified the moment they go live.
+          Subscribe to be notified the moment they go live.
         </p>
       </div>
     </div>

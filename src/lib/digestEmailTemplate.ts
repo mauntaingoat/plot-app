@@ -285,7 +285,7 @@ export function renderDigestEmail({
     textLines.push('')
   }
   if (totalUpdates === 0 && !blogPost && agentsWithoutUpdates.length > 0) {
-    textLines.push('Your saved agents:')
+    textLines.push('Your subscriptions:')
     for (const a of agentsWithoutUpdates) {
       textLines.push(`  ${a.displayName} — ${cleanBase}/${a.username}`)
     }
@@ -532,7 +532,7 @@ function buildIntroCopy(args: {
       : `${totalUpdates} new moves on your map this week.`
     return {
       subject,
-      preheader: `${totalUpdates} ${totalUpdates === 1 ? 'update' : 'updates'} from ${agentsWithUpdates.length} of your saved agents.`,
+      preheader: `${totalUpdates} ${totalUpdates === 1 ? 'update' : 'updates'} from ${agentsWithUpdates.length} of your subscriptions.`,
       headlineEyebrow: 'This week',
       headline,
     }
@@ -548,7 +548,7 @@ function buildIntroCopy(args: {
   }
 
   return {
-    subject: `All quiet on your saved ${totalAgents === 1 ? 'agent' : 'agents'}.`,
+    subject: `All quiet on your subscribed ${totalAgents === 1 ? 'agent' : 'agents'}.`,
     preheader: 'No new updates this week — your roster is below.',
     headlineEyebrow: 'This week',
     headline: 'A quiet one. The roster you follow is below.',

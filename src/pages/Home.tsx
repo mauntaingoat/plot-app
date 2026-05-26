@@ -467,7 +467,7 @@ function Hero() {
               borders is locked at every viewport width. The rotations
               stay fixed; all spatial values scale proportionally. */}
           <img
-            src="/marketing/hero-pin.png"
+            src="/marketing/hero-pin.webp"
             alt=""
             aria-hidden
             draggable={false}
@@ -477,7 +477,7 @@ function Hero() {
             className="hero-pin hero-pin--left pointer-events-none select-none absolute"
           />
           <img
-            src="/marketing/hero-pin.png"
+            src="/marketing/hero-pin.webp"
             alt=""
             aria-hidden
             draggable={false}
@@ -487,7 +487,7 @@ function Hero() {
             className="hero-pin hero-pin--right-a pointer-events-none select-none absolute"
           />
           <img
-            src="/marketing/hero-pin.png"
+            src="/marketing/hero-pin.webp"
             alt=""
             aria-hidden
             draggable={false}
@@ -540,9 +540,9 @@ const FEATURES: Feature[] = [
     title: 'Your listings, and your neighborhoods, on a real map.',
     desc: (
       <>
-        Drop a listing pin and MLS auto-fills beds, baths, sqft, price, and days on market. Or drop a{' '}
+        Drop a pin at any address — your listings, your sold deals, your favorite spots. Or drop a{' '}
         <DefinedTerm term="Spotlight" def="A neighborhood-level pin. Walks buyers through the streets, parks, and block-level feel of an area, not a specific home." />
-        {' '}pin to sell the area itself.
+        {' '}to sell the area itself.
       </>
     ),
     video: '/marketing/mappins.mp4',
@@ -560,8 +560,8 @@ const FEATURES: Feature[] = [
     title: 'Open houses that broadcast themselves.',
     desc: (
       <>
-        Add a date and time to any for-sale pin. It shows up on your map, on the listing, and in the weekly digest your{' '}
-        <DefinedTerm term="Saves" def="Buyers subscribed to your weekly digest. You get their email; they get every listing and open house you post." />
+        Add a date and time to any for-sale pin. It shows up on your map, on the listing, and in the weekly update your{' '}
+        <DefinedTerm term="Subscribers" def="People subscribed to your weekly updates. You get their email; they get every listing and open house you post." />
         {' '}receive. Recurring weekly schedules supported.
       </>
     ),
@@ -574,7 +574,7 @@ const FEATURES: Feature[] = [
     desc: (
       <>
         Showing requests, new{' '}
-        <DefinedTerm term="Saves" def="Buyers subscribed to your weekly digest. You get their email; they get every listing and open house you post." />
+        <DefinedTerm term="Subscribers" def="People subscribed to your weekly updates. You get their email; they get every listing and open house you post." />
         , and{' '}
         <DefinedTerm term="Waves" def="Private questions a buyer sent about a specific listing. Tied to the pin so you know exactly what they're asking about. Like a DM, straight to your inbox." />
         {' '}all land in one inbox, sorted by recency, grouped by day, marked unread until you act on them.
@@ -587,7 +587,7 @@ const FEATURES: Feature[] = [
     label: 'Connect',
     title: (
       <>
-        <DefinedTerm term="Save" def="A one-tap email signup, no account required. You get the buyer's email; they get every listing and open house you post." />
+        <DefinedTerm term="Subscribe" def="A one-tap email signup, no account required. You get their email; they get every listing and open house you post." />
         {' '}for the list.{' '}
         <DefinedTerm term="Wave" def="A private question a buyer sends about a specific listing. Like a DM tied to the pin, straight to your inbox." />
         {' '}for a question.
@@ -596,8 +596,8 @@ const FEATURES: Feature[] = [
     desc: (
       <>
         Buyers can{' '}
-        <DefinedTerm term="Save" def="A one-tap email signup, no account required. You get the buyer's email; they get every listing and open house you post." />
-        {' '}you to get your weekly digest, or{' '}
+        <DefinedTerm term="Subscribe" def="A one-tap email signup, no account required. You get their email; they get every listing and open house you post." />
+        {' '}to get your weekly updates, or{' '}
         <DefinedTerm term="Wave" def="A private question a buyer sends about a specific listing. Like a DM tied to the pin, straight to your inbox." />
         {' '}at any listing to ask a question. Both private. Both opt-in. No public comment thread to manage.
       </>
@@ -608,7 +608,7 @@ const FEATURES: Feature[] = [
     key: 'analytics',
     label: 'Analytics',
     title: "Know what's actually working.",
-    desc: 'Visits per reel and photo. Taps and saves per pin. Save growth, peak hours, and audience crossover, every signal in one place.',
+    desc: 'Visits per reel and photo. Taps and subscribers per pin. Subscriber growth, peak hours, and audience crossover, every signal in one place.',
     video: '/marketing/analytics.mp4',
     // Tunable: dial in the exact second the Top Visitor Cities frame
     // appears in the source clip and set this slightly before it.
@@ -898,7 +898,7 @@ function OneLinkCard() {
             </div>
 
             <img
-              src="/marketing/customize-line-cropped.png"
+              src="/marketing/customize-line-cropped.webp"
               alt=""
               aria-hidden
               draggable={false}
@@ -985,7 +985,7 @@ function CloserLook() {
             </div>
 
             <img
-              src="/marketing/howitworks-pin-cropped.png"
+              src="/marketing/howitworks-pin-cropped.webp"
               alt=""
               aria-hidden
               draggable={false}
@@ -1195,7 +1195,7 @@ function PinAnalytics() {
               bg="#FF8552"
               fg="white"
               icon={<Users size={16} />}
-              label="Saves"
+              label="Subscribers"
               value="1,842"
               caption="+184 this month"
               graphic={<Sparkline color="rgba(255,255,255,0.92)" />}
@@ -1505,7 +1505,7 @@ function PhoneMock() {
         <button className="ph-iconbtn" aria-label="Wave">
           <HandWaving weight="fill" size={11} />
         </button>
-        <button className="ph-iconbtn" aria-label="Save">
+        <button className="ph-iconbtn" aria-label="Subscribe">
           <Heart weight="fill" size={11} />
         </button>
       </div>

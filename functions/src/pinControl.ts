@@ -28,11 +28,14 @@ if (!admin.apps.length) admin.initializeApp()
 // React app's TS into the functions build.
 type Tier = 'free' | 'pro'
 
-// Mirror of TIERS in /src/lib/tiers.ts. Pro is capped at 500 active
-// pins as a per-agent cost ceiling on RentCast sync + Mux storage.
+// Mirror of TIERS in /src/lib/tiers.ts. Pro is capped at 50 active
+// pins as a per-agent cost ceiling on Firestore reads (every profile
+// visit re-reads all pins) and Mux storage. Sized for a working
+// agent's realistic inventory; override per-account via direct user
+// doc edit for teams/brokerages with larger needs.
 const ACTIVE_PIN_CAP: Record<Tier, number> = {
   free: 3,
-  pro: 500,
+  pro: 50,
 }
 
 interface UserDocLite {

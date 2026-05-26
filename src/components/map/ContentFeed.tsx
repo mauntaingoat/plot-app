@@ -429,7 +429,7 @@ function FeedCard({ content, pin, agent, isPreview, hideRailExtras, immersive, a
             key={agentSaved ? 'saved' : 'unsaved'}
             whileTap={{ scale: 0.78 }}
             onClick={() => onSaveAgent()}
-            aria-label={agentSaved ? 'Saved' : `Save ${agent.displayName || 'agent'}`}
+            aria-label={agentSaved ? 'Subscribed' : `Subscribe to ${agent.displayName || 'agent'}`}
             className="cursor-pointer flex items-center justify-center"
           >
             <Heart weight="fill" size={26} className={agentSaved ? 'text-tangerine' : 'text-white'} />

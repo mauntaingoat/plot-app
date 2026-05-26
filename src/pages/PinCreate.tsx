@@ -41,7 +41,7 @@ export default function PinCreate() {
   const navigate = useNavigate()
   const { id: existingPinId } = useParams<{ id: string }>()
   const { userDoc } = useAuthStore()
-  const { results, search, clear } = useGeocoding()
+  const { results, loading: searchLoading, search, clear } = useGeocoding()
   const activateTheme = useThemeStore((s) => s.activate)
   const resolvedTheme = useThemeStore((s) => s.resolved)
   const isDark = resolvedTheme === 'dark'
@@ -133,136 +133,25 @@ export default function PinCreate() {
   // (see the AnimatePresence below) so the page doesn't jarringly jump
   // BEFORE the fade-out animation runs.
 
-  const [lookingUpProperty, setLookingUpProperty] = useState(false)
   const [showEditDetails, setShowEditDetails] = useState(false)
-  const [statusMismatch, setStatusMismatch] = useState<string | null>(null)
-  const [lookupError, setLookupError] = useState<string | null>(null)
-  // Monotonic counter — every selectAddress call bumps it. After the
-  // async lookup resolves, we only apply results if our captured id is
-  // still the latest. Prevents a stale lookup from stomping the user's
-  // current address selection or in-progress manual edits.
-  const lookupIdRef = useRef(0)
 
   const resetPropertyFields = () => {
     setBeds(3); setBaths(2); setSqft(''); setYearBuilt('')
     setHomeType('condo'); setPrice(''); setMlsNumber('')
     setDaysOnMarket(0); setListingAgentName(''); setListingOfficeName('')
-    setStatusMismatch(null)
-    setLookupError(null)
   }
 
-  const selectAddress = async (result: { placeName: string; center: [number, number] }) => {
+  // Address selection is now lookup-free. We used to fire `propertyLookup`
+  // (Rentcast) here to auto-fill beds/baths/sqft/price/MLS#. Removed
+  // because the per-call cost broke Pro economics and the listing agent
+  // already knows these values for their own listings. Agents fill them
+  // in by hand on the details step.
+  const selectAddress = (result: { placeName: string; center: [number, number] }) => {
     setAddress(result.placeName); setCoords({ lat: result.center[1], lng: result.center[0] }); clear()
     // Reset unit on a fresh address pick — it doesn't carry over across
     // different buildings. User adds it on the next step if relevant.
     setUnit('')
-
-    if (pinType === 'for_sale' || pinType === 'sold') {
-      resetPropertyFields()
-      const myLookupId = ++lookupIdRef.current
-      setLookingUpProperty(true)
-      try {
-        const { getFunctions, httpsCallable } = await import('firebase/functions')
-        const { app } = await import('@/config/firebase')
-        const functions = getFunctions(app ?? undefined)
-        const fn = httpsCallable(functions, 'propertyLookup')
-        // First lookup happens with no unit — Mapbox doesn't surface
-        // them in autocomplete and the user hasn't typed one yet. If
-        // they add a unit on the next step we'll re-run the lookup.
-        const res = await fn({ address: result.placeName, pinType, unit: null })
-        // Stale response (user picked a different address mid-flight,
-        // or kicked off a fresh lookup). Drop this one entirely.
-        if (myLookupId !== lookupIdRef.current) return
-        const data = res.data as any
-        if (data.bedrooms != null) setBeds(data.bedrooms)
-        if (data.bathrooms != null) setBaths(data.bathrooms)
-        if (data.squareFootage != null) setSqft(String(data.squareFootage))
-        if (data.yearBuilt != null) setYearBuilt(String(data.yearBuilt))
-        if (data.mlsNumber) setMlsNumber(data.mlsNumber)
-        if (data.daysOnMarket != null) setDaysOnMarket(data.daysOnMarket)
-        if (data.listingAgentName) setListingAgentName(data.listingAgentName)
-        if (data.listingOfficeName) setListingOfficeName(data.listingOfficeName)
-
-        // Auto-detect listing status mismatch. The Rentcast lookup may
-        // return: an Active listing (listingPrice set), an Inactive/sold
-        // listing (soldPrice set), or only public records (lastSalePrice).
-        // When the user-selected pin type doesn't match what we found,
-        // flip the type and surface a notice.
-        const hasActive = data.listingStatus === 'Active' && data.listingPrice
-        const hasSold = data.soldPrice || data.lastSalePrice
-        if (pinType === 'sold' && hasActive) {
-          setPinType('for_sale')
-          setStatusMismatch('This property is actively for sale — switched to For Sale listing.')
-        } else if (pinType === 'for_sale' && !hasActive && hasSold) {
-          setPinType('sold')
-          setStatusMismatch('This property appears to be sold — switched to Sold listing.')
-        }
-
-        // Auto-fill price based on (possibly corrected) pin type
-        const effectiveType = hasActive ? 'for_sale' : (hasSold ? 'sold' : pinType)
-        if (effectiveType === 'for_sale' && data.listingPrice) setPrice(String(data.listingPrice))
-        else if (effectiveType === 'sold' && (data.soldPrice || data.lastSalePrice)) setPrice(String(data.soldPrice || data.lastSalePrice))
-
-        if (data.propertyType) {
-          const typeMap: Record<string, string> = {
-            'Single Family': 'single_family', 'Condo/Co-op': 'condo', 'Condo': 'condo',
-            'Townhouse': 'townhouse', 'Multi Family': 'multi_family', 'Land': 'land',
-            'Commercial': 'commercial',
-          }
-          const mapped = typeMap[data.propertyType] || typeMap[Object.keys(typeMap).find((k) => data.propertyType?.includes(k)) || '']
-          if (mapped) setHomeType(mapped)
-        }
-      } catch (err) {
-        if (myLookupId !== lookupIdRef.current) return
-        console.warn('[PinCreate] property lookup failed:', err)
-        setLookupError("Couldn't auto-fill property details — fill them in manually below.")
-      } finally {
-        if (myLookupId === lookupIdRef.current) setLookingUpProperty(false)
-      }
-    }
-  }
-
-  // Re-run propertyLookup when the user adds/changes a unit number on
-  // the details step. Rentcast returns different beds/baths/price per
-  // unit in the same building, so this is essential for condos. Reuses
-  // the same request-versioning guard as selectAddress.
-  const reLookupWithUnit = async (newUnit: string) => {
-    if (!address) return
-    if (pinType !== 'for_sale' && pinType !== 'sold') return
-    const myLookupId = ++lookupIdRef.current
-    setLookingUpProperty(true)
-    setLookupError(null)
-    try {
-      const { composeAddressWithUnit } = await import('@/lib/format')
-      const { getFunctions, httpsCallable } = await import('firebase/functions')
-      const { app } = await import('@/config/firebase')
-      const functions = getFunctions(app ?? undefined)
-      const fn = httpsCallable(functions, 'propertyLookup')
-      const fullAddress = composeAddressWithUnit(address, newUnit)
-      const res = await fn({ address: fullAddress, pinType, unit: newUnit || null })
-      if (myLookupId !== lookupIdRef.current) return
-      const data = res.data as any
-      if (data.bedrooms != null) setBeds(data.bedrooms)
-      if (data.bathrooms != null) setBaths(data.bathrooms)
-      if (data.squareFootage != null) setSqft(String(data.squareFootage))
-      if (data.yearBuilt != null) setYearBuilt(String(data.yearBuilt))
-      if (data.mlsNumber) setMlsNumber(data.mlsNumber)
-      if (data.daysOnMarket != null) setDaysOnMarket(data.daysOnMarket)
-      if (data.listingAgentName) setListingAgentName(data.listingAgentName)
-      if (data.listingOfficeName) setListingOfficeName(data.listingOfficeName)
-      const hasActive = data.listingStatus === 'Active' && data.listingPrice
-      const hasSold = data.soldPrice || data.lastSalePrice
-      const effectiveType = hasActive ? 'for_sale' : (hasSold ? 'sold' : pinType)
-      if (effectiveType === 'for_sale' && data.listingPrice) setPrice(String(data.listingPrice))
-      else if (effectiveType === 'sold' && (data.soldPrice || data.lastSalePrice)) setPrice(String(data.soldPrice || data.lastSalePrice))
-    } catch (err) {
-      if (myLookupId !== lookupIdRef.current) return
-      console.warn('[PinCreate] unit re-lookup failed:', err)
-      // Soft-fail — leave the building-level data in place rather than
-      // wiping it. User edited fields stay untouched.
-    } finally {
-      if (myLookupId === lookupIdRef.current) setLookingUpProperty(false)
-    }
+    if (pinType === 'for_sale' || pinType === 'sold') resetPropertyFields()
   }
 
   const handleMediaFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -976,16 +865,30 @@ export default function PinCreate() {
                   icon={<Search size={16} />}
                 />
                 <AnimatePresence>
-                  {results.length > 0 && !coords && (
+                  {!coords && address.trim().length >= 3 && (
                     <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                       className="absolute top-full left-0 right-0 mt-1 bg-warm-white rounded-[14px] border border-border-light shadow-lg overflow-hidden z-10">
-                      {results.map((r, i) => (
-                        <button key={i} onClick={() => selectAddress(r)}
-                          className="w-full text-left px-4 py-3 hover:bg-cream flex items-start gap-2.5 border-b border-border-light last:border-0 cursor-pointer">
-                          <MapPin size={16} className="text-tangerine mt-0.5 shrink-0" />
-                          <span className="text-[14px] text-ink">{r.placeName}</span>
-                        </button>
-                      ))}
+                      {searchLoading && results.length === 0 ? (
+                        <div className="flex items-center gap-2.5 px-4 py-3">
+                          <div className="w-3.5 h-3.5 rounded-full border-2 border-tangerine/30 border-t-tangerine animate-spin" />
+                          <span className="text-[13px] text-smoke">Searching…</span>
+                        </div>
+                      ) : results.length === 0 ? (
+                        <div className="px-4 py-3 flex items-start gap-2.5">
+                          <Search size={15} className="text-ash mt-0.5 shrink-0" />
+                          <span className="text-[13px] text-smoke leading-snug">
+                            No matches for "{address.trim()}". Try a more specific {pinType === 'spotlight' ? 'neighborhood or city' : 'street address'}.
+                          </span>
+                        </div>
+                      ) : (
+                        results.map((r, i) => (
+                          <button key={i} onClick={() => selectAddress(r)}
+                            className="w-full text-left px-4 py-3 hover:bg-cream flex items-start gap-2.5 border-b border-border-light last:border-0 cursor-pointer">
+                            <MapPin size={16} className="text-tangerine mt-0.5 shrink-0" />
+                            <span className="text-[14px] text-ink">{r.placeName}</span>
+                          </button>
+                        ))
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1012,14 +915,10 @@ export default function PinCreate() {
                     value={unit}
                     placeholder="e.g. 4B, PH-2, 1201"
                     onChange={(e) => setUnit(e.target.value)}
-                    onBlur={(e) => {
-                      const trimmed = e.target.value.trim()
-                      if (trimmed) reLookupWithUnit(trimmed)
-                    }}
                     className="w-full px-4 py-3 rounded-[14px] bg-cream border border-border-light text-[14px] text-ink placeholder:text-ash outline-none focus:border-tangerine/40"
                   />
                   <p className="text-[11px] text-smoke mt-1.5">
-                    For condos & apartments — helps pull this unit's beds, baths, and price instead of the building-wide data.
+                    For condos & apartments — gets displayed alongside the address on your pin.
                   </p>
                 </motion.div>
               )}
@@ -1039,20 +938,6 @@ export default function PinCreate() {
               <h2 className="text-[24px] font-extrabold text-ink tracking-tight mb-2">Add details</h2>
               <p className="text-[14px] text-smoke mb-6">{displayAddressWithUnit(address, unit)}</p>
 
-              {statusMismatch && (
-                <div className="flex items-start gap-2.5 bg-tangerine/10 border border-tangerine/20 rounded-[14px] p-3.5 mb-4">
-                  <span className="text-tangerine text-[16px] shrink-0">↻</span>
-                  <p className="text-[13px] text-ink font-medium">{statusMismatch}</p>
-                </div>
-              )}
-
-              {lookupError && (
-                <div className="flex items-start gap-2.5 bg-live-red/8 border border-live-red/20 rounded-[14px] p-3.5 mb-4">
-                  <span className="text-live-red text-[16px] shrink-0">!</span>
-                  <p className="text-[13px] text-ink font-medium">{lookupError}</p>
-                </div>
-              )}
-
               <div className="space-y-4 mb-8">
                 {(pinType === 'for_sale' || pinType === 'sold') && (
                   <>
@@ -1070,14 +955,11 @@ export default function PinCreate() {
                       </div>
                     </div>
 
-                    {/* Auto-filled property details */}
-                    {lookingUpProperty ? (
-                      <div className="flex items-center justify-center gap-2 py-6 bg-cream rounded-[16px]">
-                        <div className="w-5 h-5 border-2 border-tangerine/30 border-t-tangerine rounded-full animate-spin" />
-                        <span className="text-[13px] text-smoke font-medium">Looking up property details...</span>
-                      </div>
-                    ) : (
-                      <div className="bg-cream rounded-[16px] p-4 space-y-3">
+                    {/* Property details — agent fills these in. We used
+                        to auto-fill from Rentcast on address pick; removed
+                        for cost reasons (the listing agent already knows
+                        these for their own listing). */}
+                    <div className="bg-cream rounded-[16px] p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-[11px] font-bold text-smoke uppercase tracking-wider">Property Details</span>
                           <button onClick={() => setShowEditDetails(!showEditDetails)}
@@ -1150,7 +1032,6 @@ export default function PinCreate() {
                           </>
                         )}
                       </div>
-                    )}
 
                     {/* Photos — uploaded thumbnails are previewable and
                          reorderable. The first photo (Cover) is what

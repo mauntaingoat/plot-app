@@ -55,7 +55,18 @@ export function InsightsChart({ data, height = 160, title = 'Weekly Views', subt
           </div>
         )}
       </div>
-      <div className="relative" style={{ height }}>
+      {/* Bars area and label row are separate so the tallest bar's
+          100% maxes out at `height`. A reserved tooltip slot above
+          keeps the hover chip from clipping at the card top. */}
+      {/* Empty-state hint — overlays the bar area when there's no
+          data so a new agent sees encouragement instead of an
+          inscrutable flat baseline. */}
+      {total === 0 && (
+        <p className="text-[11.5px] text-smoke pb-3 -mt-1">
+          Share your profile link to see the bars climb.
+        </p>
+      )}
+      <div className="relative" style={{ height: height + 40 }}>
         <div className="absolute inset-0 flex items-end gap-2">
           {data.map((point, i) => {
             const barHeightPx = Math.max(4, (point.value / maxValue) * height)
@@ -63,13 +74,12 @@ export function InsightsChart({ data, height = 160, title = 'Weekly Views', subt
             return (
               <div
                 key={i}
-                className="flex-1 flex flex-col items-center justify-end gap-1.5 relative cursor-pointer"
+                className="flex-1 flex flex-col items-center justify-end relative cursor-pointer"
                 onMouseEnter={() => setHoverIdx(i)}
                 onMouseLeave={() => setHoverIdx(null)}
               >
-                {/* Tooltip */}
                 {isHovered && (
-                  <div className="absolute bottom-full mb-2 px-2.5 py-1.5 bg-ink text-warm-white rounded-[8px] shadow-lg z-10 pointer-events-none whitespace-nowrap">
+                  <div className="mb-2 px-2.5 py-1.5 bg-ink text-warm-white rounded-[8px] shadow-lg z-10 pointer-events-none whitespace-nowrap relative">
                     <p className="text-[11px] font-bold">{point.value.toLocaleString()}</p>
                     <p className="text-[9px] opacity-70">{point.label}</p>
                     <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-4 border-transparent border-t-ink" />
@@ -86,11 +96,15 @@ export function InsightsChart({ data, height = 160, title = 'Weekly Views', subt
                       : 'linear-gradient(to top, #FF6B3D, rgba(255, 107, 61, 0.5))',
                   }}
                 />
-                <span className="text-[10px] text-ash font-semibold">{point.label}</span>
               </div>
             )
           })}
         </div>
+      </div>
+      <div className="flex gap-2 mt-2">
+        {data.map((point, i) => (
+          <span key={i} className="flex-1 text-center text-[10px] text-ash font-semibold">{point.label}</span>
+        ))}
       </div>
     </div>
   )

@@ -9,6 +9,7 @@ import {
   Trash,
 } from 'phosphor-react-native'
 import { COLORS, FONTS } from '../lib/tokens'
+import { useColors, useThemedStyles } from '../lib/theme'
 import { lightTap, warning } from '../lib/haptics'
 import { BottomSheet } from './BottomSheet'
 import type { Pin } from '../types'
@@ -44,18 +45,20 @@ export function PinActionsSheet({
   onToggleVisibility,
   onArchive,
 }: Props) {
+  const styles = useThemedStyles(_styles)
+  const colors = useColors()
   const isForSale = pin?.type === 'for_sale'
   const isHidden = pin?.enabled === false
 
   const rows = pin ? [
-    { Icon: PencilSimple, label: 'Edit Details', color: COLORS.ink, onPress: onEditDetails },
+    { Icon: PencilSimple, label: 'Edit Details', color: colors.ink, onPress: onEditDetails },
     { Icon: FilmStrip,    label: 'Add Content',  color: COLORS.tangerine, onPress: onAddContent },
     { Icon: QrCode,       label: 'Get QR Code',  color: COLORS.tangerine, onPress: onGetQR },
     ...(isForSale ? [{ Icon: Calendar, label: 'Open House', color: '#FFAA00', onPress: onOpenHouse }] : []),
     {
       Icon: isHidden ? EyeOpen : EyeSlash,
       label: isHidden ? 'Show on Map' : 'Hide from Map',
-      color: COLORS.ink,
+      color: colors.ink,
       onPress: onToggleVisibility,
     },
     { Icon: Trash, label: 'Archive', color: COLORS.liveRed, onPress: onArchive, danger: true },
@@ -76,7 +79,7 @@ export function PinActionsSheet({
           style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}
         >
           <Icon size={20} color={color} weight="regular" />
-          <Text style={[styles.label, { color: danger ? COLORS.liveRed : COLORS.ink }]}>
+          <Text style={[styles.label, { color: danger ? COLORS.liveRed : colors.ink }]}>
             {label}
           </Text>
         </Pressable>
@@ -85,7 +88,7 @@ export function PinActionsSheet({
   )
 }
 
-const styles = StyleSheet.create({
+const _styles = StyleSheet.create({
   titleRow: { paddingHorizontal: 12, paddingBottom: 8 },
   title: { fontFamily: FONTS.humanistBold, fontSize: 15, color: COLORS.ink },
   row: {

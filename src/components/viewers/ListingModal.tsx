@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, useMotionValue, animate, useDragControls } from 'framer-motion'
-import { X, Bed, Bathtub as Bath, ArrowsOut as Maximize, MapPin, ShareNetwork as Share2, Phone, CaretLeft as ChevronLeft, CaretRight as ChevronRight, CalendarCheck, Calendar, Clock, ChatCenteredText as MessageSquare, User as UserIcon, Check, Envelope as Mail, Flag, Heart, HandWaving as Hand, House as Home } from '@phosphor-icons/react'
+import { X, Bed, Bathtub as Bath, ArrowsOut as Maximize, MapPin, ShareNetwork as Share2, Phone, CaretLeft as ChevronLeft, CaretRight as ChevronRight, CalendarCheck, Calendar, Clock, ChatCenteredText as MessageSquare, User as UserIcon, Check, Envelope as Mail, Flag, Heart, HandWaving as Hand } from '@phosphor-icons/react'
 import { SaveAgentModal } from '@/components/agent-profile/SaveAgentModal'
 import { WaveModal } from '@/components/agent-profile/WaveModal'
 import { ShareModal } from '@/components/agent-profile/ShareModal'
@@ -520,8 +520,10 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isOwnProfile, o
       {/* Right sidebar — TikTok-style rail mirroring the agent profile's
            immersive viewer. Avatar at top of the stack, then Save
            (heart, opens email-digest), Wave (lead capture; suppressed
-           for spotlight pins which aren't a property), Share, and
-           Home (jumps to the Listing tab of this modal).
+           for spotlight pins which aren't a property), Share. The
+           Home glyph that used to bottom-anchor the rail was dropped
+           since the Listing/Content tab toggle at the top of the
+           sheet already exposes the same jump.
            Anchored so the avatar sits around the vertical midpoint of
            the card and the stack runs through the bottom half — the
            same proportions as the agent profile's content feed. Using
@@ -565,16 +567,6 @@ function ContentCard({ content, pin, agent, isPreview, embedded, isOwnProfile, o
           <Share2 weight="fill" size={22} className="text-white" />
         </motion.button>
 
-        {hasListingTab && onShowListing && pin.type !== 'spotlight' && (
-          <motion.button
-            whileTap={{ scale: 0.78 }}
-            onClick={onShowListing}
-            aria-label="View listing"
-            className="flex items-center justify-center cursor-pointer"
-          >
-            <Home weight="fill" size={24} className="text-white" />
-          </motion.button>
-        )}
       </div>
 
       {/* Bottom caption — type label inline with location */}
@@ -649,21 +641,29 @@ function ListingTab({ pin, agent, isPreview, onDismiss, embedded, isFullScreen, 
           {[
             { icon: Bed, val: pin.beds, label: 'Beds' },
             { icon: Bath, val: pin.baths, label: 'Baths' },
-            { icon: Maximize, val: pin.sqft.toLocaleString(), label: 'Sqft' },
+            { icon: Maximize, val: pin.sqft, label: 'Sqft', format: (n: number) => n.toLocaleString() },
           ].map((s) => (
             <div key={s.label} className="flex items-center gap-2 bg-slate rounded-xl px-4 py-3 flex-1">
               <s.icon size={16} className="text-tangerine" />
-              <div><p className="text-[18px] font-bold text-white">{s.val}</p><p className="text-[10px] text-ghost uppercase tracking-wider">{s.label}</p></div>
+              <div>
+                <p className="text-[18px] font-bold text-white">
+                  {s.val == null || s.val === 0 ? '–' : (s.format ? s.format(s.val) : s.val)}
+                </p>
+                <p className="text-[10px] text-ghost uppercase tracking-wider">{s.label}</p>
+              </div>
             </div>
           ))}
         </div>
 
+        {/* Always-shown spec rows. Missing fields render as an en-dash
+            so the table reads consistently across listings regardless
+            of MLS data completeness — empty rows beat hidden rows
+            because hidden rows make the layout feel inconsistent. */}
         <div className="space-y-2">
-          <Row label="Price / sqft" value={`$${pin.pricePerSqft.toLocaleString()}`} />
-          <Row label="Home type" value={pin.homeType.replace('_', ' ')} />
-          {'yearBuilt' in pin && pin.yearBuilt && <Row label="Year built" value={String(pin.yearBuilt)} />}
-          {'mlsNumber' in pin && pin.mlsNumber && <Row label="MLS #" value={pin.mlsNumber} />}
-          {'lotSize' in pin && pin.lotSize && <Row label="Lot size" value={pin.lotSize} />}
+          <Row label="Price / sqft" value={pin.pricePerSqft ? `$${pin.pricePerSqft.toLocaleString()}` : '–'} />
+          <Row label="Home type" value={pin.homeType ? pin.homeType.replace('_', ' ') : '–'} />
+          <Row label="Year built" value={'yearBuilt' in pin && pin.yearBuilt ? String(pin.yearBuilt) : '–'} />
+          <Row label="Lot size" value={'lotSize' in pin && pin.lotSize ? pin.lotSize : '–'} />
           {pin.type === 'sold' && 'soldDate' in pin && <Row label="Sold date" value={new Date(pin.soldDate.toMillis()).toLocaleDateString()} />}
         </div>
 

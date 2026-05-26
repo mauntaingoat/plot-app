@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated'
 import { MapPin, FilmStrip, Palette, Tray, ChartBar } from 'phosphor-react-native'
 import { COLORS, FONTS } from '../lib/tokens'
+import { useColors } from '../lib/theme'
 import { selection } from '../lib/haptics'
 
 /**
@@ -50,6 +51,7 @@ const INDICATOR_HEIGHT = 3
 
 export function BottomTabBar({ active, onChange, inboxUnread = 0 }: Props) {
   const insets = useSafeAreaInsets()
+  const colors = useColors()
   // Each tab's center-X (measured via onLayout). Indicator translates
   // between these positions with spring physics on `active` change.
   const tabCenters = useRef<Record<DashTab, number>>({} as Record<DashTab, number>)
@@ -90,7 +92,7 @@ export function BottomTabBar({ active, onChange, inboxUnread = 0 }: Props) {
   }))
 
   return (
-    <View style={[styles.outer, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+    <View style={[styles.outer, { backgroundColor: colors.surfaceBg, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 8) }]}>
       {/* Tabs row */}
       <View style={styles.row}>
         {TABS.map((tab) => (
@@ -177,9 +179,8 @@ function TabItem({
 
 const styles = StyleSheet.create({
   outer: {
-    backgroundColor: 'rgba(250, 250, 248, 0.96)',
+    // backgroundColor + borderTopColor injected from theme inline.
     borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
     paddingTop: 8,
   },
   row: {

@@ -14,13 +14,6 @@ interface PinCardProps {
   onMore?: () => void
   variant?: 'feed' | 'manage'
   dark?: boolean
-  /** True when the pin has an unactioned property-data change from
-   *  the daily Rentcast sync. Renders a small pulsing tangerine dot
-   *  in the top-right of the card. */
-  hasPendingChange?: boolean
-  /** Tap handler for the pending-change badge. Stops propagation so
-   *  it doesn't double-fire onClick. */
-  onPendingChangeClick?: () => void
   /** Manage-variant only: when true, the agent is on Pro and the taps
    *  count renders normally. When false, the count is blurred behind a
    *  Sparkle pip and clicking the stat fires onUpgradeClick. */
@@ -28,7 +21,7 @@ interface PinCardProps {
   onUpgradeClick?: () => void
 }
 
-export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark = true, hasPendingChange, onPendingChangeClick, isPro, onUpgradeClick }: PinCardProps) {
+export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark = true, isPro, onUpgradeClick }: PinCardProps) {
   const config = PIN_CONFIG[pin.type]
 
   // Priority: listing photo (heroPhotoUrl) > content thumbnail > content mediaUrl > none
@@ -81,29 +74,10 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
             </span>
           </div>
 
-          {/* Top-right indicators: open house, pending change. Rendered
-              as a flex row so both can coexist without overlap. */}
-          {(showOpenHouse || hasPendingChange) && (
-            <div className="absolute top-3 right-3 flex items-center gap-1.5">
-              {showOpenHouse && <OpenHouseBadge size={26} />}
-              {hasPendingChange && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onPendingChangeClick?.() }}
-                  aria-label="Property data updated"
-                  className="relative w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
-                  style={{
-                    background: 'var(--brand-grad)',
-                    boxShadow: '0 0 0 2px rgba(255,255,255,0.95), 0 4px 12px -2px rgba(217,74,31,0.6)',
-                  }}
-                >
-                  <span
-                    aria-hidden
-                    className="absolute inset-0 rounded-full animate-ping"
-                    style={{ background: 'rgba(255,107,61,0.45)' }}
-                  />
-                  <span className="relative w-2 h-2 rounded-full bg-white" />
-                </button>
-              )}
+          {/* Top-right open-house badge (when applicable). */}
+          {showOpenHouse && (
+            <div className="absolute top-3 right-3">
+              <OpenHouseBadge size={26} />
             </div>
           )}
 
@@ -158,27 +132,9 @@ export function PinCard({ pin, onClick, onToggle, onMore, variant = 'feed', dark
                 {config.label}
               </span>
             </div>
-            {(showOpenHouse || hasPendingChange) && (
-              <div className="absolute top-3 right-3 flex items-center gap-1.5">
-                {showOpenHouse && <OpenHouseBadge size={26} />}
-                {hasPendingChange && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onPendingChangeClick?.() }}
-                    aria-label="Property data updated"
-                    className="relative w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
-                    style={{
-                      background: 'var(--brand-grad)',
-                      boxShadow: '0 0 0 2px rgba(255,255,255,0.95), 0 4px 12px -2px rgba(217,74,31,0.6)',
-                    }}
-                  >
-                    <span
-                      aria-hidden
-                      className="absolute inset-0 rounded-full animate-ping"
-                      style={{ background: 'rgba(255,107,61,0.45)' }}
-                    />
-                    <span className="relative w-2 h-2 rounded-full bg-white" />
-                  </button>
-                )}
+            {showOpenHouse && (
+              <div className="absolute top-3 right-3">
+                <OpenHouseBadge size={26} />
               </div>
             )}
             {priceDisplay && (

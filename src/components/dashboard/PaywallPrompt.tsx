@@ -12,9 +12,9 @@ interface PaywallPromptProps {
 }
 
 const TIER_PERKS: Record<Tier, string[]> = {
-  free: ['3 active pins', '3-min reels & carousels', 'MLS data auto-fill', 'Showing request inbox'],
+  free: ['3 active pins', '3-min reels & carousels', 'Interactive map profile', 'Showing request inbox'],
   pro: [
-    'Unlimited pins',
+    '50 active pins',
     'Open house scheduling',
     'Full analytics dashboard',
     'Audience Crossover insights',

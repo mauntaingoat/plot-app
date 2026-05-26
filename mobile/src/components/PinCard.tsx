@@ -4,6 +4,8 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-na
 import { LinearGradient } from 'expo-linear-gradient'
 import { Sparkle, CursorClick, MapPin as MapPinIcon } from 'phosphor-react-native'
 import { COLORS, FONTS } from '../lib/tokens'
+import { useThemedStyles } from '../lib/theme'
+import { OpenHouseBadge } from './OpenHouseBadge'
 import { PIN_CONFIG, formatPrice, displayAddressWithUnit, type Pin } from '../types'
 import { lightTap, selection } from '../lib/haptics'
 import { PinHeroImage } from './PinHeroImage'
@@ -36,7 +38,18 @@ interface Props {
   onUpgradePress?: () => void
 }
 
+/** True when the pin has an openHouse with at least one session. The
+ *  iOS Pin type leaves `openHouse` as `unknown` so the field shape is
+ *  validated here before reading sessions. */
+function hasActiveOpenHouse(pin: Pin): boolean {
+  const oh = (pin as Pin & { openHouse?: unknown }).openHouse
+  if (!oh || typeof oh !== 'object') return false
+  const sessions = (oh as { sessions?: unknown }).sessions
+  return Array.isArray(sessions) && sessions.length > 0
+}
+
 export function PinCard({ pin, isPro = false, onPress, onToggleEnabled, onUpgradePress }: Props) {
+  const styles = useThemedStyles(_styles)
   const config = PIN_CONFIG[pin.type]
   // Hero image priority: explicit heroPhotoUrl → first listing photo
   // → first content thumbnail → first content mediaUrl → null
@@ -84,6 +97,15 @@ export function PinCard({ pin, isPro = false, onPress, onToggleEnabled, onUpgrad
           <View style={styles.typePill}>
             <Text style={[styles.typePillText, { color: config.color }]}>{config.label}</Text>
           </View>
+
+          {/* Open House badge — for_sale pins only, when an OH with
+              at least one session is scheduled. Matches the rainbow
+              ring on the map pin so the card + map agree visually. */}
+          {pin.type === 'for_sale' && hasActiveOpenHouse(pin) ? (
+            <View style={styles.openHouseBadge}>
+              <OpenHouseBadge size={26} />
+            </View>
+          ) : null}
 
           {/* Price overlay */}
           {price ? (
@@ -159,6 +181,7 @@ export function PinCard({ pin, isPro = false, onPress, onToggleEnabled, onUpgrad
  * Spring matches the web ToggleSwitch: damping 20 / stiffness 400.
  */
 function VisibilityToggle({ enabled, onChange }: { enabled: boolean; onChange: (next: boolean) => void }) {
+  const styles = useThemedStyles(_styles)
   // Exact mirror of web ToggleSwitch (Dashboard.tsx:2136):
   //   44×24 track, 16×16 ball, ball positioned at top:4 left:2,
   //   animates translateX 0 → 18 (so left edge goes 2 → 20).
@@ -220,7 +243,7 @@ function VisibilityToggle({ enabled, onChange }: { enabled: boolean; onChange: (
   )
 }
 
-const styles = StyleSheet.create({
+const _styles = StyleSheet.create({
   card: {
     borderRadius: 18,
     overflow: 'hidden',
@@ -257,6 +280,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   typePillText: { fontFamily: FONTS.humanistBold, fontSize: 11, letterSpacing: 0.2 },
+  openHouseBadge: { position: 'absolute', top: 12, right: 12 },
   priceWrap: { position: 'absolute', bottom: 12, left: 12 },
   price: {
     fontFamily: FONTS.humanistBold,

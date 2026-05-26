@@ -45,7 +45,7 @@ export default function Terms() {
 
             <section>
               <h2>2. What Reelst Is</h2>
-              <p>Reelst is a map-based profile platform built for licensed real estate agents ("Agents"). Agents pin listings, sold properties, and neighborhood "Spotlights" to real addresses, attach reels, photos, and video walkthroughs to those pins, and share a single public profile link with prospective buyers ("Visitors"). Visitors can browse a map, watch content, save Agents to receive email digests, and request showings without creating an account.</p>
+              <p>Reelst is a map-based profile platform built for licensed real estate agents ("Agents"). Agents pin listings, sold properties, and neighborhood "Spotlights" to real addresses, attach reels, photos, and video walkthroughs to those pins, and share a single public profile link with prospective buyers ("Visitors"). Visitors can browse a map, watch content, subscribe to Agents to receive weekly updates, and request showings without creating an account.</p>
             </section>
 
             <section>
@@ -61,7 +61,7 @@ export default function Terms() {
 
             <section>
               <h2>5. Visitor Conduct</h2>
-              <p>Visitors may browse public Agent profiles, save Agents to receive email digests, submit Showing Requests, and Wave at Agents with questions about a listing. Visitors must provide truthful contact information when submitting a Showing Request, save action, or Wave, and may only do so for legitimate property-touring purposes. Spam, harassment, and fraudulent inquiries will result in IP-level blocks.</p>
+              <p>Visitors may browse public Agent profiles, subscribe to Agents to receive weekly updates, submit Showing Requests, and Wave at Agents with questions about a listing. Visitors must provide truthful contact information when submitting a Showing Request, subscription, or Wave, and may only do so for legitimate property-touring purposes. Spam, harassment, and fraudulent inquiries will result in IP-level blocks.</p>
             </section>
 
             <section>
@@ -91,7 +91,7 @@ export default function Terms() {
 
             <section>
               <h2>9. Subscriptions, Tiers & Billing</h2>
-              <p>Reelst offers a free tier and a paid <strong>Pro</strong> tier. Paid subscriptions are billed monthly in advance. You can cancel from your dashboard at any time; cancellation takes effect at the end of the current billing period and your account drops to the Free tier. Tier-gated features (e.g., advanced analytics, unlimited active Pins, expanded customization) are available only while a qualifying subscription is active. We reserve the right to change pricing or tier composition with 30 days' notice. Refunds are handled on a case-by-case basis.</p>
+              <p>Reelst offers a free tier and a paid <strong>Pro</strong> tier. Paid subscriptions are billed monthly in advance. You can cancel from your dashboard at any time; cancellation takes effect at the end of the current billing period and your account drops to the Free tier. Tier-gated features (e.g., advanced analytics, expanded active Pin allowance, expanded customization) are available only while a qualifying subscription is active. We reserve the right to change pricing or tier composition with 30 days' notice. Refunds are handled on a case-by-case basis.</p>
             </section>
 
             <section>

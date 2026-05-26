@@ -27,6 +27,32 @@ export interface TickerCustomItem {
   label: string
 }
 
+/** A single agent-curated link on the public profile.
+ *  Render order is whatever order `customLinks` lives in — drag in the
+ *  Style tab is the source of truth.
+ *
+ *  Thumbnail is optional: when missing, the renderer falls back to a
+ *  gradient avatar derived from the title's first letter so empty-state
+ *  links still feel intentional. */
+export interface CustomLink {
+  /** Stable id: 'lnk_<ts>_<rand>'. */
+  id: string
+  /** Visible label, max 60 chars. */
+  title: string
+  /** External URL — always https. Normalized on save (we prepend
+   *  `https://` if scheme missing). */
+  url: string
+  /** Optional Firebase Storage download URL for a small thumbnail. */
+  thumbnailUrl?: string | null
+}
+
+/** Where the custom-links stack lives in the profile layout. */
+export type CustomLinksPosition = 'above' | 'below'
+
+/** Max title length — enforced on save in the editor + truncated at
+ *  render time as a defensive belt-and-braces. */
+export const MAX_LINK_TITLE_LEN = 60
+
 export interface AgentStyle {
   /** Palette id from `PALETTES` registry. */
   paletteId: string
@@ -40,14 +66,26 @@ export interface AgentStyle {
     avatar: FrameStyle
     map: FrameStyle
     listings: FrameStyle
+    /** Custom links stack frame. Defaults to the same `border_shadow`
+     *  starter as the other surfaces so links look like siblings of
+     *  the listings cards out of the box. */
+    links: FrameStyle
   }
 
-  /** Section visibility — listings are mandatory (the product). */
+  /** Section visibility. */
   sections: {
     bio: boolean
     ticker: boolean
     social: boolean
     map: boolean
+    /** Content cards (listings/sold/spotlight grid). Defaults true.
+     *  When off, the public profile renders map + links only — useful
+     *  for agents using Reelst as a pure link-in-bio surface. */
+    content: boolean
+    /** Custom links stack (Linktree-style). Defaults true; the stack
+     *  renders nothing on empty `customLinks` anyway, so toggling off
+     *  is just for agents who want zero possibility of one showing. */
+    links: boolean
   }
 
   /** Per-stat toggle for the auto-derived ticker phrases. */
@@ -90,4 +128,13 @@ export interface AgentStyle {
    *  center / cover` on the profile card surface. Resized client-
    *  side to max 1600px wide before upload. */
   customBackgroundImage?: string | null
+
+  /** Linktree-style stack of agent-curated external links. Ordered
+   *  array — drag in the Style tab editor is the source of truth.
+   *  Free: 3 max. Pro: 20 max. Render position controlled by
+   *  `customLinksPosition` below. */
+  customLinks: CustomLink[]
+  /** Whether the links stack renders above or below the listings/
+   *  content grid on the public profile. */
+  customLinksPosition: CustomLinksPosition
 }

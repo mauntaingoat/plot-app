@@ -1,34 +1,30 @@
+import { useEffect, useMemo, useState } from 'react'
 import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import {
   Play,
   Image as ImageIcon,
-  MapPin,
   CursorClick,
-  DotsThree,
   Sparkle,
-  CaretDown,
+  MapPin,
 } from 'phosphor-react-native'
 import { COLORS, FONTS } from '../lib/tokens'
+import { useThemedStyles } from '../lib/theme'
 import { lightTap } from '../lib/haptics'
+import { resolveStorageUrl } from '../lib/firebaseStorageUrl'
 import type { PinContentItem } from '../types'
 
 /**
- * RN port of the web ContentCard (src/components/dashboard/ContentLibrary.tsx
- * ~lines 395-548).
+ * RN port of the web ContentCard, with two distinct press zones:
+ *   - Media area  → onMediaPress (play reel / page through carousel)
+ *   - Info area   → onPress (opens ContentActionsSheet)
+ * The pin assignment dropdown still lives inside the sheet, but a
+ * linked-pin chip is shown above the caption for at-a-glance context.
  *
- * Visual elements:
- *  - 9:11 aspect media frame; tangerine/25 border if linked to a pin
- *  - Type pill top-left: "Video" (Play icon) or "Photo" (Image icon)
- *  - Top-to-bottom black gradient for legibility
- *  - Info section: linked-pin selector row (MapPin + label + chevron),
- *    caption (line-clamp 2), Pro-gated taps stat row, three-dots
- *    actions button right-aligned
- *
- * Pin assignment dropdown will become a native ActionSheet picker in
- * a later milestone; for now it's a tappable row that shows the
- * current linked pin / "No listing" and fires onPickPin.
+ * Image loading uses resolveStorageUrl → routes 16-bpc cropPhotos
+ * thumbs through the proxyImage8bpc Cloud Function so iOS can
+ * actually decode them (Radar 143602439).
  */
 
 export interface ContentRow {
@@ -43,38 +39,70 @@ interface Props {
   row: ContentRow
   isPro?: boolean
   onPress?: () => void
-  onMorePress?: () => void
+  onMediaPress?: () => void
   onUpgradePress?: () => void
-  onPickPin?: () => void
 }
 
-export function ContentCard({ row, isPro = false, onPress, onMorePress, onUpgradePress, onPickPin }: Props) {
+export function ContentCard({ row, isPro = false, onPress, onMediaPress, onUpgradePress }: Props) {
+  const styles = useThemedStyles(_styles)
   const isVideo = row.item.type === 'reel'
-  const thumb = row.item.thumbnailUrl ?? row.item.mediaUrl ?? null
-  const caption = (row.item as PinContentItem & { caption?: string | null }).caption ?? null
-  const views = (row.item as PinContentItem & { views?: number }).views ?? 0
-  // First line of address — matches web's `address.split(',')[0]`
-  const pinShortAddress = row.pinAddress?.split(',')[0] ?? null
+  // Picking a still image to render in the card frame.
+  //  - Photos: prefer the explicit thumbnail, then the first carousel
+  //    image, then the single mediaUrl.
+  //  - Videos: ONLY use the thumbnail. mediaUrl is an .mp4 and
+  //    expo-image can't decode it — autoplaying the video itself
+  //    lives in the upcoming player milestone.
+  const thumb = isVideo
+    ? (row.item.thumbnailUrl ?? null)
+    : (row.item.thumbnailUrl ?? row.item.mediaUrls?.[0] ?? row.item.mediaUrl ?? null)
+  const caption = row.item.caption ?? null
+  const views = row.item.views ?? 0
+
+  // Same load-resilience pattern as PinHeroImage: resolve direct-GCS
+  // and 16-bpc URLs to formats iOS can fetch + decode.
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(thumb)
+  const [attempt, setAttempt] = useState(0)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    setAttempt(0)
+    setFailed(false)
+    setResolvedUrl(thumb)
+    if (thumb) {
+      resolveStorageUrl(thumb).then((resolved) => {
+        if (resolved) setResolvedUrl(resolved)
+      })
+    }
+  }, [thumb])
+
+  const source = useMemo(() => (resolvedUrl ? { uri: resolvedUrl } : null), [resolvedUrl])
+  const showImage = source && !failed
+  const pinShort = row.pinAddress?.split(',')[0] ?? null
 
   return (
-    <Pressable
-      onPress={() => { lightTap(); onPress?.() }}
-      style={({ pressed }) => [
-        styles.card,
-        row.isLinked && styles.cardLinked,
-        pressed && { transform: [{ scale: 0.98 }] },
-      ]}
-    >
-      {/* Media area */}
-      <View style={styles.media}>
-        {thumb ? (
+    <View style={[styles.card, row.isLinked && styles.cardLinked]}>
+      {/* Media area — taps go to onMediaPress (play reel / page carousel) */}
+      <Pressable
+        onPress={() => { lightTap(); onMediaPress?.() }}
+        style={({ pressed }) => [styles.media, pressed && { opacity: 0.92 }]}
+      >
+        {showImage ? (
           <Image
-            source={{ uri: thumb }}
+            source={source}
+            key={`${resolvedUrl}-${attempt}`}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
             transition={150}
             cachePolicy="memory-disk"
-            recyclingKey={thumb}
+            recyclingKey={resolvedUrl ?? undefined}
+            onError={() => {
+              if (attempt + 1 < 3) {
+                const next = attempt + 1
+                setTimeout(() => setAttempt(next), 300 * 2 ** attempt)
+              } else {
+                setFailed(true)
+              }
+            }}
           />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.thumbFallback]}>
@@ -100,75 +128,55 @@ export function ContentCard({ row, isPro = false, onPress, onMorePress, onUpgrad
             : <ImageIcon size={10} color={COLORS.ink} weight="regular" />}
           <Text style={styles.typePillText}>{isVideo ? 'Video' : 'Photo'}</Text>
         </View>
-      </View>
+      </Pressable>
 
-      {/* Info section */}
-      <View style={styles.info}>
-        <View style={styles.row}>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            {/* Linked-pin selector — tappable row matching web's
-                dropdown that lets agents change the pin assignment.
-                The actual picker UI lands in a later milestone. */}
-            <Pressable
-              onPress={() => { lightTap(); onPickPin?.() }}
-              style={styles.linkRow}
-              hitSlop={4}
-            >
-              <MapPin size={12} color={row.isLinked ? COLORS.tangerine : COLORS.ash} weight="regular" />
-              <Text
-                style={[styles.linkText, !row.isLinked && styles.linkTextMuted]}
-                numberOfLines={1}
-              >
-                {pinShortAddress ?? 'No listing'}
-              </Text>
-              <CaretDown size={10} color={COLORS.ash} weight="regular" />
-            </Pressable>
-
-            {/* Caption */}
-            {caption ? (
-              <Text style={styles.caption} numberOfLines={2}>{caption}</Text>
-            ) : null}
-
-            {/* Stat — Pro-gated taps view */}
-            <View style={styles.statRow}>
-              {isPro ? (
-                <View style={styles.stat}>
-                  <CursorClick size={12} color={COLORS.smoke} weight="regular" />
-                  <Text style={styles.statText}>{views.toLocaleString()}</Text>
-                </View>
-              ) : (
-                <Pressable
-                  onPress={() => { lightTap(); onUpgradePress?.() }}
-                  style={styles.stat}
-                  hitSlop={6}
-                >
-                  <CursorClick size={12} color={COLORS.smoke} weight="regular" />
-                  <Text style={[styles.statText, styles.statBlur]}>
-                    {(views || 42).toLocaleString()}
-                  </Text>
-                  <Sparkle size={10} color={COLORS.tangerine} weight="fill" />
-                </Pressable>
-              )}
-            </View>
-          </View>
-
-          {/* Three-dots actions */}
-          {onMorePress ? (
-            <Pressable
-              onPress={() => { lightTap(); onMorePress() }}
-              hitSlop={8}
-              style={({ pressed }) => [styles.moreBtn, pressed && { opacity: 0.6 }]}
-            >
-              <DotsThree size={18} color={COLORS.ash} weight="bold" />
-            </Pressable>
-          ) : null}
+      {/* Info section — white space; tap opens the actions sheet */}
+      <Pressable
+        onPress={() => { lightTap(); onPress?.() }}
+        style={({ pressed }) => [styles.info, pressed && { opacity: 0.85 }]}
+      >
+        {/* Linked-pin chip */}
+        <View style={styles.pinChipRow}>
+          <MapPin size={11} color={row.isLinked ? COLORS.tangerine : COLORS.ash} weight="regular" />
+          <Text
+            style={[styles.pinChipText, !row.isLinked && { color: COLORS.ash }]}
+            numberOfLines={1}
+          >
+            {pinShort ?? 'No listing'}
+          </Text>
         </View>
-      </View>
-    </Pressable>
+
+        {caption ? (
+          <Text style={styles.caption} numberOfLines={2}>{caption}</Text>
+        ) : (
+          <Text style={[styles.caption, { color: COLORS.ash }]}>No caption</Text>
+        )}
+        <View style={styles.statRow}>
+          {isPro ? (
+            <View style={styles.stat}>
+              <CursorClick size={12} color={COLORS.smoke} weight="regular" />
+              <Text style={styles.statText}>{views.toLocaleString()}</Text>
+            </View>
+          ) : (
+            <Pressable
+              onPress={(e) => { e.stopPropagation?.(); lightTap(); onUpgradePress?.() }}
+              style={styles.stat}
+              hitSlop={6}
+            >
+              <CursorClick size={12} color={COLORS.smoke} weight="regular" />
+              <Text style={[styles.statText, styles.statBlur]}>
+                {(views || 42).toLocaleString()}
+              </Text>
+              <Sparkle size={10} color={COLORS.tangerine} weight="fill" />
+            </Pressable>
+          )}
+        </View>
+      </Pressable>
+    </View>
   )
 }
 
-const styles = StyleSheet.create({
+const _styles = StyleSheet.create({
   card: {
     borderRadius: 18,
     overflow: 'hidden',
@@ -176,10 +184,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.borderLight,
     shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    elevation: 3,
   },
   cardLinked: {
     borderWidth: 2,
@@ -208,17 +216,15 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,
   },
-  typePillText: { fontFamily: FONTS.humanistBold, fontSize: 11, color: COLORS.ink },
+  // Literal black so the swap doesn't flip this — the pill sits on
+  // a near-white chip regardless of theme.
+  typePillText: { fontFamily: FONTS.humanistBold, fontSize: 11, color: '#0A0A0A' },
 
-  info: { padding: 12, gap: 4 },
-  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
-
-  linkRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  linkText: { fontFamily: FONTS.humanistMedium, fontSize: 13, color: COLORS.graphite, flex: 1 },
-  linkTextMuted: { color: COLORS.ash },
-
-  caption: { fontFamily: FONTS.humanist, fontSize: 12, color: COLORS.smoke, lineHeight: 17, marginTop: 4 },
-  statRow: { marginTop: 6 },
+  info: { padding: 12, gap: 6 },
+  pinChipRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  pinChipText: { fontFamily: FONTS.humanistMedium, fontSize: 11, color: COLORS.ink, flex: 1, minWidth: 0 },
+  caption: { fontFamily: FONTS.humanist, fontSize: 12, color: COLORS.smoke, lineHeight: 17 },
+  statRow: {},
   stat: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   statText: { fontFamily: FONTS.humanistMedium, fontSize: 11, color: COLORS.smoke },
   statBlur: {
@@ -227,6 +233,4 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 4,
   },
-
-  moreBtn: { padding: 4, marginTop: -4, marginRight: -4 },
 })

@@ -30,12 +30,15 @@ export const DEFAULT_STYLE: AgentStyle = {
     avatar: 'border_shadow',
     map: 'border_shadow',
     listings: 'border_shadow',
+    links: 'border_shadow',
   },
   sections: {
     bio: true,
     ticker: true,
     social: true,
     map: true,
+    content: true,
+    links: true,
   },
   tickerAuto: {
     for_sale: true,
@@ -47,13 +50,15 @@ export const DEFAULT_STYLE: AgentStyle = {
   tickerOrder: DEFAULT_TICKER_ORDER,
   ctaLabels: {
     wave: 'Wave',
-    save: 'Save',
+    save: 'Subscribe',
   },
   listingsLayout: 'scroller',
   customAccentColor: null,
   customFontColor: null,
   customBackgroundColor: null,
   customBackgroundImage: null,
+  customLinks: [],
+  customLinksPosition: 'below',
 }
 
 /** Merge a partial style (from Firestore) onto the defaults so we
@@ -76,5 +81,7 @@ export function resolveStyle(partial: Partial<AgentStyle> | null | undefined): A
     customFontColor: partial.customFontColor ?? DEFAULT_STYLE.customFontColor,
     customBackgroundColor: partial.customBackgroundColor ?? DEFAULT_STYLE.customBackgroundColor,
     customBackgroundImage: partial.customBackgroundImage ?? DEFAULT_STYLE.customBackgroundImage,
+    customLinks: partial.customLinks || DEFAULT_STYLE.customLinks,
+    customLinksPosition: partial.customLinksPosition || DEFAULT_STYLE.customLinksPosition,
   }
 }

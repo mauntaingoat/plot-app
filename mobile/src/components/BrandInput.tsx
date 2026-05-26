@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { View, TextInput, StyleSheet, type TextInputProps } from 'react-native'
 import { COLORS, FONTS } from '../lib/tokens'
+import { useThemedStyles } from '../lib/theme'
 
 /**
  * Native port of the web app's input field.
@@ -13,15 +14,25 @@ import { COLORS, FONTS } from '../lib/tokens'
  *  - text: 15px, ink, Outfit (humanist) weight 400
  *  - placeholder: #D4D0C8
  *  - focus ring: subtle tangerine border tint
+ *
+ * `forceLight` bypasses the dark-mode theme swap. Used by auth screens
+ * (SignIn/Welcome/Verify) which intentionally render light-only — the
+ * marketing surface shouldn't shift palettes based on the device's
+ * dark mode preference. (The dashboard itself does theme-swap.)
  */
 
 interface Props extends TextInputProps {
   /** Visual focus state ring color override. */
   focusRingColor?: string
+  /** When true, skip the dark-mode token swap. Auth screens use this
+   *  to stay light regardless of the device's appearance setting. */
+  forceLight?: boolean
 }
 
-export function BrandInput({ style, focusRingColor, onFocus, onBlur, ...rest }: Props) {
+export function BrandInput({ style, focusRingColor, onFocus, onBlur, forceLight, ...rest }: Props) {
   const [focused, setFocused] = useState(false)
+  const themed = useThemedStyles(_styles)
+  const styles = forceLight ? _styles : themed
   return (
     <View
       style={[
@@ -40,7 +51,7 @@ export function BrandInput({ style, focusRingColor, onFocus, onBlur, ...rest }: 
   )
 }
 
-const styles = StyleSheet.create({
+const _styles = StyleSheet.create({
   outer: {
     borderRadius: 16,
     borderWidth: 2,

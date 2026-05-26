@@ -235,13 +235,14 @@ export function ShareModal({
             >
               {prettyUrl(shareUrl)}
             </span>
+            {/* Copy uses the canonical `.brand-btn-flat` (always
+                tangerine, white text) so it stays palette-invariant —
+                same rule as Subscribe / Send Wave / Add Pin. Earlier
+                we tried palette-driven tokens here and they collided
+                on pastel themes. */}
             <button
               onClick={onCopy}
-              className="px-3 py-1 rounded-full text-[11.5px] font-bold cursor-pointer transition-colors"
-              style={{
-                background: copied ? 'var(--accent)' : 'var(--text-primary)',
-                color: copied ? 'var(--accent-ink, #fff)' : 'var(--page-canvas)',
-              }}
+              className="brand-btn-flat px-3 py-1 text-[11.5px] font-bold cursor-pointer"
             >
               {copied ? (
                 <span className="inline-flex items-center gap-1"><Check size={11} weight="bold" /> Copied</span>

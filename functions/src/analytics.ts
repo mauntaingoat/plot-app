@@ -7,7 +7,7 @@ if (!admin.apps.length) admin.initializeApp()
 
 // ── Event logging helper ──
 async function logEvent(data: {
-  type: 'view' | 'tap' | 'save' | 'unsave' | 'profile_visit' | 'wave'
+  type: 'view' | 'tap' | 'save' | 'unsave' | 'profile_visit' | 'wave' | 'link_tap'
   agentId: string
   pinId?: string
   contentId?: string
@@ -290,6 +290,37 @@ export const trackProfileVisit = onCall<{ agentId: string; localHour?: number; v
         .update({ profileVisits: admin.firestore.FieldValue.increment(1) })
         .catch(() => {}),
     ])
+  },
+)
+
+// ── Custom links — public-profile link tap ──
+// Fires from CustomLinksStack.onClick on the public profile. Writes
+// one `events` row per accepted tap with type='link_tap' so the
+// dashboard can later surface top-clicked links per agent. Reuses
+// `contentId` to store the linkId — avoids growing the events
+// schema for a feature that fits the same shape.
+export const trackLinkTap = onCall<{ agentId: string; linkId: string; localHour?: number; visitorId?: string }>(
+  { cors: true, maxInstances: 20 },
+  async (request) => {
+    const { agentId, linkId, localHour, visitorId } = request.data
+    if (!agentId || !linkId) return
+
+    // Skip self-clicks — agents previewing their own profile shouldn't
+    // pollute their own analytics.
+    if (request.auth?.uid === agentId) return
+
+    const ipRaw = getClientIp(request)
+    const ipKey = ipRaw.replace(/[^a-zA-Z0-9.:_-]/g, '_')
+    if (!(await allowTrackerCall(`tracker_link_ip_${ipKey}`))) return
+
+    await logEvent({
+      type: 'link_tap',
+      agentId,
+      contentId: linkId,
+      actorUid: request.auth?.uid,
+      visitorId,
+      localHour,
+    })
   },
 )
 

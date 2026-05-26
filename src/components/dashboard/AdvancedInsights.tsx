@@ -22,7 +22,7 @@ type PinMetric = 'taps' | 'saves' | 'waves'
 
 const PIN_METRICS: { id: PinMetric; label: string; icon: typeof Eye }[] = [
   { id: 'taps', label: 'Taps', icon: MousePointerClick },
-  { id: 'saves', label: 'Saves', icon: Bookmark },
+  { id: 'saves', label: 'Subscribers', icon: Bookmark },
   { id: 'waves', label: 'Waves', icon: Hand },
 ]
 
@@ -114,7 +114,7 @@ export function PinBreakdown({ pins }: PinBreakdownProps) {
             <span className="text-[10px] opacity-70">·</span>
             <span className="text-[10px] opacity-70">{sorted[hoverIdx].taps.toLocaleString()} taps</span>
             <span className="text-[10px] opacity-70">·</span>
-            <span className="text-[10px] opacity-70">{sorted[hoverIdx].saves.toLocaleString()} saves</span>
+            <span className="text-[10px] opacity-70">{sorted[hoverIdx].saves.toLocaleString()} subscribers</span>
             <span className="text-[10px] opacity-70">·</span>
             <span className="text-[10px] opacity-70">{(sorted[hoverIdx].waves || 0).toLocaleString()} waves</span>
           </div>
@@ -129,7 +129,7 @@ type ContentMetric = 'taps' | 'saves' | 'waves'
 
 const CONTENT_METRICS: { id: ContentMetric; label: string }[] = [
   { id: 'taps', label: 'Taps' },
-  { id: 'saves', label: 'Saves' },
+  { id: 'saves', label: 'Subscribers' },
   { id: 'waves', label: 'Waves' },
 ]
 
@@ -268,7 +268,7 @@ export function ContentConversion({ pins }: ContentConversionProps) {
             <span className="text-[10px] opacity-70">·</span>
             <span className="text-[10px] opacity-70">{stats[hoverIdx].taps.toLocaleString()} taps</span>
             <span className="text-[10px] opacity-70">·</span>
-            <span className="text-[10px] opacity-70">{stats[hoverIdx].saves.toLocaleString()} saves</span>
+            <span className="text-[10px] opacity-70">{stats[hoverIdx].saves.toLocaleString()} subscribers</span>
             <span className="text-[10px] opacity-70">·</span>
             <span className="text-[10px] opacity-70">{stats[hoverIdx].waves.toLocaleString()} waves</span>
           </div>
@@ -379,7 +379,7 @@ export function TimeOfDay({ agentId, refreshKey }: TimeOfDayProps) {
   )
 }
 
-// ── Saves over time (cumulative line chart) ──
+// ── Subscribers over time (cumulative line chart) ──
 // `subscriber_snapshots` stores total active subs per agent per day,
 // so each data point is already cumulative — the line shows the
 // running total over the last 30 days.
@@ -421,7 +421,7 @@ export function SaveGrowth({ currentSaves, agentId, refreshKey }: SaveGrowthProp
   if (currentSaves === 0 && snapshots.length === 0) {
     return (
       <div className="bg-warm-white rounded-[18px] border border-border-light p-5">
-        <h3 className="text-[14px] font-bold text-ink mb-1">Saves over time</h3>
+        <h3 className="text-[14px] font-bold text-ink mb-1">Subscribers over time</h3>
         <p className="text-[12px] text-smoke">No save data yet. Growth tracking begins once buyers start saving you.</p>
       </div>
     )
@@ -468,7 +468,7 @@ export function SaveGrowth({ currentSaves, agentId, refreshKey }: SaveGrowthProp
     <div className="bg-warm-white rounded-[18px] border border-border-light p-5 relative">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-[14px] font-bold text-ink">Saves over time</h3>
+          <h3 className="text-[14px] font-bold text-ink">Subscribers over time</h3>
           <p className="text-[11px] text-smoke mt-0.5">
             <span className="font-bold text-sold-green">+{growth}</span>
             {growthPct !== '—' && <> ({growthPct}%)</>} past 30 days

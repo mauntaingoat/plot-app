@@ -12,11 +12,13 @@ import { ListingModal } from '@/components/viewers/ListingModal'
 import { AgentDetailSheet } from '@/components/sheets/AgentDetailSheet'
 import { AuthSheet } from '@/components/sheets/AuthSheet'
 import { AgentProfileHeader } from '@/components/agent-profile/AgentProfileHeader'
+import { StickyProfileNav } from '@/components/agent-profile/StickyProfileNav'
 import { SaveAgentModal } from '@/components/agent-profile/SaveAgentModal'
 import { ShareModal } from '@/components/agent-profile/ShareModal'
 import { WaveModal } from '@/components/agent-profile/WaveModal'
 import { ReportSheet } from '@/components/moderation/ReportSheet'
 import { ListingsTab } from '@/components/agent-profile/ListingsTab'
+import { CustomLinksStack } from '@/components/agent-profile/CustomLinksStack'
 import { ExpandedMapView } from '@/components/agent-profile/ExpandedMapView'
 import { resolveStyle, getPalette, getFont, getShape, ensureFontLoaded, paletteShadowColor, readableInkOnHex, darkenHex } from '@/lib/style'
 import { auditProUsage } from '@/lib/proAudit'
@@ -345,6 +347,36 @@ export default function AgentProfile() {
 
   const [shareOpen, setShareOpen] = useState(false)
   const handleShare = () => setShareOpen(true)
+
+  // Sticky identity bar — fades in once the full header (avatar +
+  // name) has scrolled past, fades out when the user returns to
+  // the top. Threshold is roughly avatar (96) + name (40) + top
+  // padding (32) = ~170. We bias slightly higher (210) so the bar
+  // doesn't appear the instant the name's bottom edge clips —
+  // it should kick in once the header is genuinely out of view.
+  const STICKY_NAV_THRESHOLD = 180
+  const [stickyNavVisible, setStickyNavVisible] = useState(false)
+  useEffect(() => {
+    // Wait until the main render has mounted the scroll container —
+    // before `loadingComplete` flips true, scrollContainerRef points
+    // at a still-unmounted element and the listener silently no-ops.
+    if (!loadingComplete || !agent) return
+    const el = scrollContainerRef.current
+    if (!el) return
+    let ticking = false
+    const onScroll = () => {
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(() => {
+        const next = el.scrollTop > STICKY_NAV_THRESHOLD
+        setStickyNavVisible((prev) => (prev === next ? prev : next))
+        ticking = false
+      })
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [loadingComplete, agent])
   // Report-this-profile dialog — opened from the public profile
   // footer (Privacy · Terms · Report · Reelst). targetType 'agent'
   // (vs 'pin' / 'content') so the moderator email surfaces the
@@ -701,6 +733,23 @@ export default function AgentProfile() {
       >
         {seoElement}
 
+        {/* Sticky identity bar — only on the profile scroll surface
+            (not when the map is expanded, which has its own top
+            chrome). Width-matched to the agent-profile-card so on
+            desktop it floats centered over the card. */}
+        <StickyProfileNav
+          visible={stickyNavVisible && !mapExpanded && !mapClosing && !immersive}
+          agent={agent}
+          agentPhotoUrl={agent.photoURL}
+          palette={palette}
+          font={font}
+          saved={savedSession}
+          onSaveClick={() => setSaveModalOpen(true)}
+          onWaveClick={() => setAgentWaveOpen(true)}
+          onShareClick={handleShare}
+          maxWidth={isLandscapePhone ? 480 : 720}
+        />
+
         {/* Centered phone-frame card. Mobile: full-bleed. Desktop:
             ~460px-wide rounded card with breathing room and a soft
             elevation that lifts it off the tonal background. */}
@@ -759,21 +808,31 @@ export default function AgentProfile() {
             onWaveClick={() => setAgentWaveOpen(true)}
           />
 
-          {/* Single Linktree-style scroll: map peek → listings grid.
-              No tabs — the immersive viewer (per-listing taps) is
-              the only navigation surface beyond this scroll. */}
+          {/* Single Linktree-style scroll: map peek → links (above) →
+              listings grid → links (below). The "above" position is
+              passed INTO ListingsTab so it sits between the map peek
+              and the listings cards — never above the map itself. */}
           <ListingsTab
             pins={allPins}
             agent={agent}
             agentPhotoUrl={agent.photoURL}
             defaultCenter={defaultCenter}
-            listingFrame={style.frames.listings}
-            mapFrame={style.frames.map}
             showMap={showMap}
-            listingsLayout={style.listingsLayout}
+            showListings={style.sections.content}
             palette={palette}
             font={font}
             shapeAspect={getShape(style.shapeId).aspect}
+            aboveListingsSlot={
+              style.sections.links && style.customLinks.length > 0 ? (
+                <CustomLinksStack
+                  agentId={agent.uid}
+                  links={style.customLinks}
+                  palette={palette}
+                  font={font}
+                  frame={style.frames.links}
+                />
+              ) : null
+            }
             onSelectPin={(pin) => {
               trackPinTap(pin.id)
               const firstContent = pin.content?.[0]

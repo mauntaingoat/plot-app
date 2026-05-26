@@ -53,7 +53,7 @@ export function ListingOnlySheet({ pin, agent, onClose, isPreview, embedded, isS
           <div className="absolute top-3 right-3 flex gap-2">
             <button
               onClick={!isPreview ? (onSaveAgent ?? requireAuth) : undefined}
-              aria-label={agentSaved ? 'Saved' : `Save ${agent.displayName || 'agent'}`}
+              aria-label={agentSaved ? 'Subscribed' : `Subscribe to ${agent.displayName || 'agent'}`}
               className={`w-9 h-9 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center cursor-pointer ${isPreview ? 'opacity-40' : ''}`}
             >
               <Heart weight="fill" size={16} className={agentSaved ? 'text-tangerine' : 'text-white'} />

@@ -1,6 +1,7 @@
 import { View, Text, Pressable, StyleSheet, Linking } from 'react-native'
 import { Gear, ArrowSquareOut } from 'phosphor-react-native'
 import { COLORS, FONTS } from '../lib/tokens'
+import { useColors } from '../lib/theme'
 import { Avatar } from './Avatar'
 import { SetupRing } from './SetupRing'
 import { lightTap } from '../lib/haptics'
@@ -33,6 +34,7 @@ interface Props {
 }
 
 export function DashboardHeader({ user, activeTab, setupPercent, onPreviewPress, onSettingsPress, onSetupPress }: Props) {
+  const colors = useColors()
   const handlePreview = () => {
     lightTap()
     if (onPreviewPress) {
@@ -44,15 +46,15 @@ export function DashboardHeader({ user, activeTab, setupPercent, onPreviewPress,
   }
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, { backgroundColor: colors.pageBg, borderBottomColor: colors.border }]}>
       {/* Left */}
       <View style={styles.left}>
         <Avatar src={user?.photoURL ?? undefined} name={user?.displayName ?? user?.username ?? 'Agent'} size={36} />
         <View style={{ flex: 1 }}>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text style={[styles.title, { color: colors.ink }]} numberOfLines={1}>
             {TAB_TITLES[activeTab]}
           </Text>
-          <Text style={styles.handle} numberOfLines={1}>
+          <Text style={[styles.handle, { color: colors.smoke }]} numberOfLines={1}>
             @{user?.username ?? 'you'}
           </Text>
         </View>
@@ -68,17 +70,25 @@ export function DashboardHeader({ user, activeTab, setupPercent, onPreviewPress,
 
         <Pressable
           onPress={handlePreview}
-          style={({ pressed }) => [styles.previewBtn, pressed && { opacity: 0.85 }]}
+          style={({ pressed }) => [
+            styles.previewBtn,
+            { backgroundColor: colors.surfaceBg, borderColor: colors.border },
+            pressed && { opacity: 0.85 },
+          ]}
         >
-          <ArrowSquareOut size={13} color={COLORS.ink} weight="bold" />
-          <Text style={styles.previewText}>Preview</Text>
+          <ArrowSquareOut size={13} color={colors.ink} weight="bold" />
+          <Text style={[styles.previewText, { color: colors.ink }]}>Preview</Text>
         </Pressable>
 
         <Pressable
           onPress={() => { lightTap(); onSettingsPress() }}
-          style={({ pressed }) => [styles.settingsBtn, pressed && { opacity: 0.85 }]}
+          style={({ pressed }) => [
+            styles.settingsBtn,
+            { backgroundColor: colors.surfaceBg, borderColor: colors.border },
+            pressed && { opacity: 0.85 },
+          ]}
         >
-          <Gear size={16} color={COLORS.ink} weight="bold" />
+          <Gear size={16} color={colors.ink} weight="bold" />
         </Pressable>
       </View>
     </View>
@@ -93,9 +103,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 12,
-    backgroundColor: COLORS.ivory,
+    // backgroundColor + borderBottomColor injected inline from theme.
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
     gap: 12,
   },
   left: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 },

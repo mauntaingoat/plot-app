@@ -41,6 +41,7 @@ export type ProAuditKind =
   | 'style.customBg'
   | 'style.customBgImage'
   | 'style.customTicker'
+  | 'style.customLinksOverCap'
   | 'openHouses'
   | 'activePinsOver3'
 
@@ -154,6 +155,21 @@ export function auditProUsage(user: UserDoc | null, pins: Pin[]): ProAuditResult
       kind: 'style.customTicker',
       label: `${n} custom ticker item${n === 1 ? '' : 's'}`,
       detail: `Remove your custom ticker ${n === 1 ? 'item' : 'items'} in Style → Ticker stats.`,
+      fixTab: 'style',
+    })
+  }
+
+  // ── Style: custom links over Free cap ──
+  // Free agents can keep up to TIERS.free.maxCustomLinks (3). Anything
+  // more — typically because the agent downgraded from Pro — surfaces
+  // as an audit item so they can prune in the Style → Links editor.
+  const freeLinkCap = TIERS.free.maxCustomLinks
+  if (style.customLinks && style.customLinks.length > freeLinkCap) {
+    const over = style.customLinks.length - freeLinkCap
+    items.push({
+      kind: 'style.customLinksOverCap',
+      label: `${style.customLinks.length} custom links (free limit: ${freeLinkCap})`,
+      detail: `Remove ${over} link${over === 1 ? '' : 's'} in Style → Links to bring your count to ${freeLinkCap}.`,
       fixTab: 'style',
     })
   }

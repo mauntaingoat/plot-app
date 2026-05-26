@@ -194,7 +194,7 @@ export function AdminPanel({ onImpersonate }: AdminPanelProps) {
               <div className="grid grid-cols-2 gap-2 text-[12px]">
                 <Stat icon={<Clock size={12} />} label="Joined" value={fmtDate(lookedUp.createdAt)} />
                 <Stat icon={<Clock size={12} />} label="Last active" value={fmtDate((lookedUp as any).lastActiveAt)} />
-                <Stat icon={<Heart size={12} />} label="Saves" value={String((lookedUp as any).subscriberCount ?? 0)} />
+                <Stat icon={<Heart size={12} />} label="Subscribers" value={String((lookedUp as any).subscriberCount ?? 0)} />
                 <Stat icon={<MapPin size={12} />} label="Pins" value={String((lookedUp as any).pinCount ?? 0)} />
               </div>
 

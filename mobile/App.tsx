@@ -16,6 +16,7 @@ import {
 import { View, ActivityIndicator } from 'react-native'
 import { RootNavigator } from './src/navigation/RootNavigator'
 import { COLORS } from './src/lib/tokens'
+import { ThemeProvider, useTheme } from './src/lib/theme'
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -31,15 +32,26 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        {fontsLoaded ? (
-          <RootNavigator />
-        ) : (
-          <View style={{ flex: 1, backgroundColor: COLORS.ivory, alignItems: 'center', justifyContent: 'center' }}>
-            <ActivityIndicator color={COLORS.tangerine} />
-          </View>
-        )}
-        <StatusBar style="dark" />
+        <ThemeProvider>
+          {fontsLoaded ? (
+            <ThemedShell />
+          ) : (
+            <View style={{ flex: 1, backgroundColor: COLORS.ivory, alignItems: 'center', justifyContent: 'center' }}>
+              <ActivityIndicator color={COLORS.tangerine} />
+            </View>
+          )}
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  )
+}
+
+function ThemedShell() {
+  const { resolved } = useTheme()
+  return (
+    <>
+      <RootNavigator />
+      <StatusBar style={resolved === 'dark' ? 'light' : 'dark'} />
+    </>
   )
 }

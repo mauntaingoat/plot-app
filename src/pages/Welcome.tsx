@@ -23,8 +23,16 @@ const US_STATES = [
   'SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC',
 ]
 
-type Step = 'hero' | 'username' | 'name' | 'moment' | 'goals' | 'photo' | 'license' | 'bio' | 'template' | 'auth' | 'first_pin' | 'done'
-const STEPS: Step[] = ['hero', 'username', 'name', 'moment', 'goals', 'photo', 'license', 'bio', 'template', 'auth', 'first_pin', 'done']
+type Step = 'hero' | 'username' | 'name' | 'moment' | 'goals' | 'photo' | 'license' | 'bio' | 'notifications' | 'template' | 'auth' | 'first_pin' | 'done'
+const STEPS: Step[] = ['hero', 'username', 'name', 'moment', 'goals', 'photo', 'license', 'bio', 'notifications', 'template', 'auth', 'first_pin', 'done']
+
+interface OnboardingNotifPrefs {
+  showingRequest: boolean
+  newSubscriber: boolean
+  newWave: boolean
+}
+const DEFAULT_PUSH_PREFS: OnboardingNotifPrefs = { showingRequest: true, newSubscriber: true, newWave: true }
+const DEFAULT_EMAIL_PREFS: OnboardingNotifPrefs = { showingRequest: true, newSubscriber: true, newWave: true }
 
 export default function Welcome() {
   const navigate = useNavigate()
@@ -55,6 +63,8 @@ export default function Welcome() {
   const [licenseState, setLicenseState] = useState('')
   const [licenseName, setLicenseName] = useState('')
   const [bio, setBio] = useState('')
+  const [pushPrefs, setPushPrefs] = useState<OnboardingNotifPrefs>(DEFAULT_PUSH_PREFS)
+  const [emailPrefs, setEmailPrefs] = useState<OnboardingNotifPrefs>(DEFAULT_EMAIL_PREFS)
   const [templateId, setTemplateId] = useState<StyleTemplateId>(DEFAULT_TEMPLATE_ID)
   const [platforms, setPlatforms] = useState<{ id: string; username: string }[]>([])
   const [addingPlatform, setAddingPlatform] = useState<string | null>(null)
@@ -156,6 +166,8 @@ export default function Welcome() {
         platforms,
         style,
         onboardingGoals: goals,
+        notificationPrefs: pushPrefs,
+        emailPrefs,
         onboardingComplete: true,
         onboardingStep: 8,
         fairHousingAccepted: true,
@@ -532,6 +544,56 @@ export default function Welcome() {
                     })}
                   </div>
                 )}
+                <button onClick={nextStep}
+                  className="w-full py-3.5 rounded-[8px] bg-tangerine text-white text-[15px] font-bold cursor-pointer hover:brightness-105 transition-all">
+                  Continue
+                </button>
+              </motion.div>
+            )}
+
+            {step === 'notifications' && (
+              <motion.div key="notifications" custom={dir} variants={pageVariants} initial="enter" animate="center" exit="exit" transition={pageTrans}
+                className="space-y-5">
+                <div>
+                  <h2 className="text-[26px] text-[#1A1A1A]" style={{ fontWeight: 600, letterSpacing: '-0.025em' }}>Stay in the loop</h2>
+                  <p className="text-[14px] text-[#8A8A8A] mt-1">Pick which alerts you want. You can change these any time in Settings.</p>
+                </div>
+
+                <div>
+                  <div className="grid grid-cols-[1fr_64px_64px] items-center px-2 pb-2 text-[10.5px] font-semibold text-[#8A8A8A] uppercase tracking-wider">
+                    <span>Event</span>
+                    <span className="text-center">Email</span>
+                    <span className="text-center">Browser</span>
+                  </div>
+                  {([
+                    { key: 'showingRequest', label: 'Showing requests', desc: 'A buyer wants to tour one of your listings.' },
+                    { key: 'newSubscriber',  label: 'New subscribers',  desc: 'Someone subscribed to your weekly updates.' },
+                    { key: 'newWave',        label: 'Waves',            desc: 'A buyer asked a question about a listing.' },
+                  ] as const).map((row) => (
+                    <div key={row.key} className="grid grid-cols-[1fr_64px_64px] items-center bg-white border border-[#EAE7E0] rounded-2xl px-4 py-3 mb-2">
+                      <div className="min-w-0 pr-3">
+                        <div className="text-[14px] font-semibold text-[#2A2A2A]">{row.label}</div>
+                        <div className="text-[12px] text-[#8A8A8A] mt-0.5">{row.desc}</div>
+                      </div>
+                      <div className="flex justify-center">
+                        <button onClick={() => setEmailPrefs({ ...emailPrefs, [row.key]: !emailPrefs[row.key] })}
+                          className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer ${emailPrefs[row.key] ? 'bg-tangerine' : 'bg-[#D9D5CB]'}`}>
+                          <div className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${emailPrefs[row.key] ? 'translate-x-5' : ''}`} />
+                        </button>
+                      </div>
+                      <div className="flex justify-center">
+                        <button onClick={() => setPushPrefs({ ...pushPrefs, [row.key]: !pushPrefs[row.key] })}
+                          className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer ${pushPrefs[row.key] ? 'bg-tangerine' : 'bg-[#D9D5CB]'}`}>
+                          <div className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${pushPrefs[row.key] ? 'translate-x-5' : ''}`} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <p className="text-[11.5px] text-[#8A8A8A] text-center mt-2">
+                    Browser notifications need your permission the first time we send one.
+                  </p>
+                </div>
+
                 <button onClick={nextStep}
                   className="w-full py-3.5 rounded-[8px] bg-tangerine text-white text-[15px] font-bold cursor-pointer hover:brightness-105 transition-all">
                   Continue

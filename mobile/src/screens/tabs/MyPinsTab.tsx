@@ -4,6 +4,7 @@ import { MapPin, Plus } from 'phosphor-react-native'
 import { PinCard } from '../../components/PinCard'
 import { BrandIconChip } from '../../components/BrandIconChip'
 import { COLORS, FONTS } from '../../lib/tokens'
+import { useColors, useThemedStyles } from '../../lib/theme'
 import { usePins } from '../../lib/usePins'
 import { lightTap } from '../../lib/haptics'
 import type { Pin } from '../../types'
@@ -29,6 +30,8 @@ interface Props {
 
 export function MyPinsTab({ isPro, onAddPin, onPinPress, onToggleEnabled, onUpgrade }: Props) {
   const { pins, loading } = usePins()
+  const colors = useColors()
+  const styles = useThemedStyles(_styles)
 
   return (
     <View>
@@ -38,14 +41,14 @@ export function MyPinsTab({ isPro, onAddPin, onPinPress, onToggleEnabled, onUpgr
           <MapPin size={20} color={COLORS.warmWhite} weight="regular" />
         </BrandIconChip>
         <View style={{ flex: 1 }}>
-          <Text style={styles.tabTitle}>My Pins</Text>
-          <Text style={styles.tabSubtitle}>Listings, sold homes, and spotlights on your map</Text>
+          <Text style={[styles.tabTitle, { color: colors.ink }]}>My Pins</Text>
+          <Text style={[styles.tabSubtitle, { color: colors.smoke }]}>Listings, sold homes, and spotlights on your map</Text>
         </View>
       </View>
 
       {/* Section bar */}
       <View style={styles.sectionBar}>
-        <Text style={styles.sectionTitle}>Your Pins</Text>
+        <Text style={[styles.sectionTitle, { color: colors.ink }]}>Your Pins</Text>
         <Pressable
           onPress={() => { lightTap(); onAddPin?.() }}
           style={({ pressed }) => [styles.addBtn, pressed && { transform: [{ scale: 0.98 }] }]}
@@ -90,6 +93,7 @@ export function MyPinsTab({ isPro, onAddPin, onPinPress, onToggleEnabled, onUpgr
 }
 
 function SkeletonCard() {
+  const styles = useThemedStyles(_styles)
   return (
     <View style={styles.col}>
       <View style={styles.skeleton}>
@@ -104,6 +108,7 @@ function SkeletonCard() {
 }
 
 function EmptyState({ onCreate }: { onCreate?: () => void }) {
+  const styles = useThemedStyles(_styles)
   return (
     <View style={styles.empty}>
       <View style={styles.emptyIcon}>
@@ -129,7 +134,7 @@ function EmptyState({ onCreate }: { onCreate?: () => void }) {
   )
 }
 
-const styles = StyleSheet.create({
+const _styles = StyleSheet.create({
   tabHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   tabTitle: { fontFamily: FONTS.humanistBold, fontSize: 22, color: COLORS.ink, letterSpacing: -0.3 },
   tabSubtitle: { fontFamily: FONTS.humanist, fontSize: 13, color: COLORS.smoke, marginTop: 2 },

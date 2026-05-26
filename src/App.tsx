@@ -10,13 +10,14 @@ import { useAuthModalStore } from '@/stores/authModalStore'
 import { OfflineBanner } from '@/components/ui/OfflineBanner'
 import { resetFirestore } from '@/config/firebase'
 import { isAdmin } from '@/lib/admin'
+import { useIsMobileBrowser } from '@/hooks/useIsMobileBrowser'
+import { MobileBlockPage } from '@/components/MobileBlockPage'
 
-// Marketing + auth + lightweight pages are eagerly imported so they
-// land in the main bundle — no Suspense fallback, no dark-flash
-// loading screen on navigation. The dark SimpleLoadingScreen is meant
-// to flow into the dashboard / agent profile, not the cream
-// marketing site. Keeping Mapbox/Mux-heavy app pages lazy preserves
-// chunk-splitting where it actually helps payload size.
+// Marketing + auth-entry pages are eagerly imported — no Suspense
+// fallback, no dark-flash loading screen on navigation. The dark
+// SimpleLoadingScreen is meant to flow into the dashboard / agent
+// profile, not the cream marketing site. Keeping Mapbox/Mux-heavy
+// app pages lazy preserves chunk-splitting where it helps payload.
 import Home from '@/pages/Home'
 import About from '@/pages/About'
 import Pricing from '@/pages/Pricing'
@@ -30,9 +31,13 @@ import Welcome from '@/pages/Welcome'
 import SignIn from '@/pages/SignIn'
 import Verify from '@/pages/Verify'
 import AuthAction from '@/pages/AuthAction'
-import EmailPreview from '@/pages/EmailPreview'
-import UnsubManage from '@/pages/UnsubManage'
 import NotFound from '@/pages/NotFound'
+
+// Lazy: off the critical path AND the Suspense fallback (the dark
+// SimpleLoadingScreen) doesn't visually clash with the destination.
+// EmailPreview is admin-only; UnsubManage is once per email recipient.
+const EmailPreview = lazy(() => import('@/pages/EmailPreview'))
+const UnsubManage = lazy(() => import('@/pages/UnsubManage'))
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -119,11 +124,33 @@ function RequireVerified({ children }: { children: ReactNode }) {
   const initialized = useAuthStore((s) => s.initialized)
   const firebaseUser = useAuthStore((s) => s.firebaseUser)
   const userDoc = useAuthStore((s) => s.userDoc)
+  const isMobile = useIsMobileBrowser()
   if (!initialized) return <SimpleLoadingScreen />
   if (firebaseUser && !firebaseUser.emailVerified) {
     return <Navigate to="/verify" replace />
   }
   if (firebaseUser && !userDoc) return <SimpleLoadingScreen />
+  // Mobile-browser dashboard block — the dashboard is desktop-only
+  // for now (native iOS app is the path for phones). Public profiles,
+  // marketing, and auth screens for SIGNED-OUT visitors still work
+  // on mobile; this gate fires only after the auth listener proves
+  // there's a real session.
+  if (firebaseUser && isMobile) return <MobileBlockPage />
+  return <>{children}</>
+}
+
+/** Gate for sign-in/sign-up/welcome on mobile when already signed
+ *  in: the agent shouldn't be re-auth'ing on a phone — push them
+ *  to the desktop dashboard message instead. Visitors who aren't
+ *  signed in keep full access to the auth screens on mobile so they
+ *  can actually create their account from a phone (then we tell
+ *  them to switch to desktop after). */
+function MobileAuthGuard({ children }: { children: ReactNode }) {
+  const initialized = useAuthStore((s) => s.initialized)
+  const firebaseUser = useAuthStore((s) => s.firebaseUser)
+  const isMobile = useIsMobileBrowser()
+  if (!initialized) return <>{children}</>
+  if (firebaseUser && isMobile) return <MobileBlockPage />
   return <>{children}</>
 }
 
@@ -154,9 +181,9 @@ function AppRoutes() {
         <Route path="/glossary/:slug" element={<GlossaryTerm />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
-        <Route path="/sign-up" element={<Welcome />} />
-        <Route path="/welcome" element={<Welcome />} />
-        <Route path="/sign-in" element={<SignIn />} />
+        <Route path="/sign-up" element={<MobileAuthGuard><Welcome /></MobileAuthGuard>} />
+        <Route path="/welcome" element={<MobileAuthGuard><Welcome /></MobileAuthGuard>} />
+        <Route path="/sign-in" element={<MobileAuthGuard><SignIn /></MobileAuthGuard>} />
         <Route path="/verify" element={<Verify />} />
         <Route path="/auth/action" element={<AuthAction />} />
         <Route path="/dev/email-preview" element={<RequireAdmin><EmailPreview /></RequireAdmin>} />

@@ -81,12 +81,12 @@ export function SaveAgentPill({
             {saved ? (
               <>
                 <Check weight="bold" size={18} />
-                Saved {agentName}
+                Subscribed to {agentName}
               </>
             ) : (
               <>
                 <Heart weight="fill" size={17} />
-                Save {agentName}
+                Subscribe to {agentName}
               </>
             )}
           </button>

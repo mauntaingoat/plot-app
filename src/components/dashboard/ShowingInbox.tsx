@@ -151,7 +151,7 @@ export function ShowingInbox({ agentId, onError }: ShowingInboxProps) {
   const tabs: { id: TabId; label: string; count: number }[] = [
     { id: 'all', label: 'All', count: unreadShowings + unreadSaves + unreadUnsaves + unreadWaves + unreadGifts },
     { id: 'showings', label: 'Showings', count: unreadShowings },
-    { id: 'saves', label: 'Saves', count: unreadSaves + unreadUnsaves },
+    { id: 'saves', label: 'Subscribers', count: unreadSaves + unreadUnsaves },
     { id: 'waves', label: 'Waves', count: unreadWaves },
   ]
 
@@ -205,7 +205,7 @@ export function ShowingInbox({ agentId, onError }: ShowingInboxProps) {
           </div>
           <h3 className="text-[16px] font-bold text-ink mb-1">No notifications yet</h3>
           <p className="text-[13px] text-smoke">
-            Showing requests, new saves, and waves will appear here.
+            Showing requests, new subscribers, and waves will appear here.
           </p>
         </div>
       ) : (
@@ -266,7 +266,7 @@ export function ShowingInbox({ agentId, onError }: ShowingInboxProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-[14px] font-semibold ${unread ? 'text-ink' : 'text-graphite'}`}>
-                      {items.length} new save{items.length !== 1 ? 's' : ''}
+                      {items.length} new subscriber{items.length !== 1 ? 's' : ''}
                     </p>
                     <p className="text-[11px] text-smoke">{formatGroupDate(day)}</p>
                   </div>
@@ -308,7 +308,7 @@ export function ShowingInbox({ agentId, onError }: ShowingInboxProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-[14px] font-semibold ${unread ? 'text-ink' : 'text-graphite'}`}>
-                      {items.length} new unsave{items.length !== 1 ? 's' : ''}
+                      {items.length} unsubscribed
                     </p>
                     <p className="text-[11px] text-smoke">{formatGroupDate(day)}</p>
                   </div>
