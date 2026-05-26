@@ -78,6 +78,81 @@ export interface UserDoc {
    *  'brand', 'listings'). Used for product analytics + cohorting.
    *  Not surfaced in the public profile. */
   onboardingGoals?: string[]
+  /** Organization (brokerage / team) the user belongs to. When set,
+   *  the user's tier is sourced from the org's seat allocation, not
+   *  from individual billing. Set when the user redeems an org invite;
+   *  cleared when the org admin releases their seat. */
+  organizationId?: string | null
+  /** Role within the org. 'admin' = brokerage owner (can manage seats,
+   *  invite agents, see roster). 'member' = agent (gets Pro from the
+   *  org's seat, no admin powers). Only meaningful when
+   *  organizationId is set. */
+  organizationRole?: OrganizationRole | null
+}
+
+// ── Organization (brokerage / team plan) ─────────────────────────
+
+export type OrganizationRole = 'admin' | 'member'
+/** Lifecycle states for an org's billing standing. 'active' = paid in
+ *  full, all seats grant Pro. 'past_due' = grace state (Stripe webhook
+ *  flips here when an invoice fails); members keep Pro for ~7 days.
+ *  'canceled' = subscription ended, members fall back to Free. */
+export type OrganizationStatus = 'active' | 'past_due' | 'canceled'
+
+export interface Organization {
+  id: string
+  /** Display name (e.g. "Coldwell Banker Miami"). */
+  name: string
+  /** UID of the brokerage owner / org admin. They can manage roster
+   *  and billing but DO NOT get read access to members' inboxes or
+   *  pin content — that separation is enforced in firestore.rules. */
+  ownerId: string
+  /** Total seats the org is paying for. Comes from Stripe subscription
+   *  quantity once billing is wired; until then, set manually via the
+   *  grant-org-seats.mjs admin script. */
+  seatsTotal: number
+  /** How many seats are currently allocated to redeemed members.
+   *  Maintained transactionally by redeem + release callables. */
+  seatsAllocated: number
+  status: OrganizationStatus
+  /** Stripe customer + subscription IDs, set once billing is wired.
+   *  Until then, both null and seatsTotal is managed manually. */
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  createdAt: Timestamp
+  updatedAt?: Timestamp
+}
+
+export interface OrganizationMember {
+  id: string // userId (members subcollection doc id == user uid)
+  userId: string
+  role: OrganizationRole
+  invitedAt?: Timestamp | null
+  joinedAt: Timestamp
+  /** Snapshot fields so the roster page can render names + photos
+   *  without N+1 user lookups. Refreshed on member events. */
+  displayName: string
+  email: string
+  photoURL?: string | null
+  username?: string | null
+}
+
+/** Lives at /organizationInvites/{token}. Token is the doc id —
+ *  guessable URLs would let a stranger redeem a seat, so we generate
+ *  it from crypto.randomBytes(24).toString('hex'). */
+export interface OrganizationInvite {
+  /** Doc id == the 48-char hex token used in the invite URL. */
+  token: string
+  organizationId: string
+  organizationName: string
+  email: string
+  invitedBy: string // admin's uid
+  status: 'pending' | 'redeemed' | 'expired' | 'revoked'
+  createdAt: Timestamp
+  /** Auto-expire 14d after creation — Cloud Function or client guard. */
+  expiresAt: Timestamp
+  redeemedBy?: string | null // uid of the user who accepted
+  redeemedAt?: Timestamp | null
 }
 
 // ── Pin types — 2 listing types + spotlight ──

@@ -32,3 +32,13 @@ export { deleteSelfAccount } from './deleteAccount'
 export { sendAuthEmail } from './sendAuthEmail'
 export { sendWeeklyDigest } from './sendWeeklyDigest'
 export { lookupDigestSubscriptions, updateDigestSubscription } from './digestUnsub'
+export {
+  createOrganization,
+  inviteToOrganization,
+  inviteByUsername,
+  createInviteLink,
+  redeemOrganizationInvite,
+  releaseOrganizationMember,
+  revokeOrganizationInvite,
+  updateOrganizationSeats,
+} from './organizations'

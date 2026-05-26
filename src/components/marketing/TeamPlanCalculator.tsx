@@ -16,7 +16,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowRight, Minus, Plus } from '@phosphor-icons/react'
 
-const INDIVIDUAL_PRICE = 19
+const INDIVIDUAL_PRICE = 29.99
 const ENTERPRISE_MIN = 250
 const MIN_SEATS = 10
 const MAX_SEATS = ENTERPRISE_MIN
@@ -29,11 +29,14 @@ interface Tier {
   discountPct: number
 }
 
+// Curve targets ~73% off at the deepest published tier. Discount %
+// is round-numbered against $29.99 individual: $22=27%, $18=40%,
+// $14=53%, $11=63%, $8=73%.
 const TIERS: Tier[] = [
-  { min: 10,  max: 24,  perSeat: 15, discountPct: 21 },
-  { min: 25,  max: 49,  perSeat: 12, discountPct: 37 },
-  { min: 50,  max: 99,  perSeat: 10, discountPct: 47 },
-  { min: 100, max: 249, perSeat: 8,  discountPct: 58 },
+  { min: 10,  max: 24,  perSeat: 22, discountPct: 27 },
+  { min: 25,  max: 49,  perSeat: 18, discountPct: 40 },
+  { min: 50,  max: 99,  perSeat: 14, discountPct: 53 },
+  { min: 100, max: 249, perSeat: 11, discountPct: 63 },
 ]
 
 function perSeatFor(seats: number): number | null {
@@ -52,7 +55,10 @@ export function TeamPlanCalculator() {
   const perSeat = perSeatFor(seats)
   const monthly = perSeat ? perSeat * seats : null
   const indivMonthly = INDIVIDUAL_PRICE * seats
-  const savings = monthly !== null ? indivMonthly - monthly : null
+  // Round monthly savings to whole dollars — individual rate is
+  // $29.99 so raw savings are full of trailing .98/.97 noise that
+  // distracts more than it conveys precision.
+  const savings = monthly !== null ? Math.round(indivMonthly - monthly) : null
   const annualSavings = savings !== null ? savings * 12 : null
 
   const setBounded = (n: number) => setSeats(Math.min(MAX_SEATS, Math.max(MIN_SEATS, Math.round(n))))

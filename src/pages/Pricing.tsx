@@ -39,7 +39,7 @@ const PLANS = [
   },
   {
     name: 'Pro',
-    price: '$19',
+    price: '$29.99',
     period: '/ mo',
     desc: 'For agents serious about their pipeline.',
     cta: 'Go Pro',
@@ -63,7 +63,7 @@ const FAQS = [
   },
   {
     q: 'What\'s the difference between Free and Pro?',
-    a: 'Free covers the basics: up to 3 active pins, full content per pin (reels, photo carousels, photos), and core stats, visits, taps, subscribers, and waves. Pro at $19/mo unlocks 50 active pins (enough for a full working inventory), the full insights dashboard (peak hours, subscriber growth, audience crossover, content conversion), open-house scheduling, weekly updates to everyone who subscribed to you, and the expanded customization library, extra palettes, fonts, and map shapes.',
+    a: 'Free covers the basics: up to 3 active pins, full content per pin (reels, photo carousels, photos), and core stats, visits, taps, subscribers, and waves. Pro at $29.99/mo unlocks 50 active pins (enough for a full working inventory), the full insights dashboard (peak hours, subscriber growth, audience crossover, content conversion), open-house scheduling, weekly updates to everyone who subscribed to you, and the expanded customization library, extra palettes, fonts, and map shapes.',
   },
   {
     q: 'Can I import my existing listings?',
@@ -106,7 +106,7 @@ export default function Pricing() {
     <MarketingLayout>
       <SEOHead
         title="Pricing"
-        description="Reelst is free to start. Go Pro at $19/mo for 50 active pins, full analytics, and expanded customization."
+        description="Reelst is free to start. Go Pro at $29.99/mo for 50 active pins, full analytics, and expanded customization."
         path="/pricing"
       />
 

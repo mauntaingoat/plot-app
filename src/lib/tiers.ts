@@ -49,7 +49,7 @@ export const TIERS: Record<Tier, TierLimits> = {
   pro: {
     id: 'pro',
     name: 'Pro',
-    price: 19,
+    price: 29.99,
     // Active pin cap — sized for a working agent's realistic inventory
     // (typical 10-30 active listings + sold pins + spotlights). Bounds
     // per-agent Firestore read load (every profile visit reads all

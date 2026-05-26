@@ -22,6 +22,7 @@ import { OpenHouseEditor } from '@/components/dashboard/OpenHouseEditor'
 import { PinEditModal } from '@/components/dashboard/PinEditModal'
 import { ShowingInbox } from '@/components/dashboard/ShowingInbox'
 import { NotificationSettings } from '@/components/dashboard/NotificationSettings'
+import { TeamSettings } from '@/components/dashboard/TeamSettings'
 import { ContentLibrary } from '@/components/dashboard/ContentLibrary'
 import { StyleTab } from '@/components/dashboard/StyleTab'
 import { UploadBar } from '@/components/dashboard/UploadBar'
@@ -783,7 +784,7 @@ export default function Dashboard() {
                     className="brand-btn-flat h-11 px-6 rounded-full text-[14px] cursor-pointer inline-flex items-center gap-1.5"
                     style={{ fontWeight: 600, boxShadow: '0 8px 22px -4px rgba(217,74,31,0.48), inset 0 1px 0 rgba(255,255,255,0.24)' }}
                   >
-                    Go Pro — $19/mo
+                    Go Pro — $29.99/mo
                     <ArrowRight weight="bold" size={15} />
                   </button>
                 </div>
@@ -972,10 +973,15 @@ export default function Dashboard() {
               <div className="w-10 h-10 rounded-[12px] bg-pearl flex items-center justify-center"><CreditCard size={18} className="text-graphite" /></div>
               <div className="flex-1">
                 <span className="text-[15px] font-medium text-ink block">Subscription</span>
-                <span className="text-[12px] text-smoke">{getUserTier(activeUser) === 'pro' ? 'Pro plan · $19/mo' : 'Free plan'}</span>
+                <span className="text-[12px] text-smoke">{getUserTier(activeUser) === 'pro' ? 'Pro plan · $29.99/mo' : 'Free plan'}</span>
               </div>
               <Badge>{getUserTier(activeUser) === 'pro' ? 'Pro' : 'Free'}</Badge>
             </motion.button>
+
+            {/* Team membership — only renders when the user belongs to
+                an organization (TeamSettings returns null otherwise).
+                Admin sees full roster + invite UI; members see leave. */}
+            <TeamSettings />
 
             <p className="text-[12px] font-semibold text-smoke uppercase tracking-wider px-1 pb-1 pt-4">Feedback</p>
             <FeedbackForm />

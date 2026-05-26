@@ -274,6 +274,52 @@ service cloud.firestore {
         && request.auth.token.admin == true;
     }
 
+    // ── ORGANIZATIONS (brokerage / team plan) ─────────────────
+    // Read access:
+    //   - Org admin (ownerId == auth.uid): always.
+    //   - Anyone in the org (their userDoc.organizationId == orgId):
+    //     yes — they need to see seat count + status in the dashboard.
+    //   - Strangers: no.
+    // Write access: NONE from the client. All mutations go through
+    // the createOrganization / updateOrganizationSeats / release...
+    // callable Cloud Functions which validate authorization + run in
+    // transactions that also touch the user doc and the members
+    // subcollection. Direct client writes would let an admin desync
+    // seatsAllocated from membership reality.
+    match /organizations/{orgId} {
+      allow read: if request.auth != null
+        && (resource.data.ownerId == request.auth.uid
+            || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId);
+      allow write: if false;
+
+      // Members subcollection — same read rules; same no-direct-write
+      // policy. Member doc fields include displayName/email/photoURL
+      // snapshots so the roster page renders without N+1 user reads,
+      // which is a non-trivial privacy expansion: only people already
+      // in the org (or the admin) can read it.
+      match /members/{memberId} {
+        allow read: if request.auth != null
+          && (get(/databases/$(database)/documents/organizations/$(orgId)).data.ownerId == request.auth.uid
+              || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId);
+        allow write: if false;
+      }
+    }
+
+    // ── ORGANIZATION INVITES ───────────────────────────────────
+    // Read: only by the token bearer (the URL itself is the secret —
+    // anyone clicking /invite/{token} fetches /organizationInvites/
+    // {token} client-side to render the org name on the redemption
+    // page). The doc contains no sensitive PII beyond the org name +
+    // invitee email, and the token is 48 chars of crypto.randomBytes
+    // hex so it's not enumerable.
+    // Write: NONE from the client. Created by inviteToOrganization,
+    // updated by redeemOrganizationInvite — both run server-side and
+    // hold authorization context the client can't fake.
+    match /organizationInvites/{token} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // ── DEFAULT DENY ──
     match /{document=**} {
       allow read, write: if false;
