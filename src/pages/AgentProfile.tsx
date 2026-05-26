@@ -477,18 +477,6 @@ export default function AgentProfile() {
   // mid-tween, and the clip-path coordinates would suddenly be in a
   // different reference frame.
   const [mapClosing, setMapClosing] = useState(false)
-  // Scroll position captured at the moment the user expands the map,
-  // BEFORE the card-height collapse to 100dvh clamps scrollTop to 0
-  // (the document gets shorter than current scroll, browser clamps).
-  // Restored in the scroll-lock cleanup on close so the user lands
-  // back at the same scroll height they expanded from. Lives in a ref
-  // (not state) because nothing renders on it and timing matters —
-  // the capture has to happen in the click handler, before React
-  // commits the new style values.
-  const mapExpandScrollTopRef = useRef(0)
-  const captureExpandScrollTop = useCallback(() => {
-    mapExpandScrollTopRef.current = scrollContainerRef.current?.scrollTop ?? 0
-  }, [])
   const dismissMap = useCallback(() => {
     setMapClosing(true)
     setMapExpanded(false)
@@ -569,27 +557,7 @@ export default function AgentProfile() {
     if (mapExpanded || mapClosing || immersive) {
       const prev = el.style.overflow
       el.style.overflow = 'hidden'
-      return () => {
-        el.style.overflow = prev
-        // Card height returns from 100dvh to auto when mapExpanded
-        // flips false, restoring the document's full scrollHeight.
-        // We can now reseat scrollTop at where the user was before
-        // expanding (saved into mapExpandScrollTopRef in the click
-        // handler, BEFORE the card-height collapse clamped it to 0).
-        // Skip when closing immersive, which doesn't clamp scroll.
-        if (mapExpanded || mapClosing) {
-          const target = mapExpandScrollTopRef.current
-          if (target > 0 && el.scrollTop !== target) {
-            // rAF lets the layout settle (card height returning to
-            // auto, scrollHeight expanding back to N) before we
-            // assign — without it the browser sees scrollTop > old
-            // max scroll and re-clamps.
-            requestAnimationFrame(() => {
-              if (el.scrollTop !== target) el.scrollTop = target
-            })
-          }
-        }
-      }
+      return () => { el.style.overflow = prev }
     }
   }, [mapExpanded, mapClosing, immersive])
 
@@ -879,7 +847,6 @@ export default function AgentProfile() {
               }
             }}
             onRequestExpandMap={(rect) => {
-              captureExpandScrollTop()
               if (rect) setMapOriginRect(rect)
               setMapExpanded(true)
             }}
@@ -926,7 +893,6 @@ export default function AgentProfile() {
               frame={style.frames.map}
               onClose={dismissMap}
               onRequestOpen={(rect) => {
-                captureExpandScrollTop()
                 if (rect) setMapOriginRect(rect)
                 setMapExpanded(true)
               }}
