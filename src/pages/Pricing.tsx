@@ -7,6 +7,7 @@ import { SEOHead } from '@/components/marketing/SEOHead'
 import { LayeredCTA } from '@/components/marketing/LayeredCTA'
 import { DefinedTerm } from '@/components/marketing/DefinedTerm'
 import { useAuthedDestination } from '@/hooks/useAuthedDestination'
+import { TeamPlanCalculator } from '@/components/marketing/TeamPlanCalculator'
 
 /* ════════════════════════════════════════════════════════════════
    PRICING, two tiers (Free + Pro), comparison table, FAQ.
@@ -90,7 +91,7 @@ const FAQS = [
   },
   {
     q: 'Is there a team or brokerage plan?',
-    a: 'Coming soon. If you\'re running a team or a brokerage, reach out at hello@reelst.co for early access and volume pricing.',
+    a: 'Yes. Volume pricing kicks in at 10 seats and steepens as the team grows, from $15/agent at 10 seats down to $8/agent at 100+. Use the calculator on this page for your team size. We\'ll set up your org, invite your agents, and bill the brokerage directly — usually live within a day. 250+ agents gets custom pricing, annual billing, and dedicated onboarding.',
   },
 ]
 
@@ -153,7 +154,7 @@ export default function Pricing() {
         </section>
 
         {/* ── PRICING TIERS ─────────────────────────────────────── */}
-        <section className="max-w-[860px] mx-auto px-6 md:px-10 pb-20 md:pb-28">
+        <section className="max-w-[860px] mx-auto px-6 md:px-10 pb-10 md:pb-14">
           <div className="grid md:grid-cols-2 gap-5 md:gap-6">
             {PLANS.map((plan, i) => (
               <motion.div
@@ -272,6 +273,11 @@ export default function Pricing() {
               </motion.div>
             ))}
           </div>
+        </section>
+
+        {/* ── TEAM / BROKERAGE CALCULATOR ───────────────────────── */}
+        <section className="max-w-[860px] mx-auto px-6 md:px-10 pb-20 md:pb-28">
+          <TeamPlanCalculator />
         </section>
 
         {/* ── FAQ, magazine-style numbered list ─────────────────── */}
