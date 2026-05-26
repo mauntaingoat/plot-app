@@ -411,7 +411,22 @@ export function ExpandedMapView({
   // Imperative ref so the fit-to-pins button can fly the existing map
   // instead of remounting it (which used to wipe pan/zoom state).
   const mapRef = useRef<MapCanvasHandle | null>(null)
-  const handleFitToPins = () => mapRef.current?.fitToPins()
+  // Recenter padding for the expanded view: reserves room for top
+  // chrome (safe-area + profile pill + filter row, ~160px) and
+  // bottom chrome (count badge + dismiss X, ~90px) so pins fit
+  // inside the visually unobstructed map area, not under the
+  // floating UI. Without an explicit override here, fitToPins falls
+  // back to the peek-shape padding (defined for the collapsed heart
+  // silhouette) which is meaningless in the fullscreen view.
+  const handleFitToPins = () => {
+    const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768
+    mapRef.current?.fitToPins({
+      top: isDesktop ? 140 : 160,
+      bottom: isDesktop ? 100 : 90,
+      left: isDesktop ? 48 : 24,
+      right: isDesktop ? 48 : 24,
+    })
+  }
 
   // Map inits as soon as the agent profile mounts — visitors land on
   // the listings + map peek together, so deferring init only adds
