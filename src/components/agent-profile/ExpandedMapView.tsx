@@ -439,23 +439,34 @@ export function ExpandedMapView({
     mapRef.current?.fitToPins({ top, bottom, left: sides, right: sides })
   }
 
-  // Refit the map to the peek-shape padding when the user dismisses
-  // the expanded view, so the collapsed peek lands back at the same
-  // pin-framed-in-heart view it had on first load — even if the user
-  // panned/zoomed deep into the city while expanded. Fires on the
-  // open→false transition only (initial mount has open=false too,
-  // but the prevOpenRef guard skips that case).
+  // Refit the map on every open↔close transition so each state lands
+  // at its natural framing:
+  //   • open=false→true: chrome-aware fit (same math the recenter
+  //     button uses) — pins centered between the filter pills top
+  //     edge and the cycling-ticker bottom edge, not in the smaller
+  //     heart-silhouette region.
+  //   • open=true→false: peek-shape fit — pins back inside the
+  //     heart silhouette so the collapsed peek looks the same as
+  //     first load, even after the user panned across the country
+  //     while expanded.
+  // rAF deferral lets the morph layout settle (clip-path tween, the
+  // is-expanded class transition) before the camera move starts, so
+  // the fitBounds happens against the final coord system, not the
+  // mid-transition one.
   const prevOpenForRefitRef = useRef<boolean | null>(null)
   useLayoutEffect(() => {
     if (prevOpenForRefitRef.current === null) {
       prevOpenForRefitRef.current = open
       return
     }
-    if (prevOpenForRefitRef.current === true && open === false) {
+    const prev = prevOpenForRefitRef.current
+    prevOpenForRefitRef.current = open
+    if (prev === false && open === true) {
+      requestAnimationFrame(() => handleFitToPins())
+    } else if (prev === true && open === false) {
       const padding = computePeekFitPadding()
       if (padding) mapRef.current?.fitToPins(padding)
     }
-    prevOpenForRefitRef.current = open
   }, [open, computePeekFitPadding])
 
   // Map inits as soon as the agent profile mounts — visitors land on
