@@ -1527,11 +1527,38 @@ function PhoneMock() {
         <span className="ph-mp" style={{ left: '76%', top: '60%', background: '#E0A547' }} />
       </div>
 
-      <div className="ph-grid">
-        <div className="ph-tile" style={{ background: 'linear-gradient(135deg,#FFD4B0,#FF8552)' }} />
-        <div className="ph-tile" style={{ background: 'linear-gradient(135deg,#FFE6D1,#D94A1F)' }} />
-        <div className="ph-tile" style={{ background: 'linear-gradient(135deg,#FF8552,#A8341A)' }} />
-        <div className="ph-tile" style={{ background: 'linear-gradient(135deg,#FFD4B0,#FF6B3D)' }} />
+      {/* Highlight strip — small ringed pin circles, mirroring
+          PinHighlightStrip on the real product. Ring colors match
+          the map-pin vocabulary (blue=for sale, green=sold, tangerine=
+          spotlight). Inner fill is the same dark #0A0E17 the real
+          pins use. */}
+      <div className="ph-strip">
+        <div className="ph-pin" style={{ '--ring': '#3B82F6' } as React.CSSProperties}>
+          <span className="ph-pin-pill" style={{ background: '#3B82F6' }}>$988K</span>
+        </div>
+        <div className="ph-pin" style={{ '--ring': '#3B82F6' } as React.CSSProperties}>
+          <span className="ph-pin-pill" style={{ background: '#3B82F6' }}>$1.2M</span>
+        </div>
+        <div className="ph-pin" style={{ '--ring': '#34C759' } as React.CSSProperties}>
+          <span className="ph-pin-pill" style={{ background: '#34C759' }}>SOLD</span>
+        </div>
+        <div className="ph-pin" style={{ '--ring': '#FF6B3D' } as React.CSSProperties}>
+          <span className="ph-pin-pill" style={{ background: '#FF6B3D' }}>Wynwood</span>
+        </div>
+      </div>
+
+      {/* Links stack — two compact link pills, mirroring
+          CustomLinksStack on the real product. Avatar tile on left,
+          label center, caret right. */}
+      <div className="ph-links">
+        <div className="ph-link">
+          <div className="ph-link-icon" style={{ background: 'linear-gradient(135deg,#FF8552,#D94A1F)' }} />
+          <span className="ph-link-label">Book a tour</span>
+        </div>
+        <div className="ph-link">
+          <div className="ph-link-icon" style={{ background: 'linear-gradient(135deg,#FFD4B0,#FF6B3D)' }} />
+          <span className="ph-link-label">Open house this weekend</span>
+        </div>
       </div>
     </div>
   )
