@@ -59,7 +59,7 @@ export function downloadOpenHouseICS(pin: ForSalePin, agentName: string) {
     startTime: s.startTime,
     endDate: s.date,
     endTime: s.endTime,
-    url: `https://reel.st`,
+    url: `https://www.reel.st`,
   }))
 
   const ics = buildICS(events)

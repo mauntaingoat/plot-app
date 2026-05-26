@@ -6,7 +6,7 @@ interface StructuredDataProps {
   pins?: Pin[]
 }
 
-const SITE_URL = 'https://reel.st'
+const SITE_URL = 'https://www.reel.st'
 const SCRIPT_ID = 'reelst-jsonld'
 
 /**

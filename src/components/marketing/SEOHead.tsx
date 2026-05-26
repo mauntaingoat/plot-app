@@ -7,7 +7,7 @@ interface SEOHeadProps {
   path?: string
 }
 
-const BASE_URL = 'https://reel.st'
+const BASE_URL = 'https://www.reel.st'
 const DEFAULT_TITLE = 'Reelst, The Link in Your Bio for Real Estate Agents'
 const DEFAULT_DESC = 'A live map of your listings married to the reels, walkthroughs, and neighborhood spotlights you already make, every part of your real estate brand on one shareable link.'
 const DEFAULT_OG = '/icons/og-image.png'
@@ -32,10 +32,10 @@ export function SEOHead({ title, description, ogImage, path = '' }: SEOHeadProps
       el.setAttribute('content', content)
     }
 
-    // Tell search engines that reel.st is the canonical host even when
-    // the page is served from plot-fe990.web.app, plot-fe990.firebaseapp.com,
-    // or www.reel.st — otherwise Google indexes each hostname separately
-    // and splits link equity.
+    // Tell search engines that www.reel.st is the canonical host even
+    // when the page is served from plot-fe990.web.app, plot-fe990.firebaseapp.com,
+    // or the apex reel.st — otherwise Google indexes each hostname separately
+    // and splits link equity. Apex reel.st 301s to www at the edge.
     let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null
     if (!canonical) {
       canonical = document.createElement('link')

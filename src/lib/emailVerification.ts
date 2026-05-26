@@ -8,7 +8,7 @@ import { app } from '@/config/firebase'
  * lands in spam — see functions/src/sendAuthEmail.ts.
  */
 async function callSendAuthEmail(kind: 'verify' | 'reset', email: string): Promise<{ ok: boolean }> {
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://reel.st'
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.reel.st'
   const continueUrl = kind === 'verify' ? `${origin}/dashboard` : `${origin}/sign-in`
   const { getFunctions, httpsCallable } = await import('firebase/functions')
   const functions = getFunctions(app ?? undefined)
