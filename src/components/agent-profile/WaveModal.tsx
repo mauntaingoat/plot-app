@@ -145,7 +145,7 @@ export function WaveModal({ isOpen, onClose, pinId, pinAddress, agentId, agentNa
                     <div className="flex-1">
                       <p
                         style={{
-                          color: 'var(--accent)',
+                          color: 'var(--text-primary)',
                           fontFamily: 'var(--font-mono)',
                           fontSize: '10.5px',
                           fontWeight: 600,
